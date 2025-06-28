@@ -1,0 +1,20 @@
+FROM python:3.13-alpine3.20
+
+# Install build and PostgreSQL dependencies
+RUN apk update && apk add --no-cache \
+    postgresql-dev \
+    gcc \
+    musl-dev \
+    libffi-dev
+
+WORKDIR /app
+
+COPY requirements.txt .
+
+RUN pip install -r requirements.txt
+
+COPY . .
+
+
+# celery -A src.workers.celery worker -P gevent -c 1000 --loglevel=info
+CMD ["celery", "-A", "src.workers.celery", "worker", "-P", "gevent", "-c", "10", "--loglevel=debug"]
