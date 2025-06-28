@@ -6,24 +6,34 @@ services:
     image: rabbitmq:3-management
     container_name: workflow_rabbitmq
     ports:
-      - "5673:5672"       # AMQP protocol
-      - "15673:15672"     # Management UI
+      - "5673:5672"
+      - "15673:15672"
     environment:
-      RABBITMQ_DEFAULT_USER: guest
-      RABBITMQ_DEFAULT_PASS: guest
+      - RABBITMQ_DEFAULT_USER=guest
+      - RABBITMQ_DEFAULT_PASS=guest
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
     networks:
       - workflow
     volumes:
-      - rabbitmq_data:/var/lib/rabbitmq   # Persist queues, exchanges, etc.
+      - rabbitmq_data:/var/lib/rabbitmq
   workflow_postgres:
     image: postgres:latest
     container_name: workflow_postgres
     ports:
       - "5433:5432"
     environment:
-      POSTGRES_DB: mydb
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: password
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=password
+      - POSTGRES_DB=workflow
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "postgres"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
     networks:
       - workflow
     volumes:
@@ -43,8 +53,10 @@ services:
     networks:
       - workflow
     depends_on:
-      - workflow_postgres
-      - workflow_rabbitmq
+      workflow_postgres:
+        condition: service_healthy
+      workflow_rabbitmq:
+        condition: service_healthy
   connector_service:
     build:
       context: ../app/connectors-service
@@ -58,12 +70,47 @@ services:
       - CELERY_BROKER=pyamqp://guest:guest@workflow_rabbitmq:5672
       - CELERY_BACKEND=db+postgresql://postgres:password@workflow_postgres:5432/celery_logs?sslmode=disable
       - MQ_URL=amqp://guest:guest@workflow_rabbitmq:5672
+      - CHOKIDAR_USEPOLLING=true
+      - WATCHPACK_POLLING=true
     restart: on-failure
     networks:
       - workflow
     depends_on:
-      - workflow_postgres
-      - workflow_rabbitmq
+      workflow_postgres:
+        condition: service_healthy
+      workflow_rabbitmq:
+        condition: service_healthy
+  workflow_service:
+    build:
+      context: ../app/workflow_service
+      dockerfile: Dockerfile.dev
+    container_name: workflow_service
+    ports:
+      - "8080:8080"
+    volumes:
+      - ../app/workflow_service:/app
+    environment:
+      - DB_USER=postgres
+      - DB_PASSWORD=password
+      - DB_HOST=workflow_postgres
+      - DB_PORT=5432
+      - DB_NAME=workflow
+      - MQ_USERL=guest
+      - MQ_PASSWORD=guest
+      - MQ_HOST=workflow_rabbitmq
+      - MQ_PORT=5672
+      - CHOKIDAR_USEPOLLING=true
+      - WATCHPACK_POLLING=true
+      - AIR_WATCHER_POLL=true
+      
+    restart: on-failure
+    networks:
+      - workflow
+    depends_on:
+      workflow_postgres:
+        condition: service_healthy
+      workflow_rabbitmq:
+        condition: service_healthy
   frontend:
     build:
       context: ../app/workflow-frontend
@@ -83,6 +130,7 @@ services:
       - NODE_ENV=development
     depends_on:
       - connector_service
+      - workflow_service
   # nginx:
     # image: nginx:alpine
     # container_name: nginx
