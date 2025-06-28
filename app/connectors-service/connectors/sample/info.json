@@ -1,0 +1,104 @@
+{
+  "name": "Sample",
+  "id": "sample",
+  "configuration": {
+    "fields": [
+      {
+        "title": "Server URL",
+        "description": "Specify the URL of the FortiWeb Cloud server to connect and perform automated operations.",
+        "type": "text",
+        "name": "server_url",
+        "required": true,
+        "editable": true,
+        "visible": true,
+        "value": "https://api.fortiweb-cloud.com",
+        "tooltip": "Specify the URL of the FortiWeb Cloud server to connect and perform automated operations."
+      },
+      {
+        "title": "API Key",
+        "description": "Specify the API key to access the endpoint to connect and perform the automated operations",
+        "required": true,
+        "editable": true,
+        "visible": true,
+        "type": "password",
+        "name": "api_key",
+        "tooltip": "Specify the API key to access the endpoint to connect and perform the automated operations"
+      },
+      {
+        "title": "Verify SSL",
+        "description": "Specifies whether the SSL certificate for the server is to be verified. By default, this option is selected, i.e., set to true.",
+        "name": "verify_ssl",
+        "type": "checkbox",
+        "required": false,
+        "editable": true,
+        "visible": true,
+        "value": true,
+        "tooltip": "Specifies whether the SSL certificate for the server is to be verified. By default, this option is selected, i.e., set to true."
+      }
+    ]
+  },
+  "operations": [
+    {
+      "operation": "operation1",
+      "title": "get_incident_list",
+      "description": "",
+      "annotation": "get_incident_list",
+      "enabled": true,
+      "parameters": [
+        {
+          "title": "task1",
+          "description": "",
+          "required": true,
+          "editable": true,
+          "visible": true,
+          "type": "text",
+          "tooltip": "",
+          "name": "",
+          "placeholder": ""
+        },
+        {
+          "title": "task2",
+          "description": "",
+          "required": true,
+          "editable": true,
+          "visible": true,
+          "type": "text",
+          "tooltip": "",
+          "name": "",
+          "placeholder": ""
+        },
+        {
+          "title": "task3",
+          "description": "",
+          "required": true,
+          "editable": true,
+          "visible": true,
+          "type": "text",
+          "tooltip": "",
+          "name": "",
+          "placeholder": ""
+        }
+      ]
+    },
+    {
+      "operation": "operation2",
+      "title": "get_incident_list_2",
+      "description": "",
+      "annotation": "get_incident_list_2",
+      "enabled": true,
+      "parameters": [
+        {
+          "title": "operation2",
+          "description": "",
+          "required": true,
+          "editable": true,
+          "visible": true,
+          "type": "text",
+          "tooltip": "",
+          "name": "",
+          "placeholder": ""
+        }
+      ]
+    }
+  ]
+}
