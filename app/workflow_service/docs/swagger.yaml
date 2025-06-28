@@ -1,0 +1,12 @@
+info:
+  contact: {}
+  description: A Workflow Service in Go using Gin framework
+  title: Workflow Service API
+  version: "1.0"
+paths: {}
+securityDefinitions:
+  BearerAuth:
+    in: header
+    name: Authorization
+    type: apiKey
+swagger: "2.0"
