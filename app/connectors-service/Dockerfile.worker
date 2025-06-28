@@ -15,6 +15,6 @@ RUN pip install -r requirements.txt
 
 COPY . .
 
-EXPOSE 8000
 
-CMD ["uvicorn", "main:app", "--reload", "--port=8000", "--host=0.0.0.0"]
+# celery -A src.workers.celery worker -P gevent -c 1000 --loglevel=info
+CMD ["celery", "-A", "src.workers.celery", "worker", "-P", "gevent", "-c", "10", "--loglevel=debug"]
