@@ -58,7 +58,8 @@ func GetDbUrl() string {
 	DB_PASSWORD := os.Getenv("DB_PASSWORD")
 	DB_HOST := os.Getenv("DB_HOST")
 	DB_NAME := os.Getenv("DB_NAME")
-	return fmt.Sprintf("postgres://%v:%v@%v/%v?sslmode=disable", DB_USER, DB_PASSWORD, DB_HOST, DB_NAME)
+	DB_PORT := os.Getenv("DB_PORT")
+	return fmt.Sprintf("postgres://%v:%v@%v:%v/%v?sslmode=disable", DB_USER, DB_PASSWORD, DB_HOST, DB_PORT, DB_NAME)
 }
 
 func GetMQUrl() string {
