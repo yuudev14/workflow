@@ -15,7 +15,6 @@ import (
 // @securityDefinitions.apikey BearerAuth
 // @in header
 // @name Authorization
-
 func initApp() {
 	environment.Setup()
 	logging.Setup(environment.Settings.LOGGER_MODE)
@@ -27,9 +26,7 @@ func main() {
 	go consumer.Listen()
 	defer mq.MQConn.Close()
 	defer mq.MQChannel.Close()
-
 	app := api.InitRouter()
 	go app.Run()
 	select {}
-
 }
