@@ -13,7 +13,6 @@ main file
 # 6. Traverse to the graph. Each Node in the graph will be a message send in message queue
 # 7. TODO: Plan how to develop the connectors
 # 8. TODO: Create a function that runs a connectors actions specified in the message queue
-
 import asyncio
 from fastapi import FastAPI
 from starlette.middleware.cors import CORSMiddleware

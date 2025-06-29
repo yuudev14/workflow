@@ -1,0 +1,5 @@
+[watcher]
+  poll = true
+  poll_interval = 1000 # milliseconds (adjust as needed)
+[build]
+  exclude_dir = ["tmp", "vendor", "node_modules"]
