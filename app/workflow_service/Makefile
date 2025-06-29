@@ -1,6 +1,4 @@
 #  make test ENV=".env.test"
-
-include .env
 export
 
 .PHONY: migrate

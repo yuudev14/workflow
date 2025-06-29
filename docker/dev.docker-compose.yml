@@ -102,9 +102,8 @@ services:
       - MQ_PASSWORD=guest
       - MQ_HOST=workflow_rabbitmq
       - MQ_PORT=5672
-      - CHOKIDAR_USEPOLLING=true
-      - WATCHPACK_POLLING=true
-      - AIR_WATCHER_POLL=true
+      - AIR_FORCE_POLLING=true
+      - AIR_WATCH_TMOUT=500ms
       
     # restart: on-failure
     networks:
