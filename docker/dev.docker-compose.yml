@@ -1,4 +1,5 @@
 version: "3.9"
+name: workflow-project
 networks:
   workflow:
 services:
@@ -49,7 +50,7 @@ services:
       - CELERY_BROKER=pyamqp://guest:guest@workflow_rabbitmq:5672
       - CELERY_BACKEND=db+postgresql://postgres:password@workflow_postgres:5432/celery_logs?sslmode=disable
       - MQ_URL=amqp://guest:guest@workflow_rabbitmq:5672
-    restart: on-failure
+    # restart: on-failure
     networks:
       - workflow
     depends_on:
@@ -70,9 +71,6 @@ services:
       - CELERY_BROKER=pyamqp://guest:guest@workflow_rabbitmq:5672
       - CELERY_BACKEND=db+postgresql://postgres:password@workflow_postgres:5432/celery_logs?sslmode=disable
       - MQ_URL=amqp://guest:guest@workflow_rabbitmq:5672
-      - CHOKIDAR_USEPOLLING=true
-      - WATCHPACK_POLLING=true
-    restart: on-failure
     networks:
       - workflow
     depends_on:
@@ -80,6 +78,11 @@ services:
         condition: service_healthy
       workflow_rabbitmq:
         condition: service_healthy
+    develop:
+      watch:
+        - action: sync
+          path: ../app/connectors-service
+          target: /app
   workflow_service:
     build:
       context: ../app/workflow_service
@@ -103,9 +106,14 @@ services:
       - WATCHPACK_POLLING=true
       - AIR_WATCHER_POLL=true
       
-    restart: on-failure
+    # restart: on-failure
     networks:
       - workflow
+    develop:
+      watch:
+        - action: sync
+          path: ../app/workflow_service
+          target: /app
     depends_on:
       workflow_postgres:
         condition: service_healthy
@@ -121,7 +129,7 @@ services:
     volumes:
       - ../app/workflow-frontend:/app
       - /app/node_modules
-    restart: on-failure
+    # restart: on-failure
     networks:
       - workflow
     environment:
@@ -131,6 +139,11 @@ services:
     depends_on:
       - connector_service
       - workflow_service
+    develop:
+      watch:
+        - action: sync
+          path: ../app/workflow-frontend
+          target: /app
   # nginx:
     # image: nginx:alpine
     # container_name: nginx
