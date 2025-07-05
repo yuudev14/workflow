@@ -11,8 +11,7 @@ import apiClient from "../common/client";
 
 export default class WorkflowService {
   private static BASE_URL =
-    settings.BASE_URL.WORKFLOW_SERVICE_API;
-
+    settings.BASE_URL.WORKFLOW_SERVICE_API + "/api/workflows/v1";
   /**
    * get workflows lists
    * @param offset
@@ -30,7 +29,7 @@ export default class WorkflowService {
     worfklowFilter: WorkflowFilterPayload = {}
   ): Promise<EntryResponse<Workflow>> => {
     const res = await apiClient.get(
-      this.BASE_URL + "/api/v1/workflows",
+      this.BASE_URL,
       {
         params: {
           offset,
@@ -54,7 +53,7 @@ export default class WorkflowService {
     WorkflowTriggerType[]
   > => {
     const res = await apiClient.get(
-      this.BASE_URL + "/api/v1/workflows/triggers"
+      this.BASE_URL
     );
     return res.data;
   };
@@ -68,7 +67,22 @@ export default class WorkflowService {
     workflowId: string
   ): Promise<Workflow> => {
     const res = await apiClient.get(
-      this.BASE_URL + "/api/v1/workflows/" + workflowId
+      this.BASE_URL + "/" + workflowId
+    );
+    return res.data;
+  };
+
+
+  /**
+   * get workflows by id
+   * @param workflowId
+   * @returns worfklow object
+   */
+  public static triggerWorkflow = async (
+    workflowId: string
+  ): Promise<Workflow> => {
+    const res = await apiClient.post(
+      this.BASE_URL + "/trigger/" + workflowId
     );
     return res.data;
   };
@@ -82,7 +96,7 @@ export default class WorkflowService {
     payload: CreateWorkflowPayload
   ): Promise<Workflow> => {
     const res = await apiClient.post(
-      this.BASE_URL + "/api/v1/workflows",
+      this.BASE_URL,
       payload
     );
     return res.data;
@@ -99,7 +113,7 @@ export default class WorkflowService {
     payload: UpdateWorkflowPayload
   ): Promise<Workflow> => {
     const res = await apiClient.put(
-      this.BASE_URL + "/api/v1/workflows/tasks/" + workflowId ,
+      this.BASE_URL + "/tasks/" + workflowId ,
       payload
     );
     return res.data;

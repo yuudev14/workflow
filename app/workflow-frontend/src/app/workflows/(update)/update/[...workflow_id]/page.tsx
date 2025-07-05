@@ -15,6 +15,7 @@ import WorkflowOperationProvider, {
   WorkflowOperationContext,
 } from "../../_providers/WorkflowOperationProvider";
 import WorkflowOperations from "../../_components/options/WorkflowOperations/WorkflowOperations";
+import useWorkflowTrigger from "@/hooks/useWorkflowTrigger";
 
 const Page: React.FC<{ params: Promise<{ workflow_id: string }> }> = ({
   params,
@@ -35,13 +36,13 @@ const Page: React.FC<{ params: Promise<{ workflow_id: string }> }> = ({
   return (
     <ReactFlowProvider>
       <WorkflowOperationProvider workflowQuery={workflowQuery}>
-        <WorkflowPlayground />
+        <WorkflowPlayground workflowId={workflowId} />
       </WorkflowOperationProvider>
     </ReactFlowProvider>
   );
 };
 
-const WorkflowPlayground: React.FC = () => {
+const WorkflowPlayground: React.FC<{workflowId: string}> = ({workflowId}) => {
   const {
     nodes,
     onNodesChange,
@@ -58,6 +59,8 @@ const WorkflowPlayground: React.FC = () => {
     workflowData,
     updateWorkflowMutation
   } = useContext(WorkflowOperationContext);
+
+  const { triggerWorkflowHandler } = useWorkflowTrigger({workflowId})
 
   // set the connector to the node's connector
   // can improve later
@@ -140,7 +143,7 @@ const WorkflowPlayground: React.FC = () => {
       <div className="py-3 px-5 flex justify-between items-center h-16">
         <p className="font-medium text-xl">Name</p>
         <div className="flex gap-2">
-          <Button>Trigger</Button>
+          <Button onClick={triggerWorkflowHandler}>Trigger</Button>
           <Button>Delete</Button>
           <Button onClick={saveWorkflowHandler}>Save</Button>
         </div>
