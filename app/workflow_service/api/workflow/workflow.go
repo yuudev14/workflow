@@ -18,7 +18,7 @@ func SetupWorkflowController(route *gin.RouterGroup) {
 	workflowTriggerService := service.NewWorflowTriggerService(workflowService, taskService, edgeService)
 	workflowController := workflow_controller_v1.NewWorkflowController(workflowService, taskService, edgeService, workflowTriggerService)
 
-	r := route.Group("v1/workflows")
+	r := route.Group("workflows/v1")
 	{
 		r.GET("", workflowController.GetWorkflows)
 		r.GET("/:workflow_id", workflowController.GetWorkflowGraphById)
