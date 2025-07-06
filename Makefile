@@ -17,5 +17,9 @@ lint:
 		cd ./app/workflow-frontend && \
 		npm run lint
 
+build:
+		cd ./app/workflow-frontend && \
+		npm run build
+
 show-logs:
-		docker compose -f ./docker/dev.docker-compose.yml logs --follow workflow_worker connector_service workflow_service frontend
+		docker compose -f ./docker/dev.docker-compose.yml logs --follow workflow_worker connector_service workflow_service
