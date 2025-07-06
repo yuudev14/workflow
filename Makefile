@@ -9,7 +9,9 @@ rebuild-workflow-service:
 		docker compose -f ./docker/dev.docker-compose.yml up --build workflow_service -d
 
 start-dev:
-		docker compose -f ./docker/dev.docker-compose.yml up -d
+		docker compose -f ./docker/dev.docker-compose.yml up -d && \
+		cd ./app/workflow-frontend && \
+		npm run dev
 
 show-logs:
 		docker compose -f ./docker/dev.docker-compose.yml logs --follow workflow_worker connector_service workflow_service frontend
