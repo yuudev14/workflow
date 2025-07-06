@@ -1,6 +1,5 @@
 import WorkflowService from "@/services/worfklows/workflows";
 import { useMutation } from "@tanstack/react-query";
-import React from "react";
 import { toast } from "./use-toast";
 
 const useWorkflowTrigger = ({ workflowId }: { workflowId: string }) => {
@@ -8,7 +7,7 @@ const useWorkflowTrigger = ({ workflowId }: { workflowId: string }) => {
     mutationFn: async (id: string) => {
       return await WorkflowService.triggerWorkflow(id);
     },
-    onSuccess: (data) => {
+    onSuccess: () => {
       toast({
         title: "succesfully triggered the workflow",
       });

@@ -31,7 +31,8 @@ const taskFormSchema = z.object({
 
 const ConnectorOperation: React.FC<{ connector: ConnectorInfo }> = ({ connector }) => {
   const [currentOperation, setCurrentOperation] = useState<Operation | null>(null)
-  const { currentNode, setNodes, closeSidebar, onNodesChange, nodes } = useContext(WorkflowOperationContext)
+  const { currentNode, setNodes, closeSidebar } = useContext(WorkflowOperationContext)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [cachedParameter, setCachedParameter] = useState<Record<string, any>>({})
   const taskForm = useForm<z.infer<typeof taskFormSchema>>({
     resolver: zodResolver(taskFormSchema),
