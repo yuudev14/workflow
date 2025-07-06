@@ -1,5 +1,4 @@
-import { ConnectorInfo } from "@/services/connectors/connectors.schema"
-import { useContext, useState } from "react"
+import { useContext } from "react"
 import { WorkflowOperationContext } from "../../../_providers/WorkflowOperationProvider"
 import OperationLayout from "../../OperationLayout"
 import ConnectorOperation from "./ConnectorOperation"

@@ -12,7 +12,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { Node } from "@xyflow/react";
 import React, { useEffect, useMemo, useState } from "react";
 import { Label } from "@/components/ui/label";
@@ -29,7 +29,6 @@ import {
 import { Input } from "@/components/ui/input";
 import Link from "next/link";
 import CreateWorkflowForm from "../../_components/CreateWorkflowForm";
-import { toast } from "@/hooks/use-toast";
 import useWorkflowTrigger from "@/hooks/useWorkflowTrigger";
 
 const Page: React.FC<{ params: Promise<{ workflow_id: string }> }> = ({

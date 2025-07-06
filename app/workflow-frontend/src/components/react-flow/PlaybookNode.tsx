@@ -1,5 +1,4 @@
-import { useCallback } from 'react';
-import { Handle, Node, NodeProps, NodeResizer, Position } from '@xyflow/react';
+import { Handle, Node, NodeProps, Position } from '@xyflow/react';
 import { Workflow } from 'lucide-react';
 import { Avatar, AvatarFallback } from '../ui/avatar';
 import { Tasks } from '@/services/worfklows/workflows.schema';

@@ -1,7 +1,5 @@
 "use client"
 
-import ReactFlowPlayground from "@/components/react-flow/ReactFlowPlayground";
-
 
 export default function Home() {
   return (

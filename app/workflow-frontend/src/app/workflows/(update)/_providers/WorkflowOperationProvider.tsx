@@ -94,10 +94,10 @@ export const WorkflowOperationContext = createContext<WorkflowOperationType>({
   setEdges: () => {},
   onEdgesChange: () => {},
   hasTriggerStep: false,
-  onConnect: (params: Connection) => {},
+  onConnect: (_params: Connection) => {},
   onConnectEnd: (
-    event: MouseEvent | TouchEvent,
-    connectionState: FinalConnectionState
+    _event: MouseEvent | TouchEvent,
+    _connectionState: FinalConnectionState
   ) => {},
   isNewNode: false,
   setIsNewNode: () => {},
@@ -118,6 +118,7 @@ const INITIAL_START_NODE_VALUE: Node<PlaybookTaskNode> = {
 };
 
 const WorkflowOperationProvider: React.FC<{
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   children: any;
   workflowQuery: UseQueryResult<Workflow, Error>;
 }> = ({ children, workflowQuery }) => {
@@ -129,9 +130,9 @@ const WorkflowOperationProvider: React.FC<{
   });
   const updateWorkflowMutation = useMutation({
     mutationFn: async(workflow: UpdateWorkflowPayload) => {
-      return await WorkflowService.updateWorkflow(workflowQuery.data?.id!, workflow)
+      return await WorkflowService.updateWorkflow(workflowQuery.data!.id!, workflow)
     },
-    onSuccess: (data) => {
+    onSuccess: (_data) => {
       toast({
         title: "succesfully updated the workflow",
       })
