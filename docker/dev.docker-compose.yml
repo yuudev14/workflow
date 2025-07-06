@@ -118,31 +118,31 @@ services:
         condition: service_healthy
       workflow_rabbitmq:
         condition: service_healthy
-  frontend:
-    build:
-      context: ../app/workflow-frontend
-      dockerfile: Dockerfile.dev
-    container_name: frontend
-    ports:
-      - "3000:3000"
-    volumes:
-      - ../app/workflow-frontend:/app
-      - /app/node_modules
-    # restart: on-failure
-    networks:
-      - workflow
-    environment:
-      - CHOKIDAR_USEPOLLING=true
-      - WATCHPACK_POLLING=true
-      - NODE_ENV=development
-    depends_on:
-      - connector_service
-      - workflow_service
-    develop:
-      watch:
-        - action: sync
-          path: ../app/workflow-frontend
-          target: /app
+  # frontend:
+  #   build:
+  #     context: ../app/workflow-frontend
+  #     dockerfile: Dockerfile.dev
+  #   container_name: frontend
+  #   ports:
+  #     - "3000:3000"
+  #   volumes:
+  #     - ../app/workflow-frontend:/app
+  #     - /app/node_modules
+  #   # restart: on-failure
+  #   networks:
+  #     - workflow
+  #   environment:
+  #     - CHOKIDAR_USEPOLLING=true
+  #     - WATCHPACK_POLLING=true
+  #     - NODE_ENV=development
+  #   depends_on:
+  #     - connector_service
+  #     - workflow_service
+  #   develop:
+  #     watch:
+  #       - action: sync
+  #         path: ../app/workflow-frontend
+  #         target: /app
   nginx:
     build: ../app/nginx
     ports:
@@ -154,7 +154,7 @@ services:
     depends_on:
       - connector_service
       - workflow_service
-      - frontend
+      # - frontend
     networks:
       - workflow
 volumes:
