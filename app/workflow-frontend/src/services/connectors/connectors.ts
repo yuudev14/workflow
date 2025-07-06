@@ -1,5 +1,4 @@
 import settings from "@/settings";
-import { EntryResponse } from "../common/schema";
 import {
   ConnectorInfo,
 } from "./connectors.schema";

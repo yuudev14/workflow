@@ -37,6 +37,7 @@ export type Tasks = {
   workflow_id: string;
   name: string;
   description?: string | null;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   parameters?: Record<string, any> | null;
   config?: string | null;
   x: number;

@@ -6,11 +6,10 @@ import ReactFlowPlayground from "@/components/react-flow/ReactFlowPlayground";
 import { PlaybookTaskNode } from "@/components/react-flow/schema";
 import { Node, ReactFlowProvider } from "@xyflow/react";
 
-import { useQuery, UseQueryResult } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import WorkflowService from "@/services/worfklows/workflows";
 import { Button } from "@/components/ui/button";
-import { ArrowRightIcon } from "lucide-react";
-import { UpdateWorkflowPayload, Workflow } from "@/services/worfklows/workflows.schema";
+import { UpdateWorkflowPayload } from "@/services/worfklows/workflows.schema";
 import WorkflowOperationProvider, {
   WorkflowOperationContext,
 } from "../../_providers/WorkflowOperationProvider";
@@ -66,7 +65,7 @@ const WorkflowPlayground: React.FC<{workflowId: string}> = ({workflowId}) => {
   // can improve later
   const setConnectorToNodesConnector = (node: Node<PlaybookTaskNode>) => {
     if (connectorQuery && node.data.connector_name) {
-      for (let _connector of connectorQuery?.data || []) {
+      for (const _connector of connectorQuery?.data || []) {
         console.log(_connector.name, "yuuu");
         if (_connector.name == node.data.connector_name) {
           setConnector(_connector || null);
@@ -98,6 +97,7 @@ const WorkflowPlayground: React.FC<{workflowId: string}> = ({workflowId}) => {
    * save all the updated workflow
    */
   const saveWorkflowHandler = () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const data: Record<string, any> = {};
     const node_mapper: Record<string, string> = nodes.reduce(
       (prev, curr) => ({ ...prev, [curr.id!]: curr.data.name }),
@@ -128,7 +128,7 @@ const WorkflowPlayground: React.FC<{workflowId: string}> = ({workflowId}) => {
       {} as Record<string, string[]>
     );
 
-    updateWorkflowMutation && updateWorkflowMutation.mutate(data as UpdateWorkflowPayload)
+    if (updateWorkflowMutation) updateWorkflowMutation.mutate(data as UpdateWorkflowPayload)
   };
 
   return (

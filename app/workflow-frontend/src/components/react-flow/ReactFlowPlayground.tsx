@@ -8,6 +8,7 @@ const nodeTypes = {
   playbookNodes: PlaybookNode
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const ReactFlowPlayground = <T extends Record<string, any>>({ flowProps }: {
   flowProps: ReactFlowProps<Node<T>, Edge>
 }) => {
