@@ -53,7 +53,7 @@ export default class WorkflowService {
     WorkflowTriggerType[]
   > => {
     const res = await apiClient.get(
-      this.BASE_URL
+      this.BASE_URL + "/triggers"
     );
     return res.data;
   };

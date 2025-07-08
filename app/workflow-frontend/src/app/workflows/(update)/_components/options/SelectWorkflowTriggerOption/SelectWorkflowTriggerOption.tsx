@@ -57,7 +57,7 @@ const SelectWorkflowTriggerOption = () => {
       <Separator />
 
       <div className="flex flex-col gap-3">
-        {triggerTypesQuery.data?.map(trigger => (
+        {triggerTypesQuery.data && triggerTypesQuery.data?.map(trigger => (
           <OptionButton Icon={renderIcon(trigger.name)} key={`trigger-type-${trigger.id}`} onClick={() => selectTriggerType(trigger)}>
             <div>
               <Label className='uppercase text-base'>{trigger.name}</Label>

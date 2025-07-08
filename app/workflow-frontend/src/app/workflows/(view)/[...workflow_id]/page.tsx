@@ -121,7 +121,7 @@ const Page: React.FC<{ params: Promise<{ workflow_id: string }> }> = ({
 
   return (
     <React.Fragment>
-      <div className="py-3 px-5 flex justify-between items-center h-16">
+      <div className="py-3 bg-secondary px-5 flex justify-between items-center h-16">
         <p className="font-medium text-xl">{workflowQuery.data.name}</p>
         <div className="flex gap-2">
           <Button onClick={triggerWorkflowHandler}>Trigger</Button>

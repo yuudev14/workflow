@@ -1,56 +1,42 @@
-"use client"
+"use client";
 
-import WorkflowService from '@/services/worfklows/workflows';
-import { useQuery } from '@tanstack/react-query';
-import Link from 'next/link';
-import React from 'react'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+
+import React from "react";
 
 const Layout = ({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) => {
-  const workflowQuery = useQuery({
-    queryKey: ['workflow-lists'], queryFn: async () => {
-      return WorkflowService.getWorkflows()
-    }
-  })
-
-  if (workflowQuery.data === undefined) {
-    return <></>
-  }
   return (
-    <div className="flex">
-      <div className="md:flex w-[350px] border-r bg-white dark:bg-sidebar h-[calc(100vh-4rem)] overflow-auto">
-
-        <div className="px-0 w-full">
-          <ul>
-            {workflowQuery.data.entries.map((workflow) => (
-              <Link
-                href={"/workflows/" + workflow.id}
-                key={`playbook-${workflow.id}`}
-                className="flex flex-col items-start gap-2 whitespace-nowrap border-b p-4 text-sm leading-tight last:border-b-0 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-              >
-                <div className="flex w-full items-center gap-2">
-                  <p className="font-medium text-lg">{workflow.name}</p>
-                  <p className="ml-auto text-xs">active</p>
-                </div>
-
-                <p className="line-clamp-2 w-full whitespace-break-spaces">
-                  {workflow.description}
-                </p>
-              </Link>
-            ))}
-          </ul>
-
+    <div className="h-full flex justify-center">
+      <div className="max-w-7xl flex-1 px-2 py-5 flex flex-col gap-10">
+        <div className="flex flex-col gap-1">
+          <h2>Overview</h2>
+          <p className="text-secondary-foreground">
+            All the workflows, credentials and executions you have access to
+          </p>
         </div>
-      </div>
-      <div className="flex-1">
+        <div>insights</div>
+        <div>
+          <Tabs defaultValue="account">
+            <TabsList>
+              <TabsTrigger value="account">Account</TabsTrigger>
+              <TabsTrigger value="password">Password</TabsTrigger>
+            </TabsList>
+            <TabsContent value="account">
+              Make changes to your account here.
+            </TabsContent>
+            <TabsContent value="password">
+              Change your password here.
+            </TabsContent>
+          </Tabs>
+        </div>
         {children}
-
       </div>
     </div>
-  )
-}
+  );
+};
 
-export default Layout
+export default Layout;
