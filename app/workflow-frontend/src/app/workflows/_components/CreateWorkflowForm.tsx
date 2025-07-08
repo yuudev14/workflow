@@ -77,7 +77,7 @@ const CreateWorkflowForm = () => {
   }
   return (
     <Dialog>
-      <DialogTrigger>Create Workflow</DialogTrigger>
+      <DialogTrigger className='bg-primary text-primary-foreground px-4'>Create Workflow</DialogTrigger>
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Add a new workflow</DialogTitle>
