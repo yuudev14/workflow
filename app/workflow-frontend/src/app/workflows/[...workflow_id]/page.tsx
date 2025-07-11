@@ -115,14 +115,12 @@ const Page: React.FC<{ params: Promise<{ workflow_id: string }> }> = ({
       .filter((val) => val.value);
   }, [currentNode]);
 
-  if (workflowQuery.data === undefined) {
-    return;
-  }
+
 
   return (
     <React.Fragment>
       <div className="flex items-center justify-between h-16 px-5 py-3 bg-secondary">
-        <p className="text-xl font-medium">{workflowQuery.data.name}</p>
+        <p className="text-xl font-medium">{workflowQuery.data?.name}</p>
         <div className="flex gap-2">
           <Button onClick={triggerWorkflowHandler}>Trigger</Button>
           <Button>Delete</Button>
