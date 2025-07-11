@@ -1,13 +1,13 @@
 "use client";
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 
 import React from "react";
 
 const tabs = [
-  { label: "workflows", value: "workflows", path: "/workflows" },
-  { label: "executions", value: "executions", path: "/workflows/executions" },
+  { label: "workflows", value: "/workflows", path: "/workflows" },
+  { label: "executions", value: "/workflows/executions", path: "/workflows/executions" },
 ];
 
 const Layout = ({
@@ -16,6 +16,8 @@ const Layout = ({
   children: React.ReactNode;
 }>) => {
   const router = useRouter();
+  const path = usePathname()
+  console.log(path)
   return (
     <div className="flex justify-center h-full">
       <div className="flex flex-col flex-1 gap-10 px-2 max-w-7xl py-15">
@@ -42,7 +44,7 @@ const Layout = ({
           ))}
         </div>
 
-        <Tabs defaultValue="workflows" className="flex-1">
+        <Tabs defaultValue={path} className="flex-1">
           <TabsList>
             {tabs.map((_tab) => (
               <TabsTrigger
@@ -55,7 +57,7 @@ const Layout = ({
             ))}
           </TabsList>
           {tabs.map((_tab) => (
-            <TabsContent className="flex-1" key={`workflow-view-${_tab.value}`} value={_tab.value}>
+            <TabsContent className="flex-1" key={`workflow-view-${_tab.value}`} value={_tab.path}>
               {children}
             </TabsContent>
           ))}
