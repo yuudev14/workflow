@@ -4,10 +4,15 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { usePathname, useRouter } from "next/navigation";
 
 import React from "react";
+import CreateWorkflowForm from "../_components/CreateWorkflowForm";
 
 const tabs = [
   { label: "workflows", value: "/workflows", path: "/workflows" },
-  { label: "executions", value: "/workflows/executions", path: "/workflows/executions" },
+  {
+    label: "executions",
+    value: "/workflows/executions",
+    path: "/workflows/executions",
+  },
 ];
 
 const Layout = ({
@@ -16,16 +21,19 @@ const Layout = ({
   children: React.ReactNode;
 }>) => {
   const router = useRouter();
-  const path = usePathname()
-  console.log(path)
+  const path = usePathname();
+  console.log(path);
   return (
-    <div className="flex justify-center h-full">
+    <div className="flex justify-center h-full bg-muted/5 dark:bg-background">
       <div className="flex flex-col flex-1 gap-10 px-2 max-w-7xl py-15">
-        <div className="flex flex-col gap-1">
-          <h2 className="font-bold">Overview</h2>
-          <p className="text-muted-foreground">
-            All the workflows, credentials and executions you have access to
-          </p>
+        <div className="flex items-center justify-between">
+          <div className="flex flex-col gap-1">
+            <h2 className="font-bold">Overview</h2>
+            <p className="text-muted-foreground">
+              All the workflows, credentials and executions you have access to
+            </p>
+          </div>
+          <CreateWorkflowForm />
         </div>
         <div className="flex">
           {[...Array(5)].map((k, i) => (
@@ -57,7 +65,10 @@ const Layout = ({
             ))}
           </TabsList>
           {tabs.map((_tab) => (
-            <TabsContent className="flex-1" key={`workflow-view-${_tab.value}`} value={_tab.path}>
+            <TabsContent
+              className="flex-1"
+              key={`workflow-view-${_tab.value}`}
+              value={_tab.path}>
               {children}
             </TabsContent>
           ))}

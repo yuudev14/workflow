@@ -32,7 +32,7 @@ export default function Page() {
             <Link
               href={"/workflows/" + workflow.id}
               key={`playbook-${workflow.id}`}
-              className="flex flex-col items-start w-full gap-2 p-4 text-sm leading-tight border rounded-sm whitespace-nowrap dark:bg-muted/50 hover:bg-muted/30 hover:text-sidebar-accent-foreground">
+              className="flex flex-col items-start w-full gap-2 p-4 text-sm leading-tight border rounded-sm dark:hover:bg-muted/30 hover:bg-background/30 bg-background shadow-2xs dark:shadow-none whitespace-nowrap dark:bg-muted/50 hover:text-sidebar-accent-foreground">
               <div className="flex flex-col w-full">
                 <p className="text-lg font-medium">{workflow.name}</p>
                 <p className="text-xs">active</p>
