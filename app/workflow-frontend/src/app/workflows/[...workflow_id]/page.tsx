@@ -28,7 +28,7 @@ import {
 } from "@/components/ui/accordion";
 import { Input } from "@/components/ui/input";
 import Link from "next/link";
-import CreateWorkflowForm from "../../_components/CreateWorkflowForm";
+import CreateWorkflowForm from "../_components/CreateWorkflowForm";
 import useWorkflowTrigger from "@/hooks/useWorkflowTrigger";
 
 const Page: React.FC<{ params: Promise<{ workflow_id: string }> }> = ({
@@ -121,8 +121,8 @@ const Page: React.FC<{ params: Promise<{ workflow_id: string }> }> = ({
 
   return (
     <React.Fragment>
-      <div className="py-3 bg-secondary px-5 flex justify-between items-center h-16">
-        <p className="font-medium text-xl">{workflowQuery.data.name}</p>
+      <div className="flex items-center justify-between h-16 px-5 py-3 bg-secondary">
+        <p className="text-xl font-medium">{workflowQuery.data.name}</p>
         <div className="flex gap-2">
           <Button onClick={triggerWorkflowHandler}>Trigger</Button>
           <Button>Delete</Button>
@@ -156,7 +156,7 @@ const Page: React.FC<{ params: Promise<{ workflow_id: string }> }> = ({
               </SheetTitle>
               <SheetDescription>{currentNode.description}</SheetDescription>
             </SheetHeader>
-            <div className="flex flex-1 flex-col gap-7">
+            <div className="flex flex-col flex-1 gap-7">
               {valuesToRender.map((val) => (
                 <RenderKeyValue
                   label={val.label}
@@ -210,7 +210,7 @@ const RenderKeyValue: React.FC<{ label: string; value: string }> = ({
   return (
     <div className="flex items-center justify-between">
       <Label className="capitalize">{label}</Label>
-      <p className="bg-secondary px-3 py-1 rounded">{value}</p>
+      <p className="px-3 py-1 rounded bg-secondary">{value}</p>
     </div>
   );
 };
