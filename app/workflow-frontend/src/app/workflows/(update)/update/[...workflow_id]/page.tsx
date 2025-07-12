@@ -41,7 +41,9 @@ const Page: React.FC<{ params: Promise<{ workflow_id: string }> }> = ({
   );
 };
 
-const WorkflowPlayground: React.FC<{workflowId: string}> = ({workflowId}) => {
+const WorkflowPlayground: React.FC<{ workflowId: string }> = ({
+  workflowId,
+}) => {
   const {
     nodes,
     onNodesChange,
@@ -56,10 +58,10 @@ const WorkflowPlayground: React.FC<{workflowId: string}> = ({workflowId}) => {
     setTaskOperation,
     openOperationSidebar,
     workflowData,
-    updateWorkflowMutation
+    updateWorkflowMutation,
   } = useContext(WorkflowOperationContext);
 
-  const { triggerWorkflowHandler } = useWorkflowTrigger({workflowId})
+  const { triggerWorkflowHandler } = useWorkflowTrigger({ workflowId });
 
   // set the connector to the node's connector
   // can improve later
@@ -103,7 +105,6 @@ const WorkflowPlayground: React.FC<{workflowId: string}> = ({workflowId}) => {
       (prev, curr) => ({ ...prev, [curr.id!]: curr.data.name }),
       {}
     );
-    console.log(nodes)
     data.task = {
       name: workflowData.name,
       trigger_type: workflowData.trigger_type,
@@ -112,23 +113,21 @@ const WorkflowPlayground: React.FC<{workflowId: string}> = ({workflowId}) => {
     data.nodes = nodes.map((_node) => ({
       ..._node.data,
       x: _node.position.x,
-      y: _node.position.y
+      y: _node.position.y,
     }));
-    data["edges"] = edges.reduce(
-      (prev, curr) => {
-        const sourceNodeName = node_mapper[curr.source]
-        const destNodeName = node_mapper[curr.target]
-        if (sourceNodeName in prev) {
-          prev[sourceNodeName].push(destNodeName)
-        } else {
-          prev[sourceNodeName] = [destNodeName]
-        }
-        return prev
-      },
-      {} as Record<string, string[]>
-    );
+    data["edges"] = edges.reduce((prev, curr) => {
+      const sourceNodeName = node_mapper[curr.source];
+      const destNodeName = node_mapper[curr.target];
+      if (sourceNodeName in prev) {
+        prev[sourceNodeName].push(destNodeName);
+      } else {
+        prev[sourceNodeName] = [destNodeName];
+      }
+      return prev;
+    }, {} as Record<string, string[]>);
 
-    if (updateWorkflowMutation) updateWorkflowMutation.mutate(data as UpdateWorkflowPayload)
+    if (updateWorkflowMutation)
+      updateWorkflowMutation.mutate(data as UpdateWorkflowPayload);
   };
 
   return (
@@ -141,7 +140,10 @@ const WorkflowPlayground: React.FC<{workflowId: string}> = ({workflowId}) => {
       {openOperationSidebar && <WorkflowOperations />}
 
       <div className="py-3 px-5 flex justify-between items-center h-16">
-        <p className="font-medium text-xl">Name</p>
+        <div>
+          <h2 className="font-medium text-xl">{workflowData.name}</h2>
+          <p className="text-muted-foreground text-xs">{workflowData.description}asd asd asd</p>
+        </div>
         <div className="flex gap-2">
           <Button onClick={triggerWorkflowHandler}>Trigger</Button>
           <Button>Delete</Button>
