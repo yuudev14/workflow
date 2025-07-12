@@ -16,7 +16,8 @@ type Tasks struct {
 	Status        string         `db:"status" json:"status"`
 	Name          string         `db:"name" json:"name"`
 	Config        *string        `db:"config" json:"config"`
-	ConnectorName string         `db:"connector_name" json:"connector_name"`
+	ConnectorName *string        `db:"connector_name" json:"connector_name"`
+	ConnectorID   *string        `db:"connector_id" json:"connector_id"`
 	Operation     string         `db:"operation" json:"operation"`
 	Description   string         `db:"description" json:"description"`
 	Parameters    types.JsonType `db:"parameters" json:"parameters"`

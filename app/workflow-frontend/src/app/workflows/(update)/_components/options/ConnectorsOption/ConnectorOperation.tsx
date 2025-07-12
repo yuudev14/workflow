@@ -26,6 +26,7 @@ const taskFormSchema = z.object({
   parameters: z.record(z.string()).nullable().optional(),
   config: z.string().nullable().optional(),
   connector_name: z.string(),
+  connector_id: z.string(),
   operation: z.string(),
 })
 
@@ -44,6 +45,7 @@ const ConnectorOperation: React.FC<{ connector: ConnectorInfo }> = ({ connector 
         name: task?.name ?? "",
         description: isSameConnector ? task?.description ?? "" : "",
         connector_name: connector.name,
+        connector_id: connector.id,
         operation: isSameConnector ? task?.operation ?? "" : undefined,
         parameters: isSameConnector ? task?.parameters : undefined,
         config: isSameConnector ? task?.config : "",
@@ -100,7 +102,7 @@ const ConnectorOperation: React.FC<{ connector: ConnectorInfo }> = ({ connector 
   return (
     <Form {...taskForm}>
       <form onSubmit={taskForm.handleSubmit(onSubmit)} className="flex flex-col flex-1">
-        <div className='flex-1 flex flex-col gap-3 p-3 h-full'>
+        <div className='flex flex-col flex-1 h-full gap-3 p-3'>
           <FormField
             control={taskForm.control}
             name="name"
@@ -232,7 +234,7 @@ const ConnectorOperation: React.FC<{ connector: ConnectorInfo }> = ({ connector 
             )}
           </div>
         </div>
-        <footer className='mt-auto border-t border-border border p-3'>
+        <footer className='p-3 mt-auto border border-t border-border'>
           <div className="flex justify-between gap-2">
             <Button type="button">Close</Button>
             <Button>Save</Button>

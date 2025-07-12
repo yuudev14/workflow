@@ -211,6 +211,7 @@ func (w *WorkflowController) UpsertTasks(
 			Description:   node.Description,
 			Config:        node.Config.Value,
 			ConnectorName: node.ConnectorName,
+			ConnectorID:   node.ConnectorID,
 			Operation:     node.Operation,
 			X:             node.X,
 			Y:             node.Y,
@@ -401,12 +402,12 @@ func (w *WorkflowController) UpdateWorkflowTasks(c *gin.Context) {
 	}
 
 	// validate if start node in body payload
-	payloadErr := validateWorkflowTaskPayload(body)
+	// payloadErr := validateWorkflowTaskPayload(body)
 
-	if payloadErr != nil {
-		response.ResponseError(code, payloadErr.Error())
-		return
-	}
+	// if payloadErr != nil {
+	// 	response.ResponseError(code, payloadErr.Error())
+	// 	return
+	// }
 
 	workflowUUID, err := uuid.Parse(workflowId)
 

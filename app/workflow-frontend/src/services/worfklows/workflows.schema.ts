@@ -42,7 +42,8 @@ export type Tasks = {
   config?: string | null;
   x: number;
   y: number;
-  connector_name: string;
+  connector_name: string | null;
+  connector_id: string | null
   operation: string;
   created_at: string;
   updated_at: string;

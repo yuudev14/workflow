@@ -96,11 +96,8 @@ def task_graph(*args: tuple[dict] | dict | list[dict], **kwargs):
     operation_information: dict = task_information[curr]
     config_name = operation_information.get("config", None)
     parameters = operation_information.get("parameters", None)
-    connector_name = operation_information.get("connector_name", None)
+    connector_id = operation_information.get("connector_id", None)
     operation = operation_information.get("operation", None)
-
-    if connector_name is None:
-        raise Exception(f"connector name is none for {curr}")
 
     try:
 
@@ -110,13 +107,8 @@ def task_graph(*args: tuple[dict] | dict | list[dict], **kwargs):
             status="in_progress",
         )
 
-        config_name = operation_information.get("config", None)
-        parameters = operation_information.get("parameters", None)
-        connector_name = operation_information.get("connector_name", None)
-        operation = operation_information.get("operation", None)
-
-        if connector_name is None:
-            raise Exception(f"connector name is none for {curr}")
+        if connector_id is None and curr != "start":
+            raise Exception(f"connector id is none for {curr}")
 
         if curr == "start":
             send_task_status(
@@ -127,11 +119,11 @@ def task_graph(*args: tuple[dict] | dict | list[dict], **kwargs):
             return results
 
         # get the class container
-        connector = Connector.get_class_container(connector_name)
+        connector = Connector.get_class_container(connector_id)
 
         # grab the config to use
         config = Connector.get_connector_config(
-            config_name=config_name, connector_name=connector_name
+            config_name=config_name, connector_id=connector_id
         )
 
         params = Connector.evaluate_params(

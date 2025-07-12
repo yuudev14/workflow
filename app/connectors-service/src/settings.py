@@ -3,7 +3,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
     app_name: str = "Awesome API"
-    logging_level: str
+    logging_level: str = "debug"
     celery_broker: str = "pyamqp://guest:guest@localhost:5672"
     celery_backend: str = "db+postgresql://postgres:password@localhost:5432/celery_logs?sslmode=disable"
 
