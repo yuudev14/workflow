@@ -156,7 +156,7 @@ const WorkflowPlayground: React.FC<{ workflowId: string }> = ({
             nodes,
             edges,
             onNodeDoubleClick: onNodeDoubleClickHandler,
-            onNodesChange: onNodesChange,
+            onNodesChange,
             onEdgesChange,
             onConnect,
             onConnectEnd,
