@@ -21,7 +21,7 @@
   --xy-handle-border-color-default: #AAAAAA;
 
   --xy-edge-label-color-default: #505050;
-   --xy-node-background-color: black;
+  --xy-node-background-color: #ffffff;
 }
 
 .react-flow.dark { 
@@ -30,7 +30,7 @@
   0px 3.54px 4.55px 0px rgba(255, 255, 255, 0.13), /* medium shadow */
   0px 0.51px 1.01px 0px rgba(255, 255, 255, 0.2);  /* smallest shadow */  
   --xy-theme-color-focus: #535353;
-  --xy-node-background-color: black;
+  --xy-node-background-color: black
 }
 
 /* Customizing Default Theming */
