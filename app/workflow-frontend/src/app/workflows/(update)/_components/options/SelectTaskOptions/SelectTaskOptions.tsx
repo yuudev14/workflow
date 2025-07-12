@@ -28,13 +28,13 @@ const SelectTaskOptions: React.FC<{
         </Label>
       </div>
 
-      <div className='flex-1 overflow-auto px-3 pb-5'>
+      <div className='flex-1 overflow-auto px-3 pb-5 flex flex-col gap-2'>
         {TASK_OPERATIONS.map(operation => (
           <div key={`select-task-operation-${operation.label}`}>
             <Label className="text-base">
               {operation.label}
             </Label>
-            <Separator />
+
             <div className="flex flex-col gap-3">
               {operation.options.map(option => (
                 <OptionButton
