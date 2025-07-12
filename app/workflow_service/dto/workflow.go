@@ -31,7 +31,8 @@ type Task struct {
 	Name          string                  `json:"name"`
 	Description   string                  `json:"description"`
 	Parameters    *map[string]interface{} `json:"parameters,omitempty"`
-	ConnectorName string                  `json:"connector_name"`
+	ConnectorName *string                 `json:"connector_name"`
+	ConnectorID   *string                 `json:"connector_id"`
 	Operation     string                  `json:"operation"`
 	Config        types.Nullable[string]  `json:"config,omitempty"`
 	X             float32                 `form:"x,default=0"`

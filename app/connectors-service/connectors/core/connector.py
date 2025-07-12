@@ -48,19 +48,19 @@ class Connector(ABC):
         return results
 
     @classmethod
-    def get_class_container(cls, connector_name: str) -> "Connector":
+    def get_class_container(cls, connector_id: str) -> "Connector":
         """
         Get the class instance of the container
 
         Args:
-            connector_name (str)
+            connector_id (str)
 
         Returns:
             the connector instance
         """
-        logger.debug(f"getting the class connector for {connector_name}")
+        logger.debug(f"getting the class connector for {connector_id}")
         module: Connector = importlib.import_module(
-            f"connectors.{connector_name}.connector"
+            f"connectors.{connector_id}.connector"
         )
         connector_classes = []
         for _, obj in inspect.getmembers(module):
@@ -77,21 +77,21 @@ class Connector(ABC):
         return connector
 
     @classmethod
-    def get_connector_config(cls, config_name: str | None, connector_name: str) -> dict:
+    def get_connector_config(cls, config_name: str | None, connector_id: str) -> dict:
         """
         Get the connectors config
 
         Args:
             config_name (str) = configuration name
-            connector_name (str) = connector name
+            connector_id (str) = connector id
 
         Returns:
             the configuration in dictionary. if config_name is None, return '{}'
         """
-        logger.info(f"getting the config ({config_name}) for {connector_name}")
+        logger.info(f"getting the config ({config_name}) for {connector_id}")
         if config_name is not None:
             with open(
-                f"./connectors/{connector_name}/configs/{config_name}.toml", "rb"
+                f"./connectors/{connector_id}/configs/{config_name}.toml", "rb"
             ) as f:
                 return tomllib.load(f)
         logger.debug("No config available. return '{}'")

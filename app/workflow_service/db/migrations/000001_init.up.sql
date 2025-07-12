@@ -80,8 +80,9 @@ CREATE TABLE
     config VARCHAR(50),
     x float,
     y float,
-    connector_name VARCHAR(100) NOT NULL,
-    operation VARCHAR(100) NOT NULL,
+    connector_name VARCHAR(100),
+    connector_id VARCHAR(100),
+    operation VARCHAR(100),
     created_at TIMESTAMP NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
 

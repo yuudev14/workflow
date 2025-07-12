@@ -26,7 +26,8 @@ class ConnectorsController:
                         # check for configs
                         config_path = Path(CONNECTORS_DIR + "/" + item.name + "/configs")
                         if config_path.exists():
-                            configs = [config.name for config in config_path.iterdir() if config.is_file()]
+                            configs = [config.stem for config in config_path.iterdir() if config.is_file()]
+                            print(configs)
                             connector_info["configs"] = configs
                         connectors_data.append(connector_info)
                 except json.JSONDecodeError:
@@ -40,12 +41,12 @@ class ConnectorsController:
 
         return connectors_data
     
-    @router.get("/{connector_name}")
+    @router.get("/{connector_id}")
     async def get_connector_info(
-        connector_name: str = FastApiPath(..., description="connector name")
+        connector_id: str = FastApiPath(..., description="connector name")
     ):
         try:
-            connectors_path = Path(CONNECTORS_DIR + "/" + connector_name + "/info.json")
+            connectors_path = Path(CONNECTORS_DIR + "/" + connector_id + "/info.json")
             with connectors_path.open() as file:
                 return json.load(file)
         except FileNotFoundError as e:
