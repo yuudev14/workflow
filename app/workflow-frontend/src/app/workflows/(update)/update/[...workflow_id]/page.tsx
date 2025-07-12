@@ -66,10 +66,9 @@ const WorkflowPlayground: React.FC<{ workflowId: string }> = ({
   // set the connector to the node's connector
   // can improve later
   const setConnectorToNodesConnector = (node: Node<PlaybookTaskNode>) => {
-    if (connectorQuery && node.data.connector_name) {
+    if (connectorQuery && node.data.connector_id) {
       for (const _connector of connectorQuery?.data || []) {
-        console.log(_connector.name, "yuuu");
-        if (_connector.name == node.data.connector_name) {
+        if (_connector.id == node.data.connector_id) {
           setConnector(_connector || null);
           setTaskOperation("connector");
           break;
@@ -132,17 +131,17 @@ const WorkflowPlayground: React.FC<{ workflowId: string }> = ({
 
   return (
     <div className="relative h-[calc(100vh-4rem)]">
-      {/* <div className='absolute flex flex-col bg-background border-r border-r-border top-40 left-0 z-50'>
+      {/* <div className='absolute left-0 z-50 flex flex-col border-r bg-background border-r-border top-40'>
         <Button className="rounded-e-2xl" onClick={() => setOpenOperationSidebar(true)}>
           <ArrowRightIcon />
         </Button>
       </div> */}
       {openOperationSidebar && <WorkflowOperations />}
 
-      <div className="py-3 px-5 flex justify-between items-center h-16">
+      <div className="flex items-center justify-between h-16 px-5 py-3">
         <div>
-          <h2 className="font-medium text-xl">{workflowData.name}</h2>
-          <p className="text-muted-foreground text-xs">{workflowData.description}asd asd asd</p>
+          <h2 className="text-xl font-medium">{workflowData.name}</h2>
+          <p className="text-xs text-muted-foreground">{workflowData.description}asd asd asd</p>
         </div>
         <div className="flex gap-2">
           <Button onClick={triggerWorkflowHandler}>Trigger</Button>
