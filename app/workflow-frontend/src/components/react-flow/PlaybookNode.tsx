@@ -17,10 +17,10 @@ const PlaybookNode: React.FC<NodeProps<NodeComponentProps>> = (props) => {
 
       {/* Node Content */}
       <div className='flex w-full items-center gap-3'>
-        <Avatar>
-          <AvatarFallback><Workflow className='size-6 text-primary' /></AvatarFallback>
+        <Avatar className='size-7'>
+          <AvatarFallback><Workflow className='size-4 text-primary' /></AvatarFallback>
         </Avatar>
-        <div className='flex-1 mr-9'>
+        <div className='mr-9'>
           <p className='font-medium'>{props.data.name}</p>
         </div>
       </div>
