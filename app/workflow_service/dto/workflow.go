@@ -22,9 +22,18 @@ type UpdateWorkflowHistoryData struct {
 }
 
 type UpdateTaskHistoryData struct {
-	Status types.Nullable[string] `json:"status,omitempty"`
-	Error  types.Nullable[string] `json:"error,omitempty"`
-	Result interface{}            `json:"result,omitempty"`
+	Name          string                 `json:"name"`
+	Description   string                 `json:"description"`
+	Parameters    interface{}            `json:"parameters,omitempty"`
+	ConnectorName types.Nullable[string] `json:"connector_name"`
+	ConnectorID   types.Nullable[string] `json:"connector_id"`
+	Operation     string                 `json:"operation"`
+	Config        types.Nullable[string] `json:"config,omitempty"`
+	X             float32                `form:"x,default=0"`
+	Y             float32                `form:"y,default=0"`
+	Status        types.Nullable[string] `json:"status,omitempty"`
+	Error         types.Nullable[string] `json:"error,omitempty"`
+	Result        interface{}            `json:"result,omitempty"`
 }
 
 type Task struct {
