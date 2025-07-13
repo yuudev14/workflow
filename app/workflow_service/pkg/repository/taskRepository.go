@@ -35,10 +35,15 @@ func NewTaskRepositoryImpl(db *sqlx.DB) TaskRepository {
 
 // CreateTaskHistory implements TaskRepository.
 func (t *TaskRepositoryImpl) CreateTaskHistory(tx *sqlx.Tx, workflowHistoryId string, tasks []models.Tasks) ([]models.TaskHistory, error) {
-	statement := sq.Insert("task_history").Columns("workflow_history_id", "task_id", "triggered_at")
+	statement := sq.Insert("task_history").Columns("workflow_history_id", "task_id", "triggered_at", "name", "description", "parameters", "config", "x", "y", "connector_name", "connector_id", "operation")
 
 	for _, val := range tasks {
-		statement = statement.Values(workflowHistoryId, val.ID, time.Now())
+		parameters, err := json.Marshal(val.Parameters)
+		if err != nil {
+			return nil, err
+		}
+
+		statement = statement.Values(workflowHistoryId, val.ID, time.Now(), val.Name, val.Description, parameters, val.Config, val.X, val.Y, val.ConnectorName, val.ConnectorID, val.Operation)
 	}
 
 	statement = statement.Suffix(`RETURNING *`)
@@ -121,16 +126,30 @@ func (t *TaskRepositoryImpl) UpdateTaskStatus(workflowHistoryId string, taskId s
 // UpdateTaskHistory implements TaskRepository.
 func (t *TaskRepositoryImpl) UpdateTaskHistory(workflowHistoryId string, taskId string, taskHistory dto.UpdateTaskHistoryData) (*models.TaskHistory, error) {
 	data := GenerateKeyValueQuery(map[string]types.Nullable[any]{
-		"status": taskHistory.Status.ToNullableAny(),
-		"error":  taskHistory.Error.ToNullableAny(),
+		"status":         taskHistory.Status.ToNullableAny(),
+		"error":          taskHistory.Error.ToNullableAny(),
+		"connector_name": taskHistory.ConnectorName.ToNullableAny(),
+		"connector_id":   taskHistory.ConnectorID.ToNullableAny(),
+		"config":         taskHistory.Config.ToNullableAny(),
 	})
 
-	jsonData, err := json.Marshal(taskHistory.Result)
+	data["name"] = taskHistory.Name
+	data["description"] = taskHistory.Description
+	data["x"] = taskHistory.X
+	data["y"] = taskHistory.Y
+
+	result, err := json.Marshal(taskHistory.Result)
+	if err != nil {
+		return nil, err
+	}
+	data["result"] = result
+
+	parameters, err := json.Marshal(taskHistory.Parameters)
 	if err != nil {
 		return nil, err
 	}
 
-	data["result"] = jsonData
+	data["parameters"] = parameters
 
 	statement := sq.Update("task_history").SetMap(data).Where("workflow_history_id = ? and task_id = ?", workflowHistoryId, taskId).Suffix("RETURNING *")
 	return DbExecAndReturnOne[models.TaskHistory](

@@ -12,6 +12,15 @@ class TaskStatusPayload(BaseModel):
     status: TaskStatus
     result: Any | None = None
     error: str | None = None
+    name: str | None = None
+    description: str | None = None
+    parameters: str | dict | None = None
+    connector_name: str | None = None
+    connector_id: str | None = None
+    operation: str | None = None
+    config: str | None = None
+    x: float | None = None
+    y: float | None = None
 
 class WorkflowStatusPayload(BaseModel):
     workflow_history_id: str

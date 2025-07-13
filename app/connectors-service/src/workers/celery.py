@@ -1,5 +1,5 @@
 from celery import Celery
-from typing import Any
+from typing import Any, TypedDict, Optional, Dict
 from kombu import Connection, Queue
 import traceback
 
@@ -12,6 +12,20 @@ from src import dto
 celery_app = Celery(
     "tasks", broker=settings.celery_broker, backend=settings.celery_backend
 )
+
+
+class Task(TypedDict):
+    id: str
+    workflow_id: str
+    name: str
+    description: Optional[str]
+    parameters: Optional[Any]
+    config: Optional[str]
+    x: float
+    y: float
+    connector_name: Optional[str]
+    connector_id: Optional[str]
+    operation: Optional[str]
 
 
 def send_message_to_mq(message: Any):
@@ -51,10 +65,18 @@ def send_workflow_status(
 def send_task_status(
     workflow_history_id: str,
     task_id: str,
+    task: Task,
     status: dto.message_payload.TaskStatus,
     result: Any | None = None,
     error: str | None = None,
 ):
+    
+    needed_fields = [
+        "name", "description", "parameters", "connector_name",
+        "connector_id", "operation", "config", "x", "y"
+    ]
+
+    extracted_task_fields = {key: task[key] for key in needed_fields}
     payload = dto.message_payload.MessageProcessorPayload(
         action="task_status",
         params=dto.message_payload.TaskStatusPayload(
@@ -63,6 +85,7 @@ def send_task_status(
             status=status,
             result=result,
             error=error,
+            **extracted_task_fields,
         ),
     )
     return send_message_to_mq(payload.model_dump_json())
@@ -84,27 +107,28 @@ def task_graph(*args: tuple[dict] | dict | list[dict], **kwargs):
     }
     curr: str = kwargs.get("curr", None)
     logger.info(f"executing {curr} in playbook.")
-    task_information: dict = kwargs.get("task_information", {})
+    task_lists: Dict[str, Task] = kwargs.get("task_information", {})
     workflow_history_id: dict = kwargs.get("workflow_history_id")
 
-    if curr not in task_information:
+    if curr not in task_lists:
         raise Exception(f"operation ({curr}) does not exist in task_information")
     if curr is None:
         logger.warning("'curr' is not available in kwargs")
         return results
 
-    operation_information: dict = task_information[curr]
-    config_name = operation_information.get("config", None)
-    parameters = operation_information.get("parameters", None)
-    connector_id = operation_information.get("connector_id", None)
-    operation = operation_information.get("operation", None)
+    task_information = task_lists[curr]
+    config_name = task_information.get("config", None)
+    parameters = task_information.get("parameters", None)
+    connector_id = task_information.get("connector_id", None)
+    operation = task_information.get("operation", None)
 
     try:
 
         send_task_status(
             workflow_history_id=workflow_history_id,
-            task_id=operation_information.get("id"),
+            task_id=task_information.get("id"),
             status="in_progress",
+            task=task_information,
         )
 
         if connector_id is None and curr != "start":
@@ -113,8 +137,9 @@ def task_graph(*args: tuple[dict] | dict | list[dict], **kwargs):
         if curr == "start":
             send_task_status(
                 workflow_history_id=workflow_history_id,
-                task_id=operation_information.get("id"),
+                task_id=task_information.get("id"),
                 status="success",
+                task=task_information,
             )
             return results
 
@@ -140,9 +165,10 @@ def task_graph(*args: tuple[dict] | dict | list[dict], **kwargs):
         results[curr] = operation_result
         send_task_status(
             workflow_history_id=workflow_history_id,
-            task_id=operation_information.get("id"),
+            task_id=task_information.get("id"),
             status="success",
             result=results[curr],
+            task=task_information,
         )
 
         return results
@@ -151,9 +177,10 @@ def task_graph(*args: tuple[dict] | dict | list[dict], **kwargs):
         error_trace = traceback.format_exc()
         send_task_status(
             workflow_history_id=workflow_history_id,
-            task_id=operation_information.get("id"),
+            task_id=task_information.get("id"),
             status="failed",
             error=str(e) + "\n" + error_trace,
+            task=task_information,
         )
         send_workflow_status(
             workflow_history_id, status="failed", error=str(e) + "\n" + error_trace
