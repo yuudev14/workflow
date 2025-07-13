@@ -100,7 +100,7 @@ func (w *WorkflowTriggerServiceImpl) TriggerWorkflow(workflowId string) error {
 
 	// Log the ID to verify it's correct
 	logging.Sugar.Infof("Created workflow history with ID: %v", workflowHistory.ID)
-	_, createTaskHistoryErr := w.TaskService.CreateTaskHistory(tx, workflowHistory.ID.String(), tasks)
+	_, createTaskHistoryErr := w.TaskService.CreateTaskHistory(tx, workflowHistory.ID.String(), tasks, GetGraphUUIDS(tasks, edges))
 
 	if createTaskHistoryErr != nil {
 		tx.Rollback()
@@ -154,4 +154,26 @@ func (w *WorkflowTriggerServiceImpl) PrepareWorkflowMessage(tasks []models.Tasks
 	}
 
 	return tasksMap, graph
+}
+
+func GetGraphUUIDS(tasks []models.Tasks, edges []repository.Edges) map[uuid.UUID][]uuid.UUID {
+	graph := map[uuid.UUID][]uuid.UUID{}
+
+	for _, edge := range edges {
+		children, ok := graph[edge.SourceID]
+		if ok {
+			graph[edge.SourceID] = append(children, edge.DestinationID)
+		} else {
+			graph[edge.SourceID] = []uuid.UUID{edge.DestinationID}
+		}
+
+		_, taskNameOk := graph[edge.DestinationID]
+
+		if !taskNameOk {
+			graph[edge.DestinationID] = []uuid.UUID{}
+		}
+	}
+
+	return graph
+
 }

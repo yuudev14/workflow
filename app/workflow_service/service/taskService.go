@@ -14,7 +14,7 @@ type TaskService interface {
 	GetTasksByWorkflowId(workflowId string) ([]models.Tasks, error)
 	UpsertTasks(tx *sqlx.Tx, workflowId uuid.UUID, tasks []models.Tasks) ([]models.Tasks, error)
 	DeleteTasks(tx *sqlx.Tx, taskIds []uuid.UUID) error
-	CreateTaskHistory(tx *sqlx.Tx, workflowHistoryId string, tasks []models.Tasks) ([]models.TaskHistory, error)
+	CreateTaskHistory(tx *sqlx.Tx, workflowHistoryId string, tasks []models.Tasks, graph map[uuid.UUID][]uuid.UUID) ([]models.TaskHistory, error)
 	UpdateTaskStatus(workflowHistoryId string, taskId string, status string) (*models.TaskHistory, error)
 	UpdateTaskHistory(workflowHistoryId string, taskId string, taskHistory dto.UpdateTaskHistoryData) (*models.TaskHistory, error)
 }
@@ -32,8 +32,8 @@ func NewTaskServiceImpl(TaskService repository.TaskRepository, WorkflowService W
 }
 
 // CreateTaskHistory implements TaskService.
-func (t *TaskServiceImpl) CreateTaskHistory(tx *sqlx.Tx, workflowHistoryId string, tasks []models.Tasks) ([]models.TaskHistory, error) {
-	return t.TaskRepository.CreateTaskHistory(tx, workflowHistoryId, tasks)
+func (t *TaskServiceImpl) CreateTaskHistory(tx *sqlx.Tx, workflowHistoryId string, tasks []models.Tasks, graph map[uuid.UUID][]uuid.UUID) ([]models.TaskHistory, error) {
+	return t.TaskRepository.CreateTaskHistory(tx, workflowHistoryId, tasks, graph)
 }
 
 // get tasks by workflow id
