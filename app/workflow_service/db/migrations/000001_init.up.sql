@@ -114,6 +114,7 @@ CREATE TABLE
     connector_id VARCHAR(100),
     operation VARCHAR(100),
     status task_status NOT NULL DEFAULT 'pending',
+    destination_ids UUID[],
     error TEXT,
     result JSONB,
     triggered_at TIMESTAMP NOT NULL DEFAULT NOW()

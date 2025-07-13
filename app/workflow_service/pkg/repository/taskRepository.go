@@ -7,6 +7,7 @@ import (
 	sq "github.com/Masterminds/squirrel"
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
+	"github.com/lib/pq"
 	"github.com/yuudev14-workflow/workflow-service/db/queries"
 	"github.com/yuudev14-workflow/workflow-service/dto"
 	"github.com/yuudev14-workflow/workflow-service/models"
@@ -18,7 +19,7 @@ type TaskRepository interface {
 	GetTasksByWorkflowId(workflowId string) []models.Tasks
 	UpsertTasks(tx *sqlx.Tx, workflowId uuid.UUID, tasks []models.Tasks) ([]models.Tasks, error)
 	DeleteTasks(tx *sqlx.Tx, taskIds []uuid.UUID) error
-	CreateTaskHistory(tx *sqlx.Tx, workflowHistoryId string, tasks []models.Tasks) ([]models.TaskHistory, error)
+	CreateTaskHistory(tx *sqlx.Tx, workflowHistoryId string, tasks []models.Tasks, graph map[uuid.UUID][]uuid.UUID) ([]models.TaskHistory, error)
 	UpdateTaskStatus(workflowHistoryId string, taskId string, status string) (*models.TaskHistory, error)
 	UpdateTaskHistory(workflowHistoryId string, taskId string, taskHistory dto.UpdateTaskHistoryData) (*models.TaskHistory, error)
 }
@@ -34,8 +35,8 @@ func NewTaskRepositoryImpl(db *sqlx.DB) TaskRepository {
 }
 
 // CreateTaskHistory implements TaskRepository.
-func (t *TaskRepositoryImpl) CreateTaskHistory(tx *sqlx.Tx, workflowHistoryId string, tasks []models.Tasks) ([]models.TaskHistory, error) {
-	statement := sq.Insert("task_history").Columns("workflow_history_id", "task_id", "triggered_at", "name", "description", "parameters", "config", "x", "y", "connector_name", "connector_id", "operation")
+func (t *TaskRepositoryImpl) CreateTaskHistory(tx *sqlx.Tx, workflowHistoryId string, tasks []models.Tasks, graph map[uuid.UUID][]uuid.UUID) ([]models.TaskHistory, error) {
+	statement := sq.Insert("task_history").Columns("workflow_history_id", "task_id", "triggered_at", "name", "description", "parameters", "config", "x", "y", "connector_name", "connector_id", "operation", "destination_ids")
 
 	for _, val := range tasks {
 		parameters, err := json.Marshal(val.Parameters)
@@ -43,7 +44,10 @@ func (t *TaskRepositoryImpl) CreateTaskHistory(tx *sqlx.Tx, workflowHistoryId st
 			return nil, err
 		}
 
-		statement = statement.Values(workflowHistoryId, val.ID, time.Now(), val.Name, val.Description, parameters, val.Config, val.X, val.Y, val.ConnectorName, val.ConnectorID, val.Operation)
+		// get the destination ids in the graph
+		destinationIds := graph[val.ID]
+
+		statement = statement.Values(workflowHistoryId, val.ID, time.Now(), val.Name, val.Description, parameters, val.Config, val.X, val.Y, val.ConnectorName, val.ConnectorID, val.Operation, pq.Array(destinationIds))
 	}
 
 	statement = statement.Suffix(`RETURNING *`)

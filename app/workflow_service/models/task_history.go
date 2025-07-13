@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/lib/pq"
 	"github.com/yuudev14-workflow/workflow-service/pkg/types"
 )
 
@@ -24,4 +25,5 @@ type TaskHistory struct {
 	Parameters        types.JsonType `db:"parameters" json:"parameters"`
 	X                 float32        `db:"x" json:"x"`
 	Y                 float32        `db:"y" json:"y"`
+	DestinationIDs    pq.StringArray `db:"destination_ids" json:"destination_ids"`
 }
