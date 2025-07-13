@@ -20,11 +20,20 @@ type MessageBody struct {
 }
 
 type TaskStatusPayload struct {
-	WorkflowHistoryId string                 `json:"workflow_history_id"`
-	TaskId            string                 `json:"task_id"`
-	Status            types.Nullable[string] `json:"status,omitempty"`
-	Error             types.Nullable[string] `json:"error,omitempty"`
-	Result            interface{}            `json:"result,omitempty"`
+	WorkflowHistoryId string                  `json:"workflow_history_id"`
+	TaskId            string                  `json:"task_id"`
+	Name              string                  `json:"name"`
+	Description       string                  `json:"description"`
+	Parameters        *map[string]interface{} `json:"parameters,omitempty"`
+	ConnectorName     types.Nullable[string]  `json:"connector_name"`
+	ConnectorID       types.Nullable[string]  `json:"connector_id"`
+	Operation         string                  `json:"operation"`
+	Config            types.Nullable[string]  `json:"config,omitempty"`
+	X                 float32                 `form:"x,default=0"`
+	Y                 float32                 `form:"y,default=0"`
+	Status            types.Nullable[string]  `json:"status,omitempty"`
+	Error             types.Nullable[string]  `json:"error,omitempty"`
+	Result            interface{}             `json:"result,omitempty"`
 }
 
 type WorkflowStatusPayload struct {
@@ -57,9 +66,18 @@ func (c *ConsumeMessage) handleTask(params []byte) {
 		return
 	}
 	c.TaskService.UpdateTaskHistory(taskParams.WorkflowHistoryId, taskParams.TaskId, dto.UpdateTaskHistoryData{
-		Status: taskParams.Status,
-		Error:  taskParams.Error,
-		Result: taskParams.Result,
+		Name:          taskParams.Name,
+		Description:   taskParams.Description,
+		Parameters:    taskParams.Parameters,
+		ConnectorName: taskParams.ConnectorName,
+		ConnectorID:   taskParams.ConnectorID,
+		Operation:     taskParams.Operation,
+		Config:        taskParams.Config,
+		X:             taskParams.X,
+		Y:             taskParams.Y,
+		Status:        taskParams.Status,
+		Error:         taskParams.Error,
+		Result:        taskParams.Result,
 	})
 }
 
