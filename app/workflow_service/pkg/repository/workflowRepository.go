@@ -42,6 +42,7 @@ type WorkflowRepository interface {
 	GetWorkflowTriggers() ([]models.WorkflowTriggers, error)
 	GetWorkflowsCount(filter dto.WorkflowFilter) (int, error)
 	GetWorkflowById(id string) (*models.Workflows, error)
+	GetWorkflowHistoryById(id string) ([]models.TaskHistory, error)
 	GetWorkflowGraphById(id string) (*WorkflowsGraph, error)
 	CreateWorkflow(workflow dto.WorkflowPayload) (*models.Workflows, error)
 	UpdateWorkflow(id string, workflow dto.UpdateWorkflowData) (*models.Workflows, error)
@@ -133,6 +134,15 @@ func (w *WorkflowRepositoryImpl) GetWorkflowsCount(filter dto.WorkflowFilter) (i
 func (w *WorkflowRepositoryImpl) GetWorkflowById(id string) (*models.Workflows, error) {
 	statement := sq.Select("*").From("workflows").Where("id = ?", id)
 	return DbExecAndReturnOne[models.Workflows](
+		w.DB,
+		statement,
+	)
+}
+
+// GetWorkflowHistoryById implements WorkflowRepository.
+func (w *WorkflowRepositoryImpl) GetWorkflowHistoryById(id string) ([]models.TaskHistory, error) {
+	statement := sq.Select("*").From("task_history").Where("workflow_history_id = ?", id)
+	return DbExecAndReturnMany[models.TaskHistory](
 		w.DB,
 		statement,
 	)
