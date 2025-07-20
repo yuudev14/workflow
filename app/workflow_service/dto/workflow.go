@@ -9,6 +9,10 @@ type WorkflowFilter struct {
 	Name *string `form:"name"`
 }
 
+type WorkflowHistoryFilter struct {
+	Name *string `form:"name"`
+}
+
 type UpdateWorkflowData struct {
 	Name        types.Nullable[string]    `json:"name,omitempty"`
 	Description types.Nullable[string]    `json:"description,omitempty"`

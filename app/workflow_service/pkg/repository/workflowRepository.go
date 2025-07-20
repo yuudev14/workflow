@@ -25,8 +25,20 @@ type WorkflowsGraph struct {
 	Edges       *json.RawMessage `db:"edges" json:"edges"`
 }
 
+type WorkflowHistoryResponse struct {
+	ID           uuid.UUID        `db:"id" json:"id"`
+	WorkflowID   uuid.UUID        `db:"workflow_id" json:"workflow_id"`
+	WorkflowData json.RawMessage  `db:"workflow_data" json:"workflow_data"`
+	Status       string           `db:"status" json:"status"`
+	Error        *string          `db:"error" json:"error"`
+	Result       *json.RawMessage `db:"result" json:"result"`
+	TriggeredAt  time.Time        `db:"triggered_at" json:"triggered_at"`
+}
+
 type WorkflowRepository interface {
 	GetWorkflows(offset int, limit int, filter dto.WorkflowFilter) ([]models.Workflows, error)
+	GetWorkflowHistory(offset int, limit int, filter dto.WorkflowHistoryFilter) ([]WorkflowHistoryResponse, error)
+	GetWorkflowHistoryCount(filter dto.WorkflowHistoryFilter) (int, error)
 	GetWorkflowTriggers() ([]models.WorkflowTriggers, error)
 	GetWorkflowsCount(filter dto.WorkflowFilter) (int, error)
 	GetWorkflowById(id string) (*models.Workflows, error)
@@ -59,6 +71,36 @@ func (w *WorkflowRepositoryImpl) GetWorkflows(offset int, limit int, filter dto.
 
 	}
 	return DbExecAndReturnMany[models.Workflows](
+		w.DB,
+		statement,
+	)
+}
+
+// GetWorkflows implements WorkflowRepository.
+func (w *WorkflowRepositoryImpl) GetWorkflowHistory(offset int, limit int, filter dto.WorkflowHistoryFilter) ([]WorkflowHistoryResponse, error) {
+	// select workflow_history.*, to_jsonb(workflows) AS workflow_data from workflow_history
+	// join workflows on workflows.id = workflow_history.workflow_id
+	statement := sq.Select("workflow_history.*, to_jsonb(workflows) AS workflow_data ").From("workflow_history").Join("workflows on workflows.id = workflow_history.workflow_id").Offset(uint64(offset)).Limit(uint64(limit))
+
+	if filter.Name != nil {
+		statement = statement.Where("name ILIKE ?", fmt.Sprint("%", filter.Name, "%"))
+
+	}
+	return DbExecAndReturnMany[WorkflowHistoryResponse](
+		w.DB,
+		statement,
+	)
+}
+
+// GetWorkflowHistoryCount implements WorkflowRepository.
+func (w *WorkflowRepositoryImpl) GetWorkflowHistoryCount(filter dto.WorkflowHistoryFilter) (int, error) {
+	statement := sq.Select("count(workflow_history.*)").From("workflow_history").Join("workflows on workflows.id = workflow_history.workflow_id")
+
+	if filter.Name != nil {
+		statement = statement.Where("workflows.name ILIKE ?", fmt.Sprint("%", filter.Name, "%"))
+
+	}
+	return DbExecAndReturnCount(
 		w.DB,
 		statement,
 	)

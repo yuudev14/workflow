@@ -104,6 +104,52 @@ func (w *WorkflowController) GetWorkflowGraphById(c *gin.Context) {
 	response.ResponseSuccess(workflow)
 }
 
+func (w *WorkflowController) GetWorkflowHistory(c *gin.Context) {
+	var query dto.FilterQuery
+	var filter dto.WorkflowHistoryFilter
+	response := rest.Response{C: c}
+
+	checkQuery, codeQuery, validQueryErr := rest.BindQueryAndValidate(c, &query)
+
+	if !checkQuery {
+		logging.Sugar.Errorf(fmt.Sprintf("%v", validQueryErr))
+		response.ResponseError(codeQuery, validQueryErr)
+		return
+	}
+
+	checkFilter, codeFilter, validFilterErr := rest.BindQueryAndValidate(c, &filter)
+
+	if !checkFilter {
+		logging.Sugar.Errorf(fmt.Sprintf("%v", validFilterErr))
+		response.ResponseError(codeFilter, validFilterErr)
+		return
+	}
+
+	logging.Sugar.Debugf("queries: %v", query)
+	logging.Sugar.Debugf("filter: %v", filter)
+
+	logging.Sugar.Debug("getting worflows")
+	workflows, err := w.WorkflowService.GetWorkflowHistory(query.Offset, query.Limit, filter)
+
+	if err != nil {
+		response.ResponseError(http.StatusBadRequest, err.Error())
+		return
+	}
+
+	workflowsCount, workflowsCountErr := w.WorkflowService.GetWorkflowHistoryCount(filter)
+
+	if workflowsCountErr != nil {
+		response.ResponseError(http.StatusBadRequest, workflowsCountErr.Error())
+		return
+	}
+
+	response.ResponseSuccess(gin.H{
+		"entries": workflows,
+		"total":   workflowsCount,
+	})
+
+}
+
 func (w *WorkflowController) GetWorkflowTriggerTypes(c *gin.Context) {
 	response := rest.Response{C: c}
 	workflowTriggers, workflowErr := w.WorkflowService.GetWorkflowTriggers()

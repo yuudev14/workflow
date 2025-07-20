@@ -11,6 +11,8 @@ import (
 
 type WorkflowService interface {
 	GetWorkflows(offset int, limit int, filter dto.WorkflowFilter) ([]models.Workflows, error)
+	GetWorkflowHistory(offset int, limit int, filter dto.WorkflowHistoryFilter) ([]repository.WorkflowHistoryResponse, error)
+	GetWorkflowHistoryCount(filter dto.WorkflowHistoryFilter) (int, error)
 	GetWorkflowTriggers() ([]models.WorkflowTriggers, error)
 	GetWorkflowsCount(filter dto.WorkflowFilter) (int, error)
 	GetWorkflowById(id string) (*models.Workflows, error)
@@ -36,6 +38,16 @@ func NewWorkflowService(WorkflowRepository repository.WorkflowRepository) Workfl
 // GetWorkflows implements WorkflowService.
 func (w *WorkflowServiceImpl) GetWorkflows(offset int, limit int, filter dto.WorkflowFilter) ([]models.Workflows, error) {
 	return w.WorkflowRepository.GetWorkflows(offset, limit, filter)
+}
+
+// GetWorkflowHistory implements WorkflowService.
+func (w *WorkflowServiceImpl) GetWorkflowHistory(offset int, limit int, filter dto.WorkflowHistoryFilter) ([]repository.WorkflowHistoryResponse, error) {
+	return w.WorkflowRepository.GetWorkflowHistory(offset, limit, filter)
+}
+
+// GetWorkflowHistoryCount implements WorkflowService.
+func (w *WorkflowServiceImpl) GetWorkflowHistoryCount(filter dto.WorkflowHistoryFilter) (int, error) {
+	return w.WorkflowRepository.GetWorkflowHistoryCount(filter)
 }
 
 // GetWorkflowTriggers implements WorkflowService.
