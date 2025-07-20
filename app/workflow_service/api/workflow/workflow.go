@@ -21,6 +21,8 @@ func SetupWorkflowController(route *gin.RouterGroup) {
 	r := route.Group("workflows/v1")
 	{
 		r.GET("", workflowController.GetWorkflows)
+		r.GET("/history", workflowController.GetWorkflowHistory)
+		// r.GET("/history/:workflow_history_id", workflowController.GetTasksByWorkflowId)
 		r.GET("/:workflow_id", workflowController.GetWorkflowGraphById)
 		r.GET("/triggers", workflowController.GetWorkflowTriggerTypes)
 		r.POST("/trigger/:workflow_id", workflowController.Trigger)
