@@ -187,6 +187,21 @@ func (w *WorkflowController) GetWorkflowById(c *gin.Context) {
 	})
 }
 
+func (w *WorkflowController) GetWorkflowHistoryById(c *gin.Context) {
+	response := rest.Response{C: c}
+	workflowHistoryId := c.Param("workflow_history_id")
+
+	workflowHistory, workflowErr := w.WorkflowService.GetWorkflowHistoryById(workflowHistoryId)
+
+	if workflowErr != nil {
+		logging.Sugar.Error(workflowErr)
+		response.ResponseError(http.StatusInternalServerError, workflowErr.Error())
+		return
+	}
+
+	response.ResponseSuccess(workflowHistory)
+}
+
 func (w *WorkflowController) CreateWorkflow(c *gin.Context) {
 	var body dto.WorkflowPayload
 	response := rest.Response{C: c}
