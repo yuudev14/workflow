@@ -89,7 +89,7 @@ class Connector(ABC):
             the configuration in dictionary. if config_name is None, return '{}'
         """
         logger.info(f"getting the config ({config_name}) for {connector_id}")
-        if config_name is not None:
+        if config_name:
             with open(
                 f"./connectors/{connector_id}/configs/{config_name}.toml", "rb"
             ) as f:

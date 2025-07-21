@@ -3,7 +3,7 @@ export interface ConnectorInfo {
   id: string;
   configuration: Configuration;
   operations: Operation[];
-  configs: string[];
+  configs?: string[] | null;
 }
 
 export interface Configuration {
@@ -38,8 +38,8 @@ export interface Parameter {
   required: boolean;
   editable: boolean;
   visible: boolean;
-  type: 'text' | 'number' | 'boolean'; 
+  type: 'text' | 'number' | 'boolean' | 'code'; 
   tooltip?: string; 
-  name?: string; 
+  name: string; 
   placeholder?: string;
 }
