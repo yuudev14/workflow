@@ -53,7 +53,7 @@
           "visible": true,
           "type": "text",
           "tooltip": "",
-          "name": "",
+          "name": "task1",
           "placeholder": ""
         },
         {
@@ -64,7 +64,7 @@
           "visible": true,
           "type": "text",
           "tooltip": "",
-          "name": "",
+          "name": "task2",
           "placeholder": ""
         },
         {
@@ -75,7 +75,7 @@
           "visible": true,
           "type": "text",
           "tooltip": "",
-          "name": "",
+          "name": "task3",
           "placeholder": ""
         }
       ]
@@ -95,7 +95,7 @@
           "visible": true,
           "type": "text",
           "tooltip": "",
-          "name": "",
+          "name": "operation2",
           "placeholder": ""
         }
       ]

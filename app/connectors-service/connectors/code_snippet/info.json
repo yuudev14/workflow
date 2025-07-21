@@ -1,0 +1,26 @@
+{
+  "name": "Code Snippet",
+  "id": "code_snippet",
+  "operations": [
+    {
+      "operation": "python_code",
+      "title": "Python Code",
+      "description": "",
+      "annotation": "python_code",
+      "enabled": true,
+      "parameters": [
+        {
+          "title": "Code",
+          "description": "",
+          "required": true,
+          "editable": true,
+          "visible": true,
+          "type": "code",
+          "tooltip": "",
+          "name": "code",
+          "placeholder": "put your code here"
+        }
+      ]
+    }
+  ]
+}

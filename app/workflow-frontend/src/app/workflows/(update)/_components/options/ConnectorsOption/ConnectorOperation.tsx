@@ -1,22 +1,33 @@
-import { useContext, useEffect, useRef, useState } from "react"
-import { ConnectorInfo, Operation } from "@/services/connectors/connectors.schema"
-import { Label } from "@/components/ui/label"
-import { Input } from "@/components/ui/input"
-import { Separator } from "@/components/ui/separator"
+import { useContext, useEffect, useRef, useState } from "react";
+import {
+  ConnectorInfo,
+  Operation,
+} from "@/services/connectors/connectors.schema";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
+import { Separator } from "@/components/ui/separator";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select"
-import { Button } from "@/components/ui/button"
-import { useForm } from "react-hook-form"
-import { zodResolver } from "@hookform/resolvers/zod"
-import { z } from "zod"
-import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
-import { WorkflowOperationContext } from "../../../_providers/WorkflowOperationProvider"
-import { Textarea } from "@/components/ui/textarea"
+} from "@/components/ui/select";
+import { Button } from "@/components/ui/button";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import {
+  Form,
+  FormControl,
+  FormDescription,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import { WorkflowOperationContext } from "../../../_providers/WorkflowOperationProvider";
+import { Textarea } from "@/components/ui/textarea";
 
 const taskFormSchema = z.object({
   name: z.string().min(2, {
@@ -28,17 +39,26 @@ const taskFormSchema = z.object({
   connector_name: z.string(),
   connector_id: z.string(),
   operation: z.string(),
-})
+});
 
-const ConnectorOperation: React.FC<{ connector: ConnectorInfo }> = ({ connector }) => {
-  const [currentOperation, setCurrentOperation] = useState<Operation | null>(null)
-  const { currentNode, setNodes, closeSidebar } = useContext(WorkflowOperationContext)
+const ConnectorOperation: React.FC<{ connector: ConnectorInfo }> = ({
+  connector,
+}) => {
+  const [currentOperation, setCurrentOperation] = useState<Operation | null>(
+    null
+  );
+  const { currentNode, setNodes, closeSidebar } = useContext(
+    WorkflowOperationContext
+  );
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const [cachedParameter, setCachedParameter] = useState<Record<string, any>>({})
+  const [cachedParameter, setCachedParameter] = useState<Record<string, any>>(
+    {}
+  );
   const taskForm = useForm<z.infer<typeof taskFormSchema>>({
     resolver: zodResolver(taskFormSchema),
     defaultValues: (() => {
-      const isSameConnector = connector.name === currentNode?.data?.connector_name;
+      const isSameConnector =
+        connector.name === currentNode?.data?.connector_name;
       const task = currentNode?.data;
 
       return {
@@ -51,58 +71,61 @@ const ConnectorOperation: React.FC<{ connector: ConnectorInfo }> = ({ connector 
         config: isSameConnector ? task?.config : "",
       };
     })(),
-  })
-
+  });
 
   const operationName = taskForm.watch("operation");
-  const parameters = taskForm.watch("parameters")
+  const parameters = taskForm.watch("parameters");
 
   // use to check if it's first render
-  const isFirstRender = useRef<boolean>(true)
+  const isFirstRender = useRef<boolean>(true);
   useEffect(() => {
     if (operationName) {
       const matchedOperation = connector.operations.find(
-        ops => ops.title === operationName
+        (ops) => ops.annotation === operationName
       );
       setCurrentOperation(matchedOperation ?? null);
-      taskForm.setValue("parameters", isFirstRender.current ? currentNode?.data?.parameters : cachedParameter[operationName])
+      taskForm.setValue(
+        "parameters",
+        isFirstRender.current
+          ? currentNode?.data?.parameters
+          : cachedParameter[operationName]
+      );
     }
-    isFirstRender.current = false
+    isFirstRender.current = false;
   }, [operationName]);
 
   useEffect(() => {
     if (operationName) {
-      setCachedParameter(value => ({
+      setCachedParameter((value) => ({
         ...value,
-        [operationName]: parameters
-      }))
+        [operationName]: parameters,
+      }));
     }
-
-  }, [parameters, operationName])
-
+  }, [parameters, operationName]);
 
   const onSubmit = (val: z.infer<typeof taskFormSchema>) => {
-
-    setNodes(nodes => nodes.map(node => {
-      if (!currentNode) return node
-      if (node.id === currentNode.id) {
-        return {
-          ...node,
-          data: { ...node.data, ...val, }
+    setNodes((nodes) =>
+      nodes.map((node) => {
+        if (!currentNode) return node;
+        if (node.id === currentNode.id) {
+          return {
+            ...node,
+            data: { ...node.data, ...val },
+          };
         }
-      }
-      return node
-    }))
-    closeSidebar()
-    setCachedParameter({})
-
-  }
-
+        return node;
+      })
+    );
+    closeSidebar();
+    setCachedParameter({});
+  };
 
   return (
     <Form {...taskForm}>
-      <form onSubmit={taskForm.handleSubmit(onSubmit)} className="flex flex-col flex-1">
-        <div className='flex flex-col flex-1 h-full gap-3 p-3'>
+      <form
+        onSubmit={taskForm.handleSubmit(onSubmit)}
+        className="flex flex-col flex-1">
+        <div className="flex flex-col flex-1 h-full gap-3 p-3">
           <FormField
             control={taskForm.control}
             name="name"
@@ -118,8 +141,7 @@ const ConnectorOperation: React.FC<{ connector: ConnectorInfo }> = ({ connector 
             )}
           />
 
-
-          <Separator className='bg-secondary' />
+          <Separator className="bg-secondary" />
 
           <FormField
             control={taskForm.control}
@@ -136,36 +158,44 @@ const ConnectorOperation: React.FC<{ connector: ConnectorInfo }> = ({ connector 
             )}
           />
 
-          <div className='py-7'>
+          <div className="py-7">
             <p>connector information</p>
           </div>
-          <Separator className='bg-secondary' />
-          <div className='flex flex-col gap-3'>
-            <FormField
-              control={taskForm.control}
-              name="config"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Configuration</FormLabel>
-                  <Select value={field.value ?? ""} onValueChange={field.onChange}>
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="select configuration" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent className='bg-background'>
-                      {connector.configs.map(_config => (
-                        <SelectItem value={_config} key={`connector-config-${_config}`}>{_config}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <FormDescription />
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+          <Separator className="bg-secondary" />
+          <div className="flex flex-col gap-3">
+            {connector.configs && (
+              <FormField
+                control={taskForm.control}
+                name="config"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Configuration</FormLabel>
+                    <Select
+                      value={field.value ?? ""}
+                      onValueChange={field.onChange}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="select configuration" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent className="bg-background">
+                        {connector.configs?.map((_config) => (
+                          <SelectItem
+                            value={_config}
+                            key={`connector-config-${_config}`}>
+                            {_config}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormDescription />
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
 
-            <Separator className='bg-secondary' />
+            <Separator className="bg-secondary" />
 
             <FormField
               control={taskForm.control}
@@ -173,19 +203,21 @@ const ConnectorOperation: React.FC<{ connector: ConnectorInfo }> = ({ connector 
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Operation</FormLabel>
-                  <Select value={field.value ?? ""} onValueChange={field.onChange}>
+                  <Select
+                    value={field.value ?? ""}
+                    onValueChange={field.onChange}>
                     <FormControl>
                       <SelectTrigger>
                         <SelectValue placeholder="select operation" />
                       </SelectTrigger>
                     </FormControl>
-                    <SelectContent className='bg-background'>
+                    <SelectContent className="bg-background">
                       {connector.operations.map((operation) => (
                         <SelectItem
-
                           value={operation.annotation}
-                          key={`connector-operation-${operation.title}`}
-                        >{operation.title}</SelectItem>
+                          key={`connector-operation-${operation.title}`}>
+                          {operation.title}
+                        </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
@@ -195,9 +227,7 @@ const ConnectorOperation: React.FC<{ connector: ConnectorInfo }> = ({ connector 
               )}
             />
 
-            <Separator className='bg-secondary' />
-
-
+            <Separator className="bg-secondary" />
 
             {currentOperation && currentOperation.parameters && (
               <FormField
@@ -206,24 +236,35 @@ const ConnectorOperation: React.FC<{ connector: ConnectorInfo }> = ({ connector 
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Parameters</FormLabel>
-                    {currentOperation.parameters.map(param => (
-                      <div className='flex flex-col gap-2' key={`connector-operation-${param.title}`}>
-                        <Label className="font-normal">
-                          {param.title}
-                        </Label>
+                    {currentOperation.parameters.map((param) => (
+                      <div
+                        className="flex flex-col gap-2"
+                        key={`connector-operation-${param.name}`}>
+                        <Label className="font-normal">{param.title}</Label>
                         {param.type === "text" && (
                           <Input
                             placeholder={param.placeholder}
-                            value={field.value?.[param.title] ?? ""}
+                            value={field.value?.[param.name] ?? ""}
                             onChange={(e) => {
                               field.onChange({
                                 ...(field.value ? field.value : {}),
-                                [param.title]: e.target.value
-                              })
+                                [param.name]: e.target.value,
+                              });
                             }}
                           />
                         )}
-
+                        {param.type === "code" && (
+                          <Textarea
+                            placeholder={param.placeholder}
+                            value={field.value?.[param.name] ?? ""}
+                            onChange={(e) => {
+                              field.onChange({
+                                ...(field.value ? field.value : {}),
+                                [param.name]: e.target.value,
+                              });
+                            }}
+                          />
+                        )}
                       </div>
                     ))}
                     <FormDescription />
@@ -234,17 +275,15 @@ const ConnectorOperation: React.FC<{ connector: ConnectorInfo }> = ({ connector 
             )}
           </div>
         </div>
-        <footer className='p-3 mt-auto border border-t border-border'>
+        <footer className="p-3 mt-auto border border-t border-border">
           <div className="flex justify-between gap-2">
             <Button type="button">Close</Button>
             <Button>Save</Button>
           </div>
         </footer>
       </form>
-
     </Form>
-  )
-}
+  );
+};
 
-
-export default ConnectorOperation
+export default ConnectorOperation;
