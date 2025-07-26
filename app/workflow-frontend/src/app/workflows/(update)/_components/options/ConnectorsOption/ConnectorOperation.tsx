@@ -28,6 +28,7 @@ import {
 } from "@/components/ui/form";
 import { WorkflowOperationContext } from "../../../_providers/WorkflowOperationProvider";
 import { Textarea } from "@/components/ui/textarea";
+import Editor from "@monaco-editor/react";
 
 const taskFormSchema = z.object({
   name: z.string().min(2, {
@@ -54,6 +55,7 @@ const ConnectorOperation: React.FC<{ connector: ConnectorInfo }> = ({
   const [cachedParameter, setCachedParameter] = useState<Record<string, any>>(
     {}
   );
+
   const taskForm = useForm<z.infer<typeof taskFormSchema>>({
     resolver: zodResolver(taskFormSchema),
     defaultValues: (() => {
@@ -162,7 +164,7 @@ const ConnectorOperation: React.FC<{ connector: ConnectorInfo }> = ({
             <p>connector information</p>
           </div>
           <Separator className="bg-secondary" />
-          <div className="flex flex-col gap-3">
+          <div className="flex flex-col gap-3 flex-1">
             {connector.configs && (
               <FormField
                 control={taskForm.control}
@@ -234,11 +236,11 @@ const ConnectorOperation: React.FC<{ connector: ConnectorInfo }> = ({
                 control={taskForm.control}
                 name="parameters"
                 render={({ field }) => (
-                  <FormItem>
+                  <FormItem className="flex-1 flex flex-col">
                     <FormLabel>Parameters</FormLabel>
                     {currentOperation.parameters.map((param) => (
                       <div
-                        className="flex flex-col gap-2"
+                        className="flex flex-col gap-2 flex-1"
                         key={`connector-operation-${param.name}`}>
                         <Label className="font-normal">{param.title}</Label>
                         {param.type === "text" && (
@@ -254,16 +256,24 @@ const ConnectorOperation: React.FC<{ connector: ConnectorInfo }> = ({
                           />
                         )}
                         {param.type === "code" && (
-                          <Textarea
-                            placeholder={param.placeholder}
-                            value={field.value?.[param.name] ?? ""}
-                            onChange={(e) => {
-                              field.onChange({
-                                ...(field.value ? field.value : {}),
-                                [param.name]: e.target.value,
-                              });
-                            }}
-                          />
+                          <div className="flex-1 flex-col">
+                            <Editor
+                              height="100%"
+                              language="python"
+                              theme="vs-dark"
+                              value={field.value?.[param.name] ?? ""}
+                              onChange={(val) =>
+                                field.onChange({
+                                  ...(field.value ? field.value : {}),
+                                  [param.name]: val,
+                                })
+                              }
+                              options={{
+                                automaticLayout: true,
+                                fontSize: 14,
+                              }}
+                            />
+                          </div>
                         )}
                       </div>
                     ))}

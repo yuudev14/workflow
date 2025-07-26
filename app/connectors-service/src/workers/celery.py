@@ -94,7 +94,10 @@ def send_task_status(
 @celery_app.task
 def workflow_completed(*args: tuple[dict] | dict | list[dict], **kwargs):
     workflow_history_id: dict = kwargs.get("workflow_history_id")
-    send_workflow_status(workflow_history_id, "success")
+    data = Connector.consolidate_results(*args)
+    logger.debug("finished data")
+    logger.debug(data)
+    send_workflow_status(workflow_history_id, "success", result=data)
     return args
 
 
@@ -102,6 +105,8 @@ def workflow_completed(*args: tuple[dict] | dict | list[dict], **kwargs):
 def task_graph(*args: tuple[dict] | dict | list[dict], **kwargs):
     # consolidate all the results from the tasks
     results = Connector.consolidate_results(*args)
+    logger.debug("task graph results")
+    logger.debug(results)
     tasks_variables = {
         "steps": results,
     }
@@ -201,3 +206,4 @@ def task_graph(*args: tuple[dict] | dict | list[dict], **kwargs):
 # @task_failure.connect(sender=task_graph)
 # def task_failure_handler(sender=None, **kwargs):
 #     print("Task failed")
+
