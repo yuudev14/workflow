@@ -1,22 +1,26 @@
 FROM python:3.13-alpine3.20
 
-# Install build and PostgreSQL dependencies
 RUN apk update && apk add --no-cache \
     postgresql-dev \
     gcc \
     musl-dev \
-    libffi-dev
+    libffi-dev \
+    curl \
+    ca-certificates
 
 WORKDIR /app
 ENV PYTHONPATH=/app
 
-COPY requirements.txt .
+RUN curl -LsSf https://astral.sh/uv/install.sh | sh
 
-RUN pip install -r requirements.txt
+ENV PATH="/root/.local/bin:$PATH"
 
+COPY pyproject.toml uv.lock /app/
 
-# COPY . .
+RUN uv sync --locked
+
+COPY . /app
 
 EXPOSE 8000
 
-CMD ["uvicorn", "main:app", "--reload", "--port=8000", "--host=0.0.0.0", "--reload-dir", "/app"]
+CMD ["uv", "run", "uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000", "--reload", "--reload-dir", "/app"]
