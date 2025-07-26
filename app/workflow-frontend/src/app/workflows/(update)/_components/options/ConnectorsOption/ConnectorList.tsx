@@ -20,7 +20,7 @@ const ConnectorList: React.FC<{ setConnector: React.Dispatch<React.SetStateActio
         <Input />
       </div>
 
-      <ul>
+      <ul className="flex-col gap-2">
         {connectorQuery.data && connectorQuery.data.map(con => (
           <li key={con.id}>
             <OptionButton

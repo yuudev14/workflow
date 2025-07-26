@@ -276,6 +276,7 @@ const WorkflowOperationProvider: React.FC<{
     setCurrentNode(null);
     setIsNewNode(false);
     setTaskOperation(null);
+    setConnector(null)
   };
   return (
     <WorkflowOperationContext.Provider
