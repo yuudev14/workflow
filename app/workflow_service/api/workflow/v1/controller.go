@@ -482,12 +482,12 @@ func (w *WorkflowController) UpdateWorkflowTasks(c *gin.Context) {
 	}
 
 	// validate if start node in body payload
-	// payloadErr := validateWorkflowTaskPayload(body)
+	payloadErr := validateWorkflowTaskPayload(body)
 
-	// if payloadErr != nil {
-	// 	response.ResponseError(code, payloadErr.Error())
-	// 	return
-	// }
+	if payloadErr != nil {
+		response.ResponseError(code, payloadErr.Error())
+		return
+	}
 
 	workflowUUID, err := uuid.Parse(workflowId)
 
