@@ -71,6 +71,7 @@ services:
       - CELERY_BROKER=pyamqp://guest:guest@workflow_rabbitmq:5672
       - CELERY_BACKEND=db+postgresql://postgres:password@workflow_postgres:5432/celery_logs?sslmode=disable
       - MQ_URL=amqp://guest:guest@workflow_rabbitmq:5672
+      - use_celery=true
     networks:
       - workflow
     depends_on:

@@ -5,16 +5,16 @@ import aio_pika.abc
 
 from src.settings import settings
 from src.core.workflow import WorkflowGraph
+from src.logger.logging import logger
+from src.workers.celery import task_graph
 
 
-async def consume_messages(loop):
+async def consume_messages():
     # Connecting with the given parameters is also possible.
     # aio_pika.connect_robust(host="host", login="login", password="password")
     # You can only choose one option to create a connection, url or kw-based params.
-    await asyncio.sleep(1)
-    print("hi")
     connection = await aio_pika.connect_robust(
-       settings.mq_url, loop=loop
+       settings.mq_url
     )
 
     async with connection:
@@ -31,24 +31,41 @@ async def consume_messages(loop):
 
         async with worlflow_queue.iterator() as queue_iter:
             # Cancel consuming after __aexit__
-            print("listening to mq")
+            logger.info("listening to mq")
             async for message in queue_iter:
                 async with message.process():
                     try:
                         json_body: dict = json.loads(message.body.decode())
-                        print(json.dumps(json_body, indent=2))
+                        logger.info(json.dumps(json_body, indent=2))
                         graph = json_body.get("graph")
                         task_information = json_body.get("tasks")
                         workflow_history_id = json_body.get("workflow_history_id")
 
+                        task_information = json_body["tasks"]
+                        graph = json_body["graph"]
+
+
                         if graph is None or task_information is None or workflow_history_id is None:
                             raise Exception("either graph, task_information, or workflow_history_id is None")
                         
-                        workflow = WorkflowGraph(graph=graph, task_information=task_information, workflow_history_id=workflow_history_id)
-                        workflow.generate_chain_task_using_topological_sort()
+                        # workflow = WorkflowGraph(graph=graph, task_information=task_information, workflow_history_id=workflow_history_id)
+                        # workflow.generate_chain_task_using_topological_sort()
+                        if settings.use_celery:
+                            task_graph.apply_async(
+                                kwargs={
+                                    "graph": graph,
+                                    "task_information":task_information,
+                                    "workflow_history_id":workflow_history_id
+                                }
+                            )
+                        else:
+                            WorkflowGraph(
+                                graph=graph, task_information=task_information, workflow_history_id=workflow_history_id
+                            ).execute_task()
 
-                        print(json_body)
+                        
 
                     except Exception as e:
-                        print(e)
+                        logger.error(e)
+                    
                         

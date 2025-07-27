@@ -11,7 +11,7 @@ test_data = {
     "graph": {
         "name": [],
         "name2": ["name3"],
-        "name3": ["name"],
+        "name3": ["name2"],
         "start": ["name", "name2"],
     },
     "tasks": {
