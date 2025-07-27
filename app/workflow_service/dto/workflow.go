@@ -52,10 +52,16 @@ type Task struct {
 	Y             float32                 `form:"y,default=0"`
 }
 
+type EdgeHandle struct {
+	SourceHandle      *string `json:"source_handle"`
+	DestinationHandle *string `json:"destination_handle"`
+}
+
 type UpdateWorkflowtasks struct {
-	Task  *UpdateWorkflowData `json:"task"`
-	Nodes []Task              `json:"nodes"`
-	Edges map[string][]string `json:"edges"`
+	Task    *UpdateWorkflowData               `json:"task"`
+	Nodes   []Task                            `json:"nodes"`
+	Edges   map[string][]string               `json:"edges"`
+	Handles *map[string]map[string]EdgeHandle `json:"handles"`
 }
 
 type UpdateWorkflowTaskHistoryStatus struct {

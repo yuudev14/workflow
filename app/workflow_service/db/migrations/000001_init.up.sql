@@ -95,6 +95,8 @@ CREATE TABLE
     destination_id UUID REFERENCES tasks (id) ON DELETE CASCADE,
     source_id UUID REFERENCES tasks (id) ON DELETE CASCADE,
     workflow_id UUID NOT NULL REFERENCES workflows (id) ON DELETE CASCADE,
+    source_handle VARCHAR(50),
+    destination_handle VARCHAR(50),
 
     CONSTRAINT unique_source_destination UNIQUE (source_id, destination_id)
   );

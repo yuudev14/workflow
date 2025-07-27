@@ -23,7 +23,7 @@ const edgeTypes = {
   removableEdge: RemovableEdge,
 };
 
-const defaultEdgeOptions = {
+export const defaultEdgeOptions = {
   type: "removableEdge",
   markerEnd: { type: MarkerType.ArrowClosed },
 };

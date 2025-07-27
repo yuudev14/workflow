@@ -173,9 +173,10 @@ const WorkflowOperationProvider: React.FC<{
   let id = 1;
   const getId = () => `${id++}`;
 
-  // useEffect(() => {
-  //   console.log(edges);
-  // }, [edges]);
+  useEffect(() => {
+    console.log(edges);
+  }, [edges]);
+
 
   useEffect(() => {
     if (workflowQuery.status == "error") {
@@ -201,7 +202,7 @@ const WorkflowOperationProvider: React.FC<{
           x: task.x,
           y: task.y,
         },
-        type: task.name === "start" ? "input" : "playbookNodes",
+        type: "playbookNodes",
         draggable: true,
       };
 
@@ -212,6 +213,9 @@ const WorkflowOperationProvider: React.FC<{
       id: edge.id,
       source: edge.source_id,
       target: edge.destination_id,
+      sourceHandle: edge.source_handle || "source-top",
+      targetHandle: edge.destination_handle || "target-top"
+      
     });
     const _nodes = workflowQuery.data?.tasks?.map(setMappedNodes) ?? [];
     // if task doesnt have a node with a name start,
@@ -291,6 +295,10 @@ const WorkflowOperationProvider: React.FC<{
   );
 
   const closeSidebar = () => {
+    // remove filters if currennode exist
+    if(currentNode){
+      setEdges(edgs => edgs.filter(edg => edg.id !== currentNode.id))
+    }
     setOpenOperationSidebar(false);
     setCurrentNode(null);
     setIsNewNode(false);
