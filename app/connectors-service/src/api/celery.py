@@ -9,9 +9,9 @@ router = APIRouter()
 
 test_data = {
     "graph": {
-        "name": ["name3"],
+        "name": [],
         "name2": ["name3"],
-        "name3": [],
+        "name3": ["name"],
         "start": ["name", "name2"],
     },
     "tasks": {

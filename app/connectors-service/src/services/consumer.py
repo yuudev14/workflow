@@ -12,6 +12,7 @@ async def consume_messages(loop):
     # aio_pika.connect_robust(host="host", login="login", password="password")
     # You can only choose one option to create a connection, url or kw-based params.
     await asyncio.sleep(1)
+    print("hi")
     connection = await aio_pika.connect_robust(
        settings.mq_url, loop=loop
     )

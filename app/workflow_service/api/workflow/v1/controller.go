@@ -561,14 +561,14 @@ func (w *WorkflowController) GetTasksByWorkflowId(c *gin.Context) {
 func (w *WorkflowController) Trigger(c *gin.Context) {
 	response := rest.Response{C: c}
 	workflowId := c.Param("workflow_id")
-	triggerErr := w.WorkflowTriggerService.TriggerWorkflow(workflowId)
+	data, triggerErr := w.WorkflowTriggerService.TriggerWorkflow(workflowId)
 	if triggerErr != nil {
 		logging.Sugar.Errorf("error when sending the message to queue", triggerErr)
 		response.ResponseError(http.StatusBadGateway, triggerErr.Error())
 		return
 	}
 
-	response.Response(http.StatusAccepted, "triggered successfully")
+	response.Response(http.StatusAccepted, data)
 }
 
 func validateTaskStateChangePayload(body dto.UpdateWorkflowTaskHistoryStatus) error {

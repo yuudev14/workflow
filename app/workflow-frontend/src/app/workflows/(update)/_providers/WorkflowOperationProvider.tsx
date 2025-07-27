@@ -18,7 +18,12 @@ import {
   useReactFlow,
 } from "@xyflow/react";
 import { PlaybookTaskNode } from "@/components/react-flow/schema";
-import { useMutation, UseMutationResult, useQuery, UseQueryResult } from "@tanstack/react-query";
+import {
+  useMutation,
+  UseMutationResult,
+  useQuery,
+  UseQueryResult,
+} from "@tanstack/react-query";
 import {
   Edges,
   Tasks,
@@ -44,7 +49,12 @@ export type TaskOperationType =
 
 export type WorkflowOperationType = {
   connectorQuery: UseQueryResult<ConnectorInfo[], Error> | null;
-  updateWorkflowMutation: UseMutationResult<Workflow, Error, UpdateWorkflowPayload, unknown> | null
+  updateWorkflowMutation: UseMutationResult<
+    Workflow,
+    Error,
+    UpdateWorkflowPayload,
+    unknown
+  > | null;
   connector: ConnectorInfo | null;
   setConnector: React.Dispatch<React.SetStateAction<ConnectorInfo | null>>;
   taskOperation: TaskOperationType;
@@ -129,21 +139,24 @@ const WorkflowOperationProvider: React.FC<{
     },
   });
   const updateWorkflowMutation = useMutation({
-    mutationFn: async(workflow: UpdateWorkflowPayload) => {
-      return await WorkflowService.updateWorkflow(workflowQuery.data!.id!, workflow)
+    mutationFn: async (workflow: UpdateWorkflowPayload) => {
+      return await WorkflowService.updateWorkflow(
+        workflowQuery.data!.id!,
+        workflow
+      );
     },
     onSuccess: (_data) => {
       toast({
         title: "succesfully updated the workflow",
-      })
+      });
     },
     onError(error) {
       toast({
         title: "Error when updating a new workflow",
         description: error.message,
-      })
+      });
     },
-  })
+  });
   const [connector, setConnector] = useState<ConnectorInfo | null>(null);
   const [taskOperation, setTaskOperation] = useState<TaskOperationType>(null); // this is to show what operation we need to show in the container
   const [openOperationSidebar, setOpenOperationSidebar] = useState(false);
@@ -160,16 +173,18 @@ const WorkflowOperationProvider: React.FC<{
   let id = 1;
   const getId = () => `${id++}`;
 
+  // useEffect(() => {
+  //   console.log(edges);
+  // }, [edges]);
+
   useEffect(() => {
     if (workflowQuery.status == "error") {
       toast({
         title: "error fetching worfklow",
-        description: workflowQuery.error.message
-      })
-      
+        description: workflowQuery.error.message,
+      });
     }
-
-  }, [workflowQuery.status])
+  }, [workflowQuery.status]);
 
   useEffect(() => {
     const setMappedNodes = (task: Tasks) => {
@@ -230,16 +245,19 @@ const WorkflowOperationProvider: React.FC<{
     );
   }, [workflowData]);
 
-  const onConnect = useCallback(
-    (params: Connection) => setEdges((eds) => addEdge(params, eds)),
-    []
-  );
+  const onConnect = useCallback((params: Connection) => {
+    console.log(params)
+    setEdges((eds) =>
+      addEdge(params, eds)
+    );
+  }, []);
   const onConnectEnd = useCallback(
     (event: MouseEvent | TouchEvent, connectionState: FinalConnectionState) => {
       // when a connection is dropped on the pane it's not valid
       if (!connectionState.isValid) {
         // we need to remove the wrapper bounds, in order to get the correct position
         const id = getId();
+
         const { clientX, clientY } =
           "changedTouches" in event ? event.changedTouches[0] : event;
         const newNode: Node<PlaybookTaskNode> = {
@@ -255,12 +273,13 @@ const WorkflowOperationProvider: React.FC<{
 
         setNodes((nds) => nds.concat(newNode));
         setCurrentNode(newNode);
+        console.log(connectionState)
 
         setEdges((eds) =>
           eds.concat({
             id,
             source: connectionState.fromNode!.id,
-            target: id,
+            target: connectionState.toNode ? connectionState.toNode.id : id,
           })
         );
 
@@ -276,7 +295,7 @@ const WorkflowOperationProvider: React.FC<{
     setCurrentNode(null);
     setIsNewNode(false);
     setTaskOperation(null);
-    setConnector(null)
+    setConnector(null);
   };
   return (
     <WorkflowOperationContext.Provider
