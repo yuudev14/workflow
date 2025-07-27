@@ -325,8 +325,12 @@ func (w *WorkflowController) InsertEdges(
 					handleMap := *handles
 					if handleSourceKey, handleSourceKeyOk := handleMap[key]; handleSourceKeyOk {
 						if handleDestKey, handleDestKeyOk := handleSourceKey[val]; handleDestKeyOk {
-							edge.SourceHandle = sql.NullString{String: *handleDestKey.SourceHandle, Valid: true}
-							edge.DestinationHandle = sql.NullString{String: *handleDestKey.DestinationHandle, Valid: true}
+							if handleDestKey.SourceHandle != nil {
+								edge.SourceHandle = sql.NullString{String: *handleDestKey.SourceHandle, Valid: true}
+							}
+							if handleDestKey.DestinationHandle != nil {
+								edge.DestinationHandle = sql.NullString{String: *handleDestKey.DestinationHandle, Valid: true}
+							}
 						}
 					}
 

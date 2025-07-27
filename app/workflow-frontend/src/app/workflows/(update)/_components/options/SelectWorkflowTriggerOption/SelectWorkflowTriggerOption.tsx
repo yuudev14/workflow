@@ -41,7 +41,7 @@ const SelectWorkflowTriggerOption = () => {
           label: "manual"
         },
         position: { x: 100, y: 100 },
-        type: "start",
+        type: "playbookNodes",
         draggable: true,
         
       })
@@ -51,7 +51,7 @@ const SelectWorkflowTriggerOption = () => {
 
   return (
     <div className='flex flex-col gap-3 px-3 py-5'>
-      <Label className="uppercase text-lg">
+      <Label className="text-lg uppercase">
         Choose a trigger
       </Label>
       <Separator />
@@ -60,7 +60,7 @@ const SelectWorkflowTriggerOption = () => {
         {triggerTypesQuery.data && triggerTypesQuery.data?.map(trigger => (
           <OptionButton Icon={renderIcon(trigger.name)} key={`trigger-type-${trigger.id}`} onClick={() => selectTriggerType(trigger)}>
             <div>
-              <Label className='uppercase text-base'>{trigger.name}</Label>
+              <Label className='text-base uppercase'>{trigger.name}</Label>
               <p>Small description about manual</p>
             </div>
 

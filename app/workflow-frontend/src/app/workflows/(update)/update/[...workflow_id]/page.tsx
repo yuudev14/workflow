@@ -9,7 +9,10 @@ import { Node, ReactFlowProvider } from "@xyflow/react";
 import { useQuery } from "@tanstack/react-query";
 import WorkflowService from "@/services/worfklows/workflows";
 import { Button } from "@/components/ui/button";
-import { UpdateWorkflowPayload } from "@/services/worfklows/workflows.schema";
+import {
+  UpdateHandlesPayload,
+  UpdateWorkflowPayload,
+} from "@/services/worfklows/workflows.schema";
 import WorkflowOperationProvider, {
   WorkflowOperationContext,
 } from "../../_providers/WorkflowOperationProvider";
@@ -59,6 +62,7 @@ const WorkflowPlayground: React.FC<{ workflowId: string }> = ({
     openOperationSidebar,
     workflowData,
     updateWorkflowMutation,
+    onNodesDelete
   } = useContext(WorkflowOperationContext);
 
   const { triggerWorkflowHandler } = useWorkflowTrigger({ workflowId });
@@ -82,7 +86,7 @@ const WorkflowPlayground: React.FC<{ workflowId: string }> = ({
    * @param e
    * @param node
    */
-  const onNodeDoubleClickHandler = (
+  const onNodeDoubleClick = (
     e: React.MouseEvent<Element, MouseEvent>,
     node: Node<PlaybookTaskNode>
   ) => {
@@ -114,6 +118,8 @@ const WorkflowPlayground: React.FC<{ workflowId: string }> = ({
       x: _node.position.x,
       y: _node.position.y,
     }));
+
+    // create the edges
     data["edges"] = edges.reduce((prev, curr) => {
       const sourceNodeName = node_mapper[curr.source];
       const destNodeName = node_mapper[curr.target];
@@ -124,6 +130,26 @@ const WorkflowPlayground: React.FC<{ workflowId: string }> = ({
       }
       return prev;
     }, {} as Record<string, string[]>);
+
+    // create the handles
+    data["handles"] = edges.reduce((prev, curr) => {
+      const sourceNodeName = node_mapper[curr.source];
+      const destNodeName = node_mapper[curr.target];
+      if (sourceNodeName in prev) {
+        prev[sourceNodeName][destNodeName] = {
+          source_handle: curr.sourceHandle,
+          destination_handle: curr.targetHandle,
+        };
+      } else {
+        prev[sourceNodeName] = {
+          [destNodeName]: {
+            source_handle: curr.sourceHandle || null,
+            destination_handle: curr.targetHandle || null,
+          },
+        };
+      }
+      return prev;
+    }, {} as UpdateHandlesPayload);
 
     if (updateWorkflowMutation)
       updateWorkflowMutation.mutate(data as UpdateWorkflowPayload);
@@ -141,7 +167,9 @@ const WorkflowPlayground: React.FC<{ workflowId: string }> = ({
       <div className="flex items-center justify-between h-16 px-5 py-3">
         <div>
           <h2 className="text-xl font-medium">{workflowData.name}</h2>
-          <p className="text-xs text-muted-foreground">{workflowData.description}asd asd asd</p>
+          <p className="text-xs text-muted-foreground">
+            {workflowData.description}asd asd asd
+          </p>
         </div>
         <div className="flex gap-2">
           <Button onClick={triggerWorkflowHandler}>Trigger</Button>
@@ -154,11 +182,12 @@ const WorkflowPlayground: React.FC<{ workflowId: string }> = ({
           flowProps={{
             nodes,
             edges,
-            onNodeDoubleClick: onNodeDoubleClickHandler,
+            onNodeDoubleClick,
             onNodesChange,
             onEdgesChange,
             onConnect,
             onConnectEnd,
+            onNodesDelete,
           }}
         />
       </div>
