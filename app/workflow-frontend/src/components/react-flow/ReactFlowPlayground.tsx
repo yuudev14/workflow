@@ -7,14 +7,25 @@ import {
   Edge,
   MiniMap,
   BackgroundVariant,
+  MarkerType,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import { useTheme } from "next-themes";
 import { useMemo } from "react";
 import PlaybookNode from "./PlaybookNode";
+import RemovableEdge from "./RemovableEdge";
 
 const nodeTypes = {
   playbookNodes: PlaybookNode,
+};
+
+const edgeTypes = {
+  removableEdge: RemovableEdge,
+};
+
+const defaultEdgeOptions = {
+  type: "removableEdge",
+  markerEnd: { type: MarkerType.ArrowClosed },
 };
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -43,10 +54,12 @@ const ReactFlowPlayground = <T extends Record<string, any>>({
   }
 
   return (
-    <div className="h-full w-full">
+    <div className="w-full h-full">
       <ReactFlow
         colorMode={reactFlowTheme}
         nodeTypes={nodeTypes}
+        edgeTypes={edgeTypes}
+        defaultEdgeOptions={defaultEdgeOptions}
         zoomOnDoubleClick={false}
         {...flowProps}>
         <MiniMap />

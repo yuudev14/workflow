@@ -15,6 +15,11 @@ const PlaybookNode: React.FC<NodeProps<NodeComponentProps>> = (props) => {
 
   return (
     <>
+     {/* Target Handles */}
+      <Handle type="target" position={Position.Top} id="target-top" />
+      <Handle type="target" position={Position.Bottom} id="target-bottom" />
+      <Handle type="target" position={Position.Left} id="target-left" />
+      <Handle type="target" position={Position.Right} id="target-right" />
       {/* Source Handles */}
       <Handle type="source" position={Position.Top} id="top-handle" />
       <Handle type="source" position={Position.Bottom} id="bottom-handle" />
@@ -33,11 +38,7 @@ const PlaybookNode: React.FC<NodeProps<NodeComponentProps>> = (props) => {
         </div>
       </div>
 
-      {/* Target Handles */}
-      <Handle type="target" position={Position.Top} id="target-top" />
-      <Handle type="target" position={Position.Bottom} id="target-bottom" />
-      <Handle type="target" position={Position.Left} id="target-left" />
-      <Handle type="target" position={Position.Right} id="target-right" />
+     
       <div className="absolute flex items-center justify-center w-full gap-2 -bottom-8">
         <button
           className="p-1 rounded hover:bg-destructive/50"

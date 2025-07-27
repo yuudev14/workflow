@@ -188,6 +188,8 @@ class WorkflowGraph:
                 parameters=parameters, variables=self.store
             )
 
+            print(params)
+
             # execute the operations
             operation_result = connector.execute(
                 configs=config, params=params, operation=operation
