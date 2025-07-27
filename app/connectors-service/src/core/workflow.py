@@ -3,14 +3,10 @@ workflow core file
 """
 from graphlib import TopologicalSorter
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from celery import group, chain
-from collections import deque
-from collections.abc import Callable
 from connectors.core.connector import Connector
 from typing import Dict, TypedDict, Optional, Any
 from kombu import Connection, Queue
 import traceback
-from src.workers.celery import task_graph, workflow_completed
 from src.logger.logging import logger
 from src.settings import settings
 from src import dto
@@ -188,8 +184,6 @@ class WorkflowGraph:
                 parameters=parameters, variables=self.store
             )
 
-            print(params)
-
             # execute the operations
             operation_result = connector.execute(
                 configs=config, params=params, operation=operation
@@ -218,181 +212,47 @@ class WorkflowGraph:
                 error=str(e) + "\n" + error_trace,
                 task=task_information,
             )
-            self.send_workflow_status(
-                status="failed", error=str(e) + "\n" + error_trace
-            )
             raise e
 
     
     def execute_task(
         self,
     ):
-        predecessor_graph = self.invert_graph(self.graph)
-        ts = TopologicalSorter(predecessor_graph)
-        ts.prepare()
+        try:
+            predecessor_graph = self.invert_graph(self.graph)
+            ts = TopologicalSorter(predecessor_graph)
+            ts.prepare()
 
-        with ThreadPoolExecutor() as executor:
-            while ts.is_active():
-                ready_nodes = ts.get_ready()
+            with ThreadPoolExecutor() as executor:
+                while ts.is_active():
+                    ready_nodes = ts.get_ready()
 
-                for node in ready_nodes:
-                    if node in self.skip_nodes:
-                        ts.done(node)
-                        continue
+                    for node in ready_nodes:
+                        if node in self.skip_nodes:
+                            ts.done(node)
+                            continue
 
-                nodes_to_execute = [node for node in ready_nodes if node not in self.skip_nodes]
-                logger.info(f"processing {nodes_to_execute}")
-                futures = {
-                    executor.submit(self.process_node, node): node
-                    for node in nodes_to_execute
-                }
+                    nodes_to_execute = [node for node in ready_nodes if node not in self.skip_nodes]
+                    logger.info(f"processing {nodes_to_execute}")
+                    futures = {
+                        executor.submit(self.process_node, node): node
+                        for node in nodes_to_execute
+                    }
 
-                for future in as_completed(futures):
-                    node_done = futures[future]
-                    result = future.result()
-                    logger.info(f"result of the node {result=}")
-                    ts.done(node_done)
-        
-        self.send_workflow_status("success", result=self.store["steps"])
-        return self.store
-
-    def generate_task(self, stepname: str):
-        """
-        Generate a Celery task signature for a given value.
-
-        This function creates a Celery task signature using the `task_graph` task and a dictionary
-        containing the given value. The task signature is returned for further use in task chaining.
-
-        Args:
-            val (str): The value to be passed to the task.
-
-        Returns:
-            A Celery task signature for the given value.
-        """
-        return task_graph.s(
-            {
-                stepname: None,
-            },
-            curr=stepname,
-            task_information=self.task_information,
-            workflow_history_id=self.workflow_history_id,
-        )
-
-    def generate_list_of_task(self, vals: list[str]):
-        """
-        Generate a list of Celery task signatures for a given list of values.
-
-        This function creates a list of Celery task signatures using the `generate_task` method.
-        If the input list contains only one value, a single task signature is returned.
-        Otherwise, a Celery group of task signatures is returned.
-
-        Args:
-            vals (list[str]): A list of values to be passed to the tasks.
-
-        Returns:
-            celery.canvas.Group: A Celery group of task signatures for the given values.
-            If the input list contains only one value, a single task signature is returned.
-        """
-        if len(vals) == 1:
-            return self.generate_task(vals[0])
-        return group([self.generate_task(val) for val in vals])
-    
-
-    def generate_chain_task(self):
-        """
-        Generates a chain of tasks based on the graph provided
-
-        This function performs a breadth-first search (BFS) on the graph to generate a list of task
-
-        The list of task signatures is then used to create a Celery chain using the `chain` function.
-
-        Returns:
-            A Celery chain of tasks based on the graph provided.
-        """
-
-        if self.is_acyclic_graph():
-            raise Exception()
-
-        task_chain_list = []
-
-        self.bfs(lambda x: task_chain_list.append(self.generate_list_of_task(x)))
-
-        task_chain = chain(
-            *task_chain_list,
-            workflow_completed.s(
-                task_information=self.task_information,
-                workflow_history_id=self.workflow_history_id,
+                    for future in as_completed(futures):
+                        node_done = futures[future]
+                        result = future.result()
+                        logger.info(f"result of the node {result=}")
+                        ts.done(node_done)
+            
+            self.send_workflow_status("success", result=self.store["steps"])
+            return self.store
+        except Exception as e:
+            error_trace = traceback.format_exc()
+            self.send_workflow_status(
+                status="failed", error=str(e) + "\n" + error_trace
             )
-        )
-        return task_chain.apply_async()
-
-    def bfs(self, callback: Callable, node: str = "start"):
-        visit = set()
-        queue = deque()
-        visit.add(node)
-        queue.append(node)
-
-        while queue:
-            callback(list(queue))
-            for _ in range(len(queue)):
-                curr = queue.popleft()
-                for neighbor in self.graph[curr]:
-                    if neighbor not in visit:
-                        visit.add(neighbor)
-                        queue.append(neighbor)
-
-    def generate_chain_task_using_topological_sort(self):
-        """Generates a chain of tasks based on the graph provided."""
-        if self.is_acyclic_graph():
-            raise Exception()
-        task_groups = self.topological_sort_with_groups()
-        
-        # Create a chain from the groups of tasks
-        task_chain = chain(
-            *task_groups,
-            workflow_completed.s(
-                task_information=self.task_information,
-                workflow_history_id=self.workflow_history_id,
-            )
-        )
-        return task_chain.apply_async()
-
-    def topological_sort_with_groups(self) -> list[Callable]:
-        """
-        Perform topological sorting on the graph and create groups for parallel execution.
-        
-        """
-        indegree = {u: 0 for u in self.graph}
-        for u in self.graph:
-            for v in self.graph[u]:
-                indegree[v] += 1
-
-        queue = deque()
-        # Start with nodes that have zero indegree
-        for u in indegree:
-            if indegree[u] == 0:
-                queue.append(u)
-
-        sorted_task_groups = []
-
-        while queue:
-            current_group = [] 
-            current_size = len(queue)
-
-            for _ in range(current_size):
-                node = queue.popleft()
-                current_group.append(self.generate_task(node))
-                
-                # Process neighbors
-                for neighbor in self.graph[node]:
-                    indegree[neighbor] -= 1
-                    if indegree[neighbor] == 0:
-                        queue.append(neighbor)
-
-            sorted_task_groups.append(group(*current_group)) 
-
-        return sorted_task_groups
-
+            raise e
 
     def is_acyclic_graph(self):
         visit: set = set()

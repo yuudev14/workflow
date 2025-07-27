@@ -10,6 +10,7 @@ class Settings(BaseSettings):
     mq_url: str = "amqp://guest:guest@localhost:5672/"
     workflow_queue: str = "workflow"
     workflow_processor_queue: str = "workflow_processor"
+    use_celery: bool = False
 
     model_config = SettingsConfigDict(env_file=".env")
 

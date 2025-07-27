@@ -279,7 +279,7 @@ const WorkflowOperationProvider: React.FC<{
           eds.concat({
             id,
             source: connectionState.fromNode!.id,
-            target: connectionState.toNode ? connectionState.toNode.id : id,
+            target: id,
           })
         );
 
