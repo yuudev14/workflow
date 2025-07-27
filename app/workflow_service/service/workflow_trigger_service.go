@@ -13,7 +13,7 @@ import (
 )
 
 type WorkflowTriggerService interface {
-	TriggerWorkflow(workflowId string) error
+	TriggerWorkflow(workflowId string) (*TaskMessage, error)
 	PrepareWorkflowMessage(tasks []models.Tasks, edges []repository.Edges) (map[string]models.Tasks, map[string][]string)
 }
 
@@ -63,24 +63,24 @@ func SendTaskMessage(graph TaskMessage) error {
 }
 
 // TriggerWorkflow implements WorkflowTriggerService.
-func (w *WorkflowTriggerServiceImpl) TriggerWorkflow(workflowId string) error {
+func (w *WorkflowTriggerServiceImpl) TriggerWorkflow(workflowId string) (*TaskMessage, error) {
 	_, workflowErr := w.WorkflowService.GetWorkflowById(workflowId)
 
 	if workflowErr != nil {
 		logging.Sugar.Error(workflowErr)
-		return workflowErr
+		return nil, workflowErr
 	}
 	tasks, tasksErr := w.TaskService.GetTasksByWorkflowId(workflowId)
 	if tasksErr != nil {
 		logging.Sugar.Errorf("error: ", tasksErr)
-		return tasksErr
+		return nil, tasksErr
 	}
 
 	edges, edgesErr := w.EdgeService.GetEdgesByWorkflowId(workflowId)
 
 	if edgesErr != nil {
 		logging.Sugar.Errorf("error: ", edgesErr)
-		return edgesErr
+		return nil, edgesErr
 	}
 	tasksMap, graph := w.PrepareWorkflowMessage(tasks, edges)
 
@@ -89,13 +89,13 @@ func (w *WorkflowTriggerServiceImpl) TriggerWorkflow(workflowId string) error {
 	tx, txErr := db.DB.Beginx()
 	if txErr != nil {
 		tx.Rollback()
-		return txErr
+		return nil, txErr
 	}
 
 	workflowHistory, workflowHistoryErr := w.WorkflowService.CreateWorkflowHistory(tx, workflowId)
 	if workflowHistoryErr != nil {
 		tx.Rollback()
-		return workflowHistoryErr
+		return nil, workflowHistoryErr
 	}
 
 	// Log the ID to verify it's correct
@@ -104,7 +104,7 @@ func (w *WorkflowTriggerServiceImpl) TriggerWorkflow(workflowId string) error {
 
 	if createTaskHistoryErr != nil {
 		tx.Rollback()
-		return createTaskHistoryErr
+		return nil, createTaskHistoryErr
 	}
 
 	commitErr := tx.Commit()
@@ -112,21 +112,23 @@ func (w *WorkflowTriggerServiceImpl) TriggerWorkflow(workflowId string) error {
 	if commitErr != nil {
 		logging.Sugar.Error(commitErr)
 		tx.Rollback()
-		return commitErr
+		return nil, commitErr
 
 	}
 
-	mqErr := SendTaskMessage(TaskMessage{
+	body := TaskMessage{
 		Graph:             graph,
 		Tasks:             tasksMap,
 		WorkflowHistoryId: workflowHistory.ID,
-	})
+	}
+
+	mqErr := SendTaskMessage(body)
 
 	if mqErr != nil {
 		logging.Sugar.Errorf("error when sending the message to queue", mqErr)
-		return mqErr
+		return nil, mqErr
 	}
-	return nil
+	return &body, nil
 }
 
 // PrepareWorkflowMessage implements WorkflowTriggerService.
