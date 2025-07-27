@@ -485,7 +485,7 @@ func (w *WorkflowController) UpdateWorkflowTasks(c *gin.Context) {
 	payloadErr := validateWorkflowTaskPayload(body)
 
 	if payloadErr != nil {
-		response.ResponseError(code, payloadErr.Error())
+		response.ResponseError(http.StatusBadRequest, payloadErr.Error())
 		return
 	}
 
