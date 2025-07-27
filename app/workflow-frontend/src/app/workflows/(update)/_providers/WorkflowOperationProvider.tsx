@@ -82,6 +82,7 @@ export type WorkflowOperationType = {
   isNewNode: boolean;
   setIsNewNode: React.Dispatch<React.SetStateAction<boolean>>;
   closeSidebar: () => void;
+  onNodesDelete: (node: Node<PlaybookTaskNode>[]) => void;
 };
 
 export const WorkflowOperationContext = createContext<WorkflowOperationType>({
@@ -112,6 +113,7 @@ export const WorkflowOperationContext = createContext<WorkflowOperationType>({
   isNewNode: false,
   setIsNewNode: () => {},
   closeSidebar: () => {},
+  onNodesDelete: (node: Node<PlaybookTaskNode>[]) => {},
 });
 
 const INITIAL_START_NODE_VALUE: Node<PlaybookTaskNode> = {
@@ -123,8 +125,8 @@ const INITIAL_START_NODE_VALUE: Node<PlaybookTaskNode> = {
     x: 100,
     y: 100,
   },
-  type: "start",
-  draggable: false,
+  type: "playbookNodes",
+  draggable: true,
 };
 
 const WorkflowOperationProvider: React.FC<{
@@ -194,7 +196,7 @@ const WorkflowOperationProvider: React.FC<{
         data:
           task.name === FLOW_START_ID
             ? {
-                label: "start",
+                label: FLOW_START_ID,
                 ...task,
               }
             : task,
@@ -249,8 +251,18 @@ const WorkflowOperationProvider: React.FC<{
     );
   }, [workflowData]);
 
+  const onNodesDelete = useCallback((node: Node<PlaybookTaskNode>[]) => {
+    console.log(node)
+    if (node.find(_node => _node.data.name == FLOW_START_ID)) {
+      setWorkflowData(data => ({...data, trigger_type: null}))
+      setNodes(_nodes => _nodes.concat(INITIAL_START_NODE_VALUE))
+      setCurrentNode(INITIAL_START_NODE_VALUE)
+      setOpenOperationSidebar(true)
+    }
+  }, []);
+  
+
   const onConnect = useCallback((params: Connection) => {
-    console.log(params)
     setEdges((eds) =>
       addEdge(params, eds)
     );
@@ -296,9 +308,6 @@ const WorkflowOperationProvider: React.FC<{
 
   const closeSidebar = () => {
     // remove filters if currennode exist
-    if(currentNode){
-      setEdges(edgs => edgs.filter(edg => edg.id !== currentNode.id))
-    }
     setOpenOperationSidebar(false);
     setCurrentNode(null);
     setIsNewNode(false);
@@ -332,6 +341,7 @@ const WorkflowOperationProvider: React.FC<{
         isNewNode,
         setIsNewNode,
         closeSidebar,
+        onNodesDelete
       }}>
       {children}
     </WorkflowOperationContext.Provider>
