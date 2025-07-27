@@ -16,7 +16,8 @@ const WorkflowOperations: React.FC = () => {
     setNodes,
     taskOperation,
     closeSidebar,
-    setTaskOperation
+    setTaskOperation,
+    setEdges
   } = useContext(WorkflowOperationContext)
 
   const cancelHandler = () => {
@@ -30,6 +31,9 @@ const WorkflowOperations: React.FC = () => {
       })
     }
     closeSidebar()
+    if(currentNode){
+      setEdges(edgs => edgs.filter(edg => edg.id !== currentNode.id))
+    }
   }
 
 
@@ -41,7 +45,7 @@ const WorkflowOperations: React.FC = () => {
       </button>
       {!hasTriggerStep && currentNode?.id == FLOW_SELECT_TRIGGER_ID ? (
         <SelectWorkflowTriggerOption />
-      ) : hasTriggerStep && currentNode?.id == FLOW_START_ID ? (
+      ) : hasTriggerStep && currentNode?.data.name == FLOW_START_ID ? (
         <WorkFlowTriggerParameters />
       ) : taskOperation === null ? (
         <SelectTaskOptions setTaskOperation={setTaskOperation} />

@@ -30,6 +30,7 @@ import { Input } from "@/components/ui/input";
 import Link from "next/link";
 import CreateWorkflowForm from "../_components/CreateWorkflowForm";
 import useWorkflowTrigger from "@/hooks/useWorkflowTrigger";
+import { FLOW_START_ID } from "@/settings/reactFlowIds";
 
 const Page: React.FC<{ params: Promise<{ workflow_id: string }> }> = ({
   params,
@@ -66,9 +67,9 @@ const Page: React.FC<{ params: Promise<{ workflow_id: string }> }> = ({
     return workflowQuery.data.tasks.map((task) => {
       const data: Node<PlaybookTaskNode> = {
         id: task.id,
-        data: task.name === "start" ? { label: "start", ...task } : task,
+        data: task.name === FLOW_START_ID ? { label: FLOW_START_ID, ...task } : task,
         position: { x: task.x, y: task.y },
-        type: task.name === "start" ? "input" : "playbookNodes",
+        type: task.name === FLOW_START_ID ? "input" : "playbookNodes",
       };
       return data;
     });

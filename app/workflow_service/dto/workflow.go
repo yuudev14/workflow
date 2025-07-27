@@ -54,7 +54,7 @@ type Task struct {
 
 type EdgeHandle struct {
 	SourceHandle      *string `json:"source_handle"`
-	DestinationHandle *string `json:"destination_handle"`
+	DestinationHandle *string `json:"destination_handle,omitempty"`
 }
 
 type UpdateWorkflowtasks struct {
