@@ -1,6 +1,8 @@
 package repository
 
 import (
+	"database/sql"
+
 	sq "github.com/Masterminds/squirrel"
 
 	"github.com/google/uuid"
@@ -17,12 +19,14 @@ type EdgeRepository interface {
 }
 
 type Edges struct {
-	ID                  uuid.UUID `db:"id" json:"id"`
-	DestinationID       uuid.UUID `db:"destination_id" json:"destination_id"`
-	SourceID            uuid.UUID `db:"source_id" json:"source_id"`
-	WorkflowID          uuid.UUID `db:"workflow_id" json:"workflow_id"`
-	DestinationTaskName string    `db:"destination_task_name" json:"destination_task_name"`
-	SourceTaskName      string    `db:"source_task_name" json:"source_task_name"`
+	ID                  uuid.UUID      `db:"id" json:"id"`
+	DestinationID       uuid.UUID      `db:"destination_id" json:"destination_id"`
+	SourceID            uuid.UUID      `db:"source_id" json:"source_id"`
+	WorkflowID          uuid.UUID      `db:"workflow_id" json:"workflow_id"`
+	DestinationTaskName string         `db:"destination_task_name" json:"destination_task_name"`
+	SourceTaskName      string         `db:"source_task_name" json:"source_task_name"`
+	DestinationHandle   sql.NullString `db:"destination_handle" json:"destination_handle"`
+	SourceHandle        sql.NullString `db:"source_handle" json:"source_handle"`
 }
 
 type EdgeRepositoryImpl struct {
@@ -52,13 +56,15 @@ func (e *EdgeRepositoryImpl) GetEdgesByWorkflowId(workflowId string) ([]Edges, e
 // accepts multiple edge structs to be added in the database in a transaction matter
 // Do nothing if there's already existing source and destination combined
 func (e *EdgeRepositoryImpl) InsertEdges(tx *sqlx.Tx, edges []models.Edges) ([]models.Edges, error) {
-	statement := sq.Insert("edges").Columns("destination_id", "source_id", "workflow_id")
+	statement := sq.Insert("edges").Columns("destination_id", "source_id", "workflow_id", "source_handle", "destination_handle")
 
 	for _, val := range edges {
-		statement = statement.Values(val.DestinationID, val.SourceID, val.WorkflowID)
+		statement = statement.Values(val.DestinationID, val.SourceID, val.WorkflowID, val.SourceHandle, val.DestinationHandle)
 	}
 
-	statement = statement.Suffix(`ON CONFLICT (destination_id, source_id) DO NOTHING RETURNING *`)
+	statement = statement.Suffix(`ON CONFLICT (destination_id, source_id) DO UPDATE
+   	SET source_handle = EXCLUDED.source_handle,
+       destination_handle = EXCLUDED.destination_handle RETURNING *`)
 
 	return DbExecAndReturnMany[models.Edges](
 		tx,
