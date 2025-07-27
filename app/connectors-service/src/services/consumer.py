@@ -48,8 +48,6 @@ async def consume_messages():
                         if graph is None or task_information is None or workflow_history_id is None:
                             raise Exception("either graph, task_information, or workflow_history_id is None")
                         
-                        # workflow = WorkflowGraph(graph=graph, task_information=task_information, workflow_history_id=workflow_history_id)
-                        # workflow.generate_chain_task_using_topological_sort()
                         if settings.use_celery:
                             task_graph.apply_async(
                                 kwargs={

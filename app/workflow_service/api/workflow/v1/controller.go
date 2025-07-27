@@ -1,6 +1,7 @@
 package workflow_controller_v1
 
 import (
+	"database/sql"
 	"fmt"
 	"net/http"
 
@@ -292,6 +293,7 @@ func (w *WorkflowController) InsertEdges(
 	workflowUUID uuid.UUID,
 	edges map[string][]string,
 	tasks []models.Tasks,
+	handles *map[string]map[string]dto.EdgeHandle,
 ) error {
 	// node to update
 	var edgeToInsert []models.Edges
@@ -312,11 +314,24 @@ func (w *WorkflowController) InsertEdges(
 			sourceId, sourceIdOk := tasksMap[key]
 			destinationID, destinationIdOk := tasksMap[val]
 			if sourceIdOk && destinationIdOk {
-				edgeToInsert = append(edgeToInsert, models.Edges{
+				edge := models.Edges{
 					SourceID:      sourceId,
 					DestinationID: destinationID,
 					WorkflowID:    workflowUUID,
-				})
+				}
+
+				// handle for frontend reference
+				if handles != nil {
+					handleMap := *handles
+					if handleSourceKey, handleSourceKeyOk := handleMap[key]; handleSourceKeyOk {
+						if handleDestKey, handleDestKeyOk := handleSourceKey[val]; handleDestKeyOk {
+							edge.SourceHandle = sql.NullString{String: *handleDestKey.SourceHandle, Valid: true}
+							edge.DestinationHandle = sql.NullString{String: *handleDestKey.DestinationHandle, Valid: true}
+						}
+					}
+
+				}
+				edgeToInsert = append(edgeToInsert, edge)
 			} else {
 				logging.Sugar.Debugf("edges data that are not added: %v %v", key, val)
 			}
@@ -505,7 +520,7 @@ func (w *WorkflowController) UpdateWorkflowTasks(c *gin.Context) {
 	}
 
 	// insert the new edges
-	insertEdgeError := w.InsertEdges(tx, workflowUUID, body.Edges, insertedTasks)
+	insertEdgeError := w.InsertEdges(tx, workflowUUID, body.Edges, insertedTasks, body.Handles)
 	if insertEdgeError != nil {
 		logging.Sugar.Error(insertEdgeError)
 		tx.Rollback()

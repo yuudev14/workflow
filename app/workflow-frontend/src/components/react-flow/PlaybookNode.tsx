@@ -21,10 +21,10 @@ const PlaybookNode: React.FC<NodeProps<NodeComponentProps>> = (props) => {
       <Handle type="target" position={Position.Left} id="target-left" />
       <Handle type="target" position={Position.Right} id="target-right" />
       {/* Source Handles */}
-      <Handle type="source" position={Position.Top} id="top-handle" />
-      <Handle type="source" position={Position.Bottom} id="bottom-handle" />
-      <Handle type="source" position={Position.Left} id="left-handle" />
-      <Handle type="source" position={Position.Right} id="right-handle" />
+      <Handle type="source" position={Position.Top} id="source-top" />
+      <Handle type="source" position={Position.Bottom} id="source-bottom" />
+      <Handle type="source" position={Position.Left} id="source-left" />
+      <Handle type="source" position={Position.Right} id="source-right" />
 
       {/* Node Content */}
       <div className="flex items-center w-full gap-3">

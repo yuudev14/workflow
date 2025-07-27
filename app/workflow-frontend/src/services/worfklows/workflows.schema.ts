@@ -54,4 +54,6 @@ export interface Edges {
   destination_id: string;
   source_id: string;
   workflow_id: string;
+  source_handle: string | null;
+  destination_handle: string | null;
 }
