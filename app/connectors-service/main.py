@@ -25,8 +25,7 @@ from src.api import routes
 async def lifespan(app: FastAPI):
     consumer_task = None
     try:
-        loop = asyncio.get_running_loop()
-        consumer_task = asyncio.create_task(consume_messages(loop))
+        consumer_task = asyncio.create_task(consume_messages())
         yield
     finally:
         if consumer_task:
