@@ -18,6 +18,7 @@ import WorkflowOperationProvider, {
 } from "../../_providers/WorkflowOperationProvider";
 import WorkflowOperations from "../../_components/options/WorkflowOperations/WorkflowOperations";
 import useWorkflowTrigger from "@/hooks/useWorkflowTrigger";
+import { FLOW_START_ID } from "@/settings/reactFlowIds";
 
 const Page: React.FC<{ params: Promise<{ workflow_id: string }> }> = ({
   params,
@@ -29,10 +30,15 @@ const Page: React.FC<{ params: Promise<{ workflow_id: string }> }> = ({
     queryFn: async () => {
       return WorkflowService.getWorkflowById(workflowId);
     },
+    
   });
 
   if (workflowQuery.isLoading) {
     return null;
+  }
+
+  if(workflowQuery.isError) {
+    return <div>No workflow found</div>
   }
 
   return (
@@ -94,6 +100,8 @@ const WorkflowPlayground: React.FC<{ workflowId: string }> = ({
     if (node.id !== "select_start") {
       setCurrentNode(node);
       setConnectorToNodesConnector(node);
+    } else if (node.data.name == FLOW_START_ID) {
+      
     }
     console.log(node);
   };
