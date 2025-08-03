@@ -6,6 +6,7 @@ import {
   useReactFlow,
   type EdgeProps,
 } from '@xyflow/react';
+import { X } from 'lucide-react';
  
 export default function RemovableEdge({
   id,
@@ -42,8 +43,8 @@ export default function RemovableEdge({
             transform: `translate(-50%, -50%) translate(${labelX}px,${labelY}px)`,
           }}
         >
-          <button className="w-[30px] h-[30px] border-[5px] text-[var(--xy-edge-label-color-default)] cursor-pointer rounded-full text-[12px] pt-0" onClick={onEdgeClick}>
-            ×
+          <button className="flex justify-center items-center w-[30px] h-[30px] border-[5px] text-[var(--xy-edge-label-color-default)] cursor-pointer rounded-full text-[12px] pt-0" onClick={onEdgeClick}>
+            <X size={12} />
           </button>
         </div>
       </EdgeLabelRenderer>
