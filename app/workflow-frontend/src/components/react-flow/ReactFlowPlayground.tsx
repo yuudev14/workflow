@@ -11,9 +11,9 @@ import {
 import "@xyflow/react/dist/style.css";
 import { useTheme } from "next-themes";
 import { useMemo } from "react";
-import PlaybookNode from "./PlaybookNode";
+import PlaybookNode from "./nodes/PlaybookNode";
 import RemovableEdge from "./RemovableEdge";
-import StartNode from "./StartNode";
+import StartNode from "./nodes/StartNode";
 
 const nodeTypes = {
   playbookNodes: PlaybookNode,
