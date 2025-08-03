@@ -4,10 +4,12 @@ import {
   Node,
   NodeProps,
   Position,
+  useReactFlow,
 } from "@xyflow/react";
-import { Play } from "lucide-react";
+import { Play, Trash2 } from "lucide-react";
 import { Avatar, AvatarFallback } from "../ui/avatar";
 import { Tasks } from "@/services/worfklows/workflows.schema";
+import { FLOW_SELECT_TRIGGER_ID } from "@/settings/reactFlowIds";
 
 type NodeComponentProps = Node<Tasks>;
 
@@ -61,21 +63,16 @@ const HANDLES: {
 ];
 
 const StartNode: React.FC<NodeProps<NodeComponentProps>> = (props) => {
+  const { deleteElements } = useReactFlow();
+
+  const handleDelete = (e: any) => {
+    e.stopPropagation(); // Prevents node selection when clicking delete
+    deleteElements({ nodes: [{ id: props.id }] });
+  };
   return (
     <div className="p-3 group rounded-xl">
       {/* Node Content */}
-      <div className="opacity-0 group-hover:opacity-100">
-        {HANDLES.map((handle) => (
-                    <Handle
-                      key={handle.id}
-                      type={handle.type}
-                      position={handle.position}
-                      id={handle.id}
-                      className="!w-2 !h-2"
-                    />
-                  ))}
-      </div>
-      
+
       <div className="flex items-center w-full gap-3">
         <Avatar className="size-10">
           <AvatarFallback>
@@ -83,7 +80,27 @@ const StartNode: React.FC<NodeProps<NodeComponentProps>> = (props) => {
           </AvatarFallback>
         </Avatar>
       </div>
-
+      {props.id != FLOW_SELECT_TRIGGER_ID && (
+        <>
+          <div className="opacity-0 group-hover:opacity-100">
+            {HANDLES.map((handle) => (
+              <Handle
+                key={handle.id}
+                type={handle.type}
+                position={handle.position}
+                id={handle.id}
+                className="!w-2 !h-2"
+              />
+            ))}
+          </div>
+          <button
+            className="absolute p-1 border rounded opacity-0 bg-accent/80 -top-2 -right-2 group-hover:opacity-100 text-destructive/50 hover:text-destructive"
+            onClick={handleDelete}
+            title="Delete Node">
+            <Trash2 className="w-4 h-4" />
+          </button>
+        </>
+      )}
     </div>
   );
 };
