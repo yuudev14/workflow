@@ -204,7 +204,7 @@ const WorkflowOperationProvider: React.FC<{
           x: task.x,
           y: task.y,
         },
-        type: "playbookNodes",
+        type: task.name === FLOW_START_ID ? "startNode" : "playbookNodes",
         draggable: true,
       };
 

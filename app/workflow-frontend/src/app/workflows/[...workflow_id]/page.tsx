@@ -69,7 +69,7 @@ const Page: React.FC<{ params: Promise<{ workflow_id: string }> }> = ({
         id: task.id,
         data: task.name === FLOW_START_ID ? { label: FLOW_START_ID, ...task } : task,
         position: { x: task.x, y: task.y },
-        type: task.name === FLOW_START_ID ? "input" : "playbookNodes",
+        type: task.name === FLOW_START_ID ? "startNode" : "playbookNodes",
       };
       return data;
     });
