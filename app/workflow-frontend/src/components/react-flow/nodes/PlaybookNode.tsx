@@ -7,7 +7,7 @@ import {
   useReactFlow,
 } from "@xyflow/react";
 import { Trash2, Workflow } from "lucide-react";
-import { Avatar, AvatarFallback } from "../ui/avatar";
+import { Avatar, AvatarFallback } from "../../ui/avatar";
 import { Tasks } from "@/services/worfklows/workflows.schema";
 import { FLOW_SELECT_TRIGGER_ID } from "@/settings/reactFlowIds";
 import { useCallback } from "react";
