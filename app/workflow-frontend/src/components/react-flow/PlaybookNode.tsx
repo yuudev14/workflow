@@ -65,34 +65,12 @@ const HANDLES: {
 
 const PlaybookNode: React.FC<NodeProps<NodeComponentProps>> = (props) => {
   const { deleteElements } = useReactFlow();
+  console.log(props)
 
   const handleDelete = (e: any) => {
     e.stopPropagation(); // Prevents node selection when clicking delete
     deleteElements({ nodes: [{ id: props.id }] });
   };
-
-  const handleSourcePositionRender = useCallback(
-    (handlePosition: Position) => {
-      return props.sourcePosition == handlePosition ? "opacity-100" : "";
-    },
-    [props.sourcePosition]
-  );
-
-  const handleTargetPositionRender = useCallback(
-    (handlePosition: Position) => {
-      return props.targetPosition == handlePosition ? "opacity-100" : "";
-    },
-    [props.targetPosition]
-  );
-
-  const showHandle = useCallback(
-    (type: HandleType, handlePosition: Position) => {
-      return type === "source"
-        ? handleSourcePositionRender(handlePosition)
-        : handleTargetPositionRender(handlePosition);
-    },
-    []
-  );
 
   return (
     <div className="p-3 group rounded-xl">
@@ -103,7 +81,7 @@ const PlaybookNode: React.FC<NodeProps<NodeComponentProps>> = (props) => {
             <Workflow className="size-6 text-primary" />
           </AvatarFallback>
         </Avatar>
-        <div className="flex flex-col items-start mr-9">
+        <div className="flex flex-col items-start mr-11">
           <p className="text-lg font-medium">{props.data.connector_name}</p>
           <p className="text-sm text-muted-foreground">{props.data.name}</p>
         </div>
@@ -111,14 +89,14 @@ const PlaybookNode: React.FC<NodeProps<NodeComponentProps>> = (props) => {
 
       {props.id != FLOW_SELECT_TRIGGER_ID && (
         <>
-          <div className="">
+          <div className="opacity-0 group-hover:opacity-100">
             {HANDLES.map((handle) => (
               <Handle
                 key={handle.id}
                 type={handle.type}
                 position={handle.position}
                 id={handle.id}
-                className={`opacity-0 group-hover:opacity-100 ${showHandle(handle.type, handle.position)}`}
+                className="!w-2 !h-2"
               />
             ))}
           </div>

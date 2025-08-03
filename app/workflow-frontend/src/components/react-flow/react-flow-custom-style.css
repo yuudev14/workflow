@@ -8,14 +8,14 @@
   --xy-theme-color-focus: #E8E8E8;
 
   /* Built-in Variables see https://reactflow.dev/learn/customization/theming */
-  --xy-node-border: 1px solid oklch(0.2600 0 0);
+  --xy-node-border: 2px solid oklch(43.128% 0.00005 271.152);
 
   --xy-node-boxshadow-default: 
     0px 3.54px 4.55px 0px #00000005, 
     0px 3.54px 4.55px 0px #0000000D, 
     0px 0.51px 1.01px 0px #0000001A;
 
-  --xy-node-border-radius: 20px;
+  --xy-node-border-radius: 10px;
 
   --xy-handle-background-color-default: #ffffff;
   --xy-handle-border-color-default: #AAAAAA;
