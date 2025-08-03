@@ -1,10 +1,67 @@
-import { Handle, Node, NodeProps, Position, useReactFlow } from "@xyflow/react";
+import {
+  Handle,
+  HandleType,
+  Node,
+  NodeProps,
+  Position,
+  useReactFlow,
+} from "@xyflow/react";
 import { Trash2, Workflow } from "lucide-react";
 import { Avatar, AvatarFallback } from "../ui/avatar";
 import { Tasks } from "@/services/worfklows/workflows.schema";
 import { FLOW_SELECT_TRIGGER_ID } from "@/settings/reactFlowIds";
+import { useCallback } from "react";
 
 type NodeComponentProps = Node<Tasks>;
+
+const HANDLES: {
+  type: HandleType;
+  position: Position;
+  id: string;
+}[] = [
+  // Target Handles
+  {
+    type: "target",
+    position: Position.Top,
+    id: "target-top",
+  },
+  {
+    type: "target",
+    position: Position.Bottom,
+    id: "target-bottom",
+  },
+  {
+    type: "target",
+    position: Position.Left,
+    id: "target-left",
+  },
+  {
+    type: "target",
+    position: Position.Right,
+    id: "target-right",
+  },
+  // Source Handles
+  {
+    type: "source",
+    position: Position.Top,
+    id: "source-top",
+  },
+  {
+    type: "source",
+    position: Position.Bottom,
+    id: "source-bottom",
+  },
+  {
+    type: "source",
+    position: Position.Left,
+    id: "source-left",
+  },
+  {
+    type: "source",
+    position: Position.Right,
+    id: "source-right",
+  },
+];
 
 const PlaybookNode: React.FC<NodeProps<NodeComponentProps>> = (props) => {
   const { deleteElements } = useReactFlow();
@@ -14,44 +71,66 @@ const PlaybookNode: React.FC<NodeProps<NodeComponentProps>> = (props) => {
     deleteElements({ nodes: [{ id: props.id }] });
   };
 
+  const handleSourcePositionRender = useCallback(
+    (handlePosition: Position) => {
+      return props.sourcePosition == handlePosition ? "opacity-100" : "";
+    },
+    [props.sourcePosition]
+  );
+
+  const handleTargetPositionRender = useCallback(
+    (handlePosition: Position) => {
+      return props.targetPosition == handlePosition ? "opacity-100" : "";
+    },
+    [props.targetPosition]
+  );
+
+  const showHandle = useCallback(
+    (type: HandleType, handlePosition: Position) => {
+      return type === "source"
+        ? handleSourcePositionRender(handlePosition)
+        : handleTargetPositionRender(handlePosition);
+    },
+    []
+  );
+
   return (
-    <>
+    <div className="p-3 group rounded-xl">
       {/* Node Content */}
       <div className="flex items-center w-full gap-3">
-        <Avatar className="size-7">
+        <Avatar className="size-10">
           <AvatarFallback>
-            <Workflow className="size-4 text-primary" />
+            <Workflow className="size-6 text-primary" />
           </AvatarFallback>
         </Avatar>
-        <div className="mr-9">
-          <p className="font-medium">{props.data.name}</p>
+        <div className="flex flex-col items-start mr-9">
+          <p className="text-lg font-medium">{props.data.connector_name}</p>
+          <p className="text-sm text-muted-foreground">{props.data.name}</p>
         </div>
       </div>
 
       {props.id != FLOW_SELECT_TRIGGER_ID && (
         <>
-          {/* Target Handles */}
-          <Handle type="target" position={Position.Top} id="target-top" />
-          <Handle type="target" position={Position.Bottom} id="target-bottom" />
-          <Handle type="target" position={Position.Left} id="target-left" />
-          <Handle type="target" position={Position.Right} id="target-right" />
-          {/* Source Handles */}
-          <Handle type="source" position={Position.Top} id="source-top" />
-          <Handle type="source" position={Position.Bottom} id="source-bottom" />
-          <Handle type="source" position={Position.Left} id="source-left" />
-          <Handle type="source" position={Position.Right} id="source-right" />
-
-          <div className="absolute flex items-center justify-center w-full gap-2 -bottom-8">
-            <button
-              className="p-1 rounded hover:bg-destructive/50"
-              onClick={handleDelete}
-              title="Delete Node">
-              <Trash2 className="w-4 h-4 text-destructive" />
-            </button>
+          <div className="">
+            {HANDLES.map((handle) => (
+              <Handle
+                key={handle.id}
+                type={handle.type}
+                position={handle.position}
+                id={handle.id}
+                className={`opacity-0 group-hover:opacity-100 ${showHandle(handle.type, handle.position)}`}
+              />
+            ))}
           </div>
+          <button
+            className="absolute p-1 border rounded opacity-0 bg-accent/80 -top-2 -right-2 group-hover:opacity-100 text-destructive/50 hover:text-destructive"
+            onClick={handleDelete}
+            title="Delete Node">
+            <Trash2 className="w-4 h-4" />
+          </button>
         </>
       )}
-    </>
+    </div>
   );
 };
 
