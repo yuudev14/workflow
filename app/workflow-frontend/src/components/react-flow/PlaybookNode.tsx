@@ -65,7 +65,6 @@ const HANDLES: {
 
 const PlaybookNode: React.FC<NodeProps<NodeComponentProps>> = (props) => {
   const { deleteElements } = useReactFlow();
-  console.log(props)
 
   const handleDelete = (e: any) => {
     e.stopPropagation(); // Prevents node selection when clicking delete

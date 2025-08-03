@@ -41,7 +41,7 @@ const SelectWorkflowTriggerOption = () => {
           label: "manual"
         },
         position: { x: 100, y: 100 },
-        type: "playbookNodes",
+        type: "startNode",
         draggable: true,
         
       })
