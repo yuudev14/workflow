@@ -9,6 +9,16 @@ export interface Workflow {
   edges?: Edges[] | null;
 }
 
+export interface WorkflowHistory {
+  id: string
+  workflow_id: string
+  status: "success" | "failed"
+  error: Record<string, any> | null
+  result: Record<string, any>
+  workflow_data: Pick<Workflow, "id" | "name" | "created_at" | "updated_at" | "description" | "trigger_type">
+  triggered_at: string
+}
+
 export type Tasks = {
   id: string;
   workflow_id: string;
