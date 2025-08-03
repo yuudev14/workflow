@@ -6,7 +6,6 @@ import {
   Node,
   Edge,
   MiniMap,
-  BackgroundVariant,
   MarkerType,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
@@ -14,9 +13,11 @@ import { useTheme } from "next-themes";
 import { useMemo } from "react";
 import PlaybookNode from "./PlaybookNode";
 import RemovableEdge from "./RemovableEdge";
+import StartNode from "./StartNode";
 
 const nodeTypes = {
   playbookNodes: PlaybookNode,
+  startNode: StartNode
 };
 
 const edgeTypes = {
