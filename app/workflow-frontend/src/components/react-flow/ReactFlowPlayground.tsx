@@ -25,7 +25,10 @@ const edgeTypes = {
 
 export const defaultEdgeOptions = {
   type: "removableEdge",
-  markerEnd: { type: MarkerType.ArrowClosed },
+  markerEnd: { type: MarkerType.ArrowClosed, width: 10, height: 10},
+  style: {
+      strokeWidth: 3,
+  }
 };
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any

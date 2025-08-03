@@ -1,13 +1,13 @@
-import React from 'react';
+import React from "react";
 import {
   BaseEdge,
   EdgeLabelRenderer,
   getBezierPath,
   useReactFlow,
   type EdgeProps,
-} from '@xyflow/react';
-import { X } from 'lucide-react';
- 
+} from "@xyflow/react";
+import { X } from "lucide-react";
+
 export default function RemovableEdge({
   id,
   sourceX,
@@ -27,23 +27,30 @@ export default function RemovableEdge({
     targetY,
     targetPosition,
   });
- 
+
   const { setEdges } = useReactFlow();
   const onEdgeClick = () => {
     setEdges((edges) => edges.filter((edge) => edge.id !== id));
   };
- 
+
   return (
     <>
       <BaseEdge path={edgePath} markerEnd={markerEnd} style={style} />
       <EdgeLabelRenderer>
         <div
+          className="absolute w-4 h-4 rounded-full nodrag nopan bg-accent "
+          style={{
+            transform: `translate(-50%, -50%) translate(${sourceX}px,${sourceY}px)`,
+          }}
+        />
+        <div
           className="absolute origin-center pointer-events-auto nodrag nopan"
           style={{
             transform: `translate(-50%, -50%) translate(${labelX}px,${labelY}px)`,
-          }}
-        >
-          <button className="flex justify-center items-center w-[30px] h-[30px] border-[5px] text-[var(--xy-edge-label-color-default)] cursor-pointer rounded-full text-[12px] pt-0" onClick={onEdgeClick}>
+          }}>
+          <button
+            className="flex justify-center items-center w-[30px] h-[30px] border-[5px] text-[var(--xy-edge-label-color-default)] cursor-pointer rounded-full text-[12px] pt-0"
+            onClick={onEdgeClick}>
             <X size={12} />
           </button>
         </div>
