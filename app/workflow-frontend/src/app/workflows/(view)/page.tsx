@@ -30,7 +30,7 @@ export default function Page() {
         ) : (
           workflowQuery.data?.entries?.map((workflow) => (
             <Link
-              href={"/workflows/update/" + workflow.id}
+              href={"/workflows/" + workflow.id}
               key={`playbook-${workflow.id}`}
               className="flex flex-col items-start w-full gap-2 p-4 text-sm leading-tight border rounded-sm dark:hover:bg-muted/30 hover:bg-background/30 bg-background shadow-2xs dark:shadow-none whitespace-nowrap dark:bg-muted/50 hover:text-sidebar-accent-foreground">
               <div className="flex flex-col w-full">
