@@ -43,7 +43,7 @@ const RouterButton: React.FC<{ workflowId: string }> = ({ workflowId }) => {
       <Tooltip>
         <TooltipTrigger className="border-2 border-l-0 cursor-pointer border-border bg-background">
           <Link
-            href={"/executions/" + workflowId}
+            href={"/workflows/" + workflowId + "/history"}
             className="flex items-center justify-center p-5 ">
             <History />
           </Link>
@@ -211,6 +211,7 @@ const Page: React.FC<{ params: Promise<{ workflow_id: string }> }> = ({
   params,
 }) => {
   const { workflow_id: workflowId } = React.use(params);
+  console.log(workflowId)
 
   const workflowQuery = useQuery({
     queryKey: ["workflow-" + workflowId, workflowId],

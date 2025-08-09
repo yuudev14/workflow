@@ -29,19 +29,15 @@ export default class WorkflowService {
     limit: number = 50,
     worfklowFilter: WorkflowFilterPayload = {}
   ): Promise<EntryResponse<Workflow>> => {
-    const res = await apiClient.get(
-      this.BASE_URL,
-      {
-        params: {
-          offset,
-          limit,
-          ...worfklowFilter,
-        },
-      }
-    );
+    const res = await apiClient.get(this.BASE_URL, {
+      params: {
+        offset,
+        limit,
+        ...worfklowFilter,
+      },
+    });
     return res.data;
   };
-
 
   /**
    * get workflows history
@@ -56,17 +52,24 @@ export default class WorkflowService {
   public static getWorkflowsHistory = async (
     offset: number = 0,
     limit: number = 50,
+    filter = {}
   ): Promise<EntryResponse<WorkflowHistory>> => {
-    const res = await apiClient.get(
-      this.BASE_URL + "/history",
-      {
-        params: {
-          offset,
-          limit,
-        },
-      }
-    );
+    const res = await apiClient.get(this.BASE_URL + "/history", {
+      params: {
+        offset,
+        limit,
+        ...filter
+      },
+    });
     return res.data;
+  };
+
+  public static getWorkflowsHistoryByWorkflowId = async (
+    worfklowHistoryId: string,
+    offset: number = 0,
+    limit: number = 50
+  ): Promise<EntryResponse<WorkflowHistory>> => {
+    return await this.getWorkflowsHistory(offset, limit, {workflow_history_id: worfklowHistoryId});
   };
 
   /**
@@ -80,9 +83,7 @@ export default class WorkflowService {
   public static getWorkflowTriggerTypes = async (): Promise<
     WorkflowTriggerType[]
   > => {
-    const res = await apiClient.get(
-      this.BASE_URL + "/triggers"
-    );
+    const res = await apiClient.get(this.BASE_URL + "/triggers");
     return res.data;
   };
 
@@ -94,12 +95,9 @@ export default class WorkflowService {
   public static getWorkflowById = async (
     workflowId: string
   ): Promise<Workflow> => {
-    const res = await apiClient.get(
-      this.BASE_URL + "/" + workflowId
-    );
+    const res = await apiClient.get(this.BASE_URL + "/" + workflowId);
     return res.data;
   };
-
 
   /**
    * get workflows by id
@@ -109,9 +107,7 @@ export default class WorkflowService {
   public static triggerWorkflow = async (
     workflowId: string
   ): Promise<Workflow> => {
-    const res = await apiClient.post(
-      this.BASE_URL + "/trigger/" + workflowId
-    );
+    const res = await apiClient.post(this.BASE_URL + "/trigger/" + workflowId);
     return res.data;
   };
 
@@ -123,25 +119,22 @@ export default class WorkflowService {
   public static createWorkflow = async (
     payload: CreateWorkflowPayload
   ): Promise<Workflow> => {
-    const res = await apiClient.post(
-      this.BASE_URL,
-      payload
-    );
+    const res = await apiClient.post(this.BASE_URL, payload);
     return res.data;
   };
 
   /**
    * update workflow api
-   * @param workflowId 
-   * @param payload 
-   * @returns 
+   * @param workflowId
+   * @param payload
+   * @returns
    */
   public static updateWorkflow = async (
     workflowId: string,
     payload: UpdateWorkflowPayload
   ): Promise<Workflow> => {
     const res = await apiClient.put(
-      this.BASE_URL + "/tasks/" + workflowId ,
+      this.BASE_URL + "/tasks/" + workflowId,
       payload
     );
     return res.data;

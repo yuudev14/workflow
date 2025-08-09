@@ -6,11 +6,17 @@ import (
 )
 
 type WorkflowFilter struct {
-	Name *string `form:"name"`
+	Name       *string    `form:"name"`
+	WorkflowID *uuid.UUID `form:"workflow_id"`
 }
 
 type WorkflowHistoryFilter struct {
-	Name *string `form:"name"`
+	Name       *string    `form:"name"`
+	WorkflowID *uuid.UUID `form:"workflow_id"`
+}
+
+type TaskHistoryFilter struct {
+	WorkflowID *uuid.UUID `form:"workflow_id"`
 }
 
 type UpdateWorkflowData struct {
