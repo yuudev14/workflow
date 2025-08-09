@@ -42,7 +42,8 @@ type WorkflowRepository interface {
 	GetWorkflowTriggers() ([]models.WorkflowTriggers, error)
 	GetWorkflowsCount(filter dto.WorkflowFilter) (int, error)
 	GetWorkflowById(id string) (*models.Workflows, error)
-	GetWorkflowHistoryById(id string) ([]models.TaskHistory, error)
+	GetTaskHistoryByWorkflowHistoryId(id string, filter dto.TaskHistoryFilter) ([]models.TaskHistory, error)
+	GetTaskHistoryCount(filter dto.TaskHistoryFilter) (int, error)
 	GetWorkflowGraphById(id string) (*WorkflowsGraph, error)
 	CreateWorkflow(workflow dto.WorkflowPayload) (*models.Workflows, error)
 	UpdateWorkflow(id string, workflow dto.UpdateWorkflowData) (*models.Workflows, error)
@@ -85,7 +86,9 @@ func (w *WorkflowRepositoryImpl) GetWorkflowHistory(offset int, limit int, filte
 
 	if filter.Name != nil {
 		statement = statement.Where("name ILIKE ?", fmt.Sprint("%", filter.Name, "%"))
-
+	}
+	if filter.WorkflowID != nil {
+		statement = statement.Where("workflow_id = ?", filter.WorkflowID)
 	}
 	return DbExecAndReturnMany[WorkflowHistoryResponse](
 		w.DB,
@@ -139,10 +142,23 @@ func (w *WorkflowRepositoryImpl) GetWorkflowById(id string) (*models.Workflows, 
 	)
 }
 
-// GetWorkflowHistoryById implements WorkflowRepository.
-func (w *WorkflowRepositoryImpl) GetWorkflowHistoryById(id string) ([]models.TaskHistory, error) {
+// GetTaskHistoryByWorkflowHistoryId implements WorkflowRepository.
+func (w *WorkflowRepositoryImpl) GetTaskHistoryByWorkflowHistoryId(id string, filter dto.TaskHistoryFilter) ([]models.TaskHistory, error) {
 	statement := sq.Select("*").From("task_history").Where("workflow_history_id = ?", id)
 	return DbExecAndReturnMany[models.TaskHistory](
+		w.DB,
+		statement,
+	)
+}
+
+// GetTaskHistorGetTaskHistoryCountyByWorkflowId implements WorkflowRepository.
+func (w *WorkflowRepositoryImpl) GetTaskHistoryCount(filter dto.TaskHistoryFilter) (int, error) {
+	statement := sq.Select("count(*)").From("task_history")
+	if filter.WorkflowID != nil {
+		statement = statement.Where("workflow_history_id = ?", filter.WorkflowID)
+
+	}
+	return DbExecAndReturnCount(
 		w.DB,
 		statement,
 	)

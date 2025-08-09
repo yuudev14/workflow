@@ -16,7 +16,8 @@ type WorkflowService interface {
 	GetWorkflowTriggers() ([]models.WorkflowTriggers, error)
 	GetWorkflowsCount(filter dto.WorkflowFilter) (int, error)
 	GetWorkflowById(id string) (*models.Workflows, error)
-	GetWorkflowHistoryById(id string) ([]models.TaskHistory, error)
+	GetTaskHistoryByWorkflowHistoryId(id string, filter dto.TaskHistoryFilter) ([]models.TaskHistory, error)
+	GetTaskHistoryCount(filter dto.TaskHistoryFilter) (int, error)
 	GetWorkflowGraphById(id string) (*repository.WorkflowsGraph, error)
 	CreateWorkflow(workflow dto.WorkflowPayload) (*models.Workflows, error)
 	UpdateWorkflow(id string, workflow dto.UpdateWorkflowData) (*models.Workflows, error)
@@ -80,9 +81,13 @@ func (w *WorkflowServiceImpl) GetWorkflowById(id string) (*models.Workflows, err
 }
 
 // GetWorkflowById implements WorkflowService.
-func (w *WorkflowServiceImpl) GetWorkflowHistoryById(id string) ([]models.TaskHistory, error) {
-	return w.WorkflowRepository.GetWorkflowHistoryById(id)
+func (w *WorkflowServiceImpl) GetTaskHistoryByWorkflowHistoryId(id string, filter dto.TaskHistoryFilter) ([]models.TaskHistory, error) {
+	return w.WorkflowRepository.GetTaskHistoryByWorkflowHistoryId(id, filter)
+}
 
+// GetTaskHistoryCount implements WorkflowService.
+func (w *WorkflowServiceImpl) GetTaskHistoryCount(filter dto.TaskHistoryFilter) (int, error) {
+	return w.WorkflowRepository.GetTaskHistoryCount(filter)
 }
 
 // GetWorkflowById implements WorkflowService.
