@@ -22,7 +22,7 @@ func SetupWorkflowController(route *gin.RouterGroup) {
 	{
 		r.GET("", workflowController.GetWorkflows)
 		r.GET("/history", workflowController.GetWorkflowHistory)
-		r.GET("/history/:workflow_history_id", workflowController.GetWorkflowHistoryById)
+		r.GET("/history/:workflow_history_id/tasks", workflowController.GetTaskHistoryByWorkflowId)
 		r.GET("/:workflow_id", workflowController.GetWorkflowGraphById)
 		r.GET("/triggers", workflowController.GetWorkflowTriggerTypes)
 		r.POST("/trigger/:workflow_id", workflowController.Trigger)
