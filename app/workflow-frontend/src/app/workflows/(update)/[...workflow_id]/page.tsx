@@ -15,38 +15,42 @@ import {
 } from "@/services/worfklows/workflows.schema";
 import WorkflowOperationProvider, {
   WorkflowOperationContext,
-} from "../../_providers/WorkflowOperationProvider";
-import WorkflowOperations from "../../_components/options/WorkflowOperations/WorkflowOperations";
+} from "../_providers/WorkflowOperationProvider";
+import WorkflowOperations from "../_components/options/WorkflowOperations/WorkflowOperations";
 import useWorkflowTrigger from "@/hooks/useWorkflowTrigger";
 import { FLOW_START_ID } from "@/settings/reactFlowIds";
+import { History, Play, Workflow } from "lucide-react";
+import Link from "next/link";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
-const Page: React.FC<{ params: Promise<{ workflow_id: string }> }> = ({
-  params,
-}) => {
-  const { workflow_id: workflowId } = React.use(params);
-
-  const workflowQuery = useQuery({
-    queryKey: ["workflow-" + workflowId, workflowId],
-    queryFn: async () => {
-      return WorkflowService.getWorkflowById(workflowId);
-    },
-    
-  });
-
-  if (workflowQuery.isLoading) {
-    return null;
-  }
-
-  if(workflowQuery.isError) {
-    return <div>No workflow found</div>
-  }
-
+const RouterButton: React.FC<{ workflowId: string }> = ({ workflowId }) => {
   return (
-    <ReactFlowProvider>
-      <WorkflowOperationProvider workflowQuery={workflowQuery}>
-        <WorkflowPlayground workflowId={workflowId} />
-      </WorkflowOperationProvider>
-    </ReactFlowProvider>
+    <div className="absolute flex flex-col top-1/5 z-1">
+      <Tooltip>
+        <TooltipTrigger className="border-2 border-b-0 border-l-0 cursor-pointer border-border bg-background">
+          <Link
+            href={"/workflows/" + workflowId}
+            className="flex items-center justify-center p-5 ">
+            <Workflow />
+          </Link>
+        </TooltipTrigger>
+        <TooltipContent side="right">Editor</TooltipContent>
+      </Tooltip>
+      <Tooltip>
+        <TooltipTrigger className="border-2 border-l-0 cursor-pointer border-border bg-background">
+          <Link
+            href={"/executions/" + workflowId}
+            className="flex items-center justify-center p-5 ">
+            <History />
+          </Link>
+        </TooltipTrigger>
+        <TooltipContent side="right">Execution</TooltipContent>
+      </Tooltip>
+    </div>
   );
 };
 
@@ -68,7 +72,7 @@ const WorkflowPlayground: React.FC<{ workflowId: string }> = ({
     openOperationSidebar,
     workflowData,
     updateWorkflowMutation,
-    onNodesDelete
+    onNodesDelete,
   } = useContext(WorkflowOperationContext);
 
   const { triggerWorkflowHandler } = useWorkflowTrigger({ workflowId });
@@ -101,7 +105,6 @@ const WorkflowPlayground: React.FC<{ workflowId: string }> = ({
       setCurrentNode(node);
       setConnectorToNodesConnector(node);
     } else if (node.data.name == FLOW_START_ID) {
-      
     }
     console.log(node);
   };
@@ -176,7 +179,7 @@ const WorkflowPlayground: React.FC<{ workflowId: string }> = ({
         <div>
           <h2 className="text-xl font-medium">{workflowData.name}</h2>
           <p className="text-xs text-muted-foreground">
-            {workflowData.description}asd asd asd
+            {workflowData.description}
           </p>
         </div>
         <div className="flex gap-2">
@@ -185,7 +188,8 @@ const WorkflowPlayground: React.FC<{ workflowId: string }> = ({
           <Button onClick={saveWorkflowHandler}>Save</Button>
         </div>
       </div>
-      <div className="h-[calc(100vh-8rem)]">
+      <div className="h-[calc(100vh-8rem)] relative">
+        <RouterButton workflowId={workflowId} />
         <ReactFlowPlayground<PlaybookTaskNode>
           flowProps={{
             nodes,
@@ -200,6 +204,35 @@ const WorkflowPlayground: React.FC<{ workflowId: string }> = ({
         />
       </div>
     </div>
+  );
+};
+
+const Page: React.FC<{ params: Promise<{ workflow_id: string }> }> = ({
+  params,
+}) => {
+  const { workflow_id: workflowId } = React.use(params);
+
+  const workflowQuery = useQuery({
+    queryKey: ["workflow-" + workflowId, workflowId],
+    queryFn: async () => {
+      return WorkflowService.getWorkflowById(workflowId);
+    },
+  });
+
+  if (workflowQuery.isLoading) {
+    return null;
+  }
+
+  if (workflowQuery.isError) {
+    return <div>No workflow found</div>;
+  }
+
+  return (
+    <ReactFlowProvider>
+      <WorkflowOperationProvider workflowQuery={workflowQuery}>
+        <WorkflowPlayground workflowId={workflowId} />
+      </WorkflowOperationProvider>
+    </ReactFlowProvider>
   );
 };
 
