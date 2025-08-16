@@ -207,10 +207,10 @@ const WorkflowPlayground: React.FC<{ workflowId: string }> = ({
   );
 };
 
-const Page: React.FC<{ params: Promise<{ workflow_id: string }> }> = ({
+const Page: React.FC<{ params: Promise<{ workflowId: string }> }> = ({
   params,
 }) => {
-  const { workflow_id: workflowId } = React.use(params);
+  const { workflowId } = React.use(params);
   console.log(workflowId)
 
   const workflowQuery = useQuery({
