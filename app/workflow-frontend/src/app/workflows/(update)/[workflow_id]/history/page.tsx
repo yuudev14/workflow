@@ -3,6 +3,7 @@
 import ReactFlowPlayground from "@/components/react-flow/ReactFlowPlayground";
 import WorkflowService from "@/services/worfklows/workflows";
 import { useQuery } from "@tanstack/react-query";
+import moment from "moment";
 import React from "react";
 
 const Pages: React.FC<{ params: Promise<{ workflow_id: string }> }> = ({
@@ -29,8 +30,8 @@ const Pages: React.FC<{ params: Promise<{ workflow_id: string }> }> = ({
             <li
               key={`history-${history.id}`}
               className="flex flex-col p-2 border-l-5 border-l-green-300">
-              <p>date</p>
-              <span className="text-sm text-muted-foreground">asdasd</span>
+              <p>{moment(history.triggered_at).toISOString()}</p>
+              <span className="text-sm text-muted-foreground">as</span>
             </li>
           ))}
         </ul>

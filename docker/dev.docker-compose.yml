@@ -43,6 +43,7 @@ services:
     build:
       context: ../app/connectors-service
       dockerfile: Dockerfile.worker
+    image: worker/workflow-worker:latest
     container_name: workflow_worker
     volumes:
       - ../app/connectors-service:/app
@@ -62,6 +63,7 @@ services:
     build:
       context: ../app/connectors-service
       dockerfile: Dockerfile.dev
+    image: worker/connector_service:latest
     container_name: connector_service
     ports:
       - "8000:8000"
@@ -88,6 +90,7 @@ services:
     build:
       context: ../app/workflow_service
       dockerfile: Dockerfile.dev
+    image: worker/workflow_service:latest
     container_name: workflow_service
     ports:
       - "8080:8080"
