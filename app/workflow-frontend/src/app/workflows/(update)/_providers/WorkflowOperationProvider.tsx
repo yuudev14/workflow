@@ -175,10 +175,6 @@ const WorkflowOperationProvider: React.FC<{
   let id = 1;
   const getId = () => `${id++}`;
 
-  useEffect(() => {
-    console.log(edges);
-  }, [edges]);
-
 
   useEffect(() => {
     if (workflowQuery.status == "error") {
@@ -196,7 +192,7 @@ const WorkflowOperationProvider: React.FC<{
         data:
           task.name === FLOW_START_ID
             ? {
-                label: FLOW_START_ID,
+                label: task.id,
                 ...task,
               }
             : task,
@@ -204,6 +200,7 @@ const WorkflowOperationProvider: React.FC<{
           x: task.x,
           y: task.y,
         },
+        // type: task.name === FLOW_START_ID ? "startNode" : "playbookNodes",
         type: task.name === FLOW_START_ID ? "startNode" : "playbookNodes",
         draggable: true,
       };
@@ -216,8 +213,8 @@ const WorkflowOperationProvider: React.FC<{
       source: edge.source_id,
       target: edge.destination_id,
       sourceHandle: edge.source_handle || "source-top",
-      targetHandle: edge.destination_handle || "target-top"
-      
+      targetHandle: edge.destination_handle || "target-top",
+      type: "removableEdge",
     });
     const _nodes = workflowQuery.data?.tasks?.map(setMappedNodes) ?? [];
     // if task doesnt have a node with a name start,
@@ -252,20 +249,17 @@ const WorkflowOperationProvider: React.FC<{
   }, [workflowData]);
 
   const onNodesDelete = useCallback((node: Node<PlaybookTaskNode>[]) => {
-    console.log(node)
-    if (node.find(_node => _node.data.name == FLOW_START_ID)) {
-      setWorkflowData(data => ({...data, trigger_type: null}))
-      setNodes(_nodes => _nodes.concat(INITIAL_START_NODE_VALUE))
-      setCurrentNode(INITIAL_START_NODE_VALUE)
-      setOpenOperationSidebar(true)
+    console.log(node);
+    if (node.find((_node) => _node.data.name == FLOW_START_ID)) {
+      setWorkflowData((data) => ({ ...data, trigger_type: null }));
+      setNodes((_nodes) => _nodes.concat(INITIAL_START_NODE_VALUE));
+      setCurrentNode(INITIAL_START_NODE_VALUE);
+      setOpenOperationSidebar(true);
     }
   }, []);
-  
 
   const onConnect = useCallback((params: Connection) => {
-    setEdges((eds) =>
-      addEdge(params, eds)
-    );
+    setEdges((eds) => addEdge(params, eds));
   }, []);
   const onConnectEnd = useCallback(
     (event: MouseEvent | TouchEvent, connectionState: FinalConnectionState) => {
@@ -289,7 +283,7 @@ const WorkflowOperationProvider: React.FC<{
 
         setNodes((nds) => nds.concat(newNode));
         setCurrentNode(newNode);
-        console.log(connectionState)
+        console.log(connectionState);
 
         setEdges((eds) =>
           eds.concat({
@@ -341,7 +335,7 @@ const WorkflowOperationProvider: React.FC<{
         isNewNode,
         setIsNewNode,
         closeSidebar,
-        onNodesDelete
+        onNodesDelete,
       }}>
       {children}
     </WorkflowOperationContext.Provider>

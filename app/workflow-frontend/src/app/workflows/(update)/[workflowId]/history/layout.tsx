@@ -35,6 +35,7 @@ const Layout: React.FC<
   return (
     <div className="flex h-[calc(100vh-4rem)]">
       <div className="w-[350px] bg-muted h-full p-4">
+        <Link href={`/workflows/${workflowId}`}>back</Link>
         <h2>Executions</h2>
         <ul className="mt-5">
           {worflowHistoryQuery.data?.entries.map((history) => (

@@ -2,6 +2,7 @@ package workflow_controller_v1
 
 import (
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"net/http"
 
@@ -13,7 +14,6 @@ import (
 	"github.com/yuudev14-workflow/workflow-service/models"
 	"github.com/yuudev14-workflow/workflow-service/pkg/logging"
 	rest "github.com/yuudev14-workflow/workflow-service/pkg/rests"
-	"github.com/yuudev14-workflow/workflow-service/pkg/types"
 	"github.com/yuudev14-workflow/workflow-service/service"
 )
 
@@ -268,12 +268,14 @@ func (w *WorkflowController) UpsertTasks(
 	for _, node := range nodes {
 		nodeToUpsert = append(nodeToUpsert, models.Tasks{
 			Name: node.Name,
-			Parameters: func() types.JsonType {
+			Parameters: func() json.RawMessage {
 				if node.Parameters != nil {
-					return types.JsonType(*node.Parameters)
+					b, _ := json.Marshal(node.Parameters)
+					return b
 				}
 				return nil
 			}(),
+
 			Description:   node.Description,
 			Config:        node.Config.Value,
 			ConnectorName: node.ConnectorName,

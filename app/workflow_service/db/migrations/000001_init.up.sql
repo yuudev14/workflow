@@ -67,7 +67,8 @@ CREATE TABLE
     status workflow_status NOT NULL DEFAULT 'in_progress',
     error TEXT,
     result JSONB,
-    triggered_at TIMESTAMP NOT NULL DEFAULT NOW()
+    triggered_at TIMESTAMP NOT NULL DEFAULT NOW(),
+    edges JSONB
   );
 
 CREATE TABLE

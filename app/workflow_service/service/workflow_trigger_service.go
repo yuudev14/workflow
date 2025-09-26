@@ -82,6 +82,18 @@ func (w *WorkflowTriggerServiceImpl) TriggerWorkflow(workflowId string) (*TaskMe
 		logging.Sugar.Errorf("error: ", edgesErr)
 		return nil, edgesErr
 	}
+
+	workflowEdges := []models.Edges{}
+	for _, edge := range edges {
+		workflowEdges = append(workflowEdges, models.Edges{
+			ID:                edge.ID,
+			WorkflowID:        edge.WorkflowID,
+			DestinationID:     edge.DestinationID,
+			SourceID:          edge.SourceID,
+			SourceHandle:      edge.SourceHandle,
+			DestinationHandle: edge.DestinationHandle,
+		})
+	}
 	tasksMap, graph := w.PrepareWorkflowMessage(tasks, edges)
 
 	// create transacton
@@ -92,7 +104,7 @@ func (w *WorkflowTriggerServiceImpl) TriggerWorkflow(workflowId string) (*TaskMe
 		return nil, txErr
 	}
 
-	workflowHistory, workflowHistoryErr := w.WorkflowService.CreateWorkflowHistory(tx, workflowId)
+	workflowHistory, workflowHistoryErr := w.WorkflowService.CreateWorkflowHistory(tx, workflowId, workflowEdges)
 	if workflowHistoryErr != nil {
 		tx.Rollback()
 		return nil, workflowHistoryErr
