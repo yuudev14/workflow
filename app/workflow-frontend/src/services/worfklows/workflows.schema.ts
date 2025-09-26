@@ -26,7 +26,7 @@ export type WorkflowHistoryFilter = Partial<
   Omit<WorkflowHistory, "workflow_data" | "triggered_at"> & {
     triggered_at_start: Date;
     triggered_at_end: Date;
-    workflow_history_id: string
+    workflow_history_id: string;
   }
 >;
 
@@ -45,6 +45,26 @@ export type Tasks = {
   operation: string;
   created_at: string;
   updated_at: string;
+};
+
+export type TasksHistory = {
+  id: string;
+  workflow_history_id: string;
+  task_id: string;
+  status: "success" | "failed";
+  error: Record<string, any> | null;
+  result: Record<string, any> | null;
+  triggered_at: string;
+  name: string;
+  config?: string | null;
+  connector_name: string | null;
+  connector_id: string | null;
+  operation: string;
+  description: string;
+  parameters?: string | null;
+  x: number;
+  y: number;
+  destination_ids: string[];
 };
 
 export interface Edges {

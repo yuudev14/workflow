@@ -106,7 +106,6 @@ const WorkflowPlayground: React.FC<{ workflowId: string }> = ({
       setConnectorToNodesConnector(node);
     } else if (node.data.name == FLOW_START_ID) {
     }
-    console.log(node);
   };
 
   /**

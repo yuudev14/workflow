@@ -2,10 +2,12 @@ import settings from "@/settings";
 import { EntryResponse } from "../common/schema";
 import {
   CreateWorkflowPayload,
+  TasksHistory,
   UpdateWorkflowPayload,
   Workflow,
   WorkflowFilterPayload,
   WorkflowHistory,
+  WorkflowHistoryFilter,
   WorkflowTriggerType,
 } from "./workflows.schema";
 import apiClient from "../common/client";
@@ -52,7 +54,7 @@ export default class WorkflowService {
   public static getWorkflowsHistory = async (
     offset: number = 0,
     limit: number = 50,
-    filter = {}
+    filter: WorkflowHistoryFilter = {}
   ): Promise<EntryResponse<WorkflowHistory>> => {
     const res = await apiClient.get(this.BASE_URL + "/history", {
       params: {
@@ -70,6 +72,14 @@ export default class WorkflowService {
     limit: number = 50
   ): Promise<EntryResponse<WorkflowHistory>> => {
     return await this.getWorkflowsHistory(offset, limit, {workflow_history_id: worfklowHistoryId});
+  };
+
+
+  public static getTaskHistoryByWorkflowHistoryId = async (
+    worfklowHistoryId: string,
+  ): Promise<EntryResponse<TasksHistory>> => {
+    const res = await apiClient.get(`${this.BASE_URL}/history/${worfklowHistoryId}/tasks`);
+    return res.data;
   };
 
   /**
