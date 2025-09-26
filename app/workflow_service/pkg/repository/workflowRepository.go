@@ -48,7 +48,7 @@ type WorkflowRepository interface {
 	CreateWorkflow(workflow dto.WorkflowPayload) (*models.Workflows, error)
 	UpdateWorkflow(id string, workflow dto.UpdateWorkflowData) (*models.Workflows, error)
 	UpdateWorkflowTx(tx *sqlx.Tx, id string, workflow dto.UpdateWorkflowData) (*models.Workflows, error)
-	CreateWorkflowHistory(tx *sqlx.Tx, id string) (*models.WorkflowHistory, error)
+	CreateWorkflowHistory(tx *sqlx.Tx, id string, edges []models.Edges) (*models.WorkflowHistory, error)
 	UpdateWorkflowHistoryStatus(workflow_history_id string, status string) (*models.WorkflowHistory, error)
 	UpdateWorkflowHistory(workflowHistoryId string, workflowHistory dto.UpdateWorkflowHistoryData) (*models.WorkflowHistory, error)
 }
@@ -182,8 +182,9 @@ func (w *WorkflowRepositoryImpl) GetWorkflowGraphById(id string) (*WorkflowsGrap
 }
 
 // CreateWorkflowHistory implements WorkflowRepository.
-func (w *WorkflowRepositoryImpl) CreateWorkflowHistory(tx *sqlx.Tx, id string) (*models.WorkflowHistory, error) {
-	statement := sq.Insert("workflow_history").Columns("workflow_id", "triggered_at").Values(id, time.Now()).Suffix("RETURNING *")
+func (w *WorkflowRepositoryImpl) CreateWorkflowHistory(tx *sqlx.Tx, id string, edges []models.Edges) (*models.WorkflowHistory, error) {
+	edgesJSON, _ := json.Marshal(edges)
+	statement := sq.Insert("workflow_history").Columns("workflow_id", "triggered_at", "edges").Values(id, time.Now(), edgesJSON).Suffix("RETURNING *")
 	return DbExecAndReturnOne[models.WorkflowHistory](
 		tx,
 		statement,

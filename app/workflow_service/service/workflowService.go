@@ -22,7 +22,7 @@ type WorkflowService interface {
 	CreateWorkflow(workflow dto.WorkflowPayload) (*models.Workflows, error)
 	UpdateWorkflow(id string, workflow dto.UpdateWorkflowData) (*models.Workflows, error)
 	UpdateWorkflowTx(tx *sqlx.Tx, id string, workflow dto.UpdateWorkflowData) (*models.Workflows, error)
-	CreateWorkflowHistory(tx *sqlx.Tx, id string) (*models.WorkflowHistory, error)
+	CreateWorkflowHistory(tx *sqlx.Tx, id string, edges []models.Edges) (*models.WorkflowHistory, error)
 	UpdateWorkflowHistory(workflowHistoryId string, workflowHistory dto.UpdateWorkflowHistoryData) (*models.WorkflowHistory, error)
 	UpdateWorkflowHistoryStatus(workflowHistoryId string, status string) (*models.WorkflowHistory, error)
 }
@@ -63,8 +63,8 @@ func (w *WorkflowServiceImpl) GetWorkflowsCount(filter dto.WorkflowFilter) (int,
 }
 
 // CreateWorkflowHistory implements WorkflowService.
-func (w *WorkflowServiceImpl) CreateWorkflowHistory(tx *sqlx.Tx, id string) (*models.WorkflowHistory, error) {
-	return w.WorkflowRepository.CreateWorkflowHistory(tx, id)
+func (w *WorkflowServiceImpl) CreateWorkflowHistory(tx *sqlx.Tx, id string, edges []models.Edges) (*models.WorkflowHistory, error) {
+	return w.WorkflowRepository.CreateWorkflowHistory(tx, id, edges)
 }
 
 // GetWorkflowById implements WorkflowService.
