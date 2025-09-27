@@ -7,6 +7,7 @@ import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { MoveLeft } from "lucide-react";
+import { TaskStatus } from "@/services/worfklows/workflows.schema";
 
 const Layout: React.FC<
   { params: Promise<{ workflowId: string }> } & Readonly<{
@@ -27,8 +28,14 @@ const Layout: React.FC<
       return await WorkflowService.getWorkflowsHistoryByWorkflowId(workflowId);
     },
     staleTime: 0,
-    gcTime: 0
+    gcTime: 0,
   });
+
+  const borderStatusIndicator = (status: TaskStatus) => {
+    if (status === "in_progress") return "border-l-yellow-300";
+    if (status === "success") return "border-l-green-300";
+    if (status === "failed") return "border-l-red-300";
+  };
 
   if (worflowHistoryQuery.isLoading) {
     return <></>;
@@ -36,7 +43,9 @@ const Layout: React.FC<
   return (
     <div className="flex h-[calc(100vh-4rem)]">
       <div className="w-[350px] bg-muted h-full p-4">
-        <Link href={`/workflows/${workflowId}`} className="flex items-center gap-1 text-xs underline">
+        <Link
+          href={`/workflows/${workflowId}`}
+          className="flex items-center gap-1 text-xs underline">
           <MoveLeft size={12} /> back
         </Link>
         <h2 className="mt-2">Executions</h2>
@@ -44,7 +53,7 @@ const Layout: React.FC<
           {worflowHistoryQuery.data?.entries.map((history) => (
             <li
               key={`history-${history.id}`}
-              className={`flex flex-col border-l-5 border-l-green-300 cursor-pointer ${
+              className={`flex flex-col border-l-5 ${borderStatusIndicator(history.status)} cursor-pointer ${
                 history.id === historyId ? "bg-accent" : ""
               }`}>
               <Link
