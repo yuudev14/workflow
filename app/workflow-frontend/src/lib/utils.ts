@@ -17,9 +17,3 @@ export const readableDate = (isoDateString: string, formatString: string = 'MMMM
   return moment(isoDateString).format(formatString)
 }
 
-
-export const borderStatusIndicator = (status: TaskStatus) => {
-    if (status === "in_progress") return "border-yellow-700"
-    if (status === "success") return "border-green-700"
-    if (status === "failed") return "border-red-700"
-  }
