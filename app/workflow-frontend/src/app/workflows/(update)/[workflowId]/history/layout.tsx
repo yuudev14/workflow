@@ -6,6 +6,7 @@ import WorkflowService from "@/services/worfklows/workflows";
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { MoveLeft } from "lucide-react";
 
 const Layout: React.FC<
   { params: Promise<{ workflowId: string }> } & Readonly<{
@@ -27,21 +28,23 @@ const Layout: React.FC<
     },
   });
 
-  
-
   if (worflowHistoryQuery.isLoading) {
     return <></>;
   }
   return (
     <div className="flex h-[calc(100vh-4rem)]">
       <div className="w-[350px] bg-muted h-full p-4">
-        <Link href={`/workflows/${workflowId}`}>back</Link>
-        <h2>Executions</h2>
+        <Link href={`/workflows/${workflowId}`} className="flex items-center gap-1 text-xs underline">
+          <MoveLeft size={12} /> back
+        </Link>
+        <h2 className="mt-2">Executions</h2>
         <ul className="mt-5">
           {worflowHistoryQuery.data?.entries.map((history) => (
             <li
               key={`history-${history.id}`}
-              className={`flex flex-col border-l-5 border-l-green-300 cursor-pointer ${history.id === historyId ? "bg-accent" : ""}`}>
+              className={`flex flex-col border-l-5 border-l-green-300 cursor-pointer ${
+                history.id === historyId ? "bg-accent" : ""
+              }`}>
               <Link
                 href={`/workflows/${workflowId}/history/${history.id}`}
                 className="p-2 pl-4 cursor-pointer">
