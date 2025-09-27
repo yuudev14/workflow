@@ -22,4 +22,4 @@ build:
 		npm run build
 
 show-logs:
-		docker compose -f ./docker/dev.docker-compose.yml logs --follow workflow_worker connector_service workflow_service
+		docker compose -f ./docker/dev.docker-compose.yml logs --follow $(SERVICE)

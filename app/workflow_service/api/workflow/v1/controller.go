@@ -105,6 +105,25 @@ func (w *WorkflowController) GetWorkflowGraphById(c *gin.Context) {
 	response.ResponseSuccess(workflow)
 }
 
+func (w *WorkflowController) GetWorkflowHistoryById(c *gin.Context) {
+	response := rest.Response{C: c}
+	workflowHistoryId := c.Param("workflow_history_id")
+	workflowHistoryUUID, uuidErr := uuid.Parse(workflowHistoryId)
+	if uuidErr != nil {
+		response.ResponseError(http.StatusNotFound, uuidErr)
+	}
+
+	workflow, workflowErr := w.WorkflowService.GetWorkflowHistoryById(workflowHistoryUUID)
+
+	if workflowErr != nil {
+		logging.Sugar.Error(workflowErr)
+		response.ResponseError(http.StatusNotFound, workflowErr)
+		return
+	}
+
+	response.ResponseSuccess(workflow)
+}
+
 func (w *WorkflowController) GetWorkflowHistory(c *gin.Context) {
 	var query dto.FilterQuery
 	var filter dto.WorkflowHistoryFilter
@@ -189,22 +208,36 @@ func (w *WorkflowController) GetWorkflowById(c *gin.Context) {
 }
 
 func (w *WorkflowController) GetTaskHistoryByWorkflowHistoryId(c *gin.Context) {
+	response := rest.Response{C: c}
 	var taskHistoryFilter dto.TaskHistoryFilter
 	workflowHistoryId := c.Param("workflow_history_id")
+	workflowHistoryUUID, uuidErr := uuid.Parse(workflowHistoryId)
+	if uuidErr != nil {
+		response.ResponseError(http.StatusNotFound, uuidErr)
+	}
 
-	response := rest.Response{C: c}
+	workflowHistory, workflowHistoryErr := w.WorkflowService.GetWorkflowHistoryById(workflowHistoryUUID)
+
+	if workflowHistoryErr != nil {
+		logging.Sugar.Error(workflowHistoryErr)
+		response.ResponseError(http.StatusNotFound, workflowHistoryErr)
+		return
+	}
 
 	logging.Sugar.Debugf("filter: %v", taskHistoryFilter)
 
 	logging.Sugar.Debug("getting worflows")
-	workflows, err := w.WorkflowService.GetTaskHistoryByWorkflowHistoryId(workflowHistoryId, taskHistoryFilter)
+	tasksHistory, err := w.WorkflowService.GetTaskHistoryByWorkflowHistoryId(workflowHistoryId, taskHistoryFilter)
 
 	if err != nil {
 		response.ResponseError(http.StatusBadRequest, err.Error())
 		return
 	}
 
-	response.ResponseSuccess(workflows)
+	response.ResponseSuccess(gin.H{
+		"tasks": tasksHistory,
+		"edges": workflowHistory.Edges,
+	})
 }
 
 func (w *WorkflowController) CreateWorkflow(c *gin.Context) {
