@@ -35,10 +35,9 @@ export type Tasks = {
   id: string;
   workflow_id: string;
   name: string;
-  description?: string | null;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  parameters?: Record<string, any> | null;
-  config?: string | null;
+  description: string | null;
+  parameters: Record<string, unknown> | null;
+  config: string | null;
   x: number;
   y: number;
   connector_name: string | null;
@@ -48,23 +47,17 @@ export type Tasks = {
   updated_at: string;
 };
 
-export type TasksHistory = {
-  id: string;
+export type TaskHistory = Pick<
+  Tasks,
+  "id" | "name" | "description" | "parameters" | "config" |
+  "x" | "y" | "connector_name" | "connector_id" | "operation"
+> & {
   workflow_history_id: string;
   task_id: string;
   status: "success" | "failed";
-  error: Record<string, any> | null;
-  result: Record<string, any> | null;
+  error: Record<string, unknown> | null;
+  result: Record<string, unknown> | null;
   triggered_at: string;
-  name: string;
-  config?: string | null;
-  connector_name: string | null;
-  connector_id: string | null;
-  operation: string;
-  description: string;
-  parameters?: string | null;
-  x: number;
-  y: number;
   destination_ids: string[];
 };
 

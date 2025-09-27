@@ -2,7 +2,8 @@ import settings from "@/settings";
 import { EntryResponse } from "../common/schema";
 import {
   CreateWorkflowPayload,
-  TasksHistory,
+  Edges,
+  TaskHistory,
   UpdateWorkflowPayload,
   Workflow,
   WorkflowFilterPayload,
@@ -77,7 +78,10 @@ export default class WorkflowService {
 
   public static getTaskHistoryByWorkflowHistoryId = async (
     worfklowHistoryId: string,
-  ): Promise<EntryResponse<TasksHistory>> => {
+  ): Promise<{
+    tasks: TaskHistory[];
+    edges: Edges[];
+  }> => {
     const res = await apiClient.get(`${this.BASE_URL}/history/${worfklowHistoryId}/tasks`);
     return res.data;
   };
