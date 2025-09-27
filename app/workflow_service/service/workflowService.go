@@ -3,6 +3,7 @@ package service
 import (
 	"fmt"
 
+	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
 	"github.com/yuudev14-workflow/workflow-service/dto"
 	"github.com/yuudev14-workflow/workflow-service/models"
@@ -11,6 +12,7 @@ import (
 
 type WorkflowService interface {
 	GetWorkflows(offset int, limit int, filter dto.WorkflowFilter) ([]models.Workflows, error)
+	GetWorkflowHistoryById(workflowHistoryId uuid.UUID) (*repository.WorkflowHistoryResponse, error)
 	GetWorkflowHistory(offset int, limit int, filter dto.WorkflowHistoryFilter) ([]repository.WorkflowHistoryResponse, error)
 	GetWorkflowHistoryCount(filter dto.WorkflowHistoryFilter) (int, error)
 	GetWorkflowTriggers() ([]models.WorkflowTriggers, error)
@@ -22,7 +24,7 @@ type WorkflowService interface {
 	CreateWorkflow(workflow dto.WorkflowPayload) (*models.Workflows, error)
 	UpdateWorkflow(id string, workflow dto.UpdateWorkflowData) (*models.Workflows, error)
 	UpdateWorkflowTx(tx *sqlx.Tx, id string, workflow dto.UpdateWorkflowData) (*models.Workflows, error)
-	CreateWorkflowHistory(tx *sqlx.Tx, id string, edges []models.Edges) (*models.WorkflowHistory, error)
+	CreateWorkflowHistory(tx *sqlx.Tx, id string, edges []repository.Edges) (*models.WorkflowHistory, error)
 	UpdateWorkflowHistory(workflowHistoryId string, workflowHistory dto.UpdateWorkflowHistoryData) (*models.WorkflowHistory, error)
 	UpdateWorkflowHistoryStatus(workflowHistoryId string, status string) (*models.WorkflowHistory, error)
 }
@@ -40,6 +42,10 @@ func NewWorkflowService(WorkflowRepository repository.WorkflowRepository) Workfl
 // GetWorkflows implements WorkflowService.
 func (w *WorkflowServiceImpl) GetWorkflows(offset int, limit int, filter dto.WorkflowFilter) ([]models.Workflows, error) {
 	return w.WorkflowRepository.GetWorkflows(offset, limit, filter)
+}
+
+func (w *WorkflowServiceImpl) GetWorkflowHistoryById(workflowHistoryId uuid.UUID) (*repository.WorkflowHistoryResponse, error) {
+	return w.WorkflowRepository.GetWorkflowHistoryById(workflowHistoryId)
 }
 
 // GetWorkflowHistory implements WorkflowService.
@@ -63,7 +69,7 @@ func (w *WorkflowServiceImpl) GetWorkflowsCount(filter dto.WorkflowFilter) (int,
 }
 
 // CreateWorkflowHistory implements WorkflowService.
-func (w *WorkflowServiceImpl) CreateWorkflowHistory(tx *sqlx.Tx, id string, edges []models.Edges) (*models.WorkflowHistory, error) {
+func (w *WorkflowServiceImpl) CreateWorkflowHistory(tx *sqlx.Tx, id string, edges []repository.Edges) (*models.WorkflowHistory, error) {
 	return w.WorkflowRepository.CreateWorkflowHistory(tx, id, edges)
 }
 

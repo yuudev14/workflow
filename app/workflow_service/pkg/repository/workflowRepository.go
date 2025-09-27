@@ -12,6 +12,7 @@ import (
 	"github.com/yuudev14-workflow/workflow-service/dto"
 	"github.com/yuudev14-workflow/workflow-service/models"
 	"github.com/yuudev14-workflow/workflow-service/pkg/types"
+	"github.com/yuudev14-workflow/workflow-service/pkg/utils"
 )
 
 type WorkflowsGraph struct {
@@ -26,17 +27,19 @@ type WorkflowsGraph struct {
 }
 
 type WorkflowHistoryResponse struct {
-	ID           uuid.UUID       `db:"id" json:"id"`
-	WorkflowID   uuid.UUID       `db:"workflow_id" json:"workflow_id"`
-	WorkflowData json.RawMessage `db:"workflow_data" json:"workflow_data"`
-	Status       string          `db:"status" json:"status"`
-	Error        *string         `db:"error" json:"error"`
-	Result       json.RawMessage `db:"result" json:"result"`
-	TriggeredAt  time.Time       `db:"triggered_at" json:"triggered_at"`
+	ID           uuid.UUID        `db:"id" json:"id"`
+	WorkflowID   uuid.UUID        `db:"workflow_id" json:"workflow_id"`
+	WorkflowData json.RawMessage  `db:"workflow_data" json:"workflow_data"`
+	Status       string           `db:"status" json:"status"`
+	Error        *string          `db:"error" json:"error"`
+	Result       *json.RawMessage `db:"result" json:"result"`
+	TriggeredAt  time.Time        `db:"triggered_at" json:"triggered_at"`
+	Edges        json.RawMessage  `db:"edges" json:"edges"`
 }
 
 type WorkflowRepository interface {
 	GetWorkflows(offset int, limit int, filter dto.WorkflowFilter) ([]models.Workflows, error)
+	GetWorkflowHistoryById(workflowHistoryId uuid.UUID) (*WorkflowHistoryResponse, error)
 	GetWorkflowHistory(offset int, limit int, filter dto.WorkflowHistoryFilter) ([]WorkflowHistoryResponse, error)
 	GetWorkflowHistoryCount(filter dto.WorkflowHistoryFilter) (int, error)
 	GetWorkflowTriggers() ([]models.WorkflowTriggers, error)
@@ -48,7 +51,7 @@ type WorkflowRepository interface {
 	CreateWorkflow(workflow dto.WorkflowPayload) (*models.Workflows, error)
 	UpdateWorkflow(id string, workflow dto.UpdateWorkflowData) (*models.Workflows, error)
 	UpdateWorkflowTx(tx *sqlx.Tx, id string, workflow dto.UpdateWorkflowData) (*models.Workflows, error)
-	CreateWorkflowHistory(tx *sqlx.Tx, id string, edges []models.Edges) (*models.WorkflowHistory, error)
+	CreateWorkflowHistory(tx *sqlx.Tx, id string, edges []Edges) (*models.WorkflowHistory, error)
 	UpdateWorkflowHistoryStatus(workflow_history_id string, status string) (*models.WorkflowHistory, error)
 	UpdateWorkflowHistory(workflowHistoryId string, workflowHistory dto.UpdateWorkflowHistoryData) (*models.WorkflowHistory, error)
 }
@@ -73,6 +76,20 @@ func (w *WorkflowRepositoryImpl) GetWorkflows(offset int, limit int, filter dto.
 
 	}
 	return DbExecAndReturnMany[models.Workflows](
+		w.DB,
+		statement,
+	)
+}
+
+// GetWorkflowHistoryById implements WorkflowRepository.
+func (w *WorkflowRepositoryImpl) GetWorkflowHistoryById(workflowHistoryId uuid.UUID) (*WorkflowHistoryResponse, error) {
+	statement := sq.
+		Select("workflow_history.*, to_jsonb(workflows) AS workflow_data ").
+		From("workflow_history").
+		Join("workflows on workflows.id = workflow_history.workflow_id").
+		Where("workflow_history.id = ?", workflowHistoryId)
+
+	return DbExecAndReturnOne[WorkflowHistoryResponse](
 		w.DB,
 		statement,
 	)
@@ -182,8 +199,23 @@ func (w *WorkflowRepositoryImpl) GetWorkflowGraphById(id string) (*WorkflowsGrap
 }
 
 // CreateWorkflowHistory implements WorkflowRepository.
-func (w *WorkflowRepositoryImpl) CreateWorkflowHistory(tx *sqlx.Tx, id string, edges []models.Edges) (*models.WorkflowHistory, error) {
-	edgesJSON, _ := json.Marshal(edges)
+func (w *WorkflowRepositoryImpl) CreateWorkflowHistory(tx *sqlx.Tx, id string, edges []Edges) (*models.WorkflowHistory, error) {
+	modifiedEdges := make([]map[string]interface{}, len(edges))
+
+	for i, edge := range edges {
+		modifiedEdges[i] = map[string]interface{}{
+			"id":                    edge.ID,
+			"destination_id":        edge.DestinationID,
+			"source_id":             edge.SourceID,
+			"workflow_id":           edge.WorkflowID,
+			"destination_task_name": edge.DestinationTaskName,
+			"source_task_name":      edge.SourceTaskName,
+			"destination_handle":    utils.NullStringToInterface(edge.DestinationHandle),
+			"source_handle":         utils.NullStringToInterface(edge.SourceHandle),
+		}
+
+	}
+	edgesJSON, _ := json.Marshal(modifiedEdges)
 	statement := sq.Insert("workflow_history").Columns("workflow_id", "triggered_at", "edges").Values(id, time.Now(), edgesJSON).Suffix("RETURNING *")
 	return DbExecAndReturnOne[models.WorkflowHistory](
 		tx,

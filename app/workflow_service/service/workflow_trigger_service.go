@@ -83,17 +83,17 @@ func (w *WorkflowTriggerServiceImpl) TriggerWorkflow(workflowId string) (*TaskMe
 		return nil, edgesErr
 	}
 
-	workflowEdges := []models.Edges{}
-	for _, edge := range edges {
-		workflowEdges = append(workflowEdges, models.Edges{
-			ID:                edge.ID,
-			WorkflowID:        edge.WorkflowID,
-			DestinationID:     edge.DestinationID,
-			SourceID:          edge.SourceID,
-			SourceHandle:      edge.SourceHandle,
-			DestinationHandle: edge.DestinationHandle,
-		})
-	}
+	// workflowEdges := []models.Edges{}
+	// for _, edge := range edges {
+	// 	workflowEdges = append(workflowEdges, models.Edges{
+	// 		ID:                edge.ID,
+	// 		WorkflowID:        edge.WorkflowID,
+	// 		DestinationID:     edge.DestinationID,
+	// 		SourceID:          edge.SourceID,
+	// 		SourceHandle:      edge.SourceHandle,
+	// 		DestinationHandle: edge.DestinationHandle,
+	// 	})
+	// }
 	tasksMap, graph := w.PrepareWorkflowMessage(tasks, edges)
 
 	// create transacton
@@ -104,7 +104,7 @@ func (w *WorkflowTriggerServiceImpl) TriggerWorkflow(workflowId string) (*TaskMe
 		return nil, txErr
 	}
 
-	workflowHistory, workflowHistoryErr := w.WorkflowService.CreateWorkflowHistory(tx, workflowId, workflowEdges)
+	workflowHistory, workflowHistoryErr := w.WorkflowService.CreateWorkflowHistory(tx, workflowId, edges)
 	if workflowHistoryErr != nil {
 		tx.Rollback()
 		return nil, workflowHistoryErr

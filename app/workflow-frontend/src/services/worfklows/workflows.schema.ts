@@ -20,6 +20,7 @@ export interface WorkflowHistory {
     "id" | "name" | "created_at" | "updated_at" | "description" | "trigger_type"
   >;
   triggered_at: string;
+  edges: Edges[]
 }
 
 export type WorkflowHistoryFilter = Partial<
