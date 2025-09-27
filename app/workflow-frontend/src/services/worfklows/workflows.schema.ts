@@ -47,6 +47,8 @@ export type Tasks = {
   updated_at: string;
 };
 
+export type TaskStatus = "success" | "failed" | "in_progress"
+
 export type TaskHistory = Pick<
   Tasks,
   "id" | "name" | "description" | "parameters" | "config" |
@@ -54,7 +56,7 @@ export type TaskHistory = Pick<
 > & {
   workflow_history_id: string;
   task_id: string;
-  status: "success" | "failed";
+  status: TaskStatus;
   error: Record<string, unknown> | null;
   result: Record<string, unknown> | null;
   triggered_at: string;

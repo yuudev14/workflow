@@ -40,8 +40,7 @@ const Page: React.FC<{ params: Promise<{ workflowHistoryId: string }> }> = ({
         x: task.x,
         y: task.y,
       },
-      // type: task.name === FLOW_START_ID ? "startNode" : "playbookNodes",
-      type: task.name === FLOW_START_ID ? "startNode" : "playbookNodes",
+      type: task.name === FLOW_START_ID ? "startNode" : "taskHistoryNode",
       draggable: true,
     };
 
