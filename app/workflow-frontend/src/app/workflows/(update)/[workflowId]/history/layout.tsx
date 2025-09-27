@@ -26,6 +26,8 @@ const Layout: React.FC<
     queryFn: async () => {
       return await WorkflowService.getWorkflowsHistoryByWorkflowId(workflowId);
     },
+    staleTime: 0,
+    gcTime: 0
   });
 
   if (worflowHistoryQuery.isLoading) {
