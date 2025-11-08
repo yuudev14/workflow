@@ -1,5 +1,5 @@
 "use client";
-import React, { useMemo } from "react";
+import React, { useMemo, useState } from "react";
 import ReactFlowPlayground from "@/components/react-flow/ReactFlowPlayground";
 
 import { useQuery } from "@tanstack/react-query";
@@ -12,11 +12,13 @@ import {
 import { PlaybookTaskNode } from "@/components/react-flow/schema";
 import { Node } from "@xyflow/react";
 import { FLOW_START_ID } from "@/settings/reactFlowIds";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 const Page: React.FC<{ params: Promise<{ workflowHistoryId: string }> }> = ({
   params,
 }) => {
   const { workflowHistoryId } = React.use(params);
+  const [currentNode, setCurrentNode] = useState<TaskHistory>();
   const taskHistoryQuery = useQuery({
     queryKey: [`worfklow-task-history-${workflowHistoryId}`],
     queryFn: async () => {
@@ -70,14 +72,54 @@ const Page: React.FC<{ params: Promise<{ workflowHistoryId: string }> }> = ({
     return taskHistoryQuery.data.edges.map(setMappedEdges);
   }, [taskHistoryQuery.data]);
 
-
   return (
-    <ReactFlowPlayground
-      flowProps={{
-        nodes: nodes,
-        edges: edges,
-      }}
-    />
+    <div className="flex flex-1">
+      <ReactFlowPlayground
+        flowProps={{
+          nodes: nodes,
+          edges: edges,
+          onNodeDoubleClick: (e, node) => {
+            console.log(node.data);
+
+            setCurrentNode(node.data as TaskHistory);
+          },
+        }}
+      />
+      {currentNode && (
+        <div className="flex flex-col gap-2 bg-background px-5 py-7 border-l h-full w-[600px] max-w-[600px] right-0">
+          <h2>{currentNode.name}</h2>
+          <Tabs className="flex-1" defaultValue="output">
+            <TabsList>
+              <TabsTrigger value="output">Output</TabsTrigger>
+              <TabsTrigger value="parameters">Parameters</TabsTrigger>
+            </TabsList>
+
+            <TabsContent
+              className="flex-1 px-5 py-4 bg-accent/10"
+              key={`workflow-history-node-output`}
+              value="output">
+              <pre>
+                <code>{JSON.stringify(currentNode.result, null, 2)}</code>
+              </pre>
+            </TabsContent>
+            <TabsContent
+              className="flex-1 px-5 py-4 overflow-auto bg-accent/10"
+              key={`workflow-history-node-parameters`}
+              value="parameters">
+              {currentNode.parameters && (
+                <>
+                  <pre>
+                    <code>
+                      {JSON.stringify(currentNode.parameters, null, 2)}
+                    </code>
+                  </pre>
+                </>
+              )}
+            </TabsContent>
+          </Tabs>
+        </div>
+      )}
+    </div>
   );
 };
 
