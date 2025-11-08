@@ -70,11 +70,10 @@ const Layout: React.FC<
           ))}
         </ul>
       </div>
-      <div className="flex-1">
+      <>
 
       {children}
-      </div>
-      <div className="flex bg-secondary h-full w-[500px] right-0"></div>
+      </>
     </div>
   );
 };
