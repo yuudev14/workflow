@@ -42,7 +42,7 @@ const Layout: React.FC<
   }
   return (
     <div className="flex h-[calc(100vh-4rem)]">
-      <div className="w-[350px] bg-muted h-full p-4">
+      <div className="w-[350px] bg-muted h-full p-4 overflow-auto">
         <Link
           href={`/workflows/${workflowId}`}
           className="flex items-center gap-1 text-xs underline">
@@ -53,7 +53,9 @@ const Layout: React.FC<
           {worflowHistoryQuery.data?.entries.map((history) => (
             <li
               key={`history-${history.id}`}
-              className={`flex flex-col border-l-5 ${borderStatusIndicator(history.status)} cursor-pointer ${
+              className={`flex flex-col border-l-5 ${borderStatusIndicator(
+                history.status
+              )} cursor-pointer ${
                 history.id === historyId ? "bg-accent" : ""
               }`}>
               <Link
@@ -68,7 +70,11 @@ const Layout: React.FC<
           ))}
         </ul>
       </div>
+      <div className="flex-1">
+
       {children}
+      </div>
+      <div className="flex bg-secondary h-full w-[500px] right-0"></div>
     </div>
   );
 };
