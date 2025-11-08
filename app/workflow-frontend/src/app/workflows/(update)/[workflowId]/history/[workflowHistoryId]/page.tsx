@@ -9,7 +9,7 @@ import {
   TaskHistory,
   Tasks,
 } from "@/services/worfklows/workflows.schema";
-import { PlaybookTaskNode } from "@/components/react-flow/schema";
+import { PlaybookTaskHistoryNode, PlaybookTaskNode } from "@/components/react-flow/schema";
 import { Node } from "@xyflow/react";
 import { FLOW_START_ID } from "@/settings/reactFlowIds";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -29,7 +29,7 @@ const Page: React.FC<{ params: Promise<{ workflowHistoryId: string }> }> = ({
   });
 
   const setMappedNodes = (task: TaskHistory) => {
-    const data: Node<PlaybookTaskNode> = {
+    const data: Node<PlaybookTaskHistoryNode> = {
       id: task.task_id,
       data:
         task.name === FLOW_START_ID
