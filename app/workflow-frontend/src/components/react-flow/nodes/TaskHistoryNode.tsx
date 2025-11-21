@@ -33,11 +33,11 @@ const TaskHistoryNode: React.FC<NodeProps<Node<TaskHistory>>> = (props) => {
         </div>
       </div>
 
-      {/* {props.id != FLOW_SELECT_TRIGGER_ID && (
+      {props.id != FLOW_SELECT_TRIGGER_ID && (
         <>
-          <RenderHandles />
+          <RenderHandles shouldRenderNode={false} />
         </>
-      )} */}
+      )}
     </div>
   );
 };
