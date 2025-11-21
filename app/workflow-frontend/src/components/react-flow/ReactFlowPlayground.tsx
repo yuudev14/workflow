@@ -13,6 +13,7 @@ import { useTheme } from "next-themes";
 import { useMemo } from "react";
 import { PlaybookNode, StartNode, TaskHistoryNode } from "./nodes";
 import RemovableEdge from "./RemovableEdge";
+import EdgeHistory from "./EdgeHistory";
 
 const nodeTypes = {
   playbookNodes: PlaybookNode,
@@ -22,6 +23,7 @@ const nodeTypes = {
 
 const edgeTypes = {
   removableEdge: RemovableEdge,
+  edgeHistory: EdgeHistory
 };
 
 export const defaultEdgeOptions = {

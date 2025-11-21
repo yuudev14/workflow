@@ -4,15 +4,17 @@ import ReactFlowPlayground from "@/components/react-flow/ReactFlowPlayground";
 
 import { useQuery } from "@tanstack/react-query";
 import WorkflowService from "@/services/worfklows/workflows";
-import {
-  Edges,
-  TaskHistory,
-  Tasks,
-} from "@/services/worfklows/workflows.schema";
-import { PlaybookTaskHistoryNode, PlaybookTaskNode } from "@/components/react-flow/schema";
+import { Edges, TaskHistory } from "@/services/worfklows/workflows.schema";
+import { PlaybookTaskHistoryNode } from "@/components/react-flow/schema";
 import { Node } from "@xyflow/react";
 import { FLOW_START_ID } from "@/settings/reactFlowIds";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 
 const Page: React.FC<{ params: Promise<{ workflowHistoryId: string }> }> = ({
   params,
@@ -55,7 +57,7 @@ const Page: React.FC<{ params: Promise<{ workflowHistoryId: string }> }> = ({
     target: edge.destination_id,
     sourceHandle: edge.source_handle || "source-top",
     targetHandle: edge.destination_handle || "target-top",
-    type: "removableEdge",
+    type: "edgeHistory",
   });
 
   const nodes = useMemo(() => {
@@ -95,7 +97,7 @@ const Page: React.FC<{ params: Promise<{ workflowHistoryId: string }> }> = ({
             </TabsList>
 
             <TabsContent
-              className="flex-1 px-5 py-4 bg-accent/10"
+              className="flex-1 px-5 py-4 overflow-auto bg-accent/10"
               key={`workflow-history-node-output`}
               value="output">
               <pre>
@@ -103,17 +105,26 @@ const Page: React.FC<{ params: Promise<{ workflowHistoryId: string }> }> = ({
               </pre>
             </TabsContent>
             <TabsContent
-              className="flex-1 px-5 py-4 overflow-auto bg-accent/10"
+              className="flex-1 px-2 overflow-auto"
               key={`workflow-history-node-parameters`}
               value="parameters">
               {currentNode.parameters && (
-                <>
-                  <pre>
-                    <code>
-                      {JSON.stringify(currentNode.parameters, null, 2)}
-                    </code>
-                  </pre>
-                </>
+                <Accordion
+                  type="single"
+                  collapsible
+                  className="w-full"
+                  defaultValue="item-1">
+                  {Object.entries(currentNode.parameters).map(([key, val]) => (
+                    <AccordionItem value={key}>
+                      <AccordionTrigger className="font-bold text-lg">{key}</AccordionTrigger>
+                      <AccordionContent className="flex flex-col gap-4 text-balance">
+                        <pre className="bg-accent/20 py-2 px-1">
+                          <code>{val as any}</code>
+                        </pre>
+                      </AccordionContent>
+                    </AccordionItem>
+                  ))}
+                </Accordion>
               )}
             </TabsContent>
           </Tabs>
