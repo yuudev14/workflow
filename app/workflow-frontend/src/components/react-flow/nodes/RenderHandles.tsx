@@ -50,7 +50,7 @@ const HANDLES: {
   },
 ];
 
-const RenderHandles = () => {
+const RenderHandles: React.FC<{shouldRenderNode?: boolean}> = ({shouldRenderNode = true}) => {
   return (
     <div className="opacity-0 group-hover:opacity-100">
       {HANDLES.map((handle) => (
@@ -59,7 +59,7 @@ const RenderHandles = () => {
           type={handle.type}
           position={handle.position}
           id={handle.id}
-          className="!w-2 !h-2"
+          className={shouldRenderNode ? "!w-2 !h-2" : "opacity-0"}
         />
       ))}
     </div>
