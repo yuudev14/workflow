@@ -10,9 +10,9 @@ import (
 
 	"github.com/jmoiron/sqlx"
 	"github.com/yuudev14-workflow/workflow-service/dto"
+	"github.com/yuudev14-workflow/workflow-service/internal/types"
+	"github.com/yuudev14-workflow/workflow-service/internal/utils"
 	"github.com/yuudev14-workflow/workflow-service/models"
-	"github.com/yuudev14-workflow/workflow-service/pkg/types"
-	"github.com/yuudev14-workflow/workflow-service/pkg/utils"
 )
 
 type WorkflowsGraph struct {

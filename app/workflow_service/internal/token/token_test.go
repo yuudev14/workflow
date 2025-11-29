@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/yuudev14-workflow/workflow-service/pkg/token"
+	"github.com/yuudev14-workflow/workflow-service/internal/token"
 
 	"github.com/golang-jwt/jwt/v5"
 )

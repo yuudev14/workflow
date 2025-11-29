@@ -8,8 +8,8 @@ import (
 
 	"github.com/jmoiron/sqlx"
 	_ "github.com/lib/pq"
-	"github.com/yuudev14-workflow/workflow-service/pkg/logging"
-	"github.com/yuudev14-workflow/workflow-service/pkg/types"
+	"github.com/yuudev14-workflow/workflow-service/internal/logging"
+	"github.com/yuudev14-workflow/workflow-service/internal/types"
 )
 
 func DbExecAndReturnCount(execer sqlx.ExtContext, sqlizer sq.Sqlizer) (int, error) {

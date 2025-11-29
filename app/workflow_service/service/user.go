@@ -4,8 +4,8 @@ import (
 	"fmt"
 
 	"github.com/yuudev14-workflow/workflow-service/dto"
+	"github.com/yuudev14-workflow/workflow-service/internal/repository"
 	"github.com/yuudev14-workflow/workflow-service/models"
-	"github.com/yuudev14-workflow/workflow-service/pkg/repository"
 	"golang.org/x/crypto/bcrypt"
 )
 

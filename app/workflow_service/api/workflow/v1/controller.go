@@ -11,9 +11,9 @@ import (
 	"github.com/jmoiron/sqlx"
 	"github.com/yuudev14-workflow/workflow-service/db"
 	"github.com/yuudev14-workflow/workflow-service/dto"
+	"github.com/yuudev14-workflow/workflow-service/internal/logging"
+	rest "github.com/yuudev14-workflow/workflow-service/internal/rests"
 	"github.com/yuudev14-workflow/workflow-service/models"
-	"github.com/yuudev14-workflow/workflow-service/pkg/logging"
-	rest "github.com/yuudev14-workflow/workflow-service/pkg/rests"
 	"github.com/yuudev14-workflow/workflow-service/service"
 )
 

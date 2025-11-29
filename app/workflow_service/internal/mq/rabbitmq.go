@@ -3,7 +3,7 @@ package mq
 import (
 	"github.com/streadway/amqp"
 	"github.com/yuudev14-workflow/workflow-service/environment"
-	"github.com/yuudev14-workflow/workflow-service/pkg/logging"
+	"github.com/yuudev14-workflow/workflow-service/internal/logging"
 )
 
 var (
