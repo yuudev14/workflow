@@ -1,0 +1,29 @@
+syntax = "proto3";
+
+package workflow;
+
+option go_package = "internal/buffers;buffers";
+
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/struct.proto";
+
+service Workflow {
+  rpc HandleWorkflow (WorkflowStatusPayload) returns (WorkflowHistory) {}
+}
+
+message WorkflowStatusPayload {
+  string workflow_history_id = 1;
+  optional string status = 2;
+  optional string error = 3;
+  string result = 4;
+}
+
+message WorkflowHistory {
+  string id = 1;
+  string workflow_id = 2;
+  string status = 3;
+  optional string error = 4;
+  google.protobuf.Value result = 5;
+  google.protobuf.Timestamp triggered_at = 6;
+  google.protobuf.Struct edges = 7;
+}
