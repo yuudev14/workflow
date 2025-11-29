@@ -6,7 +6,7 @@ import (
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/gin-gonic/gin"
 	"github.com/jmoiron/sqlx"
-	"github.com/yuudev14-workflow/workflow-service/pkg/logging"
+	"github.com/yuudev14-workflow/workflow-service/internal/logging"
 )
 
 var DB *sqlx.DB

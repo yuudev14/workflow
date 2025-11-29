@@ -3,9 +3,9 @@ package service
 import (
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
+	"github.com/yuudev14-workflow/workflow-service/internal/logging"
+	"github.com/yuudev14-workflow/workflow-service/internal/repository"
 	"github.com/yuudev14-workflow/workflow-service/models"
-	"github.com/yuudev14-workflow/workflow-service/pkg/logging"
-	"github.com/yuudev14-workflow/workflow-service/pkg/repository"
 )
 
 type EdgeService interface {

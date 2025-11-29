@@ -5,14 +5,14 @@ import (
 	"net/http"
 	"time"
 
-	rest "github.com/yuudev14-workflow/workflow-service/pkg/rests"
-	"github.com/yuudev14-workflow/workflow-service/pkg/token"
+	rest "github.com/yuudev14-workflow/workflow-service/internal/rests"
+	"github.com/yuudev14-workflow/workflow-service/internal/token"
 
 	"github.com/astaxie/beego/validation"
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/yuudev14-workflow/workflow-service/dto"
-	"github.com/yuudev14-workflow/workflow-service/pkg/logging"
+	"github.com/yuudev14-workflow/workflow-service/internal/logging"
 	"github.com/yuudev14-workflow/workflow-service/service"
 )
 

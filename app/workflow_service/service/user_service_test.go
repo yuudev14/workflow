@@ -10,9 +10,9 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/yuudev14-workflow/workflow-service/dto"
 	"github.com/yuudev14-workflow/workflow-service/environment"
+	"github.com/yuudev14-workflow/workflow-service/internal/logging"
+	"github.com/yuudev14-workflow/workflow-service/internal/repository"
 	"github.com/yuudev14-workflow/workflow-service/models"
-	"github.com/yuudev14-workflow/workflow-service/pkg/logging"
-	"github.com/yuudev14-workflow/workflow-service/pkg/repository"
 	"github.com/yuudev14-workflow/workflow-service/service"
 	"golang.org/x/crypto/bcrypt"
 )
