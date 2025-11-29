@@ -10,9 +10,9 @@ import (
 	"github.com/lib/pq"
 	"github.com/yuudev14-workflow/workflow-service/db/queries"
 	"github.com/yuudev14-workflow/workflow-service/dto"
+	"github.com/yuudev14-workflow/workflow-service/internal/logging"
+	"github.com/yuudev14-workflow/workflow-service/internal/types"
 	"github.com/yuudev14-workflow/workflow-service/models"
-	"github.com/yuudev14-workflow/workflow-service/pkg/logging"
-	"github.com/yuudev14-workflow/workflow-service/pkg/types"
 )
 
 type TaskRepository interface {

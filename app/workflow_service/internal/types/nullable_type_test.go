@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/yuudev14-workflow/workflow-service/pkg/types"
+	"github.com/yuudev14-workflow/workflow-service/internal/types"
 )
 
 type TestStruct struct {

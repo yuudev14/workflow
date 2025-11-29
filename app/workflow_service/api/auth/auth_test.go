@@ -10,9 +10,9 @@ import (
 	"github.com/jmoiron/sqlx"
 	"github.com/yuudev14-workflow/workflow-service/db"
 	"github.com/yuudev14-workflow/workflow-service/environment"
+	"github.com/yuudev14-workflow/workflow-service/internal/logging"
+	"github.com/yuudev14-workflow/workflow-service/internal/repository"
 	"github.com/yuudev14-workflow/workflow-service/models"
-	"github.com/yuudev14-workflow/workflow-service/pkg/logging"
-	"github.com/yuudev14-workflow/workflow-service/pkg/repository"
 	"github.com/yuudev14-workflow/workflow-service/service"
 )
 
@@ -126,7 +126,7 @@ func TestMain(m *testing.M) {
 
 // 	"github.com/stretchr/testify/assert"
 // 	"github.com/yuudev14-workflow/workflow-service/api"
-// 	"github.com/yuudev14-workflow/workflow-service/pkg/logging"
+// 	"github.com/yuudev14-workflow/workflow-service/internal/logging"
 // )
 
 // func TestMain(m *testing.M) {

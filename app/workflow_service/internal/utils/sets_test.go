@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/yuudev14-workflow/workflow-service/pkg/utils"
+	"github.com/yuudev14-workflow/workflow-service/internal/utils"
 )
 
 func TestSet(t *testing.T) {

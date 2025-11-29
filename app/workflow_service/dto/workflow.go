@@ -2,7 +2,7 @@ package dto
 
 import (
 	"github.com/google/uuid"
-	"github.com/yuudev14-workflow/workflow-service/pkg/types"
+	"github.com/yuudev14-workflow/workflow-service/internal/types"
 )
 
 type WorkflowFilter struct {

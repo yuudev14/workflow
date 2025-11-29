@@ -7,10 +7,10 @@ import (
 
 	"github.com/yuudev14-workflow/workflow-service/db"
 	"github.com/yuudev14-workflow/workflow-service/dto"
-	"github.com/yuudev14-workflow/workflow-service/pkg/logging"
-	"github.com/yuudev14-workflow/workflow-service/pkg/mq"
-	"github.com/yuudev14-workflow/workflow-service/pkg/repository"
-	"github.com/yuudev14-workflow/workflow-service/pkg/types"
+	"github.com/yuudev14-workflow/workflow-service/internal/logging"
+	"github.com/yuudev14-workflow/workflow-service/internal/mq"
+	"github.com/yuudev14-workflow/workflow-service/internal/repository"
+	"github.com/yuudev14-workflow/workflow-service/internal/types"
 	"github.com/yuudev14-workflow/workflow-service/service"
 )
 
