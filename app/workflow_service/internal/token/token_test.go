@@ -14,10 +14,10 @@ func TestGenerateToken(t *testing.T) {
 	token, gotErr := token.GenerateToken(jwt.MapClaims{})
 
 	if gotErr != nil {
-		t.Errorf(gotErr.Error())
+		t.Errorf("%s", gotErr.Error())
 	}
 	if token == "" {
-		t.Errorf(gotErr.Error())
+		t.Errorf("%s", gotErr.Error())
 	}
 }
 
@@ -25,7 +25,7 @@ func TestGeneratePairToken(t *testing.T) {
 	accessToken, refreshToken, gotErr := token.GeneratePairToken(jwt.MapClaims{}, time.Now().Add(time.Hour).Unix())
 
 	if gotErr != nil {
-		t.Errorf(gotErr.Error())
+		t.Errorf("%s", gotErr.Error())
 	}
 	assert.NoError(t, gotErr)
 	assert.NotNil(t, accessToken)
