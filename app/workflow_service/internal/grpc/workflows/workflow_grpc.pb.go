@@ -2,13 +2,12 @@
 // versions:
 // - protoc-gen-go-grpc v1.6.0
 // - protoc             v3.21.12
-// source: internal/buffers/workflow.proto
+// source: workflow.proto
 
-package buffers
+package grpc
 
 import (
 	context "context"
-
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
@@ -20,7 +19,7 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	Workflow_HandleWorkflow_FullMethodName = "/workflow.Workflow/HandleWorkflow"
+	Workflow_HandleWorkflow_FullMethodName = "/Workflow/HandleWorkflow"
 )
 
 // WorkflowClient is the client API for Workflow service.
@@ -109,7 +108,7 @@ func _Workflow_HandleWorkflow_Handler(srv interface{}, ctx context.Context, dec 
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
 var Workflow_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "workflow.Workflow",
+	ServiceName: "Workflow",
 	HandlerType: (*WorkflowServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
@@ -118,5 +117,5 @@ var Workflow_ServiceDesc = grpc.ServiceDesc{
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
-	Metadata: "internal/buffers/workflow.proto",
+	Metadata: "workflow.proto",
 }
