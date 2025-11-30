@@ -2,9 +2,9 @@
 // versions:
 // 	protoc-gen-go v1.36.10
 // 	protoc        v3.21.12
-// source: internal/buffers/workflow.proto
+// source: workflow.proto
 
-package buffers
+package grpc
 
 import (
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
@@ -35,7 +35,7 @@ type WorkflowStatusPayload struct {
 
 func (x *WorkflowStatusPayload) Reset() {
 	*x = WorkflowStatusPayload{}
-	mi := &file_internal_buffers_workflow_proto_msgTypes[0]
+	mi := &file_workflow_proto_msgTypes[0]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -47,7 +47,7 @@ func (x *WorkflowStatusPayload) String() string {
 func (*WorkflowStatusPayload) ProtoMessage() {}
 
 func (x *WorkflowStatusPayload) ProtoReflect() protoreflect.Message {
-	mi := &file_internal_buffers_workflow_proto_msgTypes[0]
+	mi := &file_workflow_proto_msgTypes[0]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -60,7 +60,7 @@ func (x *WorkflowStatusPayload) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use WorkflowStatusPayload.ProtoReflect.Descriptor instead.
 func (*WorkflowStatusPayload) Descriptor() ([]byte, []int) {
-	return file_internal_buffers_workflow_proto_rawDescGZIP(), []int{0}
+	return file_workflow_proto_rawDescGZIP(), []int{0}
 }
 
 func (x *WorkflowStatusPayload) GetWorkflowHistoryId() string {
@@ -106,7 +106,7 @@ type WorkflowHistory struct {
 
 func (x *WorkflowHistory) Reset() {
 	*x = WorkflowHistory{}
-	mi := &file_internal_buffers_workflow_proto_msgTypes[1]
+	mi := &file_workflow_proto_msgTypes[1]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -118,7 +118,7 @@ func (x *WorkflowHistory) String() string {
 func (*WorkflowHistory) ProtoMessage() {}
 
 func (x *WorkflowHistory) ProtoReflect() protoreflect.Message {
-	mi := &file_internal_buffers_workflow_proto_msgTypes[1]
+	mi := &file_workflow_proto_msgTypes[1]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -131,7 +131,7 @@ func (x *WorkflowHistory) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use WorkflowHistory.ProtoReflect.Descriptor instead.
 func (*WorkflowHistory) Descriptor() ([]byte, []int) {
-	return file_internal_buffers_workflow_proto_rawDescGZIP(), []int{1}
+	return file_workflow_proto_rawDescGZIP(), []int{1}
 }
 
 func (x *WorkflowHistory) GetId() string {
@@ -183,11 +183,11 @@ func (x *WorkflowHistory) GetEdges() *structpb.Struct {
 	return nil
 }
 
-var File_internal_buffers_workflow_proto protoreflect.FileDescriptor
+var File_workflow_proto protoreflect.FileDescriptor
 
-const file_internal_buffers_workflow_proto_rawDesc = "" +
+const file_workflow_proto_rawDesc = "" +
 	"\n" +
-	"\x1finternal/buffers/workflow.proto\x12\bworkflow\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x1cgoogle/protobuf/struct.proto\"\xac\x01\n" +
+	"\x0eworkflow.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x1cgoogle/protobuf/struct.proto\"\xac\x01\n" +
 	"\x15WorkflowStatusPayload\x12.\n" +
 	"\x13workflow_history_id\x18\x01 \x01(\tR\x11workflowHistoryId\x12\x1b\n" +
 	"\x06status\x18\x02 \x01(\tH\x00R\x06status\x88\x01\x01\x12\x19\n" +
@@ -204,36 +204,36 @@ const file_internal_buffers_workflow_proto_rawDesc = "" +
 	"\x06result\x18\x05 \x01(\v2\x16.google.protobuf.ValueR\x06result\x12=\n" +
 	"\ftriggered_at\x18\x06 \x01(\v2\x1a.google.protobuf.TimestampR\vtriggeredAt\x12-\n" +
 	"\x05edges\x18\a \x01(\v2\x17.google.protobuf.StructR\x05edgesB\b\n" +
-	"\x06_error2Z\n" +
-	"\bWorkflow\x12N\n" +
-	"\x0eHandleWorkflow\x12\x1f.workflow.WorkflowStatusPayload\x1a\x19.workflow.WorkflowHistory\"\x00B\x1aZ\x18internal/buffers;buffersb\x06proto3"
+	"\x06_error2H\n" +
+	"\bWorkflow\x12<\n" +
+	"\x0eHandleWorkflow\x12\x16.WorkflowStatusPayload\x1a\x10.WorkflowHistory\"\x00b\x06proto3"
 
 var (
-	file_internal_buffers_workflow_proto_rawDescOnce sync.Once
-	file_internal_buffers_workflow_proto_rawDescData []byte
+	file_workflow_proto_rawDescOnce sync.Once
+	file_workflow_proto_rawDescData []byte
 )
 
-func file_internal_buffers_workflow_proto_rawDescGZIP() []byte {
-	file_internal_buffers_workflow_proto_rawDescOnce.Do(func() {
-		file_internal_buffers_workflow_proto_rawDescData = protoimpl.X.CompressGZIP(unsafe.Slice(unsafe.StringData(file_internal_buffers_workflow_proto_rawDesc), len(file_internal_buffers_workflow_proto_rawDesc)))
+func file_workflow_proto_rawDescGZIP() []byte {
+	file_workflow_proto_rawDescOnce.Do(func() {
+		file_workflow_proto_rawDescData = protoimpl.X.CompressGZIP(unsafe.Slice(unsafe.StringData(file_workflow_proto_rawDesc), len(file_workflow_proto_rawDesc)))
 	})
-	return file_internal_buffers_workflow_proto_rawDescData
+	return file_workflow_proto_rawDescData
 }
 
-var file_internal_buffers_workflow_proto_msgTypes = make([]protoimpl.MessageInfo, 2)
-var file_internal_buffers_workflow_proto_goTypes = []any{
-	(*WorkflowStatusPayload)(nil), // 0: workflow.WorkflowStatusPayload
-	(*WorkflowHistory)(nil),       // 1: workflow.WorkflowHistory
+var file_workflow_proto_msgTypes = make([]protoimpl.MessageInfo, 2)
+var file_workflow_proto_goTypes = []any{
+	(*WorkflowStatusPayload)(nil), // 0: WorkflowStatusPayload
+	(*WorkflowHistory)(nil),       // 1: WorkflowHistory
 	(*structpb.Value)(nil),        // 2: google.protobuf.Value
 	(*timestamppb.Timestamp)(nil), // 3: google.protobuf.Timestamp
 	(*structpb.Struct)(nil),       // 4: google.protobuf.Struct
 }
-var file_internal_buffers_workflow_proto_depIdxs = []int32{
-	2, // 0: workflow.WorkflowHistory.result:type_name -> google.protobuf.Value
-	3, // 1: workflow.WorkflowHistory.triggered_at:type_name -> google.protobuf.Timestamp
-	4, // 2: workflow.WorkflowHistory.edges:type_name -> google.protobuf.Struct
-	0, // 3: workflow.Workflow.HandleWorkflow:input_type -> workflow.WorkflowStatusPayload
-	1, // 4: workflow.Workflow.HandleWorkflow:output_type -> workflow.WorkflowHistory
+var file_workflow_proto_depIdxs = []int32{
+	2, // 0: WorkflowHistory.result:type_name -> google.protobuf.Value
+	3, // 1: WorkflowHistory.triggered_at:type_name -> google.protobuf.Timestamp
+	4, // 2: WorkflowHistory.edges:type_name -> google.protobuf.Struct
+	0, // 3: Workflow.HandleWorkflow:input_type -> WorkflowStatusPayload
+	1, // 4: Workflow.HandleWorkflow:output_type -> WorkflowHistory
 	4, // [4:5] is the sub-list for method output_type
 	3, // [3:4] is the sub-list for method input_type
 	3, // [3:3] is the sub-list for extension type_name
@@ -241,28 +241,28 @@ var file_internal_buffers_workflow_proto_depIdxs = []int32{
 	0, // [0:3] is the sub-list for field type_name
 }
 
-func init() { file_internal_buffers_workflow_proto_init() }
-func file_internal_buffers_workflow_proto_init() {
-	if File_internal_buffers_workflow_proto != nil {
+func init() { file_workflow_proto_init() }
+func file_workflow_proto_init() {
+	if File_workflow_proto != nil {
 		return
 	}
-	file_internal_buffers_workflow_proto_msgTypes[0].OneofWrappers = []any{}
-	file_internal_buffers_workflow_proto_msgTypes[1].OneofWrappers = []any{}
+	file_workflow_proto_msgTypes[0].OneofWrappers = []any{}
+	file_workflow_proto_msgTypes[1].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
-			RawDescriptor: unsafe.Slice(unsafe.StringData(file_internal_buffers_workflow_proto_rawDesc), len(file_internal_buffers_workflow_proto_rawDesc)),
+			RawDescriptor: unsafe.Slice(unsafe.StringData(file_workflow_proto_rawDesc), len(file_workflow_proto_rawDesc)),
 			NumEnums:      0,
 			NumMessages:   2,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
-		GoTypes:           file_internal_buffers_workflow_proto_goTypes,
-		DependencyIndexes: file_internal_buffers_workflow_proto_depIdxs,
-		MessageInfos:      file_internal_buffers_workflow_proto_msgTypes,
+		GoTypes:           file_workflow_proto_goTypes,
+		DependencyIndexes: file_workflow_proto_depIdxs,
+		MessageInfos:      file_workflow_proto_msgTypes,
 	}.Build()
-	File_internal_buffers_workflow_proto = out.File
-	file_internal_buffers_workflow_proto_goTypes = nil
-	file_internal_buffers_workflow_proto_depIdxs = nil
+	File_workflow_proto = out.File
+	file_workflow_proto_goTypes = nil
+	file_workflow_proto_depIdxs = nil
 }

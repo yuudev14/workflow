@@ -1,9 +1,5 @@
 syntax = "proto3";
 
-package workflow;
-
-option go_package = "internal/buffers;buffers";
-
 import "google/protobuf/timestamp.proto";
 import "google/protobuf/struct.proto";
 
