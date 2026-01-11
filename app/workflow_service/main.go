@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"log"
 	"net"
 
@@ -41,16 +40,18 @@ type server struct {
 func (s *server) HandleWorkflow(ctx context.Context, req *pb.WorkflowStatusPayload) (*pb.WorkflowHistory, error) {
 	workflowRepository := repository.NewWorkflowRepository(db.DB)
 	workflowService := service.NewWorkflowService(workflowRepository)
-	fmt.Println("YUUUU")
-	fmt.Println(req)
 	var result interface{}
-	if err := json.Unmarshal([]byte(*req.Result), &result); err != nil {
-		logging.Sugar.Error("Error unmarshalling workflow params:", err)
-		return nil, err
+	// only marshall if result is not ""
+	if *req.Result != "" {
+		if err := json.Unmarshal([]byte(*req.Result), &result); err != nil {
+			logging.Sugar.Error("Error unmarshalling workflow params:", err)
+			return nil, err
+		}
+		result = nil
 	}
 	res, err := workflowService.UpdateWorkflowHistory(req.WorkflowHistoryId, dto.UpdateWorkflowHistoryData{
-		Status: types.Nullable[string]{Value: req.Status},
-		Error:  types.Nullable[string]{Value: req.Error},
+		Status: types.Nullable[string]{Value: req.Status, Set: true},
+		Error:  types.Nullable[string]{Value: req.Error, Set: true},
 		Result: result,
 	})
 	// Example processing:
@@ -58,6 +59,47 @@ func (s *server) HandleWorkflow(ctx context.Context, req *pb.WorkflowStatusPaylo
 		Id:         res.ID.String(),
 		WorkflowId: res.WorkflowID.String(),
 		Status:     res.Status,
+	}, err
+}
+
+func (s *server) HandleTask(ctx context.Context, req *pb.TaskStatusPayload) (*pb.TaskHistory, error) {
+	workflowRepository := repository.NewWorkflowRepository(db.DB)
+	taskRepository := repository.NewTaskRepositoryImpl(db.DB)
+	workflowService := service.NewWorkflowService(workflowRepository)
+	taskService := service.NewTaskServiceImpl(taskRepository, workflowService)
+	var parameters interface{}
+	// only marshall if parameters is not ""
+	if *req.Parameters != "" {
+		if err := json.Unmarshal([]byte(*req.Parameters), &parameters); err != nil {
+			logging.Sugar.Error("Error unmarshalling parameters:", err)
+			return nil, err
+		}
+	}
+	var result interface{}
+	// only marshall if result is not ""
+	if req.Result != "" {
+		if err := json.Unmarshal([]byte(req.Result), &result); err != nil {
+			logging.Sugar.Error("Error unmarshalling result:", err)
+			return nil, err
+		}
+	}
+	res, err := taskService.UpdateTaskHistory(req.WorkflowHistoryId, req.TaskId, dto.UpdateTaskHistoryData{
+		Name:          req.Name,
+		Description:   req.Description,
+		Parameters:    parameters,
+		ConnectorName: types.Nullable[string]{Value: req.ConnectorName, Set: true},
+		ConnectorID:   types.Nullable[string]{Value: req.ConnectorId, Set: true},
+		Operation:     req.Operation,
+		Config:        types.Nullable[string]{Value: req.Config, Set: true},
+		X:             req.X,
+		Y:             req.Y,
+		Status:        types.Nullable[string]{Value: req.Status, Set: true},
+		Error:         types.Nullable[string]{Value: req.Error, Set: true},
+		Result:        result,
+	})
+	// Example processing:
+	return &pb.TaskHistory{
+		Id: res.ID.String(),
 	}, err
 }
 

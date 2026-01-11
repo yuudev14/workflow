@@ -5,6 +5,24 @@ import "google/protobuf/struct.proto";
 
 service Workflow {
   rpc HandleWorkflow (WorkflowStatusPayload) returns (WorkflowHistory) {}
+  rpc HandleTask (TaskStatusPayload) returns (TaskHistory) {}
+}
+
+message TaskStatusPayload {
+	string workflow_history_id = 1;
+	string task_id = 2;
+	string name = 3;
+	string description = 4;
+	optional string parameters = 5;
+	optional string connector_name = 6;
+	optional string connector_id = 7;
+	string operation = 8;
+	optional string config = 9;
+	float x = 10;
+	float y = 11;
+	optional string status = 12;
+	optional string error = 13;
+	string result = 14;
 }
 
 message WorkflowStatusPayload {
@@ -22,4 +40,25 @@ message WorkflowHistory {
   google.protobuf.Value result = 5;
   google.protobuf.Timestamp triggered_at = 6;
   google.protobuf.Struct edges = 7;
+}
+
+
+message TaskHistory {
+  string id = 1;
+  string workflow_history_id = 2;
+  string task_id = 3;
+  string status = 4;
+  optional string error = 5;
+  google.protobuf.Value result = 6;
+  google.protobuf.Timestamp triggered_at = 7;
+  string name = 8;
+  optional string config = 9;
+  optional string connector_name = 10;
+  optional string connect_id = 11;
+  string operation = 12;
+  string description = 13;
+  google.protobuf.Value parameters = 14;
+  float x = 15;
+  float y = 16;
+  repeated string destination_ids = 17;
 }
