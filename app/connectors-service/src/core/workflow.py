@@ -116,7 +116,7 @@ class WorkflowGraph:
             workflow_history_id=self.workflow_history_id,
             status=status,
             error=error,
-            result=json.dumps(result, default=str) if result else "",
+            result=json.dumps(result, default=str) if result else None,
         )
 
         resp = self.stub.HandleWorkflow(req)
@@ -157,7 +157,7 @@ class WorkflowGraph:
             status=status,
             error=error,
             result=json.dumps(result, default=str) if result else "",
-            parameters=json.dumps(task["parameters"], default=str) if task["parameters"] else "",
+            parameters=json.dumps(task["parameters"], default=str) if task["parameters"] else None,
             **extracted_task_fields,
         )
 
