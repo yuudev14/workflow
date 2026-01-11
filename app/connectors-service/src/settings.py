@@ -6,6 +6,7 @@ class Settings(BaseSettings):
     logging_level: str = "debug"
     celery_broker: str = "pyamqp://guest:guest@localhost:5672"
     celery_backend: str = "db+postgresql://postgres:password@localhost:5432/celery_logs?sslmode=disable"
+    grpc_workflow_host: str = "localhost:50051"
 
     mq_url: str = "amqp://guest:guest@localhost:5672/"
     workflow_queue: str = "workflow"

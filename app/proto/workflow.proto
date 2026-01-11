@@ -11,7 +11,7 @@ message WorkflowStatusPayload {
   string workflow_history_id = 1;
   optional string status = 2;
   optional string error = 3;
-  string result = 4;
+  optional string result = 4;
 }
 
 message WorkflowHistory {
