@@ -39,12 +39,23 @@ class WorkflowStub(object):
                 request_serializer=workflow__pb2.WorkflowStatusPayload.SerializeToString,
                 response_deserializer=workflow__pb2.WorkflowHistory.FromString,
                 _registered_method=True)
+        self.HandleTask = channel.unary_unary(
+                '/Workflow/HandleTask',
+                request_serializer=workflow__pb2.TaskStatusPayload.SerializeToString,
+                response_deserializer=workflow__pb2.TaskHistory.FromString,
+                _registered_method=True)
 
 
 class WorkflowServicer(object):
     """Missing associated documentation comment in .proto file."""
 
     def HandleWorkflow(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def HandleTask(self, request, context):
         """Missing associated documentation comment in .proto file."""
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
@@ -57,6 +68,11 @@ def add_WorkflowServicer_to_server(servicer, server):
                     servicer.HandleWorkflow,
                     request_deserializer=workflow__pb2.WorkflowStatusPayload.FromString,
                     response_serializer=workflow__pb2.WorkflowHistory.SerializeToString,
+            ),
+            'HandleTask': grpc.unary_unary_rpc_method_handler(
+                    servicer.HandleTask,
+                    request_deserializer=workflow__pb2.TaskStatusPayload.FromString,
+                    response_serializer=workflow__pb2.TaskHistory.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
@@ -86,6 +102,33 @@ class Workflow(object):
             '/Workflow/HandleWorkflow',
             workflow__pb2.WorkflowStatusPayload.SerializeToString,
             workflow__pb2.WorkflowHistory.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def HandleTask(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/Workflow/HandleTask',
+            workflow__pb2.TaskStatusPayload.SerializeToString,
+            workflow__pb2.TaskHistory.FromString,
             options,
             channel_credentials,
             insecure,
