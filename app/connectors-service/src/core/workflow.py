@@ -58,6 +58,7 @@ class WorkflowGraph:
         }
         self.queue = Queue(settings.workflow_processor_queue, durable=True)
         self.grpc_channel = grpc.insecure_channel(settings.grpc_workflow_host) if grpc_channel is None else grpc_channel
+        self.stub = workflow_pb2_grpc.WorkflowStub(self.grpc_channel)
 
     def invert_graph(self, successor_graph: dict):
         """
@@ -111,17 +112,14 @@ class WorkflowGraph:
         # )
         # return self._send_message_to_mq(payload.model_dump_json())
         
-        stub = workflow_pb2_grpc.WorkflowStub(self.grpc_channel)
-
         req = workflow_pb2.WorkflowStatusPayload(
             workflow_history_id=self.workflow_history_id,
             status=status,
             error=error,
-            result=json.dumps(result, default=str)
+            result=json.dumps(result, default=str) if result else "",
         )
 
-        resp = stub.HandleWorkflow(req)
-        print(resp, "Yuuuu")
+        resp = self.stub.HandleWorkflow(req)
         return resp
 
 
@@ -135,23 +133,36 @@ class WorkflowGraph:
     ):
         
         needed_fields = [
-            "name", "description", "parameters", "connector_name",
+            "name", "description", "connector_name",
             "connector_id", "operation", "config", "x", "y"
         ]
 
         extracted_task_fields = {key: task[key] for key in needed_fields}
-        payload = dto.message_payload.MessageProcessorPayload(
-            action="task_status",
-            params=dto.message_payload.TaskStatusPayload(
-                workflow_history_id=self.workflow_history_id,
-                task_id=task_id,
-                status=status,
-                result=result,
-                error=error,
-                **extracted_task_fields,
-            ),
+        # payload = dto.message_payload.MessageProcessorPayload(
+        #     action="task_status",
+        #     params=dto.message_payload.TaskStatusPayload(
+        #         workflow_history_id=self.workflow_history_id,
+        #         task_id=task_id,
+        #         status=status,
+        #         result=result,
+        #         error=error,
+        #         **extracted_task_fields,
+        #     ),
+        # )
+        # return self._send_message_to_mq(payload.model_dump_json())
+
+        req = workflow_pb2.TaskStatusPayload(
+            workflow_history_id=self.workflow_history_id,
+            task_id=task_id,
+            status=status,
+            error=error,
+            result=json.dumps(result, default=str) if result else "",
+            parameters=json.dumps(task["parameters"], default=str) if task["parameters"] else "",
+            **extracted_task_fields,
         )
-        return self._send_message_to_mq(payload.model_dump_json())
+
+        resp = self.stub.HandleTask(req)
+        return resp
     
     def process_node(
         self,

@@ -26,17 +26,21 @@ from google.protobuf import timestamp_pb2 as google_dot_protobuf_dot_timestamp__
 from google.protobuf import struct_pb2 as google_dot_protobuf_dot_struct__pb2
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x0eworkflow.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x1cgoogle/protobuf/struct.proto\"\x92\x01\n\x15WorkflowStatusPayload\x12\x1b\n\x13workflow_history_id\x18\x01 \x01(\t\x12\x13\n\x06status\x18\x02 \x01(\tH\x00\x88\x01\x01\x12\x12\n\x05\x65rror\x18\x03 \x01(\tH\x01\x88\x01\x01\x12\x13\n\x06result\x18\x04 \x01(\tH\x02\x88\x01\x01\x42\t\n\x07_statusB\x08\n\x06_errorB\t\n\x07_result\"\xe2\x01\n\x0fWorkflowHistory\x12\n\n\x02id\x18\x01 \x01(\t\x12\x13\n\x0bworkflow_id\x18\x02 \x01(\t\x12\x0e\n\x06status\x18\x03 \x01(\t\x12\x12\n\x05\x65rror\x18\x04 \x01(\tH\x00\x88\x01\x01\x12&\n\x06result\x18\x05 \x01(\x0b\x32\x16.google.protobuf.Value\x12\x30\n\x0ctriggered_at\x18\x06 \x01(\x0b\x32\x1a.google.protobuf.Timestamp\x12&\n\x05\x65\x64ges\x18\x07 \x01(\x0b\x32\x17.google.protobuf.StructB\x08\n\x06_error2H\n\x08Workflow\x12<\n\x0eHandleWorkflow\x12\x16.WorkflowStatusPayload\x1a\x10.WorkflowHistory\"\x00\x62\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x0eworkflow.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x1cgoogle/protobuf/struct.proto\"\xff\x02\n\x11TaskStatusPayload\x12\x1b\n\x13workflow_history_id\x18\x01 \x01(\t\x12\x0f\n\x07task_id\x18\x02 \x01(\t\x12\x0c\n\x04name\x18\x03 \x01(\t\x12\x13\n\x0b\x64\x65scription\x18\x04 \x01(\t\x12\x17\n\nparameters\x18\x05 \x01(\tH\x00\x88\x01\x01\x12\x1b\n\x0e\x63onnector_name\x18\x06 \x01(\tH\x01\x88\x01\x01\x12\x19\n\x0c\x63onnector_id\x18\x07 \x01(\tH\x02\x88\x01\x01\x12\x11\n\toperation\x18\x08 \x01(\t\x12\x13\n\x06\x63onfig\x18\t \x01(\tH\x03\x88\x01\x01\x12\t\n\x01x\x18\n \x01(\x02\x12\t\n\x01y\x18\x0b \x01(\x02\x12\x13\n\x06status\x18\x0c \x01(\tH\x04\x88\x01\x01\x12\x12\n\x05\x65rror\x18\r \x01(\tH\x05\x88\x01\x01\x12\x0e\n\x06result\x18\x0e \x01(\tB\r\n\x0b_parametersB\x11\n\x0f_connector_nameB\x0f\n\r_connector_idB\t\n\x07_configB\t\n\x07_statusB\x08\n\x06_error\"\x92\x01\n\x15WorkflowStatusPayload\x12\x1b\n\x13workflow_history_id\x18\x01 \x01(\t\x12\x13\n\x06status\x18\x02 \x01(\tH\x00\x88\x01\x01\x12\x12\n\x05\x65rror\x18\x03 \x01(\tH\x01\x88\x01\x01\x12\x13\n\x06result\x18\x04 \x01(\tH\x02\x88\x01\x01\x42\t\n\x07_statusB\x08\n\x06_errorB\t\n\x07_result\"\xe2\x01\n\x0fWorkflowHistory\x12\n\n\x02id\x18\x01 \x01(\t\x12\x13\n\x0bworkflow_id\x18\x02 \x01(\t\x12\x0e\n\x06status\x18\x03 \x01(\t\x12\x12\n\x05\x65rror\x18\x04 \x01(\tH\x00\x88\x01\x01\x12&\n\x06result\x18\x05 \x01(\x0b\x32\x16.google.protobuf.Value\x12\x30\n\x0ctriggered_at\x18\x06 \x01(\x0b\x32\x1a.google.protobuf.Timestamp\x12&\n\x05\x65\x64ges\x18\x07 \x01(\x0b\x32\x17.google.protobuf.StructB\x08\n\x06_error\"\xd8\x03\n\x0bTaskHistory\x12\n\n\x02id\x18\x01 \x01(\t\x12\x1b\n\x13workflow_history_id\x18\x02 \x01(\t\x12\x0f\n\x07task_id\x18\x03 \x01(\t\x12\x0e\n\x06status\x18\x04 \x01(\t\x12\x12\n\x05\x65rror\x18\x05 \x01(\tH\x00\x88\x01\x01\x12&\n\x06result\x18\x06 \x01(\x0b\x32\x16.google.protobuf.Value\x12\x30\n\x0ctriggered_at\x18\x07 \x01(\x0b\x32\x1a.google.protobuf.Timestamp\x12\x0c\n\x04name\x18\x08 \x01(\t\x12\x13\n\x06\x63onfig\x18\t \x01(\tH\x01\x88\x01\x01\x12\x1b\n\x0e\x63onnector_name\x18\n \x01(\tH\x02\x88\x01\x01\x12\x17\n\nconnect_id\x18\x0b \x01(\tH\x03\x88\x01\x01\x12\x11\n\toperation\x18\x0c \x01(\t\x12\x13\n\x0b\x64\x65scription\x18\r \x01(\t\x12*\n\nparameters\x18\x0e \x01(\x0b\x32\x16.google.protobuf.Value\x12\t\n\x01x\x18\x0f \x01(\x02\x12\t\n\x01y\x18\x10 \x01(\x02\x12\x17\n\x0f\x64\x65stination_ids\x18\x11 \x03(\tB\x08\n\x06_errorB\t\n\x07_configB\x11\n\x0f_connector_nameB\r\n\x0b_connect_id2z\n\x08Workflow\x12<\n\x0eHandleWorkflow\x12\x16.WorkflowStatusPayload\x1a\x10.WorkflowHistory\"\x00\x12\x30\n\nHandleTask\x12\x12.TaskStatusPayload\x1a\x0c.TaskHistory\"\x00\x62\x06proto3')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
 _builder.BuildTopDescriptorsAndMessages(DESCRIPTOR, 'workflow_pb2', _globals)
 if not _descriptor._USE_C_DESCRIPTORS:
   DESCRIPTOR._loaded_options = None
-  _globals['_WORKFLOWSTATUSPAYLOAD']._serialized_start=82
-  _globals['_WORKFLOWSTATUSPAYLOAD']._serialized_end=228
-  _globals['_WORKFLOWHISTORY']._serialized_start=231
-  _globals['_WORKFLOWHISTORY']._serialized_end=457
-  _globals['_WORKFLOW']._serialized_start=459
-  _globals['_WORKFLOW']._serialized_end=531
+  _globals['_TASKSTATUSPAYLOAD']._serialized_start=82
+  _globals['_TASKSTATUSPAYLOAD']._serialized_end=465
+  _globals['_WORKFLOWSTATUSPAYLOAD']._serialized_start=468
+  _globals['_WORKFLOWSTATUSPAYLOAD']._serialized_end=614
+  _globals['_WORKFLOWHISTORY']._serialized_start=617
+  _globals['_WORKFLOWHISTORY']._serialized_end=843
+  _globals['_TASKHISTORY']._serialized_start=846
+  _globals['_TASKHISTORY']._serialized_end=1318
+  _globals['_WORKFLOW']._serialized_start=1320
+  _globals['_WORKFLOW']._serialized_end=1442
 # @@protoc_insertion_point(module_scope)

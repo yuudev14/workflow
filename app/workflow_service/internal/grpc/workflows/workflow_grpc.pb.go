@@ -20,6 +20,7 @@ const _ = grpc.SupportPackageIsVersion9
 
 const (
 	Workflow_HandleWorkflow_FullMethodName = "/Workflow/HandleWorkflow"
+	Workflow_HandleTask_FullMethodName     = "/Workflow/HandleTask"
 )
 
 // WorkflowClient is the client API for Workflow service.
@@ -27,6 +28,7 @@ const (
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type WorkflowClient interface {
 	HandleWorkflow(ctx context.Context, in *WorkflowStatusPayload, opts ...grpc.CallOption) (*WorkflowHistory, error)
+	HandleTask(ctx context.Context, in *TaskStatusPayload, opts ...grpc.CallOption) (*TaskHistory, error)
 }
 
 type workflowClient struct {
@@ -47,11 +49,22 @@ func (c *workflowClient) HandleWorkflow(ctx context.Context, in *WorkflowStatusP
 	return out, nil
 }
 
+func (c *workflowClient) HandleTask(ctx context.Context, in *TaskStatusPayload, opts ...grpc.CallOption) (*TaskHistory, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(TaskHistory)
+	err := c.cc.Invoke(ctx, Workflow_HandleTask_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // WorkflowServer is the server API for Workflow service.
 // All implementations must embed UnimplementedWorkflowServer
 // for forward compatibility.
 type WorkflowServer interface {
 	HandleWorkflow(context.Context, *WorkflowStatusPayload) (*WorkflowHistory, error)
+	HandleTask(context.Context, *TaskStatusPayload) (*TaskHistory, error)
 	mustEmbedUnimplementedWorkflowServer()
 }
 
@@ -64,6 +77,9 @@ type UnimplementedWorkflowServer struct{}
 
 func (UnimplementedWorkflowServer) HandleWorkflow(context.Context, *WorkflowStatusPayload) (*WorkflowHistory, error) {
 	return nil, status.Error(codes.Unimplemented, "method HandleWorkflow not implemented")
+}
+func (UnimplementedWorkflowServer) HandleTask(context.Context, *TaskStatusPayload) (*TaskHistory, error) {
+	return nil, status.Error(codes.Unimplemented, "method HandleTask not implemented")
 }
 func (UnimplementedWorkflowServer) mustEmbedUnimplementedWorkflowServer() {}
 func (UnimplementedWorkflowServer) testEmbeddedByValue()                  {}
@@ -104,6 +120,24 @@ func _Workflow_HandleWorkflow_Handler(srv interface{}, ctx context.Context, dec 
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Workflow_HandleTask_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(TaskStatusPayload)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(WorkflowServer).HandleTask(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Workflow_HandleTask_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(WorkflowServer).HandleTask(ctx, req.(*TaskStatusPayload))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // Workflow_ServiceDesc is the grpc.ServiceDesc for Workflow service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -114,6 +148,10 @@ var Workflow_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "HandleWorkflow",
 			Handler:    _Workflow_HandleWorkflow_Handler,
+		},
+		{
+			MethodName: "HandleTask",
+			Handler:    _Workflow_HandleTask_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
