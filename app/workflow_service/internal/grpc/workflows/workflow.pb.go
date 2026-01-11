@@ -28,7 +28,7 @@ type WorkflowStatusPayload struct {
 	WorkflowHistoryId string                 `protobuf:"bytes,1,opt,name=workflow_history_id,json=workflowHistoryId,proto3" json:"workflow_history_id,omitempty"`
 	Status            *string                `protobuf:"bytes,2,opt,name=status,proto3,oneof" json:"status,omitempty"`
 	Error             *string                `protobuf:"bytes,3,opt,name=error,proto3,oneof" json:"error,omitempty"`
-	Result            string                 `protobuf:"bytes,4,opt,name=result,proto3" json:"result,omitempty"`
+	Result            *string                `protobuf:"bytes,4,opt,name=result,proto3,oneof" json:"result,omitempty"`
 	unknownFields     protoimpl.UnknownFields
 	sizeCache         protoimpl.SizeCache
 }
@@ -85,8 +85,8 @@ func (x *WorkflowStatusPayload) GetError() string {
 }
 
 func (x *WorkflowStatusPayload) GetResult() string {
-	if x != nil {
-		return x.Result
+	if x != nil && x.Result != nil {
+		return *x.Result
 	}
 	return ""
 }
@@ -187,14 +187,15 @@ var File_workflow_proto protoreflect.FileDescriptor
 
 const file_workflow_proto_rawDesc = "" +
 	"\n" +
-	"\x0eworkflow.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x1cgoogle/protobuf/struct.proto\"\xac\x01\n" +
+	"\x0eworkflow.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x1cgoogle/protobuf/struct.proto\"\xbc\x01\n" +
 	"\x15WorkflowStatusPayload\x12.\n" +
 	"\x13workflow_history_id\x18\x01 \x01(\tR\x11workflowHistoryId\x12\x1b\n" +
 	"\x06status\x18\x02 \x01(\tH\x00R\x06status\x88\x01\x01\x12\x19\n" +
-	"\x05error\x18\x03 \x01(\tH\x01R\x05error\x88\x01\x01\x12\x16\n" +
-	"\x06result\x18\x04 \x01(\tR\x06resultB\t\n" +
+	"\x05error\x18\x03 \x01(\tH\x01R\x05error\x88\x01\x01\x12\x1b\n" +
+	"\x06result\x18\x04 \x01(\tH\x02R\x06result\x88\x01\x01B\t\n" +
 	"\a_statusB\b\n" +
-	"\x06_error\"\x9d\x02\n" +
+	"\x06_errorB\t\n" +
+	"\a_result\"\x9d\x02\n" +
 	"\x0fWorkflowHistory\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1f\n" +
 	"\vworkflow_id\x18\x02 \x01(\tR\n" +

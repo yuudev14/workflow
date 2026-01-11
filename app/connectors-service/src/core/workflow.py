@@ -1,15 +1,20 @@
 """
 workflow core file
 """
+import json
 from graphlib import TopologicalSorter
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from connectors.core.connector import Connector
 from typing import Dict, TypedDict, Optional, Any
 from kombu import Connection, Queue
 import traceback
+import grpc
+from google.protobuf import struct_pb2
 from src.logger.logging import logger
 from src.settings import settings
 from src import dto
+from src.grpc.workflows import workflow_pb2
+from src.grpc.workflows import workflow_pb2_grpc
 
 
 
@@ -42,6 +47,7 @@ class WorkflowGraph:
         graph: Dict[str, list[str]],
         task_information: Dict[str, Task],
         workflow_history_id: str,
+        grpc_channel: grpc.Channel = None
     ):
         self.graph = graph
         self.task_information = task_information
@@ -51,6 +57,7 @@ class WorkflowGraph:
             "steps": {}
         }
         self.queue = Queue(settings.workflow_processor_queue, durable=True)
+        self.grpc_channel = grpc.insecure_channel(settings.grpc_workflow_host) if grpc_channel is None else grpc_channel
 
     def invert_graph(self, successor_graph: dict):
         """
@@ -93,16 +100,29 @@ class WorkflowGraph:
         result: Any | None = None,
         error: str | None = None,
     ):
-        payload = dto.message_payload.MessageProcessorPayload(
-            action="workflow_status",
-            params=dto.message_payload.WorkflowStatusPayload(
-                workflow_history_id=self.workflow_history_id,
-                status=status,
-                result=result,
-                error=error,
-            ),
+        # payload = dto.message_payload.MessageProcessorPayload(
+        #     action="workflow_status",
+        #     params=dto.message_payload.WorkflowStatusPayload(
+        #         workflow_history_id=self.workflow_history_id,
+        #         status=status,
+        #         result=result,
+        #         error=error,
+        #     ),
+        # )
+        # return self._send_message_to_mq(payload.model_dump_json())
+        
+        stub = workflow_pb2_grpc.WorkflowStub(self.grpc_channel)
+
+        req = workflow_pb2.WorkflowStatusPayload(
+            workflow_history_id=self.workflow_history_id,
+            status=status,
+            error=error,
+            result=json.dumps(result, default=str)
         )
-        return self._send_message_to_mq(payload.model_dump_json())
+
+        resp = stub.HandleWorkflow(req)
+        print(resp, "Yuuuu")
+        return resp
 
 
     def send_task_status(

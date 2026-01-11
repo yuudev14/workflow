@@ -30,7 +30,7 @@ func SetupWorkflowController(route *gin.RouterGroup) {
 		r.GET("/:workflow_id/tasks", workflowController.GetTasksByWorkflowId)
 		r.PUT("/:workflow_id", workflowController.UpdateWorkflow)
 		r.PUT("/tasks/:workflow_id", workflowController.UpdateWorkflowTasks)
-		r.PUT("/trigger/status/:workflow_history_id", workflowController.UpdateWorkflowStatus)
-		r.PUT("/trigger/status/:workflow_history_id/tasks/:task_id", workflowController.UpdateTaskStatus)
+		// r.PUT("/trigger/status/:workflow_history_id", workflowController.UpdateWorkflowStatus)
+		// r.PUT("/trigger/status/:workflow_history_id/tasks/:task_id", workflowController.UpdateTaskStatus)
 	}
 }
