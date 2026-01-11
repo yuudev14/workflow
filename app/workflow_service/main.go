@@ -41,8 +41,8 @@ func (s *server) HandleWorkflow(ctx context.Context, req *pb.WorkflowStatusPaylo
 	workflowRepository := repository.NewWorkflowRepository(db.DB)
 	workflowService := service.NewWorkflowService(workflowRepository)
 	var result interface{}
-	// only marshall if result is not ""
-	if *req.Result != "" {
+	// only marshall if result is not None
+	if req.Result != nil {
 		if err := json.Unmarshal([]byte(*req.Result), &result); err != nil {
 			logging.Sugar.Error("Error unmarshalling workflow params:", err)
 			return nil, err
@@ -68,8 +68,8 @@ func (s *server) HandleTask(ctx context.Context, req *pb.TaskStatusPayload) (*pb
 	workflowService := service.NewWorkflowService(workflowRepository)
 	taskService := service.NewTaskServiceImpl(taskRepository, workflowService)
 	var parameters interface{}
-	// only marshall if parameters is not ""
-	if *req.Parameters != "" {
+	// only marshall if parameters is not None
+	if req.Parameters != nil {
 		if err := json.Unmarshal([]byte(*req.Parameters), &parameters); err != nil {
 			logging.Sugar.Error("Error unmarshalling parameters:", err)
 			return nil, err
