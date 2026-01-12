@@ -72,7 +72,7 @@ func (w *WorkflowRepositoryImpl) GetWorkflows(offset int, limit int, filter dto.
 	statement := sq.Select("*").From("workflows").OrderBy("updated_at DESC").Offset(uint64(offset)).Limit(uint64(limit))
 
 	if filter.Name != nil {
-		statement = statement.Where("name ILIKE ?", fmt.Sprint("%", filter.Name, "%"))
+		statement = statement.Where("name ILIKE ?", fmt.Sprint("%", *filter.Name, "%"))
 
 	}
 	return DbExecAndReturnMany[models.Workflows](
