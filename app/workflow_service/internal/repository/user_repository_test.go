@@ -2,15 +2,11 @@ package repository_test
 
 import (
 	"fmt"
-	"os"
 	"testing"
 
 	"github.com/DATA-DOG/go-sqlmock"
-	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
 	"github.com/stretchr/testify/assert"
-	"github.com/yuudev14-workflow/workflow-service/environment"
-	"github.com/yuudev14-workflow/workflow-service/internal/logging"
 	"github.com/yuudev14-workflow/workflow-service/internal/repository"
 	"github.com/yuudev14-workflow/workflow-service/models"
 )
@@ -22,38 +18,38 @@ var (
 	expectedUser *models.User
 )
 
-func TestMain(m *testing.M) {
-	environment.Setup()
-	logging.Setup("DEBUG")
+// func TestMain(m *testing.M) {
+// 	environment.Setup()
+// 	logging.Setup("DEBUG")
 
-	// Create a new mock database connection
-	mockDB, sqlmock, mockErr := sqlmock.New()
-	mock = sqlmock
-	if mockErr != nil {
-		logging.Sugar.Fatalf("an error '%s' was not expected when opening a stub database connection", mockErr)
-	}
-	defer mockDB.Close()
+// 	// Create a new mock database connection
+// 	mockDB, sqlmock, mockErr := sqlmock.New()
+// 	mock = sqlmock
+// 	if mockErr != nil {
+// 		logging.Sugar.Fatalf("an error '%s' was not expected when opening a stub database connection", mockErr)
+// 	}
+// 	defer mockDB.Close()
 
-	// Wrap the mock database with sqlx
-	sqlxDB = sqlx.NewDb(mockDB, "sqlmock")
+// 	// Wrap the mock database with sqlx
+// 	sqlxDB = sqlx.NewDb(mockDB, "sqlmock")
 
-	// Create an instance of UserRepositoryImpl with the mock database
-	repo = repository.NewUserRepository(sqlxDB)
+// 	// Create an instance of UserRepositoryImpl with the mock database
+// 	repo = repository.NewUserRepository(sqlxDB)
 
-	// Set up the expectation
-	id, _ := uuid.NewUUID()
-	expectedUser = &models.User{
-		ID:       id,
-		Username: "testuser",
-		Email:    "test@example.com",
-	}
+// 	// Set up the expectation
+// 	id, _ := uuid.NewUUID()
+// 	expectedUser = &models.User{
+// 		ID:       id,
+// 		Username: "testuser",
+// 		Email:    "test@example.com",
+// 	}
 
-	// Run tests
-	code := m.Run()
+// 	// Run tests
+// 	code := m.Run()
 
-	// Exit
-	os.Exit(code)
-}
+// 	// Exit
+// 	os.Exit(code)
+// }
 
 func TestCreateUserWhereUserIsNotAvaliable(t *testing.T) {
 	test := struct {
