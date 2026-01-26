@@ -28,15 +28,17 @@ import {
 } from "@/components/ui/form";
 import { WorkflowOperationContext } from "../../../_providers/WorkflowOperationProvider";
 import { Textarea } from "@/components/ui/textarea";
-import Editor from "@monaco-editor/react";
+
+import CodeMirror from '@uiw/react-codemirror';
+import { python } from '@codemirror/lang-python';
 
 const taskFormSchema = z.object({
   name: z.string().min(2, {
     message: "name must be at least 2 characters.",
   }),
   description: z.string().optional(),
-  parameters: z.record(z.string()).nullable().optional(),
-  config: z.string().nullable().optional(),
+  parameters: z.record(z.any()).nullish(),
+  config: z.string().nullable().optional().nullish(),
   connector_name: z.string(),
   connector_id: z.string(),
   operation: z.string(),
@@ -257,20 +259,44 @@ const ConnectorOperation: React.FC<{ connector: ConnectorInfo }> = ({
                         )}
                         {param.type === "code" && (
                           <div className="flex-1 flex-col">
-                            <Editor
-                              height="100%"
+                            {/* <Editor
+                              height="300px"
                               language="python"
                               theme="vs-dark"
+                              // value={field.value?.[param.name] ?? ""}
+                              onChange={(val) => {
+                                console.log(val + "yuuu");
+                                // field.onChange({
+                                //   ...(field.value ? field.value : {}),
+                                //   [param.name]: val,
+                                // })
+                              }}
+                              options={{
+                                automaticLayout: true,
+                                fontSize: 14,
+
+                                // Fix space/enter issue:
+                                tabSize: 2,
+                                insertSpaces: true,
+                                detectIndentation: false,
+                                cursorWidth: 2,
+                                scrollBeyondLastLine: false,
+                                // Ensure normal typing behavior
+                                acceptSuggestionOnEnter: "on",
+                                acceptSuggestionOnCommitCharacter: true,
+                                quickSuggestions: false,
+                              }}
+                            /> */}
+                            <CodeMirror 
+                              height="200px"
+                              extensions={[python()]}
+                              theme={"dark"}
                               value={field.value?.[param.name] ?? ""}
-                              onChange={(val) =>
+                              onChange={(val) => {
                                 field.onChange({
                                   ...(field.value ? field.value : {}),
                                   [param.name]: val,
                                 })
-                              }
-                              options={{
-                                automaticLayout: true,
-                                fontSize: 14,
                               }}
                             />
                           </div>
@@ -292,6 +318,7 @@ const ConnectorOperation: React.FC<{ connector: ConnectorInfo }> = ({
           </div>
         </footer>
       </form>
+      
     </Form>
   );
 };
