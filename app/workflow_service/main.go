@@ -13,7 +13,6 @@ import (
 	pb "github.com/yuudev14-workflow/workflow-service/internal/grpc/workflows"
 	"github.com/yuudev14-workflow/workflow-service/internal/logging"
 	"github.com/yuudev14-workflow/workflow-service/internal/mq"
-	"github.com/yuudev14-workflow/workflow-service/internal/mq/consumer"
 	"github.com/yuudev14-workflow/workflow-service/internal/repository"
 	"github.com/yuudev14-workflow/workflow-service/internal/types"
 	"github.com/yuudev14-workflow/workflow-service/service"
@@ -27,18 +26,16 @@ import (
 // @securityDefinitions.apikey BearerAuth
 // @in header
 // @name Authorization
-func initApp() {
-	environment.Setup()
-	logging.Setup(environment.Settings.LOGGER_MODE)
-	db.SetupDB(environment.Settings.DB_URL)
-}
 
 type server struct {
 	pb.UnimplementedWorkflowServer
 }
 
 func (s *server) HandleWorkflow(ctx context.Context, req *pb.WorkflowStatusPayload) (*pb.WorkflowHistory, error) {
-	workflowRepository := repository.NewWorkflowRepository(db.DB)
+	settings := environment.Setup()
+	logging.Setup(settings.LOGGER_MODE)
+	sqlxDB, err := db.SetupDB(settings.DB_URL)
+	workflowRepository := repository.NewWorkflowRepository(sqlxDB)
 	workflowService := service.NewWorkflowService(workflowRepository)
 	var result interface{}
 	// only marshall if result is not None
@@ -63,8 +60,11 @@ func (s *server) HandleWorkflow(ctx context.Context, req *pb.WorkflowStatusPaylo
 }
 
 func (s *server) HandleTask(ctx context.Context, req *pb.TaskStatusPayload) (*pb.TaskHistory, error) {
-	workflowRepository := repository.NewWorkflowRepository(db.DB)
-	taskRepository := repository.NewTaskRepositoryImpl(db.DB)
+	settings := environment.Setup()
+	logging.Setup(settings.LOGGER_MODE)
+	sqlxDB, err := db.SetupDB(settings.DB_URL)
+	workflowRepository := repository.NewWorkflowRepository(sqlxDB)
+	taskRepository := repository.NewTaskRepositoryImpl(sqlxDB)
 	workflowService := service.NewWorkflowService(workflowRepository)
 	taskService := service.NewTaskServiceImpl(taskRepository, workflowService)
 	var parameters interface{}
@@ -105,12 +105,18 @@ func (s *server) HandleTask(ctx context.Context, req *pb.TaskStatusPayload) (*pb
 
 func main() {
 
-	initApp()
-	mq.ConnectToMQ()
-	go consumer.Listen()
-	defer mq.MQConn.Close()
-	defer mq.MQChannel.Close()
-	app := api.InitRouter()
+	settings := environment.Setup()
+	logging.Setup(settings.LOGGER_MODE)
+	sqlxDB, err := db.SetupDB(settings.DB_URL)
+	if err != nil {
+		log.Fatalf("failed to setup DB: %v", err)
+	}
+
+	mqInstance := mq.ConnectToMQ(settings.MQ_URL, settings.SenderQueueName, settings.ReceiverQueueName)
+	defer mqInstance.MQConn.Close()
+	defer mqInstance.MQChannel.Close()
+
+	app := api.InitRouter(sqlxDB, mqInstance)
 	lis, err := net.Listen("tcp", ":50051")
 	if err != nil {
 		log.Fatalf("failed to listen: %v", err)

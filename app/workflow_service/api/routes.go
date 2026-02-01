@@ -3,20 +3,21 @@ package api
 import (
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
+	"github.com/jmoiron/sqlx"
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
-	auth_api "github.com/yuudev14-workflow/workflow-service/api/auth"
 	workflow_api "github.com/yuudev14-workflow/workflow-service/api/workflow"
 	"github.com/yuudev14-workflow/workflow-service/docs"
+	"github.com/yuudev14-workflow/workflow-service/internal/mq"
 )
 
-func StartApi(app *gin.RouterGroup) {
-	workflow_api.SetupWorkflowController(app)
-	auth_api.SetupAuthController(app)
+func StartApi(db *sqlx.DB, mqInstance mq.MQStruct, app *gin.RouterGroup) {
+	workflow_api.SetupWorkflowController(db, mqInstance, app)
+	// auth_api.SetupAuthController(db, app)
 
 }
 
-func InitRouter() *gin.Engine {
+func InitRouter(db *sqlx.DB, mqInstance mq.MQStruct) *gin.Engine {
 
 	app := gin.Default()
 
@@ -35,7 +36,7 @@ func InitRouter() *gin.Engine {
 
 	apiGroup := app.Group("/api")
 
-	StartApi(apiGroup)
+	StartApi(db, mqInstance, apiGroup)
 
 	app.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 

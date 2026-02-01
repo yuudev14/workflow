@@ -9,7 +9,6 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
-	"github.com/yuudev14-workflow/workflow-service/db"
 	"github.com/yuudev14-workflow/workflow-service/dto"
 	"github.com/yuudev14-workflow/workflow-service/internal/logging"
 	rest "github.com/yuudev14-workflow/workflow-service/internal/rests"
@@ -22,6 +21,7 @@ type WorkflowController struct {
 	TaskService            service.TaskService
 	EdgeService            service.EdgeService
 	WorkflowTriggerService service.WorkflowTriggerService
+	DB                     *sqlx.DB
 }
 
 func NewWorkflowController(
@@ -29,12 +29,14 @@ func NewWorkflowController(
 	TaskService service.TaskService,
 	EdgeService service.EdgeService,
 	WorkflowTriggerService service.WorkflowTriggerService,
+	DB *sqlx.DB,
 ) *WorkflowController {
 	return &WorkflowController{
 		WorkflowService:        WorkflowService,
 		TaskService:            TaskService,
 		EdgeService:            EdgeService,
 		WorkflowTriggerService: WorkflowTriggerService,
+		DB:                     DB,
 	}
 }
 
@@ -494,7 +496,7 @@ func (w *WorkflowController) UpdateWorkflowTasks(c *gin.Context) {
 	var body dto.UpdateWorkflowtasks
 	response := rest.Response{C: c}
 	workflowId := c.Param("workflow_id")
-	tx, err := db.DB.Beginx()
+	tx, err := w.DB.Beginx()
 	if err != nil {
 		tx.Rollback()
 		response.ResponseError(http.StatusInternalServerError, err)
