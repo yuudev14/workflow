@@ -17,26 +17,26 @@ import (
 )
 
 type WorkflowController struct {
-	WorkflowService        service.WorkflowService
-	TaskService            service.TaskService
-	EdgeService            service.EdgeService
-	WorkflowTriggerService service.WorkflowTriggerService
-	DB                     *sqlx.DB
+	WorkflowService            service.WorkflowService
+	TaskService                service.TaskService
+	EdgeService                service.EdgeService
+	WorkflowApplicationService service.WorkflowApplicationService
+	DB                         *sqlx.DB
 }
 
 func NewWorkflowController(
 	WorkflowService service.WorkflowService,
 	TaskService service.TaskService,
 	EdgeService service.EdgeService,
-	WorkflowTriggerService service.WorkflowTriggerService,
+	WorkflowApplicationService service.WorkflowApplicationService,
 	DB *sqlx.DB,
 ) *WorkflowController {
 	return &WorkflowController{
-		WorkflowService:        WorkflowService,
-		TaskService:            TaskService,
-		EdgeService:            EdgeService,
-		WorkflowTriggerService: WorkflowTriggerService,
-		DB:                     DB,
+		WorkflowService:            WorkflowService,
+		TaskService:                TaskService,
+		EdgeService:                EdgeService,
+		WorkflowApplicationService: WorkflowApplicationService,
+		DB:                         DB,
 	}
 }
 
@@ -134,19 +134,19 @@ func (w *WorkflowController) GetWorkflowHistory(c *gin.Context) {
 	var filter dto.WorkflowHistoryFilter
 	response := rest.Response{C: c}
 
-	checkQuery, codeQuery, validQueryErr := rest.BindQueryAndValidate(c, &query)
+	ok, code, err := rest.BindQueryAndValidate(c, &query)
 
-	if !checkQuery {
-		logging.Sugar.Errorf(fmt.Sprintf("%v", validQueryErr))
-		response.ResponseError(codeQuery, validQueryErr)
+	if !ok {
+		logging.Sugar.Error(err)
+		response.ResponseError(code, err)
 		return
 	}
 
-	checkFilter, codeFilter, validFilterErr := rest.BindQueryAndValidate(c, &filter)
+	ok, code, err = rest.BindQueryAndValidate(c, &filter)
 
-	if !checkFilter {
-		logging.Sugar.Errorf(fmt.Sprintf("%v", validFilterErr))
-		response.ResponseError(codeFilter, validFilterErr)
+	if !ok {
+		logging.Sugar.Error(err)
+		response.ResponseError(code, err)
 		return
 	}
 
@@ -154,10 +154,10 @@ func (w *WorkflowController) GetWorkflowHistory(c *gin.Context) {
 	logging.Sugar.Debugf("filter: %v", filter)
 
 	logging.Sugar.Debug("getting worflows")
-	workflows, err := w.WorkflowService.GetWorkflowHistory(query.Offset, query.Limit, filter)
+	workflows, workflowsErr := w.WorkflowService.GetWorkflowHistory(query.Offset, query.Limit, filter)
 
-	if err != nil {
-		response.ResponseError(http.StatusBadRequest, err.Error())
+	if workflowsErr != nil {
+		response.ResponseError(http.StatusBadRequest, workflowsErr.Error())
 		return
 	}
 
@@ -232,7 +232,7 @@ func (w *WorkflowController) GetTaskHistoryByWorkflowHistoryId(c *gin.Context) {
 	logging.Sugar.Debugf("filter: %v", taskHistoryFilter)
 
 	logging.Sugar.Debug("getting worflows")
-	tasksHistory, err := w.WorkflowService.GetTaskHistoryByWorkflowHistoryId(workflowHistoryId, taskHistoryFilter)
+	tasksHistory, err := w.TaskService.GetTaskHistoryByWorkflowHistoryId(workflowHistoryId, taskHistoryFilter)
 
 	if err != nil {
 		response.ResponseError(http.StatusBadRequest, err.Error())
@@ -624,7 +624,7 @@ func (w *WorkflowController) GetTasksByWorkflowId(c *gin.Context) {
 func (w *WorkflowController) Trigger(c *gin.Context) {
 	response := rest.Response{C: c}
 	workflowId := c.Param("workflow_id")
-	data, triggerErr := w.WorkflowTriggerService.TriggerWorkflow(workflowId)
+	data, triggerErr := w.WorkflowApplicationService.TriggerWorkflow(workflowId)
 	if triggerErr != nil {
 		logging.Sugar.Errorf("error when sending the message to queue", triggerErr)
 		response.ResponseError(http.StatusBadGateway, triggerErr.Error())

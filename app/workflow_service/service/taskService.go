@@ -17,6 +17,7 @@ type TaskService interface {
 	CreateTaskHistory(tx *sqlx.Tx, workflowHistoryId string, tasks []models.Tasks, graph map[uuid.UUID][]uuid.UUID) ([]models.TaskHistory, error)
 	UpdateTaskStatus(workflowHistoryId string, taskId string, status string) (*models.TaskHistory, error)
 	UpdateTaskHistory(workflowHistoryId string, taskId string, taskHistory dto.UpdateTaskHistoryData) (*models.TaskHistory, error)
+	GetTaskHistoryByWorkflowHistoryId(id string, filter dto.TaskHistoryFilter) ([]models.TaskHistory, error)
 }
 
 type TaskServiceImpl struct {
@@ -83,4 +84,9 @@ func (t *TaskServiceImpl) UpdateTaskHistory(workflowHistoryId string, taskId str
 	}
 
 	return res, nil
+}
+
+// GetWorkflowById implements WorkflowService.
+func (t *TaskServiceImpl) GetTaskHistoryByWorkflowHistoryId(id string, filter dto.TaskHistoryFilter) ([]models.TaskHistory, error) {
+	return t.TaskRepository.GetTaskHistoryByWorkflowHistoryId(id, filter)
 }
