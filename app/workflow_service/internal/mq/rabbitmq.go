@@ -2,26 +2,25 @@ package mq
 
 import (
 	"github.com/streadway/amqp"
-	"github.com/yuudev14-workflow/workflow-service/environment"
 	"github.com/yuudev14-workflow/workflow-service/internal/logging"
 )
 
-var (
+type MQStruct struct {
 	MQConn        *amqp.Connection
 	MQChannel     *amqp.Channel
 	SenderQueue   amqp.Queue
 	ReceiverQueue amqp.Queue
-)
+}
 
-func ConnectToMQ() {
-	logging.Sugar.Infof("connecting to message queue %v...", environment.Settings.MQ_URL)
-	conn, err := amqp.Dial(environment.Settings.MQ_URL)
+func ConnectToMQ(mqURL string, senderQueueName string, receiverQueueName string) MQStruct {
+	logging.Sugar.Infof("connecting to message queue %v...", mqURL)
+	conn, err := amqp.Dial(mqURL)
 	if err != nil {
 		logging.Sugar.Panicf("%v", err)
 	}
 	logging.Sugar.Info("connected to message queue...")
 
-	MQConn = conn
+	MQConn := conn
 
 	ch, chErr := MQConn.Channel()
 	logging.Sugar.Info("open channel in message queue...")
@@ -30,47 +29,55 @@ func ConnectToMQ() {
 		logging.Sugar.Panicf("%v", chErr)
 	}
 
-	MQChannel = ch
-	declareQueues(MQChannel)
+	MQChannel := ch
+
+	senderQueue, receiverQueue := declareQueues(MQChannel, senderQueueName, receiverQueueName)
+	return MQStruct{
+		MQConn:        MQConn,
+		MQChannel:     MQChannel,
+		SenderQueue:   senderQueue,
+		ReceiverQueue: receiverQueue,
+	}
 
 }
 
-func declareQueues(ch *amqp.Channel) {
+func declareQueues(ch *amqp.Channel, senderQueueName string, receiverQueueName string) (amqp.Queue, amqp.Queue) {
 	logging.Sugar.Info("Declaring queues")
-	declareSenderQueue(ch)
-	declareReceiverQueue(ch)
+	senderQueue := declareSenderQueue(ch, senderQueueName)
+	receiverQueue := declareReceiverQueue(ch, receiverQueueName)
+	return senderQueue, receiverQueue
 }
 
-func declareSenderQueue(ch *amqp.Channel) {
+func declareSenderQueue(ch *amqp.Channel, queueName string) amqp.Queue {
 	logging.Sugar.Info("Declaring sender queue")
 	// Declare a queue
 	q, err := ch.QueueDeclare(
-		environment.Settings.SenderQueueName, // name
-		true,                                 // durable
-		false,                                // delete when unused
-		false,                                // exclusive
-		false,                                // no-wait
-		nil,                                  // arguments
+		queueName, // name
+		true,      // durable
+		false,     // delete when unused
+		false,     // exclusive
+		false,     // no-wait
+		nil,       // arguments
 	)
 	if err != nil {
-		logging.Sugar.Panicf("%v", err)
+		logging.Sugar.Panic("%v", err)
 	}
-	SenderQueue = q
+	return q
 }
 
-func declareReceiverQueue(ch *amqp.Channel) {
+func declareReceiverQueue(ch *amqp.Channel, queueName string) amqp.Queue {
 	logging.Sugar.Info("Declaring receiver queue")
 	// Declare a queue
 	q, err := ch.QueueDeclare(
-		environment.Settings.ReceiverQueueName, // name
-		true,                                   // durable
-		false,                                  // delete when unused
-		false,                                  // exclusive
-		false,                                  // no-wait
-		nil,                                    // arguments
+		queueName, // name
+		true,      // durable
+		false,     // delete when unused
+		false,     // exclusive
+		false,     // no-wait
+		nil,       // arguments
 	)
 	if err != nil {
 		logging.Sugar.Panicf("%v", err)
 	}
-	ReceiverQueue = q
+	return q
 }

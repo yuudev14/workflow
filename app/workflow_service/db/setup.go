@@ -9,23 +9,22 @@ import (
 	"github.com/yuudev14-workflow/workflow-service/internal/logging"
 )
 
-var DB *sqlx.DB
-
 // Setup DB
-func SetupDB(dataSourceName string) error {
+func SetupDB(dataSourceName string) (*sqlx.DB, error) {
+	var DB *sqlx.DB
 	if gin.Mode() == gin.TestMode {
 		// Create a new mock database connection
 		mockDB, _, mockErr := sqlmock.New()
 		if mockErr != nil {
 			logging.Sugar.Fatalf("an error '%s' was not expected when opening a stub database connection", mockErr)
-			return mockErr
+			return nil, mockErr
 		}
 		defer mockDB.Close()
 
 		// Wrap the mock database with sqlx
 		DB = sqlx.NewDb(mockDB, "sqlmock")
 
-		return nil
+		return DB, nil
 
 	}
 	logging.Sugar.Infof("Connecting to DB... %v", dataSourceName)
@@ -34,12 +33,12 @@ func SetupDB(dataSourceName string) error {
 
 	if err != nil {
 		logging.Sugar.Errorf("error opening database: %v", err.Error())
-		return fmt.Errorf("error opening database: %w", err)
+		return nil, fmt.Errorf("error opening database: %w", err)
 	}
 
 	if err := DB.Ping(); err != nil {
 		logging.Sugar.Errorf("error connecting to database: %v %v", dataSourceName, err.Error())
-		return fmt.Errorf("error connecting to database: %w", err)
+		return nil, fmt.Errorf("error connecting to database: %w", err)
 	}
-	return err
+	return DB, nil
 }
