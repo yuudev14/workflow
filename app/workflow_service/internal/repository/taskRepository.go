@@ -22,6 +22,7 @@ type TaskRepository interface {
 	CreateTaskHistory(tx *sqlx.Tx, workflowHistoryId string, tasks []models.Tasks, graph map[uuid.UUID][]uuid.UUID) ([]models.TaskHistory, error)
 	UpdateTaskStatus(workflowHistoryId string, taskId string, status string) (*models.TaskHistory, error)
 	UpdateTaskHistory(workflowHistoryId string, taskId string, taskHistory dto.UpdateTaskHistoryData) (*models.TaskHistory, error)
+	GetTaskHistoryByWorkflowHistoryId(id string, filter dto.TaskHistoryFilter) ([]models.TaskHistory, error)
 }
 
 type TaskRepositoryImpl struct {
@@ -157,6 +158,15 @@ func (t *TaskRepositoryImpl) UpdateTaskHistory(workflowHistoryId string, taskId 
 
 	statement := sq.Update("task_history").SetMap(data).Where("workflow_history_id = ? and task_id = ?", workflowHistoryId, taskId).Suffix("RETURNING *")
 	return DbExecAndReturnOne[models.TaskHistory](
+		t.DB,
+		statement,
+	)
+}
+
+// GetTaskHistoryByWorkflowHistoryId implements WorkflowRepository.
+func (t *TaskRepositoryImpl) GetTaskHistoryByWorkflowHistoryId(id string, filter dto.TaskHistoryFilter) ([]models.TaskHistory, error) {
+	statement := sq.Select("*").From("task_history").Where("workflow_history_id = ?", id)
+	return DbExecAndReturnMany[models.TaskHistory](
 		t.DB,
 		statement,
 	)
