@@ -18,7 +18,6 @@ type WorkflowService interface {
 	GetWorkflowTriggers() ([]models.WorkflowTriggers, error)
 	GetWorkflowsCount(filter dto.WorkflowFilter) (int, error)
 	GetWorkflowById(id string) (*models.Workflows, error)
-	GetTaskHistoryByWorkflowHistoryId(id string, filter dto.TaskHistoryFilter) ([]models.TaskHistory, error)
 	GetTaskHistoryCount(filter dto.TaskHistoryFilter) (int, error)
 	GetWorkflowGraphById(id string) (*repository.WorkflowsGraph, error)
 	CreateWorkflow(workflow dto.WorkflowPayload) (*models.Workflows, error)
@@ -84,11 +83,6 @@ func (w *WorkflowServiceImpl) GetWorkflowById(id string) (*models.Workflows, err
 		return nil, fmt.Errorf("workflow is not found")
 	}
 	return workflow, nil
-}
-
-// GetWorkflowById implements WorkflowService.
-func (w *WorkflowServiceImpl) GetTaskHistoryByWorkflowHistoryId(id string, filter dto.TaskHistoryFilter) ([]models.TaskHistory, error) {
-	return w.WorkflowRepository.GetTaskHistoryByWorkflowHistoryId(id, filter)
 }
 
 // GetTaskHistoryCount implements WorkflowService.

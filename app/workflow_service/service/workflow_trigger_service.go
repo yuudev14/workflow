@@ -12,7 +12,7 @@ import (
 	"github.com/yuudev14-workflow/workflow-service/models"
 )
 
-type WorkflowTriggerService interface {
+type WorkflowApplicationService interface {
 	TriggerWorkflow(workflowId string) (*TaskMessage, error)
 	PrepareWorkflowMessage(tasks []models.Tasks, edges []repository.Edges) (map[string]models.Tasks, map[string][]string)
 }
@@ -23,7 +23,7 @@ type TaskMessage struct {
 	WorkflowHistoryId uuid.UUID               `json:"workflow_history_id"`
 }
 
-type WorkflowTriggerServiceImpl struct {
+type WorkflowApplicationServiceImpl struct {
 	WorkflowService WorkflowService
 	TaskService     TaskService
 	EdgeService     EdgeService
@@ -31,8 +31,8 @@ type WorkflowTriggerServiceImpl struct {
 	MqInstance      mq.MQStruct
 }
 
-func NewWorflowTriggerService(WorkflowService WorkflowService, TaskService TaskService, EdgeService EdgeService, DB *sqlx.DB, mqInstance mq.MQStruct) WorkflowTriggerService {
-	return &WorkflowTriggerServiceImpl{
+func NewWorkflowApplicationService(WorkflowService WorkflowService, TaskService TaskService, EdgeService EdgeService, DB *sqlx.DB, mqInstance mq.MQStruct) WorkflowApplicationService {
+	return &WorkflowApplicationServiceImpl{
 		WorkflowService: WorkflowService,
 		TaskService:     TaskService,
 		EdgeService:     EdgeService,
@@ -66,8 +66,8 @@ func SendTaskMessage(graph TaskMessage, mqInstance mq.MQStruct) error {
 
 }
 
-// TriggerWorkflow implements WorkflowTriggerService.
-func (w *WorkflowTriggerServiceImpl) TriggerWorkflow(workflowId string) (*TaskMessage, error) {
+// TriggerWorkflow implements WorkflowApplicationService.
+func (w *WorkflowApplicationServiceImpl) TriggerWorkflow(workflowId string) (*TaskMessage, error) {
 	_, workflowErr := w.WorkflowService.GetWorkflowById(workflowId)
 
 	if workflowErr != nil {
@@ -148,7 +148,7 @@ func (w *WorkflowTriggerServiceImpl) TriggerWorkflow(workflowId string) (*TaskMe
 }
 
 // PrepareWorkflowMessage implements WorkflowTriggerService.
-func (w *WorkflowTriggerServiceImpl) PrepareWorkflowMessage(tasks []models.Tasks, edges []repository.Edges) (map[string]models.Tasks, map[string][]string) {
+func (w *WorkflowApplicationServiceImpl) PrepareWorkflowMessage(tasks []models.Tasks, edges []repository.Edges) (map[string]models.Tasks, map[string][]string) {
 	tasksMap := make(map[string]models.Tasks)
 	graph := map[string][]string{}
 
