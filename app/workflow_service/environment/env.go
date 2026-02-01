@@ -8,7 +8,6 @@ import (
 )
 
 var (
-	Settings = &SettingsData{}
 
 	// local variables
 	loggerMode = "DEBUG"
@@ -33,18 +32,20 @@ func LoadEnv(dest string) {
 }
 
 // set constants environment
-func SetEnv() {
+func SetEnv() *SettingsData {
+	Settings := &SettingsData{}
 	Settings.DB_URL = GetDbUrl()
 	Settings.LOGGER_MODE = GetLoggerLevel()
 	Settings.MQ_URL = GetMQUrl()
 	Settings.SenderQueueName = "workflow"
 	Settings.ReceiverQueueName = "workflow_processor"
+	return Settings
 }
 
 // function to retrieve contants in the env
-func Setup() {
+func Setup() *SettingsData {
 	LoadEnv("")
-	SetEnv()
+	return SetEnv()
 }
 
 func TestSetup(envDest string) {

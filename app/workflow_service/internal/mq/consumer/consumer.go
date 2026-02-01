@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/yuudev14-workflow/workflow-service/db"
+	"github.com/jmoiron/sqlx"
 	"github.com/yuudev14-workflow/workflow-service/dto"
 	"github.com/yuudev14-workflow/workflow-service/internal/logging"
 	"github.com/yuudev14-workflow/workflow-service/internal/mq"
@@ -113,15 +113,15 @@ func (c *ConsumeMessage) PrepareMessage(data MessageBody) {
 
 }
 
-func Listen() {
-	msgs, err := mq.MQChannel.Consume(
-		mq.ReceiverQueue.Name, // queue
-		"",                    // consumer
-		false,                 // auto-acknowledge (changed to false for manual ack)
-		false,                 // exclusive
-		false,                 // no-local
-		false,                 // no-wait
-		nil,                   // arguments
+func Listen(mqInstance mq.MQStruct, DB *sqlx.DB) {
+	msgs, err := mqInstance.MQChannel.Consume(
+		mqInstance.ReceiverQueue.Name, // queue
+		"",                            // consumer
+		false,                         // auto-acknowledge (changed to false for manual ack)
+		false,                         // exclusive
+		false,                         // no-local
+		false,                         // no-wait
+		nil,                           // arguments
 	)
 
 	if err != nil {
@@ -138,8 +138,8 @@ func Listen() {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			workflowRepository := repository.NewWorkflowRepository(db.DB)
-			taskRepository := repository.NewTaskRepositoryImpl(db.DB)
+			workflowRepository := repository.NewWorkflowRepository(DB)
+			taskRepository := repository.NewTaskRepositoryImpl(DB)
 			workflowService := service.NewWorkflowService(workflowRepository)
 			taskService := service.NewTaskServiceImpl(taskRepository, workflowService)
 			consumeMessageService := NewConsumeMessage(workflowService, taskService)

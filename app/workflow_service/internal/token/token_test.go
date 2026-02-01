@@ -11,7 +11,7 @@ import (
 )
 
 func TestGenerateToken(t *testing.T) {
-	token, gotErr := token.GenerateToken(jwt.MapClaims{})
+	token, gotErr := token.GenerateToken(jwt.MapClaims{}, "mysecret")
 
 	if gotErr != nil {
 		t.Errorf("%s", gotErr.Error())
@@ -22,7 +22,7 @@ func TestGenerateToken(t *testing.T) {
 }
 
 func TestGeneratePairToken(t *testing.T) {
-	accessToken, refreshToken, gotErr := token.GeneratePairToken(jwt.MapClaims{}, time.Now().Add(time.Hour).Unix())
+	accessToken, refreshToken, gotErr := token.GeneratePairToken(jwt.MapClaims{}, time.Now().Add(time.Hour).Unix(), "mysecret")
 
 	if gotErr != nil {
 		t.Errorf("%s", gotErr.Error())
