@@ -41,49 +41,52 @@ func NewWorkflowController(
 }
 
 func (w *WorkflowController) GetWorkflows(c *gin.Context) {
-	var query dto.FilterQuery
-	var filter dto.WorkflowFilter
+	var (
+		query  dto.FilterQuery
+		filter dto.WorkflowFilter
+	)
+
 	response := rest.Response{C: c}
 
-	checkQuery, codeQuery, validQueryErr := rest.BindQueryAndValidate(c, &query)
-
-	if !checkQuery {
-		logging.Sugar.Errorf(fmt.Sprintf("%v", validQueryErr))
-		response.ResponseError(codeQuery, validQueryErr)
+	if ok, code, err := rest.BindQueryAndValidate(c, &query); !ok {
+		logging.Sugar.Error(err)
+		response.ResponseError(code, err)
 		return
 	}
 
-	checkFilter, codeFilter, validFilterErr := rest.BindQueryAndValidate(c, &filter)
-
-	if !checkFilter {
-		logging.Sugar.Errorf(fmt.Sprintf("%v", validFilterErr))
-		response.ResponseError(codeFilter, validFilterErr)
+	if ok, code, err := rest.BindQueryAndValidate(c, &filter); !ok {
+		logging.Sugar.Error(err)
+		response.ResponseError(code, err)
 		return
 	}
 
-	logging.Sugar.Debugf("queries: %v", query)
-	logging.Sugar.Debugf("filter: %v", filter)
+	logging.Sugar.Debugw(
+		"get workflows",
+		"offset", query.Offset,
+		"limit", query.Limit,
+		"filter", filter,
+	)
 
-	logging.Sugar.Debug("getting worflows")
-	workflows, err := w.WorkflowService.GetWorkflows(query.Offset, query.Limit, filter)
-
+	workflows, err := w.WorkflowService.GetWorkflows(
+		query.Offset,
+		query.Limit,
+		filter,
+	)
 	if err != nil {
 		response.ResponseError(http.StatusBadRequest, err.Error())
 		return
 	}
 
-	workflowsCount, workflowsCountErr := w.WorkflowService.GetWorkflowsCount(filter)
-
-	if workflowsCountErr != nil {
-		response.ResponseError(http.StatusBadRequest, workflowsCountErr.Error())
+	total, err := w.WorkflowService.GetWorkflowsCount(filter)
+	if err != nil {
+		response.ResponseError(http.StatusBadRequest, err.Error())
 		return
 	}
 
 	response.ResponseSuccess(gin.H{
 		"entries": workflows,
-		"total":   workflowsCount,
+		"total":   total,
 	})
-
 }
 
 func (w *WorkflowController) GetWorkflowGraphById(c *gin.Context) {
