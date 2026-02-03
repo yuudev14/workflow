@@ -40,6 +40,13 @@ func NewWorkflowController(
 	}
 }
 
+func (w *WorkflowController) HealthCheck(c *gin.Context) {
+	response := rest.Response{C: c}
+	response.ResponseSuccess(gin.H{
+		"status": "heaaasasss",
+	})
+}
+
 func (w *WorkflowController) GetWorkflows(c *gin.Context) {
 	var (
 		query  dto.FilterQuery
