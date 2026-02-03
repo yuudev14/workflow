@@ -21,6 +21,7 @@ func SetupWorkflowController(db *sqlx.DB, mqInstance mq.MQStruct, route *gin.Rou
 
 	r := route.Group("workflows/v1")
 	{
+		r.GET("/health", workflowController.HealthCheck)
 		r.GET("", workflowController.GetWorkflows)
 		r.GET("/history", workflowController.GetWorkflowHistory)
 		r.GET("/history/:workflow_history_id/tasks", workflowController.GetTaskHistoryByWorkflowHistoryId)

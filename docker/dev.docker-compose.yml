@@ -106,17 +106,12 @@ services:
       - MQ_PASSWORD=guest
       - MQ_HOST=workflow_rabbitmq
       - MQ_PORT=5672
-      - AIR_FORCE_POLLING=true
+      - AIR_POLL=true
       - AIR_WATCH_TMOUT=500ms
       
     # restart: on-failure
     networks:
       - workflow
-    develop:
-      watch:
-        - action: sync
-          path: ../app/workflow_service
-          target: /app
     depends_on:
       workflow_postgres:
         condition: service_healthy
