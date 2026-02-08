@@ -1,11 +1,11 @@
 version: "3.9"
-name: workflow-project
+name: soar
 networks:
-  workflow:
+  soar:
 services:
-  workflow_rabbitmq:
+  soar_rabbitmq:
     image: rabbitmq:3-management
-    container_name: workflow_rabbitmq
+    container_name: soar_rabbitmq
     ports:
       - "5673:5672"
       - "15673:15672"
@@ -18,77 +18,76 @@ services:
       timeout: 3s
       retries: 5
     networks:
-      - workflow
+      - soar
     volumes:
       - rabbitmq_data:/var/lib/rabbitmq
-  workflow_postgres:
+  soar_postgres:
     image: postgres:15
-    container_name: workflow_postgres
+    container_name: soar_postgres
     ports:
       - "5433:5432"
     environment:
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=password
-      - POSTGRES_DB=workflow
+      - POSTGRES_DB=soar
     healthcheck:
       test: ["CMD", "pg_isready", "-U", "postgres"]
       interval: 5s
       timeout: 3s
       retries: 5
     networks:
-      - workflow
+      - soar
     volumes:
       - postgres_data:/var/lib/postgresql/data
-  workflow_worker:
+  soar_worker:
     build:
       context: ../app/connectors-service
       dockerfile: Dockerfile.worker
-    image: worker/workflow-worker:latest
-    container_name: workflow_worker
+    image: soar/worker:latest
+    container_name: soar_worker
     volumes:
       - ../app/connectors-service:/app
     environment:
-      - CELERY_BROKER=pyamqp://guest:guest@workflow_rabbitmq:5672
-      - CELERY_BACKEND=db+postgresql://postgres:password@workflow_postgres:5432/workflow?sslmode=disable
-      - MQ_URL=amqp://guest:guest@workflow_rabbitmq:5672
-      - grpc_workflow_host=workflow_service:50051
-    # restart: on-failure
+      - CELERY_BROKER=pyamqp://guest:guest@soar_rabbitmq:5672
+      - CELERY_BACKEND=db+postgresql://postgres:password@soar_postgres:5432/soar?sslmode=disable
+      - MQ_URL=amqp://guest:guest@soar_rabbitmq:5672
+      - grpc_workflow_host=soar_backend_service:50051
     networks:
-      - workflow
+      - soar
     depends_on:
-      workflow_postgres:
+      soar_postgres:
         condition: service_healthy
-      workflow_rabbitmq:
+      soar_rabbitmq:
         condition: service_healthy
-  connector_service:
+  soar_connector_service:
     build:
       context: ../app/connectors-service
       dockerfile: Dockerfile.dev
-    image: worker/connector_service:latest
-    container_name: connector_service
+    image: soar/connector:latest
+    container_name: soar_connector_service
     ports:
       - "8000:8000"
     volumes:
       - ../app/connectors-service:/app
     environment:
-      - CELERY_BROKER=pyamqp://guest:guest@workflow_rabbitmq:5672
-      - CELERY_BACKEND=db+postgresql://postgres:password@workflow_postgres:5432/workflow?sslmode=disable
-      - MQ_URL=amqp://guest:guest@workflow_rabbitmq:5672
+      - CELERY_BROKER=pyamqp://guest:guest@soar_rabbitmq:5672
+      - CELERY_BACKEND=db+postgresql://postgres:password@soar_postgres:5432/soar?sslmode=disable
+      - MQ_URL=amqp://guest:guest@soar_rabbitmq:5672
       - use_celery=true
-      - grpc_workflow_host=workflow_service:50051
+      - grpc_workflow_host=soar_backend_service:50051
     networks:
-      - workflow
+      - soar
     depends_on:
-      workflow_postgres:
+      soar_postgres:
         condition: service_healthy
-      workflow_rabbitmq:
+      soar_rabbitmq:
         condition: service_healthy
-  workflow_service:
+  soar_backend_service:
     build:
       context: ../app/workflow_service
       dockerfile: Dockerfile.dev
-    image: worker/workflow_service:latest
-    container_name: workflow_service
+    image: soar/backend:latest
+    container_name: soar_backend_service
     ports:
       - "8080:8080"
     volumes:
@@ -96,37 +95,35 @@ services:
     environment:
       - DB_USER=postgres
       - DB_PASSWORD=password
-      - DB_HOST=workflow_postgres
+      - DB_HOST=soar_postgres
       - DB_PORT=5432
-      - DB_NAME=workflow
+      - DB_NAME=soar
       - MQ_USER=guest
       - MQ_PASSWORD=guest
-      - MQ_HOST=workflow_rabbitmq
+      - MQ_HOST=soar_rabbitmq
       - MQ_PORT=5672
       - AIR_POLL=true
       - AIR_WATCH_TMOUT=500ms
-      
-    # restart: on-failure
     networks:
-      - workflow
+      - soar
     depends_on:
-      workflow_postgres:
+      soar_postgres:
         condition: service_healthy
-      workflow_rabbitmq:
+      soar_rabbitmq:
         condition: service_healthy
-  nginx:
+  soar_nginx:
     build: ../app/nginx
+    container_name: soar_nginx
     ports:
       - "9999:9999"
     volumes:
       - ../app/nginx/nginx.conf:/etc/nginx/nginx.conf
-      # - ../app/nginx/conf.d:/etc/nginx/conf.d
     restart: unless-stopped
     depends_on:
-      - connector_service
-      - workflow_service
+      - soar_connector_service
+      - soar_backend_service
     networks:
-      - workflow
+      - soar
 volumes:
   postgres_data:
   rabbitmq_data:
