@@ -82,7 +82,7 @@ services:
         condition: service_healthy
       soar_rabbitmq:
         condition: service_healthy
-  soar_backend_service:
+  soar_workflow_service:
     build:
       context: ../app/workflow_service
       dockerfile: Dockerfile.dev
@@ -121,7 +121,7 @@ services:
     restart: unless-stopped
     depends_on:
       - soar_connector_service
-      - soar_backend_service
+      - soar_workflow_service
     networks:
       - soar
 volumes:
