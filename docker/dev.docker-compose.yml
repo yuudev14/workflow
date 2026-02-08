@@ -45,8 +45,8 @@ services:
       dockerfile: Dockerfile.worker
     image: worker/workflow-worker:latest
     container_name: workflow_worker
-    # volumes:
-    #   - ../app/connectors-service:/app
+    volumes:
+      - ../app/connectors-service:/app
     environment:
       - CELERY_BROKER=pyamqp://guest:guest@workflow_rabbitmq:5672
       - CELERY_BACKEND=db+postgresql://postgres:password@workflow_postgres:5432/workflow?sslmode=disable
