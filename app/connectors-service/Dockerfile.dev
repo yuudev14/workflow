@@ -1,6 +1,6 @@
 FROM python:3.12-alpine3.20
 
-RUN apk update && apk add --no-cache \
+RUN apk add --no-cache \
     postgresql-dev \
     gcc \
     musl-dev \
@@ -8,19 +8,22 @@ RUN apk update && apk add --no-cache \
     curl \
     ca-certificates
 
-WORKDIR /app
-ENV PYTHONPATH=/app
-
 RUN curl -LsSf https://astral.sh/uv/install.sh | sh
-
 ENV PATH="/root/.local/bin:$PATH"
 
-COPY pyproject.toml uv.lock /app/
 
-RUN uv sync --locked
+WORKDIR /app
 
-COPY . /app
+
+COPY pyproject.toml uv.lock ./
+
+
+RUN uv venv /opt/venv \
+ && source /opt/venv/bin/activate \
+ && uv sync --active
+
+COPY . .
 
 EXPOSE 8000
 
-CMD ["uv", "run", "main.py"]
+CMD ["/opt/venv/bin/python3", "main.py"]
