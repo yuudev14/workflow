@@ -8,7 +8,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/yuudev14-workflow/workflow-service/internal/utils"
 	"github.com/yuudev14-workflow/workflow-service/internal/workflows"
-	"github.com/yuudev14-workflow/workflow-service/models"
 )
 
 func TestGetWorkflows(t *testing.T) {
@@ -17,7 +16,7 @@ func TestGetWorkflows(t *testing.T) {
 	assert.Equal(t, 1, 1)
 
 	// Test data
-	workflowDatas := []models.Workflows{
+	workflowDatas := []workflows.Workflows{
 		{Name: "Workflow A", UpdatedAt: time.Now()},
 		{Name: "Workflow B", UpdatedAt: time.Now().Add(-time.Hour)},
 	}
