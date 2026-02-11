@@ -6,7 +6,7 @@ import (
 
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/jmoiron/sqlx"
-	"github.com/yuudev14-workflow/workflow-service/environment"
+	"github.com/yuudev14-workflow/workflow-service/internal/infra/environment"
 	"github.com/yuudev14-workflow/workflow-service/internal/infra/logging"
 )
 
