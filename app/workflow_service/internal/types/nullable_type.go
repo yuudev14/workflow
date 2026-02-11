@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/yuudev14-workflow/workflow-service/internal/logging"
+	"github.com/yuudev14-workflow/workflow-service/internal/infra/logging"
 )
 
 type NullableType interface {

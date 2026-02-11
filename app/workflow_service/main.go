@@ -6,16 +6,15 @@ import (
 	"log"
 	"net"
 
-	"github.com/yuudev14-workflow/workflow-service/api"
 	"github.com/yuudev14-workflow/workflow-service/db"
-	"github.com/yuudev14-workflow/workflow-service/dto"
 	"github.com/yuudev14-workflow/workflow-service/environment"
-	pb "github.com/yuudev14-workflow/workflow-service/internal/grpc/workflows"
-	"github.com/yuudev14-workflow/workflow-service/internal/logging"
-	"github.com/yuudev14-workflow/workflow-service/internal/mq"
-	"github.com/yuudev14-workflow/workflow-service/internal/repository"
+	"github.com/yuudev14-workflow/workflow-service/internal/infra/logging"
+	"github.com/yuudev14-workflow/workflow-service/internal/infra/mq"
+	"github.com/yuudev14-workflow/workflow-service/internal/interface/api"
+	pb "github.com/yuudev14-workflow/workflow-service/internal/interface/grpc/workflows"
+	"github.com/yuudev14-workflow/workflow-service/internal/tasks"
 	"github.com/yuudev14-workflow/workflow-service/internal/types"
-	"github.com/yuudev14-workflow/workflow-service/service"
+	"github.com/yuudev14-workflow/workflow-service/internal/workflows"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
 )
@@ -35,8 +34,8 @@ func (s *server) HandleWorkflow(ctx context.Context, req *pb.WorkflowStatusPaylo
 	settings := environment.Setup()
 	logging.Setup(settings.LOGGER_MODE)
 	sqlxDB, err := db.SetupDB(settings.DB_URL)
-	workflowRepository := repository.NewWorkflowRepository(sqlxDB)
-	workflowService := service.NewWorkflowService(workflowRepository)
+	workflowRepository := workflows.NewWorkflowRepository(sqlxDB)
+	workflowService := workflows.NewWorkflowService(workflowRepository)
 	var result interface{}
 	// only marshall if result is not None
 	if req.Result != nil {
@@ -46,7 +45,7 @@ func (s *server) HandleWorkflow(ctx context.Context, req *pb.WorkflowStatusPaylo
 		}
 		result = nil
 	}
-	res, err := workflowService.UpdateWorkflowHistory(req.WorkflowHistoryId, dto.UpdateWorkflowHistoryData{
+	res, err := workflowService.UpdateWorkflowHistory(req.WorkflowHistoryId, workflows.UpdateWorkflowHistoryData{
 		Status: types.Nullable[string]{Value: req.Status, Set: true},
 		Error:  types.Nullable[string]{Value: req.Error, Set: true},
 		Result: result,
@@ -63,10 +62,8 @@ func (s *server) HandleTask(ctx context.Context, req *pb.TaskStatusPayload) (*pb
 	settings := environment.Setup()
 	logging.Setup(settings.LOGGER_MODE)
 	sqlxDB, err := db.SetupDB(settings.DB_URL)
-	workflowRepository := repository.NewWorkflowRepository(sqlxDB)
-	taskRepository := repository.NewTaskRepositoryImpl(sqlxDB)
-	workflowService := service.NewWorkflowService(workflowRepository)
-	taskService := service.NewTaskServiceImpl(taskRepository, workflowService)
+	taskRepository := tasks.NewTaskRepositoryImpl(sqlxDB)
+	taskService := tasks.NewTaskServiceImpl(taskRepository)
 	var parameters interface{}
 	// only marshall if parameters is not None
 	if req.Parameters != nil {
@@ -83,7 +80,7 @@ func (s *server) HandleTask(ctx context.Context, req *pb.TaskStatusPayload) (*pb
 			return nil, err
 		}
 	}
-	res, err := taskService.UpdateTaskHistory(req.WorkflowHistoryId, req.TaskId, dto.UpdateTaskHistoryData{
+	res, err := taskService.UpdateTaskHistory(req.WorkflowHistoryId, req.TaskId, tasks.UpdateTaskHistoryData{
 		Name:          req.Name,
 		Description:   req.Description,
 		Parameters:    parameters,
