@@ -6,25 +6,24 @@ import (
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
 	"github.com/yuudev14-workflow/workflow-service/internal/edges"
-	"github.com/yuudev14-workflow/workflow-service/models"
 )
 
 type WorkflowService interface {
-	GetWorkflows(offset int, limit int, filter WorkflowFilter) ([]models.Workflows, error)
+	GetWorkflows(offset int, limit int, filter WorkflowFilter) ([]Workflows, error)
 	GetWorkflowHistoryById(workflowHistoryId uuid.UUID) (*WorkflowHistoryResponse, error)
 	GetWorkflowHistory(offset int, limit int, filter WorkflowHistoryFilter) ([]WorkflowHistoryResponse, error)
 	GetWorkflowHistoryCount(filter WorkflowHistoryFilter) (int, error)
-	GetWorkflowTriggers() ([]models.WorkflowTriggers, error)
+	GetWorkflowTriggers() ([]WorkflowTriggers, error)
 	GetWorkflowsCount(filter WorkflowFilter) (int, error)
-	GetWorkflowById(id string) (*models.Workflows, error)
+	GetWorkflowById(id string) (*Workflows, error)
 
 	GetWorkflowGraphById(id string) (*WorkflowsGraph, error)
-	CreateWorkflow(workflow WorkflowPayload) (*models.Workflows, error)
-	UpdateWorkflow(id string, workflow UpdateWorkflowData) (*models.Workflows, error)
-	UpdateWorkflowTx(tx *sqlx.Tx, id string, workflow UpdateWorkflowData) (*models.Workflows, error)
-	CreateWorkflowHistory(tx *sqlx.Tx, id string, edges []edges.ResponseEdges) (*models.WorkflowHistory, error)
-	UpdateWorkflowHistory(workflowHistoryId string, workflowHistory UpdateWorkflowHistoryData) (*models.WorkflowHistory, error)
-	UpdateWorkflowHistoryStatus(workflowHistoryId string, status string) (*models.WorkflowHistory, error)
+	CreateWorkflow(workflow WorkflowPayload) (*Workflows, error)
+	UpdateWorkflow(id string, workflow UpdateWorkflowData) (*Workflows, error)
+	UpdateWorkflowTx(tx *sqlx.Tx, id string, workflow UpdateWorkflowData) (*Workflows, error)
+	CreateWorkflowHistory(tx *sqlx.Tx, id string, edges []edges.ResponseEdges) (*WorkflowHistory, error)
+	UpdateWorkflowHistory(workflowHistoryId string, workflowHistory UpdateWorkflowHistoryData) (*WorkflowHistory, error)
+	UpdateWorkflowHistoryStatus(workflowHistoryId string, status string) (*WorkflowHistory, error)
 }
 
 type WorkflowServiceImpl struct {
@@ -38,7 +37,7 @@ func NewWorkflowService(WorkflowRepository WorkflowRepository) WorkflowService {
 }
 
 // GetWorkflows implements WorkflowService.
-func (w *WorkflowServiceImpl) GetWorkflows(offset int, limit int, filter WorkflowFilter) ([]models.Workflows, error) {
+func (w *WorkflowServiceImpl) GetWorkflows(offset int, limit int, filter WorkflowFilter) ([]Workflows, error) {
 	return w.WorkflowRepository.GetWorkflows(offset, limit, filter)
 }
 
@@ -57,7 +56,7 @@ func (w *WorkflowServiceImpl) GetWorkflowHistoryCount(filter WorkflowHistoryFilt
 }
 
 // GetWorkflowTriggers implements WorkflowService.
-func (w *WorkflowServiceImpl) GetWorkflowTriggers() ([]models.WorkflowTriggers, error) {
+func (w *WorkflowServiceImpl) GetWorkflowTriggers() ([]WorkflowTriggers, error) {
 	return w.WorkflowRepository.GetWorkflowTriggers()
 }
 
@@ -67,12 +66,12 @@ func (w *WorkflowServiceImpl) GetWorkflowsCount(filter WorkflowFilter) (int, err
 }
 
 // CreateWorkflowHistory implements WorkflowService.
-func (w *WorkflowServiceImpl) CreateWorkflowHistory(tx *sqlx.Tx, id string, edges []edges.ResponseEdges) (*models.WorkflowHistory, error) {
+func (w *WorkflowServiceImpl) CreateWorkflowHistory(tx *sqlx.Tx, id string, edges []edges.ResponseEdges) (*WorkflowHistory, error) {
 	return w.WorkflowRepository.CreateWorkflowHistory(tx, id, edges)
 }
 
 // GetWorkflowById implements WorkflowService.
-func (w *WorkflowServiceImpl) GetWorkflowById(id string) (*models.Workflows, error) {
+func (w *WorkflowServiceImpl) GetWorkflowById(id string) (*Workflows, error) {
 	workflow, workflowErr := w.WorkflowRepository.GetWorkflowById(id)
 	if workflowErr != nil {
 		return nil, workflowErr
@@ -98,22 +97,22 @@ func (w *WorkflowServiceImpl) GetWorkflowGraphById(id string) (*WorkflowsGraph, 
 }
 
 // function for creating a workflow:
-func (w *WorkflowServiceImpl) CreateWorkflow(workflow WorkflowPayload) (*models.Workflows, error) {
+func (w *WorkflowServiceImpl) CreateWorkflow(workflow WorkflowPayload) (*Workflows, error) {
 	return w.WorkflowRepository.CreateWorkflow(workflow)
 }
 
 // updateWorkflow implements WorkflowRepository.
-func (w *WorkflowServiceImpl) UpdateWorkflow(id string, workflow UpdateWorkflowData) (*models.Workflows, error) {
+func (w *WorkflowServiceImpl) UpdateWorkflow(id string, workflow UpdateWorkflowData) (*Workflows, error) {
 	return w.WorkflowRepository.UpdateWorkflow(id, workflow)
 }
 
 // updateWorkflowTx implements WorkflowRepository.
-func (w *WorkflowServiceImpl) UpdateWorkflowTx(tx *sqlx.Tx, id string, workflow UpdateWorkflowData) (*models.Workflows, error) {
+func (w *WorkflowServiceImpl) UpdateWorkflowTx(tx *sqlx.Tx, id string, workflow UpdateWorkflowData) (*Workflows, error) {
 	return w.WorkflowRepository.UpdateWorkflowTx(tx, id, workflow)
 }
 
 // UpdateWorkflowHistoryStatus implements WorkflowRepository.
-func (w *WorkflowServiceImpl) UpdateWorkflowHistoryStatus(workflowHistoryId string, status string) (*models.WorkflowHistory, error) {
+func (w *WorkflowServiceImpl) UpdateWorkflowHistoryStatus(workflowHistoryId string, status string) (*WorkflowHistory, error) {
 	res, err := w.WorkflowRepository.UpdateWorkflowHistoryStatus(workflowHistoryId, status)
 
 	if err != nil {
@@ -128,7 +127,7 @@ func (w *WorkflowServiceImpl) UpdateWorkflowHistoryStatus(workflowHistoryId stri
 }
 
 // UpdateWorkflowHistoryStatus implements WorkflowRepository.
-func (w *WorkflowServiceImpl) UpdateWorkflowHistory(workflowHistoryId string, workflowHistory UpdateWorkflowHistoryData) (*models.WorkflowHistory, error) {
+func (w *WorkflowServiceImpl) UpdateWorkflowHistory(workflowHistoryId string, workflowHistory UpdateWorkflowHistoryData) (*WorkflowHistory, error) {
 	res, err := w.WorkflowRepository.UpdateWorkflowHistory(workflowHistoryId, workflowHistory)
 
 	if err != nil {

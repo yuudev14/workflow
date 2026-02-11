@@ -13,7 +13,6 @@ import (
 	repository "github.com/yuudev14-workflow/workflow-service/internal/infra/base_repository"
 	"github.com/yuudev14-workflow/workflow-service/internal/types"
 	"github.com/yuudev14-workflow/workflow-service/internal/utils"
-	"github.com/yuudev14-workflow/workflow-service/models"
 )
 
 type WorkflowsGraph struct {
@@ -39,21 +38,21 @@ type WorkflowHistoryResponse struct {
 }
 
 type WorkflowRepository interface {
-	GetWorkflows(offset int, limit int, filter WorkflowFilter) ([]models.Workflows, error)
+	GetWorkflows(offset int, limit int, filter WorkflowFilter) ([]Workflows, error)
 	GetWorkflowHistoryById(workflowHistoryId uuid.UUID) (*WorkflowHistoryResponse, error)
 	GetWorkflowHistory(offset int, limit int, filter WorkflowHistoryFilter) ([]WorkflowHistoryResponse, error)
 	GetWorkflowHistoryCount(filter WorkflowHistoryFilter) (int, error)
-	GetWorkflowTriggers() ([]models.WorkflowTriggers, error)
+	GetWorkflowTriggers() ([]WorkflowTriggers, error)
 	GetWorkflowsCount(filter WorkflowFilter) (int, error)
-	GetWorkflowById(id string) (*models.Workflows, error)
+	GetWorkflowById(id string) (*Workflows, error)
 
 	GetWorkflowGraphById(id string) (*WorkflowsGraph, error)
-	CreateWorkflow(workflow WorkflowPayload) (*models.Workflows, error)
-	UpdateWorkflow(id string, workflow UpdateWorkflowData) (*models.Workflows, error)
-	UpdateWorkflowTx(tx *sqlx.Tx, id string, workflow UpdateWorkflowData) (*models.Workflows, error)
-	CreateWorkflowHistory(tx *sqlx.Tx, id string, edges []edges.ResponseEdges) (*models.WorkflowHistory, error)
-	UpdateWorkflowHistoryStatus(workflow_history_id string, status string) (*models.WorkflowHistory, error)
-	UpdateWorkflowHistory(workflowHistoryId string, workflowHistory UpdateWorkflowHistoryData) (*models.WorkflowHistory, error)
+	CreateWorkflow(workflow WorkflowPayload) (*Workflows, error)
+	UpdateWorkflow(id string, workflow UpdateWorkflowData) (*Workflows, error)
+	UpdateWorkflowTx(tx *sqlx.Tx, id string, workflow UpdateWorkflowData) (*Workflows, error)
+	CreateWorkflowHistory(tx *sqlx.Tx, id string, edges []edges.ResponseEdges) (*WorkflowHistory, error)
+	UpdateWorkflowHistoryStatus(workflow_history_id string, status string) (*WorkflowHistory, error)
+	UpdateWorkflowHistory(workflowHistoryId string, workflowHistory UpdateWorkflowHistoryData) (*WorkflowHistory, error)
 }
 
 type WorkflowRepositoryImpl struct {
@@ -67,7 +66,7 @@ func NewWorkflowRepository(db *sqlx.DB) WorkflowRepository {
 }
 
 // GetWorkflows implements WorkflowRepository.
-func (w *WorkflowRepositoryImpl) GetWorkflows(offset int, limit int, filter WorkflowFilter) ([]models.Workflows, error) {
+func (w *WorkflowRepositoryImpl) GetWorkflows(offset int, limit int, filter WorkflowFilter) ([]Workflows, error) {
 
 	statement := sq.Select("*").From("workflows").OrderBy("updated_at DESC").Offset(uint64(offset)).Limit(uint64(limit))
 
@@ -75,7 +74,7 @@ func (w *WorkflowRepositoryImpl) GetWorkflows(offset int, limit int, filter Work
 		statement = statement.Where("name ILIKE ?", fmt.Sprint("%", *filter.Name, "%"))
 
 	}
-	return repository.DbExecAndReturnMany[models.Workflows](
+	return repository.DbExecAndReturnMany[Workflows](
 		w.DB,
 		statement,
 	)
@@ -128,9 +127,9 @@ func (w *WorkflowRepositoryImpl) GetWorkflowHistoryCount(filter WorkflowHistoryF
 }
 
 // GetWorkflowTriggers implements WorkflowRepository.
-func (w *WorkflowRepositoryImpl) GetWorkflowTriggers() ([]models.WorkflowTriggers, error) {
+func (w *WorkflowRepositoryImpl) GetWorkflowTriggers() ([]WorkflowTriggers, error) {
 	statement := sq.Select("*").From("workflow_triggers")
-	return repository.DbExecAndReturnMany[models.WorkflowTriggers](
+	return repository.DbExecAndReturnMany[WorkflowTriggers](
 		w.DB,
 		statement,
 	)
@@ -151,9 +150,9 @@ func (w *WorkflowRepositoryImpl) GetWorkflowsCount(filter WorkflowFilter) (int, 
 }
 
 // GetWorkflowById implements WorkflowRepository.
-func (w *WorkflowRepositoryImpl) GetWorkflowById(id string) (*models.Workflows, error) {
+func (w *WorkflowRepositoryImpl) GetWorkflowById(id string) (*Workflows, error) {
 	statement := sq.Select("*").From("workflows").Where("id = ?", id)
-	return repository.DbExecAndReturnOne[models.Workflows](
+	return repository.DbExecAndReturnOne[Workflows](
 		w.DB,
 		statement,
 	)
@@ -177,7 +176,7 @@ func (w *WorkflowRepositoryImpl) GetWorkflowGraphById(id string) (*WorkflowsGrap
 }
 
 // CreateWorkflowHistory implements WorkflowRepository.
-func (w *WorkflowRepositoryImpl) CreateWorkflowHistory(tx *sqlx.Tx, id string, edges []edges.ResponseEdges) (*models.WorkflowHistory, error) {
+func (w *WorkflowRepositoryImpl) CreateWorkflowHistory(tx *sqlx.Tx, id string, edges []edges.ResponseEdges) (*WorkflowHistory, error) {
 	modifiedEdges := make([]map[string]interface{}, len(edges))
 
 	for i, edge := range edges {
@@ -195,23 +194,23 @@ func (w *WorkflowRepositoryImpl) CreateWorkflowHistory(tx *sqlx.Tx, id string, e
 	}
 	edgesJSON, _ := json.Marshal(modifiedEdges)
 	statement := sq.Insert("workflow_history").Columns("workflow_id", "triggered_at", "edges").Values(id, time.Now(), edgesJSON).Suffix("RETURNING *")
-	return repository.DbExecAndReturnOne[models.WorkflowHistory](
+	return repository.DbExecAndReturnOne[WorkflowHistory](
 		tx,
 		statement,
 	)
 }
 
 // function for creating a workflow:
-func (w *WorkflowRepositoryImpl) CreateWorkflow(workflow WorkflowPayload) (*models.Workflows, error) {
+func (w *WorkflowRepositoryImpl) CreateWorkflow(workflow WorkflowPayload) (*Workflows, error) {
 	statement := sq.Insert("workflows").Columns("name", "description", "trigger_type").Values(workflow.Name, workflow.Description, workflow.TriggerType).Suffix("RETURNING *")
-	return repository.DbExecAndReturnOne[models.Workflows](
+	return repository.DbExecAndReturnOne[Workflows](
 		w.DB,
 		statement,
 	)
 }
 
 // updateWorkflow implements WorkflowRepository.
-func (w *WorkflowRepositoryImpl) UpdateWorkflow(id string, workflow UpdateWorkflowData) (*models.Workflows, error) {
+func (w *WorkflowRepositoryImpl) UpdateWorkflow(id string, workflow UpdateWorkflowData) (*Workflows, error) {
 
 	data := repository.GenerateKeyValueQuery(map[string]types.Nullable[any]{
 		"name":         workflow.Name.ToNullableAny(),
@@ -221,14 +220,14 @@ func (w *WorkflowRepositoryImpl) UpdateWorkflow(id string, workflow UpdateWorkfl
 
 	statement := sq.Update("workflows").SetMap(data).Where(sq.Eq{"id": id}).Suffix("RETURNING *")
 
-	return repository.DbExecAndReturnOne[models.Workflows](
+	return repository.DbExecAndReturnOne[Workflows](
 		w.DB,
 		statement,
 	)
 }
 
 // updateWorkflow implements WorkflowRepository.
-func (w *WorkflowRepositoryImpl) UpdateWorkflowTx(tx *sqlx.Tx, id string, workflow UpdateWorkflowData) (*models.Workflows, error) {
+func (w *WorkflowRepositoryImpl) UpdateWorkflowTx(tx *sqlx.Tx, id string, workflow UpdateWorkflowData) (*Workflows, error) {
 
 	data := repository.GenerateKeyValueQuery(map[string]types.Nullable[any]{
 		"name":         workflow.Name.ToNullableAny(),
@@ -238,14 +237,14 @@ func (w *WorkflowRepositoryImpl) UpdateWorkflowTx(tx *sqlx.Tx, id string, workfl
 
 	statement := sq.Update("workflows").SetMap(data).Where(sq.Eq{"id": id}).Suffix("RETURNING *")
 
-	return repository.DbExecAndReturnOne[models.Workflows](
+	return repository.DbExecAndReturnOne[Workflows](
 		tx,
 		statement,
 	)
 }
 
 // UpdateWorkflowHistory implements WorkflowRepository.
-func (w *WorkflowRepositoryImpl) UpdateWorkflowHistory(workflowHistoryId string, workflowHistory UpdateWorkflowHistoryData) (*models.WorkflowHistory, error) {
+func (w *WorkflowRepositoryImpl) UpdateWorkflowHistory(workflowHistoryId string, workflowHistory UpdateWorkflowHistoryData) (*WorkflowHistory, error) {
 	data := repository.GenerateKeyValueQuery(map[string]types.Nullable[any]{
 		"status": workflowHistory.Status.ToNullableAny(),
 		"error":  workflowHistory.Error.ToNullableAny(),
@@ -258,16 +257,16 @@ func (w *WorkflowRepositoryImpl) UpdateWorkflowHistory(workflowHistoryId string,
 
 	data["result"] = jsonData
 	statement := sq.Update("workflow_history").SetMap(data).Where(sq.Eq{"id": workflowHistoryId}).Suffix("RETURNING *")
-	return repository.DbExecAndReturnOne[models.WorkflowHistory](
+	return repository.DbExecAndReturnOne[WorkflowHistory](
 		w.DB,
 		statement,
 	)
 }
 
 // UpdateWorkflowHistoryStatus implements WorkflowRepository.
-func (w *WorkflowRepositoryImpl) UpdateWorkflowHistoryStatus(workflowHistoryId string, status string) (*models.WorkflowHistory, error) {
+func (w *WorkflowRepositoryImpl) UpdateWorkflowHistoryStatus(workflowHistoryId string, status string) (*WorkflowHistory, error) {
 	statement := sq.Update("workflow_history").Set("status", status).Where(sq.Eq{"id": workflowHistoryId}).Suffix("RETURNING *")
-	return repository.DbExecAndReturnOne[models.WorkflowHistory](
+	return repository.DbExecAndReturnOne[WorkflowHistory](
 		w.DB,
 		statement,
 	)
