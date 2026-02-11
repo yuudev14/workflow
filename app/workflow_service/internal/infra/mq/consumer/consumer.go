@@ -6,12 +6,11 @@ import (
 	"sync"
 
 	"github.com/jmoiron/sqlx"
-	"github.com/yuudev14-workflow/workflow-service/dto"
-	"github.com/yuudev14-workflow/workflow-service/internal/logging"
-	"github.com/yuudev14-workflow/workflow-service/internal/mq"
-	"github.com/yuudev14-workflow/workflow-service/internal/repository"
+	"github.com/yuudev14-workflow/workflow-service/internal/infra/logging"
+	"github.com/yuudev14-workflow/workflow-service/internal/infra/mq"
+	"github.com/yuudev14-workflow/workflow-service/internal/tasks"
 	"github.com/yuudev14-workflow/workflow-service/internal/types"
-	"github.com/yuudev14-workflow/workflow-service/service"
+	"github.com/yuudev14-workflow/workflow-service/internal/workflows"
 )
 
 type MessageBody struct {
@@ -44,13 +43,13 @@ type WorkflowStatusPayload struct {
 }
 
 type ConsumeMessage struct {
-	WorkflowService service.WorkflowService
-	TaskService     service.TaskService
+	WorkflowService workflows.WorkflowService
+	TaskService     tasks.TaskService
 }
 
 func NewConsumeMessage(
-	WorkflowService service.WorkflowService,
-	TaskService service.TaskService,
+	WorkflowService workflows.WorkflowService,
+	TaskService tasks.TaskService,
 ) *ConsumeMessage {
 	return &ConsumeMessage{
 		WorkflowService: WorkflowService,
@@ -65,7 +64,7 @@ func (c *ConsumeMessage) handleTask(params []byte) {
 		logging.Sugar.Error("Error unmarshalling task params:", err)
 		return
 	}
-	c.TaskService.UpdateTaskHistory(taskParams.WorkflowHistoryId, taskParams.TaskId, dto.UpdateTaskHistoryData{
+	c.TaskService.UpdateTaskHistory(taskParams.WorkflowHistoryId, taskParams.TaskId, tasks.UpdateTaskHistoryData{
 		Name:          taskParams.Name,
 		Description:   taskParams.Description,
 		Parameters:    taskParams.Parameters,
@@ -87,7 +86,7 @@ func (c *ConsumeMessage) handleWorkflow(params []byte) {
 		logging.Sugar.Error("Error unmarshalling workflow params:", err)
 		return
 	}
-	c.WorkflowService.UpdateWorkflowHistory(workflowParams.WorkflowHistoryId, dto.UpdateWorkflowHistoryData{
+	c.WorkflowService.UpdateWorkflowHistory(workflowParams.WorkflowHistoryId, workflows.UpdateWorkflowHistoryData{
 		Status: workflowParams.Status,
 		Error:  workflowParams.Error,
 		Result: workflowParams.Result,
@@ -138,10 +137,10 @@ func Listen(mqInstance mq.MQStruct, DB *sqlx.DB) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			workflowRepository := repository.NewWorkflowRepository(DB)
-			taskRepository := repository.NewTaskRepositoryImpl(DB)
-			workflowService := service.NewWorkflowService(workflowRepository)
-			taskService := service.NewTaskServiceImpl(taskRepository, workflowService)
+			workflowRepository := workflows.NewWorkflowRepository(DB)
+			taskRepository := tasks.NewTaskRepositoryImpl(DB)
+			workflowService := workflows.NewWorkflowService(workflowRepository)
+			taskService := tasks.NewTaskServiceImpl(taskRepository)
 			consumeMessageService := NewConsumeMessage(workflowService, taskService)
 
 			for d := range msgs {
