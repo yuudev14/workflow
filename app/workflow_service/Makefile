@@ -16,10 +16,22 @@ migrate:
 migrate-down:
 		migrate -source $(MIGRATIONS_PATH) -database $(DATABASE_URL) down
 
-test:
-	go test -coverprofile=coverage.out -v ./... 
+# UNIT_TESTS_PKGS := $(shell go list ./... | grep -vE 'mocks|repository.go')
+# UNIT_TESTS_COVERPKG := $(shell go list ./... | grep -vE 'mocks|repository.go' | tr '\n' ',')
 
-view-coverage:
+# unit-test:
+# 	go test $(UNIT_TESTS_PKGS) -coverpkg=$(UNIT_TESTS_COVERPKG) -coverprofile=coverage.out
+# 	go tool cover -func=coverage.out
+
+
+TESTS_PKGS := $(shell go list ./... | grep -vE 'mocks|grpc|repository.go')
+TESTS_COVERPKG := $(shell go list ./... | grep -vE 'mocks|grpc|repository.go' | tr '\n' ',')
+
+test:
+	go test $(TESTS_PKGS) -coverpkg=$(TESTS_COVERPKG) -coverprofile=coverage.out
+	go tool cover -func=coverage.out
+
+view-coverage-html:
 	go tool cover -html=coverage.out
 
 swag:
