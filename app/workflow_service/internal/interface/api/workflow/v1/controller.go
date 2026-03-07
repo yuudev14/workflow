@@ -76,7 +76,7 @@ func (w *WorkflowController) GetWorkflows(c *gin.Context) {
 		"filter", filter,
 	)
 
-	workflows, err := w.WorkflowService.GetWorkflows(
+	workflows, err := w.WorkflowService.GetWorkflowsData(
 		query.Offset,
 		query.Limit,
 		filter,
@@ -86,16 +86,7 @@ func (w *WorkflowController) GetWorkflows(c *gin.Context) {
 		return
 	}
 
-	total, err := w.WorkflowService.GetWorkflowsCount(filter)
-	if err != nil {
-		response.ResponseError(http.StatusBadRequest, err.Error())
-		return
-	}
-
-	response.ResponseSuccess(gin.H{
-		"entries": workflows,
-		"total":   total,
-	})
+	response.ResponseSuccess(workflows)
 }
 
 func (w *WorkflowController) GetWorkflowGraphById(c *gin.Context) {
