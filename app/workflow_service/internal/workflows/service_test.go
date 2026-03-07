@@ -21,17 +21,16 @@ func TestMain(m *testing.M) {
 	os.Exit(m.Run())
 }
 
-func setupService(t *testing.T) (workflows.WorkflowService, *mock_workflows.MockWorkflowService) {
+func setupService(t *testing.T) (workflows.WorkflowService, *mock_workflows.MockWorkflowRepository) {
 	ctrl := gomock.NewController(t)
 
-	mockRepo := mock_workflows.NewMockWorkflowService(ctrl)
+	mockRepo := mock_workflows.NewMockWorkflowRepository(ctrl)
 	service := workflows.NewWorkflowService(mockRepo)
 
 	t.Cleanup(ctrl.Finish)
 
 	return service, mockRepo
 }
-
 func TestServiceGetWorkflowsDataSuccess(t *testing.T) {
 	service, mockRepo := setupService(t)
 
