@@ -209,6 +209,21 @@ func (mr *MockWorkflowServiceMockRecorder) GetWorkflowsData(offset, limit, filte
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetWorkflowsData", reflect.TypeOf((*MockWorkflowService)(nil).GetWorkflowsData), offset, limit, filter)
 }
 
+// GetWorkflowsHistoryData mocks base method.
+func (m *MockWorkflowService) GetWorkflowsHistoryData(offset, limit int, filter workflows.WorkflowHistoryFilter) (types.Entries[workflows.WorkflowHistoryResponse], error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetWorkflowsHistoryData", offset, limit, filter)
+	ret0, _ := ret[0].(types.Entries[workflows.WorkflowHistoryResponse])
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetWorkflowsHistoryData indicates an expected call of GetWorkflowsHistoryData.
+func (mr *MockWorkflowServiceMockRecorder) GetWorkflowsHistoryData(offset, limit, filter any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetWorkflowsHistoryData", reflect.TypeOf((*MockWorkflowService)(nil).GetWorkflowsHistoryData), offset, limit, filter)
+}
+
 // UpdateWorkflow mocks base method.
 func (m *MockWorkflowService) UpdateWorkflow(id string, workflow workflows.UpdateWorkflowData) (*workflows.Workflows, error) {
 	m.ctrl.T.Helper()
