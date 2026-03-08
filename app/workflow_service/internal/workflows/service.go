@@ -19,7 +19,7 @@ type WorkflowService interface {
 	GetWorkflowTriggers() ([]WorkflowTriggers, error)
 	GetWorkflowsCount(filter WorkflowFilter) (int, error)
 	GetWorkflowById(id string) (*Workflows, error)
-
+	GetWorkflowsHistoryData(offset int, limit int, filter WorkflowHistoryFilter) (types.Entries[WorkflowHistoryResponse], error)
 	GetWorkflowGraphById(id string) (*WorkflowsGraph, error)
 	CreateWorkflow(workflow WorkflowPayload) (*Workflows, error)
 	UpdateWorkflow(id string, workflow UpdateWorkflowData) (*Workflows, error)
@@ -62,6 +62,28 @@ func (w *WorkflowServiceImpl) GetWorkflowsData(offset int, limit int, filter Wor
 
 	return types.Entries[Workflows]{
 		Entries: workflows,
+		Total:   total,
+	}, nil
+}
+
+// GetWorkflowsData implements [WorkflowService].
+func (w *WorkflowServiceImpl) GetWorkflowsHistoryData(offset int, limit int, filter WorkflowHistoryFilter) (types.Entries[WorkflowHistoryResponse], error) {
+	histories, err := w.GetWorkflowHistory(
+		offset,
+		limit,
+		filter,
+	)
+	if err != nil {
+		return types.Entries[WorkflowHistoryResponse]{}, err
+	}
+
+	total, err := w.GetWorkflowHistoryCount(filter)
+	if err != nil {
+		return types.Entries[WorkflowHistoryResponse]{}, err
+	}
+
+	return types.Entries[WorkflowHistoryResponse]{
+		Entries: histories,
 		Total:   total,
 	}, nil
 }
