@@ -507,3 +507,70 @@ func TestServiceUpdateWorkflowHistoryFail(t *testing.T) {
 		})
 	}
 }
+
+func TestServiceGetWorkflowsHistoryDataSuccess(t *testing.T) {
+	service, mockRepo := setupService(t)
+
+	returnedHistories := []workflows.WorkflowHistoryResponse{
+		{
+			ID:     uuid.New(),
+			Status: "completed",
+		},
+		{
+			ID:     uuid.New(),
+			Status: "in progress",
+		},
+	}
+
+	mockRepo.
+		EXPECT().
+		GetWorkflowHistory(0, 10, workflows.WorkflowHistoryFilter{}).
+		Return(returnedHistories, nil)
+
+	mockRepo.
+		EXPECT().
+		GetWorkflowHistoryCount(workflows.WorkflowHistoryFilter{}).
+		Return(2, nil)
+
+	historiesData, err := service.GetWorkflowsHistoryData(0, 10, workflows.WorkflowHistoryFilter{})
+
+	assert.NoError(t, err)
+	assert.Len(t, historiesData.Entries, 2)
+	assert.Equal(t, "completed", historiesData.Entries[0].Status)
+	assert.Equal(t, "in progress", historiesData.Entries[1].Status)
+	assert.Equal(t, 2, historiesData.Total)
+}
+
+func TestServiceGetWorkflowsHistoryDataFail(t *testing.T) {
+	service, mockRepo := setupService(t)
+
+	tests := []struct {
+		name                   string
+		getWorkflowsError      error
+		getWorkflowsCountError error
+	}{
+		{name: "get workflows data error", getWorkflowsError: fmt.Errorf("error occurred"), getWorkflowsCountError: nil},
+		{name: "get workflows count error", getWorkflowsError: nil, getWorkflowsCountError: fmt.Errorf("error occurred")},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			mockRepo.
+				EXPECT().
+				GetWorkflowHistory(0, 10, workflows.WorkflowHistoryFilter{}).
+				Return([]workflows.WorkflowHistoryResponse{}, tt.getWorkflowsError)
+
+			if tt.getWorkflowsError == nil {
+				mockRepo.
+					EXPECT().
+					GetWorkflowHistoryCount(workflows.WorkflowHistoryFilter{}).
+					Return(0, tt.getWorkflowsCountError)
+			}
+
+			workflowsData, err := service.GetWorkflowsHistoryData(0, 10, workflows.WorkflowHistoryFilter{})
+			assert.Error(t, err)
+			assert.Empty(t, workflowsData.Entries)
+			assert.Equal(t, 0, workflowsData.Total)
+		})
+	}
+}
