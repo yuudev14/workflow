@@ -152,7 +152,7 @@ func (w *WorkflowApplicationServiceImpl) InsertEdges(
 				}
 				edgeToInsert = append(edgeToInsert, edge)
 			} else {
-				logging.Sugar.Debugf("edges data that are not added: %v %v", key, val)
+				logging.Sugar.Infof("edges data that are not added: %v %v", key, val)
 			}
 		}
 	}
@@ -185,9 +185,11 @@ func (w *WorkflowApplicationServiceImpl) DeleteTasks(
 	for _, node := range nodes {
 		tasksBodyMap[node.Name] = true
 	}
+	logging.Sugar.Debugf("tasksBodyMap: %v", tasksBodyMap)
 	// 2. if node not in new nodes to be updated, delete
 	for _, node := range tasks {
 		_, ok := tasksBodyMap[node.Name]
+		logging.Sugar.Debugf("checking if node to be deleted for: %v", node.Name)
 		if !ok {
 			nodeToDelete = append(nodeToDelete, node.ID)
 		}
@@ -195,7 +197,6 @@ func (w *WorkflowApplicationServiceImpl) DeleteTasks(
 
 	logging.Sugar.Debugf("node to delete: %v", nodeToDelete)
 	if len(nodeToDelete) > 0 {
-		logging.Sugar.Debugf("node to delete: %v", nodeToDelete)
 		err := w.TaskService.DeleteTasks(tx, nodeToDelete)
 		return err
 
@@ -324,6 +325,7 @@ func (w *WorkflowApplicationServiceImpl) UpdateWorkflowTasks(
 	}
 
 	// insert the new edges
+	logging.Sugar.Info("insert edges")
 	insertEdgeError := w.InsertEdges(tx, workflowUUID, body.Edges, insertedTasks, body.Handles)
 	if insertEdgeError != nil {
 		logging.Sugar.Error(insertEdgeError)

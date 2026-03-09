@@ -1,10 +1,13 @@
 package workflow_application
 
 import (
+	"fmt"
 	"testing"
 
+	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
+	"github.com/stretchr/testify/assert"
 	"go.uber.org/mock/gomock"
 
 	"github.com/yuudev14-workflow/workflow-service/internal/edges"
@@ -12,6 +15,8 @@ import (
 	"github.com/yuudev14-workflow/workflow-service/internal/infra/logging"
 	"github.com/yuudev14-workflow/workflow-service/internal/tasks"
 	mock_tasks "github.com/yuudev14-workflow/workflow-service/internal/tasks/mocks"
+	"github.com/yuudev14-workflow/workflow-service/internal/utils"
+	"github.com/yuudev14-workflow/workflow-service/internal/workflows"
 	mock_workflows "github.com/yuudev14-workflow/workflow-service/internal/workflows/mocks"
 )
 
@@ -21,6 +26,18 @@ type testEnv struct {
 	mockWorkflow *mock_workflows.MockWorkflowService
 	mockTask     *mock_tasks.MockTaskService
 	mockEdge     *mock_edges.MockEdgeService
+}
+
+func setupDBMock(t *testing.T) (*sqlx.DB, sqlmock.Sqlmock) {
+
+	db, mock, err := sqlmock.New()
+	if err != nil {
+		t.Fatalf("error creating sqlmock: %v", err)
+	}
+
+	sqlxDB := sqlx.NewDb(db, "sqlmock")
+
+	return sqlxDB, mock
 }
 
 func setupTest(t *testing.T) *testEnv {
@@ -35,7 +52,7 @@ func setupTest(t *testing.T) *testEnv {
 		WorkflowService: mockWorkflow,
 		TaskService:     mockTask,
 		EdgeService:     mockEdge,
-		DB:              &sqlx.DB{}, // not used in pure unit tests
+		DB:              &sqlx.DB{},
 	}
 
 	return &testEnv{
@@ -83,44 +100,170 @@ func TestPrepareWorkflowMessage(t *testing.T) {
 }
 
 func TestValidateWorkflowTaskPayload(t *testing.T) {
-
-	body := tasks.UpdateWorkflowtasks{
-		Edges: map[string][]string{
-			"start": {"task1"},
+	tests := []struct {
+		name      string
+		edges     map[string][]string
+		nodes     []tasks.TaskPayload
+		withError bool
+	}{
+		{
+			name: "with no error",
+			edges: map[string][]string{
+				"start": {"task1"},
+			},
+			nodes: []tasks.TaskPayload{
+				{Name: "start"},
+				{Name: "task1"},
+			},
+			withError: false,
 		},
-		Nodes: []tasks.TaskPayload{
-			{Name: "start"},
-			{Name: "task1"},
+
+		{
+			name:  "no start in edges",
+			edges: map[string][]string{},
+			nodes: []tasks.TaskPayload{
+				{Name: "start"},
+				{Name: "task1"},
+			},
+			withError: true,
+		},
+		{
+			name: "no start in edges",
+			edges: map[string][]string{
+				"start": {"task1"},
+			},
+			nodes:     []tasks.TaskPayload{},
+			withError: true,
 		},
 	}
 
-	err := validateWorkflowTaskPayload(body)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			body := tasks.UpdateWorkflowtasks{
+				Edges: tt.edges,
+				Nodes: tt.nodes,
+			}
 
-	if err != nil {
-		t.Fatalf("expected no error")
+			err := validateWorkflowTaskPayload(body)
+
+			if tt.withError {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+			}
+		})
 	}
+
 }
 
-func TestDeleteEdges_DeleteAll(t *testing.T) {
+func TestDeleteEdges(t *testing.T) {
+	tests := []struct {
+		name      string
+		payload   map[string][]string
+		mockSetup func(testEnv *testEnv, workflowId string)
+		withError bool
+	}{
+		{
+			name:    "delete all edges",
+			payload: map[string][]string{},
+			mockSetup: func(testEnv *testEnv, workflowId string) {
+				testEnv.mockEdge.
+					EXPECT().
+					DeleteAllWorkflowEdges(gomock.Any(), workflowId).
+					Return(nil)
+			},
+			withError: false,
+		},
+		{
+			name: "delete no edges",
+			payload: map[string][]string{
+				"start": {"task1"},
+				"task2": {"task5"},
+			},
+			mockSetup: func(testEnv *testEnv, workflowId string) {
+				testEnv.mockEdge.
+					EXPECT().
+					GetEdgesByWorkflowId(workflowId).
+					Return([]edges.ResponseEdges{}, nil)
+			},
+			withError: false,
+		},
+		{
+			name: "delete some edges",
+			payload: map[string][]string{
+				"start": {"task1"},
+				"task2": {"task5"},
+			},
+			mockSetup: func(testEnv *testEnv, workflowId string) {
+				testEnv.mockEdge.
+					EXPECT().
+					GetEdgesByWorkflowId(workflowId).
+					Return([]edges.ResponseEdges{
+						{
+							ID:                  uuid.New(),
+							SourceTaskName:      "start",
+							DestinationTaskName: "task1",
+						},
+						{
+							ID:                  uuid.New(),
+							SourceTaskName:      "start",
+							DestinationTaskName: "task2",
+						},
+					}, nil)
 
-	env := setupTest(t)
+				testEnv.mockEdge.
+					EXPECT().
+					DeleteEdges(gomock.Any(), gomock.Len(1)).
+					Return(nil)
+			},
+			withError: false,
+		},
+		{
+			name: "with error",
+			payload: map[string][]string{
+				"start": {"task1"},
+				"task2": {"task5"},
+			},
+			mockSetup: func(testEnv *testEnv, workflowId string) {
+				testEnv.mockEdge.
+					EXPECT().
+					GetEdgesByWorkflowId(workflowId).
+					Return([]edges.ResponseEdges{}, fmt.Errorf("error occured"))
 
-	workflowID := uuid.New()
-
-	env.mockEdge.
-		EXPECT().
-		DeleteAllWorkflowEdges(gomock.Any(), workflowID.String()).
-		Return(nil)
-
-	err := env.service.DeleteEdges(
-		nil,
-		workflowID,
-		map[string][]string{},
-	)
-
-	if err != nil {
-		t.Fatalf("unexpected error")
+				// testEnv.mockEdge.
+				// 	EXPECT().
+				// 	DeleteEdges(gomock.Any(), gomock.Len(1)).
+				// 	Return(nil)
+			},
+			withError: true,
+		},
 	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+
+			env := setupTest(t)
+
+			workflowID := uuid.New()
+
+			tt.mockSetup(env, workflowID.String())
+
+			err := env.service.DeleteEdges(
+				nil,
+				workflowID,
+				tt.payload,
+			)
+
+			if tt.withError {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+			}
+
+		})
+
+	}
+
 }
 
 func TestUpsertTasks(t *testing.T) {
@@ -180,12 +323,25 @@ func TestInsertEdges(t *testing.T) {
 		InsertEdges(gomock.Any(), gomock.Any()).
 		Return([]edges.Edges{}, nil)
 
+	handles := &map[string]map[string]edges.EdgeHandle{
+		"start": {
+			"start": {
+				SourceHandle:      utils.StrPtr("start"),
+				DestinationHandle: utils.StrPtr("start"),
+			},
+			"task1": {
+				SourceHandle:      utils.StrPtr("task1"),
+				DestinationHandle: utils.StrPtr("task1"),
+			},
+		},
+	}
+
 	err := env.service.InsertEdges(
 		nil,
 		workflowID,
 		edgesPayload,
 		tasksList,
-		nil,
+		handles,
 	)
 
 	if err != nil {
@@ -195,34 +351,158 @@ func TestInsertEdges(t *testing.T) {
 
 func TestDeleteTasks(t *testing.T) {
 
+	tests := []struct {
+		name      string
+		payload   []tasks.TaskPayload
+		mockSetup func(testEnv *testEnv, workflowId string)
+		withError bool
+	}{
+
+		{
+			name:    "delete successfully",
+			payload: []tasks.TaskPayload{},
+			mockSetup: func(testEnv *testEnv, workflowId string) {
+				testEnv.mockTask.
+					EXPECT().
+					GetTasksByWorkflowId(workflowId).
+					Return([]tasks.Tasks{
+						{
+							ID:   uuid.New(),
+							Name: "task1",
+						},
+					}, nil)
+
+				testEnv.mockTask.
+					EXPECT().
+					DeleteTasks(gomock.Any(), gomock.Any()).
+					Return(nil)
+			},
+			withError: false,
+		},
+		{
+			name: "noting to delete",
+			payload: []tasks.TaskPayload{
+				{
+					Name: "task1",
+				},
+			},
+			mockSetup: func(testEnv *testEnv, workflowId string) {
+				testEnv.mockTask.
+					EXPECT().
+					GetTasksByWorkflowId(workflowId).
+					Return([]tasks.Tasks{
+						{
+							ID:   uuid.New(),
+							Name: "task1",
+						},
+					}, nil)
+			},
+			withError: false,
+		},
+		{
+			name: "error occured",
+			payload: []tasks.TaskPayload{
+				{
+					Name: "task1",
+				},
+			},
+			mockSetup: func(testEnv *testEnv, workflowId string) {
+				testEnv.mockTask.
+					EXPECT().
+					GetTasksByWorkflowId(workflowId).
+					Return([]tasks.Tasks{}, fmt.Errorf("error occured"))
+			},
+			withError: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			env := setupTest(t)
+
+			workflowID := uuid.New()
+
+			tt.mockSetup(env, workflowID.String())
+
+			err := env.service.DeleteTasks(nil, workflowID, tt.payload)
+
+			if tt.withError {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+			}
+
+		})
+	}
+
+}
+
+func TestUpdateWorkflowTasks(t *testing.T) {
+	db, dbMock := setupDBMock(t)
+
 	env := setupTest(t)
+	env.service.DB = db
 
 	workflowID := uuid.New()
 
-	existingTasks := []tasks.Tasks{
+	nodes := []tasks.TaskPayload{
 		{
-			ID:   uuid.New(),
+			Name: "start",
+		},
+		{
 			Name: "task1",
 		},
 	}
+	edges_ := map[string][]string{
+		"start": {"task1"},
+	}
+
+	payload := tasks.UpdateWorkflowtasks{
+		Task:  &workflows.UpdateWorkflowData{},
+		Nodes: nodes,
+		Edges: edges_,
+	}
+
+	dbMock.ExpectBegin()
+	dbMock.ExpectCommit()
+
+	env.mockWorkflow.
+		EXPECT().
+		UpdateWorkflowTx(gomock.Any(), workflowID.String(), *payload.Task).
+		Return(&workflows.Workflows{}, nil)
+
+	env.mockEdge.
+		EXPECT().
+		GetEdgesByWorkflowId(workflowID.String()).
+		Return([]edges.ResponseEdges{}, nil)
+
+	env.mockTask.
+		EXPECT().
+		UpsertTasks(gomock.Any(), workflowID, gomock.Any()).
+		Return([]tasks.Tasks{}, nil)
 
 	env.mockTask.
 		EXPECT().
 		GetTasksByWorkflowId(workflowID.String()).
-		Return(existingTasks, nil)
+		Return([]tasks.Tasks{
+			{
+				ID:   uuid.New(),
+				Name: "task1",
+			},
+		}, nil)
 
-	env.mockTask.
+	// env.mockTask.
+	// 	EXPECT().
+	// 	DeleteTasks(gomock.Any(), gomock.Any()).
+	// 	Return(nil)
+
+	env.mockWorkflow.
 		EXPECT().
-		DeleteTasks(gomock.Any(), gomock.Any()).
-		Return(nil)
+		GetWorkflowGraphById(gomock.Any()).
+		Return(&workflows.WorkflowsGraph{}, nil)
 
-	nodes := []tasks.TaskPayload{}
-
-	err := env.service.DeleteTasks(nil, workflowID, nodes)
-
-	if err != nil {
-		t.Fatalf("unexpected error")
-	}
+	_, err := env.service.UpdateWorkflowTasks(workflowID.String(), payload)
+	assert.NoError(t, err)
 }
 
 func TestGetGraphUUIDS(t *testing.T) {
