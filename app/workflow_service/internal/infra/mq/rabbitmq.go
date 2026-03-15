@@ -1,6 +1,8 @@
 package mq
 
 import (
+	"encoding/json"
+
 	"github.com/streadway/amqp"
 	"github.com/yuudev14-workflow/workflow-service/internal/infra/logging"
 )
@@ -80,4 +82,43 @@ func declareReceiverQueue(ch *amqp.Channel, queueName string) amqp.Queue {
 		logging.Sugar.Panicf("%v", err)
 	}
 	return q
+}
+
+type TaskPubSub interface {
+	SendMessage(message interface{}) error
+}
+
+type RabbitMQPublisher struct {
+	MQ MQStruct
+}
+
+func NewRabbitMQPublisher(MQ MQStruct) TaskPubSub {
+	return &RabbitMQPublisher{
+		MQ: MQ,
+	}
+}
+
+func (r *RabbitMQPublisher) SendMessage(message interface{}) error {
+	jsonData, jsonErr := json.Marshal(message)
+
+	if jsonErr != nil {
+		return jsonErr
+	}
+	err := r.MQ.MQChannel.Publish(
+		"",                    // exchange
+		r.MQ.SenderQueue.Name, // routing key
+		false,                 // mandatory
+		false,                 // immediate
+		amqp.Publishing{
+			DeliveryMode: amqp.Persistent,
+			ContentType:  "text/plain",
+			Body:         []byte(jsonData),
+		})
+	if err != nil {
+		return err
+	}
+
+	logging.Sugar.Infow("successfully pushed the message", "jsonData", string(jsonData))
+	return nil
+
 }

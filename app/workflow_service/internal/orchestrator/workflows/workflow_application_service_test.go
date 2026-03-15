@@ -13,6 +13,7 @@ import (
 	"github.com/yuudev14-workflow/workflow-service/internal/edges"
 	mock_edges "github.com/yuudev14-workflow/workflow-service/internal/edges/mocks"
 	"github.com/yuudev14-workflow/workflow-service/internal/infra/logging"
+	mock_mq "github.com/yuudev14-workflow/workflow-service/internal/infra/mq/mock"
 	"github.com/yuudev14-workflow/workflow-service/internal/tasks"
 	mock_tasks "github.com/yuudev14-workflow/workflow-service/internal/tasks/mocks"
 	"github.com/yuudev14-workflow/workflow-service/internal/utils"
@@ -26,6 +27,7 @@ type testEnv struct {
 	mockWorkflow *mock_workflows.MockWorkflowService
 	mockTask     *mock_tasks.MockTaskService
 	mockEdge     *mock_edges.MockEdgeService
+	mockTaskSub  *mock_mq.MockTaskPubSub
 }
 
 func setupDBMock(t *testing.T) (*sqlx.DB, sqlmock.Sqlmock) {
@@ -47,12 +49,14 @@ func setupTest(t *testing.T) *testEnv {
 	mockWorkflow := mock_workflows.NewMockWorkflowService(ctrl)
 	mockTask := mock_tasks.NewMockTaskService(ctrl)
 	mockEdge := mock_edges.NewMockEdgeService(ctrl)
+	mockTaskPubSub := mock_mq.NewMockTaskPubSub(ctrl)
 
 	service := &WorkflowApplicationServiceImpl{
 		WorkflowService: mockWorkflow,
 		TaskService:     mockTask,
 		EdgeService:     mockEdge,
 		DB:              &sqlx.DB{},
+		TaskPubSUb:      mockTaskPubSub,
 	}
 
 	return &testEnv{
@@ -60,6 +64,7 @@ func setupTest(t *testing.T) *testEnv {
 		mockWorkflow: mockWorkflow,
 		mockTask:     mockTask,
 		mockEdge:     mockEdge,
+		mockTaskSub:  mockTaskPubSub,
 	}
 }
 
@@ -438,71 +443,231 @@ func TestDeleteTasks(t *testing.T) {
 }
 
 func TestUpdateWorkflowTasks(t *testing.T) {
-	db, dbMock := setupDBMock(t)
-
-	env := setupTest(t)
-	env.service.DB = db
-
-	workflowID := uuid.New()
-
-	nodes := []tasks.TaskPayload{
+	tests := []struct {
+		name      string
+		mockSetup func(env *testEnv, workflowID uuid.UUID, dbMock sqlmock.Sqlmock, payload tasks.UpdateWorkflowtasks)
+		withError bool
+	}{
 		{
-			Name: "start",
-		},
-		{
-			Name: "task1",
-		},
-	}
-	edges_ := map[string][]string{
-		"start": {"task1"},
-	}
+			name:      "no error",
+			withError: false,
+			mockSetup: func(env *testEnv, workflowID uuid.UUID, dbMock sqlmock.Sqlmock, payload tasks.UpdateWorkflowtasks) {
 
-	payload := tasks.UpdateWorkflowtasks{
-		Task:  &workflows.UpdateWorkflowData{},
-		Nodes: nodes,
-		Edges: edges_,
-	}
+				dbMock.ExpectBegin()
+				dbMock.ExpectCommit()
 
-	dbMock.ExpectBegin()
-	dbMock.ExpectCommit()
+				env.mockWorkflow.
+					EXPECT().
+					UpdateWorkflowTx(gomock.Any(), workflowID.String(), *payload.Task).
+					Return(&workflows.Workflows{}, nil)
 
-	env.mockWorkflow.
-		EXPECT().
-		UpdateWorkflowTx(gomock.Any(), workflowID.String(), *payload.Task).
-		Return(&workflows.Workflows{}, nil)
+				env.mockEdge.
+					EXPECT().
+					GetEdgesByWorkflowId(workflowID.String()).
+					Return([]edges.ResponseEdges{}, nil)
 
-	env.mockEdge.
-		EXPECT().
-		GetEdgesByWorkflowId(workflowID.String()).
-		Return([]edges.ResponseEdges{}, nil)
+				env.mockTask.
+					EXPECT().
+					UpsertTasks(gomock.Any(), workflowID, gomock.Any()).
+					Return([]tasks.Tasks{}, nil)
 
-	env.mockTask.
-		EXPECT().
-		UpsertTasks(gomock.Any(), workflowID, gomock.Any()).
-		Return([]tasks.Tasks{}, nil)
+				env.mockTask.
+					EXPECT().
+					GetTasksByWorkflowId(workflowID.String()).
+					Return([]tasks.Tasks{
+						{
+							ID:   uuid.New(),
+							Name: "task1",
+						},
+					}, nil)
 
-	env.mockTask.
-		EXPECT().
-		GetTasksByWorkflowId(workflowID.String()).
-		Return([]tasks.Tasks{
-			{
-				ID:   uuid.New(),
-				Name: "task1",
+				env.mockWorkflow.
+					EXPECT().
+					GetWorkflowGraphById(gomock.Any()).
+					Return(&workflows.WorkflowsGraph{}, nil)
 			},
-		}, nil)
+		},
+		{
+			name:      "error in the finale",
+			withError: true,
+			mockSetup: func(env *testEnv, workflowID uuid.UUID, dbMock sqlmock.Sqlmock, payload tasks.UpdateWorkflowtasks) {
 
-	// env.mockTask.
-	// 	EXPECT().
-	// 	DeleteTasks(gomock.Any(), gomock.Any()).
-	// 	Return(nil)
+				dbMock.ExpectBegin()
+				dbMock.ExpectCommit()
 
-	env.mockWorkflow.
-		EXPECT().
-		GetWorkflowGraphById(gomock.Any()).
-		Return(&workflows.WorkflowsGraph{}, nil)
+				env.mockWorkflow.
+					EXPECT().
+					UpdateWorkflowTx(gomock.Any(), workflowID.String(), *payload.Task).
+					Return(&workflows.Workflows{}, nil)
 
-	_, err := env.service.UpdateWorkflowTasks(workflowID.String(), payload)
-	assert.NoError(t, err)
+				env.mockEdge.
+					EXPECT().
+					GetEdgesByWorkflowId(workflowID.String()).
+					Return([]edges.ResponseEdges{}, nil)
+
+				env.mockTask.
+					EXPECT().
+					UpsertTasks(gomock.Any(), workflowID, gomock.Any()).
+					Return([]tasks.Tasks{}, nil)
+
+				env.mockTask.
+					EXPECT().
+					GetTasksByWorkflowId(workflowID.String()).
+					Return([]tasks.Tasks{
+						{
+							ID:   uuid.New(),
+							Name: "task1",
+						},
+					}, nil)
+
+				env.mockWorkflow.
+					EXPECT().
+					GetWorkflowGraphById(gomock.Any()).
+					Return(nil, fmt.Errorf("error occured"))
+			},
+		},
+		{
+			name:      "error in update workflow",
+			withError: true,
+			mockSetup: func(env *testEnv, workflowID uuid.UUID, dbMock sqlmock.Sqlmock, payload tasks.UpdateWorkflowtasks) {
+
+				dbMock.ExpectBegin()
+				dbMock.ExpectCommit()
+
+				env.mockWorkflow.
+					EXPECT().
+					UpdateWorkflowTx(gomock.Any(), workflowID.String(), *payload.Task).
+					Return(nil, fmt.Errorf("error occured"))
+			},
+		},
+		{
+			name:      "error in GetEdgesByWorkflowId",
+			withError: true,
+			mockSetup: func(env *testEnv, workflowID uuid.UUID, dbMock sqlmock.Sqlmock, payload tasks.UpdateWorkflowtasks) {
+
+				dbMock.ExpectBegin()
+				dbMock.ExpectCommit()
+
+				env.mockWorkflow.
+					EXPECT().
+					UpdateWorkflowTx(gomock.Any(), workflowID.String(), *payload.Task).
+					Return(&workflows.Workflows{}, nil)
+
+				env.mockEdge.
+					EXPECT().
+					GetEdgesByWorkflowId(workflowID.String()).
+					Return([]edges.ResponseEdges{}, fmt.Errorf("error occured"))
+			},
+		},
+		{
+			name:      "no error in UpsertTasks",
+			withError: true,
+			mockSetup: func(env *testEnv, workflowID uuid.UUID, dbMock sqlmock.Sqlmock, payload tasks.UpdateWorkflowtasks) {
+
+				dbMock.ExpectBegin()
+				dbMock.ExpectCommit()
+
+				env.mockWorkflow.
+					EXPECT().
+					UpdateWorkflowTx(gomock.Any(), workflowID.String(), *payload.Task).
+					Return(&workflows.Workflows{}, nil)
+
+				env.mockEdge.
+					EXPECT().
+					GetEdgesByWorkflowId(workflowID.String()).
+					Return([]edges.ResponseEdges{}, nil)
+
+				env.mockTask.
+					EXPECT().
+					UpsertTasks(gomock.Any(), workflowID, gomock.Any()).
+					Return([]tasks.Tasks{}, fmt.Errorf("error occured"))
+
+			},
+		},
+		{
+			name:      "error in GetTasksByWorkflowId",
+			withError: true,
+			mockSetup: func(env *testEnv, workflowID uuid.UUID, dbMock sqlmock.Sqlmock, payload tasks.UpdateWorkflowtasks) {
+
+				dbMock.ExpectBegin()
+				dbMock.ExpectCommit()
+
+				env.mockWorkflow.
+					EXPECT().
+					UpdateWorkflowTx(gomock.Any(), workflowID.String(), *payload.Task).
+					Return(&workflows.Workflows{}, nil)
+
+				env.mockEdge.
+					EXPECT().
+					GetEdgesByWorkflowId(workflowID.String()).
+					Return([]edges.ResponseEdges{}, nil)
+
+				env.mockTask.
+					EXPECT().
+					UpsertTasks(gomock.Any(), workflowID, gomock.Any()).
+					Return([]tasks.Tasks{}, nil)
+
+				env.mockTask.
+					EXPECT().
+					GetTasksByWorkflowId(workflowID.String()).
+					Return([]tasks.Tasks{
+						{
+							ID:   uuid.New(),
+							Name: "task1",
+						},
+					}, fmt.Errorf("error occured"))
+
+				// env.mockWorkflow.
+				// 	EXPECT().
+				// 	GetWorkflowGraphById(gomock.Any()).
+				// 	Return(&workflows.WorkflowsGraph{}, nil)
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			db, dbMock := setupDBMock(t)
+			nodes := []tasks.TaskPayload{
+				{
+					Name: "start",
+				},
+				{
+					Name: "task1",
+				},
+			}
+			edges_ := map[string][]string{
+				"start": {"task1"},
+			}
+
+			payload := tasks.UpdateWorkflowtasks{
+				Task:  &workflows.UpdateWorkflowData{},
+				Nodes: nodes,
+				Edges: edges_,
+			}
+
+			env := setupTest(t)
+			env.service.DB = db
+
+			workflowID := uuid.New()
+
+			tt.mockSetup(
+				env,
+				workflowID,
+				dbMock,
+				payload,
+			)
+			_, err := env.service.UpdateWorkflowTasks(workflowID.String(), payload)
+			if tt.withError {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+
+			}
+
+		})
+	}
+
 }
 
 func TestGetGraphUUIDS(t *testing.T) {
@@ -521,5 +686,237 @@ func TestGetGraphUUIDS(t *testing.T) {
 
 	if len(graph[source]) != 1 {
 		t.Fatalf("expected edge")
+	}
+}
+
+func TestTriggerWorkflow(t *testing.T) {
+
+	tests := []struct {
+		name      string
+		mockSetup func(env *testEnv, workflowID string, dbMock sqlmock.Sqlmock)
+		withError bool
+	}{
+		{
+			name:      "workflow error",
+			withError: true,
+			mockSetup: func(env *testEnv, workflowID string, dbMock sqlmock.Sqlmock) {
+
+				env.mockWorkflow.
+					EXPECT().
+					GetWorkflowById(workflowID).
+					Return(nil, fmt.Errorf("workflow error"))
+			},
+		},
+		{
+			name:      "task error",
+			withError: true,
+			mockSetup: func(env *testEnv, workflowID string, dbMock sqlmock.Sqlmock) {
+
+				env.mockWorkflow.
+					EXPECT().
+					GetWorkflowById(workflowID).
+					Return(&workflows.Workflows{}, nil)
+
+				env.mockTask.
+					EXPECT().
+					GetTasksByWorkflowId(workflowID).
+					Return(nil, fmt.Errorf("task error"))
+			},
+		},
+		{
+			name:      "edge error",
+			withError: true,
+			mockSetup: func(env *testEnv, workflowID string, dbMock sqlmock.Sqlmock) {
+
+				env.mockWorkflow.
+					EXPECT().
+					GetWorkflowById(workflowID).
+					Return(&workflows.Workflows{}, nil)
+
+				env.mockTask.
+					EXPECT().
+					GetTasksByWorkflowId(workflowID).
+					Return([]tasks.Tasks{}, nil)
+
+				env.mockEdge.
+					EXPECT().
+					GetEdgesByWorkflowId(workflowID).
+					Return(nil, fmt.Errorf("edge error"))
+			},
+		},
+		{
+			name:      "create workflow history error",
+			withError: true,
+			mockSetup: func(env *testEnv, workflowID string, dbMock sqlmock.Sqlmock) {
+
+				dbMock.ExpectBegin()
+				dbMock.ExpectRollback()
+
+				env.mockWorkflow.
+					EXPECT().
+					GetWorkflowById(workflowID).
+					Return(&workflows.Workflows{}, nil)
+
+				env.mockTask.
+					EXPECT().
+					GetTasksByWorkflowId(workflowID).
+					Return([]tasks.Tasks{}, nil)
+
+				env.mockEdge.
+					EXPECT().
+					GetEdgesByWorkflowId(workflowID).
+					Return([]edges.ResponseEdges{}, nil)
+
+				env.mockWorkflow.
+					EXPECT().
+					CreateWorkflowHistory(gomock.Any(), workflowID, gomock.Any()).
+					Return(nil, fmt.Errorf("history error"))
+			},
+		},
+		{
+			name:      "create task history error",
+			withError: true,
+			mockSetup: func(env *testEnv, workflowID string, dbMock sqlmock.Sqlmock) {
+
+				dbMock.ExpectBegin()
+				dbMock.ExpectRollback()
+
+				env.mockWorkflow.
+					EXPECT().
+					GetWorkflowById(workflowID).
+					Return(&workflows.Workflows{}, nil)
+
+				env.mockTask.
+					EXPECT().
+					GetTasksByWorkflowId(workflowID).
+					Return([]tasks.Tasks{}, nil)
+
+				env.mockEdge.
+					EXPECT().
+					GetEdgesByWorkflowId(workflowID).
+					Return([]edges.ResponseEdges{}, nil)
+
+				historyID := uuid.New()
+
+				env.mockWorkflow.
+					EXPECT().
+					CreateWorkflowHistory(gomock.Any(), workflowID, gomock.Any()).
+					Return(&workflows.WorkflowHistory{ID: historyID}, nil)
+
+				env.mockTask.
+					EXPECT().
+					CreateTaskHistory(gomock.Any(), historyID.String(), gomock.Any(), gomock.Any()).
+					Return(nil, fmt.Errorf("task history error"))
+			},
+		},
+		{
+			name:      "mq error",
+			withError: true,
+			mockSetup: func(env *testEnv, workflowID string, dbMock sqlmock.Sqlmock) {
+
+				dbMock.ExpectBegin()
+				dbMock.ExpectCommit()
+
+				env.mockWorkflow.
+					EXPECT().
+					GetWorkflowById(workflowID).
+					Return(&workflows.Workflows{}, nil)
+
+				env.mockTask.
+					EXPECT().
+					GetTasksByWorkflowId(workflowID).
+					Return([]tasks.Tasks{
+						{ID: uuid.New(), Name: "task1"},
+					}, nil)
+
+				env.mockEdge.
+					EXPECT().
+					GetEdgesByWorkflowId(workflowID).
+					Return([]edges.ResponseEdges{}, nil)
+
+				historyID := uuid.New()
+
+				env.mockWorkflow.
+					EXPECT().
+					CreateWorkflowHistory(gomock.Any(), workflowID, gomock.Any()).
+					Return(&workflows.WorkflowHistory{ID: historyID}, nil)
+
+				env.mockTask.
+					EXPECT().
+					CreateTaskHistory(gomock.Any(), historyID.String(), gomock.Any(), gomock.Any()).
+					Return([]tasks.TaskHistory{}, nil)
+
+				env.mockTaskSub.
+					EXPECT().
+					SendMessage(gomock.Any()).
+					Return(fmt.Errorf("mq error"))
+			},
+		},
+		{
+			name:      "success",
+			withError: false,
+			mockSetup: func(env *testEnv, workflowID string, dbMock sqlmock.Sqlmock) {
+
+				dbMock.ExpectBegin()
+				dbMock.ExpectCommit()
+
+				env.mockWorkflow.
+					EXPECT().
+					GetWorkflowById(workflowID).
+					Return(&workflows.Workflows{}, nil)
+
+				env.mockTask.
+					EXPECT().
+					GetTasksByWorkflowId(workflowID).
+					Return([]tasks.Tasks{
+						{ID: uuid.New(), Name: "task1"},
+					}, nil)
+
+				env.mockEdge.
+					EXPECT().
+					GetEdgesByWorkflowId(workflowID).
+					Return([]edges.ResponseEdges{}, nil)
+
+				historyID := uuid.New()
+
+				env.mockWorkflow.
+					EXPECT().
+					CreateWorkflowHistory(gomock.Any(), workflowID, gomock.Any()).
+					Return(&workflows.WorkflowHistory{ID: historyID}, nil)
+
+				env.mockTask.
+					EXPECT().
+					CreateTaskHistory(gomock.Any(), historyID.String(), gomock.Any(), gomock.Any()).
+					Return([]tasks.TaskHistory{}, nil)
+
+				env.mockTaskSub.
+					EXPECT().
+					SendMessage(gomock.Any()).
+					Return(nil)
+			},
+		},
+	}
+
+	for _, tt := range tests {
+
+		t.Run(tt.name, func(t *testing.T) {
+
+			db, dbMock := setupDBMock(t)
+
+			env := setupTest(t)
+			env.service.DB = db
+
+			workflowID := uuid.New().String()
+
+			tt.mockSetup(env, workflowID, dbMock)
+
+			_, err := env.service.TriggerWorkflow(workflowID)
+
+			if tt.withError {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+			}
+		})
 	}
 }
