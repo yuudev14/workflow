@@ -17,7 +17,8 @@ func SetupWorkflowController(db *sqlx.DB, mqInstance mq.MQStruct, route *gin.Rou
 	workflowService := workflows.NewWorkflowService(workflowRepository)
 	edgeService := edges.NewEdgeServiceImpl(edgeRepository)
 	taskService := tasks.NewTaskServiceImpl(taskRepository)
-	workflowApplicationService := workflow_application.NewWorkflowApplicationService(workflowService, taskService, edgeService, db, mqInstance)
+	taskPubSub := mq.NewRabbitMQPublisher(mqInstance)
+	workflowApplicationService := workflow_application.NewWorkflowApplicationService(workflowService, taskService, edgeService, db, taskPubSub)
 	workflowController := NewWorkflowController(workflowService, taskService, edgeService, workflowApplicationService, db)
 
 	r := route.Group("workflows/v1")

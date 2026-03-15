@@ -7,7 +7,6 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
-	"github.com/streadway/amqp"
 	"github.com/yuudev14-workflow/workflow-service/internal/edges"
 	"github.com/yuudev14-workflow/workflow-service/internal/infra/logging"
 	"github.com/yuudev14-workflow/workflow-service/internal/infra/mq"
@@ -54,16 +53,16 @@ type WorkflowApplicationServiceImpl struct {
 	TaskService     tasks.TaskService
 	EdgeService     edges.EdgeService
 	DB              *sqlx.DB
-	MqInstance      mq.MQStruct
+	TaskPubSUb      mq.TaskPubSub
 }
 
-func NewWorkflowApplicationService(WorkflowService workflows.WorkflowService, TaskService tasks.TaskService, EdgeService edges.EdgeService, DB *sqlx.DB, mqInstance mq.MQStruct) WorkflowApplicationService {
+func NewWorkflowApplicationService(WorkflowService workflows.WorkflowService, TaskService tasks.TaskService, EdgeService edges.EdgeService, DB *sqlx.DB, TaskPubSUb mq.TaskPubSub) WorkflowApplicationService {
 	return &WorkflowApplicationServiceImpl{
 		WorkflowService: WorkflowService,
 		TaskService:     TaskService,
 		EdgeService:     EdgeService,
 		DB:              DB,
-		MqInstance:      mqInstance,
+		TaskPubSUb:      TaskPubSUb,
 	}
 }
 
@@ -353,31 +352,6 @@ func (w *WorkflowApplicationServiceImpl) UpdateWorkflowTasks(
 
 }
 
-func SendTaskMessage(graph TaskMessage, mqInstance mq.MQStruct) error {
-	jsonData, jsonErr := json.Marshal(graph)
-
-	if jsonErr != nil {
-		return jsonErr
-	}
-	err := mqInstance.MQChannel.Publish(
-		"",                          // exchange
-		mqInstance.SenderQueue.Name, // routing key
-		false,                       // mandatory
-		false,                       // immediate
-		amqp.Publishing{
-			DeliveryMode: amqp.Persistent,
-			ContentType:  "text/plain",
-			Body:         []byte(jsonData),
-		})
-	if err != nil {
-		return err
-	}
-
-	logging.Sugar.Infow("successfully pushed the message", "jsonData", string(jsonData))
-	return nil
-
-}
-
 // TriggerWorkflow implements WorkflowApplicationService.
 func (w *WorkflowApplicationServiceImpl) TriggerWorkflow(workflowId string) (*TaskMessage, error) {
 	_, workflowErr := w.WorkflowService.GetWorkflowById(workflowId)
@@ -450,7 +424,7 @@ func (w *WorkflowApplicationServiceImpl) TriggerWorkflow(workflowId string) (*Ta
 		WorkflowHistoryId: workflowHistory.ID,
 	}
 
-	mqErr := SendTaskMessage(body, w.MqInstance)
+	mqErr := w.TaskPubSUb.SendMessage(body)
 
 	if mqErr != nil {
 		logging.Sugar.Errorf("error when sending the message to queue", mqErr)
