@@ -16,16 +16,15 @@ migrate:
 migrate-down:
 		migrate -source $(MIGRATIONS_PATH) -database $(DATABASE_URL) down
 
-# UNIT_TESTS_PKGS := $(shell go list ./... | grep -vE 'mocks|repository.go')
-# UNIT_TESTS_COVERPKG := $(shell go list ./... | grep -vE 'mocks|repository.go' | tr '\n' ',')
+UNIT_TEST_PKGS := $(shell go list ./... | grep -vE '/mocks|/grpc')
 
-# unit-test:
-# 	go test $(UNIT_TESTS_PKGS) -coverpkg=$(UNIT_TESTS_COVERPKG) -coverprofile=coverage.out
-# 	go tool cover -func=coverage.out
+unit-test:
+	go test $(UNIT_TEST_PKGS) -coverpkg=./... -coverprofile=coverage.out
+	grep -v "repository.go" coverage.out > coverage_filtered.out
+	go tool cover -func=coverage_filtered.out
 
-
-TESTS_PKGS := $(shell go list ./... | grep -vE 'mocks|grpc|repository.go')
-TESTS_COVERPKG := $(shell go list ./... | grep -vE 'mocks|grpc|repository.go' | tr '\n' ',')
+# TESTS_PKGS := $(shell go list ./... | grep -vE 'mocks|grpc|repository.go')
+# TESTS_COVERPKG := $(shell go list ./... | grep -vE 'mocks|grpc|repository.go' | tr '\n' ',')
 
 test:
 	go test $(TESTS_PKGS) -coverpkg=$(TESTS_COVERPKG) -coverprofile=coverage.out
