@@ -1,3 +1,4 @@
 .env
 coverage.out
 /tmp
+coverage_filtered.out
