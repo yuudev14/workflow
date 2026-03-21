@@ -20,7 +20,7 @@ UNIT_TEST_PKGS := $(shell go list ./... | grep -vE '/mocks|/grpc')
 
 unit-test:
 	go test $(UNIT_TEST_PKGS) -coverpkg=./... -coverprofile=coverage.out
-	grep -v "repository.go" coverage.out > coverage_filtered.out
+	grep -vE "repository.go" coverage.out > coverage_filtered.out
 	go tool cover -func=coverage_filtered.out
 
 # TESTS_PKGS := $(shell go list ./... | grep -vE 'mocks|grpc|repository.go')
