@@ -20,14 +20,13 @@ import (
 
 type server struct {
 	pb.UnimplementedWorkflowServer
+	workflowService      workflows.WorkflowService
+	taskService          tasks.TaskService
+	worfkflowStatusWsHub workflow_websockets.WorfkflowStatusWsHub
 }
 
 func (s *server) HandleWorkflow(ctx context.Context, req *pb.WorkflowStatusPayload) (*pb.WorkflowHistory, error) {
-	settings := environment.Setup()
-	logging.Setup(settings.LOGGER_MODE)
-	sqlxDB, err := db.SetupDB(settings.DB_URL)
-	workflowRepository := workflows.NewWorkflowRepository(sqlxDB)
-	workflowService := workflows.NewWorkflowService(workflowRepository)
+
 	var result interface{}
 	// only marshall if result is not None
 	if req.Result != nil {
@@ -37,17 +36,24 @@ func (s *server) HandleWorkflow(ctx context.Context, req *pb.WorkflowStatusPaylo
 		}
 		result = nil
 	}
-	res, err := workflowService.UpdateWorkflowHistory(req.WorkflowHistoryId, workflows.UpdateWorkflowHistoryData{
+	res, err := s.workflowService.UpdateWorkflowHistory(req.WorkflowHistoryId, workflows.UpdateWorkflowHistoryData{
 		Status: types.Nullable[string]{Value: req.Status, Set: true},
 		Error:  types.Nullable[string]{Value: req.Error, Set: true},
 		Result: result,
 	})
-	// Example processing:
+	if err != nil {
+		return nil, err
+	}
+
+	s.worfkflowStatusWsHub.AssignValueToBroadcast(workflow_websockets.WorkflowStatusWsMessage{
+		Data: res,
+		// sender: nil,
+	})
 	return &pb.WorkflowHistory{
 		Id:         res.ID.String(),
 		WorkflowId: res.WorkflowID.String(),
 		Status:     res.Status,
-	}, err
+	}, nil
 }
 
 func (s *server) HandleTask(ctx context.Context, req *pb.TaskStatusPayload) (*pb.TaskHistory, error) {
@@ -91,10 +97,10 @@ func (s *server) HandleTask(ctx context.Context, req *pb.TaskStatusPayload) (*pb
 		return nil, err
 	}
 
-	workflow_websockets.WorkflowHub.AssignValueToBroadcast(workflow_websockets.Message{
-		Data: []byte("asas"),
-		// sender: nil,
-	})
+	// s.worfkflowStatusWsHub.AssignValueToBroadcast(workflow_websockets.WorkflowStatusWsMessage{
+	// 	Data: res,
+	// 	// sender: nil,
+	// })
 
 	return &pb.TaskHistory{
 		Id: res.ID.String(),
@@ -107,8 +113,19 @@ func SetupGRPCServer() {
 		log.Fatalf("failed to listen: %v", err)
 	}
 
+	settings := environment.Setup()
+	logging.Setup(settings.LOGGER_MODE)
+	sqlxDB, err := db.SetupDB(settings.DB_URL)
+	workflowRepository := workflows.NewWorkflowRepository(sqlxDB)
+	workflowService := workflows.NewWorkflowService(workflowRepository)
+	taskRepository := tasks.NewTaskRepositoryImpl(sqlxDB)
+	taskService := tasks.NewTaskServiceImpl(taskRepository)
+
 	grpcServer := grpc.NewServer()
-	pb.RegisterWorkflowServer(grpcServer, &server{})
+	pb.RegisterWorkflowServer(grpcServer, &server{
+		workflowService: workflowService,
+		taskService:     taskService,
+	})
 	reflection.Register(grpcServer)
 	log.Println("gRPC server running on :50051")
 	go grpcServer.Serve(lis)

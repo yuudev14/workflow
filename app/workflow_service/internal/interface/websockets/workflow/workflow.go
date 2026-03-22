@@ -7,31 +7,32 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-var upgrader = websocket.Upgrader{
+var workflowStatusWsUpgrader = websocket.Upgrader{
 	ReadBufferSize:  1024,
 	WriteBufferSize: 1024,
 	CheckOrigin:     func(r *http.Request) bool { return true },
 }
 
-type Message struct {
+type WorkflowStatusWsMessage struct {
 	// sender *websocket.Conn
-	Data []byte
+	Event string      `json:"event"`
+	Data  interface{} `json:"data"`
 }
-type Hub struct {
+type WorfkflowStatusWsHub struct {
 	clients    map[*websocket.Conn]bool
-	broadcast  chan Message
+	broadcast  chan WorkflowStatusWsMessage
 	register   chan *websocket.Conn
 	unregister chan *websocket.Conn
 }
 
-var WorkflowHub = Hub{
+var WorkflowStatusWsHub = WorfkflowStatusWsHub{
 	clients:    make(map[*websocket.Conn]bool),
-	broadcast:  make(chan Message),
+	broadcast:  make(chan WorkflowStatusWsMessage),
 	register:   make(chan *websocket.Conn),
 	unregister: make(chan *websocket.Conn),
 }
 
-func (h *Hub) Run() {
+func (h *WorfkflowStatusWsHub) Run() {
 	for {
 		select {
 		case conn := <-h.register:
@@ -46,7 +47,7 @@ func (h *Hub) Run() {
 		case message := <-h.broadcast:
 			for client := range h.clients {
 				// if client != message.sender {
-				err := client.WriteMessage(websocket.TextMessage, message.Data)
+				err := client.WriteJSON(message.Data)
 				if err != nil {
 					client.Close()
 					delete(h.clients, client)
@@ -59,46 +60,48 @@ func (h *Hub) Run() {
 	}
 }
 
-func (h *Hub) AssignValueToBroadcast(data Message) {
-	WorkflowHub.broadcast <- data
+func (h *WorfkflowStatusWsHub) AssignValueToBroadcast(data WorkflowStatusWsMessage) {
+	WorkflowStatusWsHub.broadcast <- data
 }
 
 func WorkflowWsHandler(c *gin.Context) {
-	conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
+	conn, err := workflowStatusWsUpgrader.Upgrade(c.Writer, c.Request, nil)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	WorkflowHub.register <- conn
+	WorkflowStatusWsHub.register <- conn
 
 	defer func() {
-		WorkflowHub.unregister <- conn
+		WorkflowStatusWsHub.unregister <- conn
 	}()
 
-	for {
-		_, msg, err := conn.ReadMessage()
-		if err != nil {
-			break
-		}
+	select {}
+	// commenting below for now. reference
+	// for {
+	// _, msg, err := conn.ReadMessage()
+	// if err != nil {
+	// 	break
+	// }
 
-		var response string
+	// var response string
 
-		switch string(msg) {
-		case "create":
-			response = "Create request received"
-		case "update":
-			response = "Update request received"
-		case "delete":
-			response = "Delete request received"
-		default:
-			response = "Unknown request"
-		}
+	// switch string(msg) {
+	// case "create":
+	// 	response = "Create request received"
+	// case "update":
+	// 	response = "Update request received"
+	// case "delete":
+	// 	response = "Delete request received"
+	// default:
+	// 	response = "Unknown request"
+	// }
 
-		WorkflowHub.AssignValueToBroadcast(Message{
-			Data: []byte(response),
-			// sender: conn,
-		})
+	// WorkflowHub.AssignValueToBroadcast(Message{
+	// 	Data: response,
+	// 	// sender: conn,
+	// })
 
-	}
+	// }
 }

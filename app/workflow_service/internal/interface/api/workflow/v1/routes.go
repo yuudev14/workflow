@@ -5,12 +5,18 @@ import (
 	"github.com/jmoiron/sqlx"
 	"github.com/yuudev14-workflow/workflow-service/internal/edges"
 	"github.com/yuudev14-workflow/workflow-service/internal/infra/mq"
+	workflow_websockets "github.com/yuudev14-workflow/workflow-service/internal/interface/websockets/workflow"
 	workflow_application "github.com/yuudev14-workflow/workflow-service/internal/orchestrator/workflows"
 	"github.com/yuudev14-workflow/workflow-service/internal/tasks"
 	"github.com/yuudev14-workflow/workflow-service/internal/workflows"
 )
 
-func SetupWorkflowController(db *sqlx.DB, mqInstance mq.MQStruct, route *gin.RouterGroup) {
+func SetupWorkflowController(
+	db *sqlx.DB,
+	mqInstance mq.MQStruct,
+	route *gin.RouterGroup,
+	workflowStatusWsHub workflow_websockets.WorfkflowStatusWsHub,
+) {
 	workflowRepository := workflows.NewWorkflowRepository(db)
 	edgeRepository := edges.NewEdgeRepositoryImpl(db)
 	taskRepository := tasks.NewTaskRepositoryImpl(db)
@@ -18,7 +24,14 @@ func SetupWorkflowController(db *sqlx.DB, mqInstance mq.MQStruct, route *gin.Rou
 	edgeService := edges.NewEdgeServiceImpl(edgeRepository)
 	taskService := tasks.NewTaskServiceImpl(taskRepository)
 	taskPubSub := mq.NewRabbitMQPublisher(mqInstance)
-	workflowApplicationService := workflow_application.NewWorkflowApplicationService(workflowService, taskService, edgeService, db, taskPubSub)
+	workflowApplicationService := workflow_application.NewWorkflowApplicationService(
+		workflowService,
+		taskService,
+		edgeService,
+		db,
+		taskPubSub,
+		workflowStatusWsHub,
+	)
 	workflowController := NewWorkflowController(workflowService, taskService, edgeService, workflowApplicationService, db)
 
 	r := route.Group("workflows/v1")
