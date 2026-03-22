@@ -14,8 +14,8 @@ var upgrader = websocket.Upgrader{
 }
 
 type Message struct {
-	sender *websocket.Conn
-	data   []byte
+	// sender *websocket.Conn
+	Data []byte
 }
 type Hub struct {
 	clients    map[*websocket.Conn]bool
@@ -45,21 +45,25 @@ func (h *Hub) Run() {
 
 		case message := <-h.broadcast:
 			for client := range h.clients {
-				if client != message.sender {
-					err := client.WriteMessage(websocket.TextMessage, message.data)
-					if err != nil {
-						client.Close()
-						delete(h.clients, client)
-					}
-
+				// if client != message.sender {
+				err := client.WriteMessage(websocket.TextMessage, message.Data)
+				if err != nil {
+					client.Close()
+					delete(h.clients, client)
 				}
+
+				// }
 
 			}
 		}
 	}
 }
 
-func WsHandler(c *gin.Context) {
+func (h *Hub) AssignValueToBroadcast(data Message) {
+	WorkflowHub.broadcast <- data
+}
+
+func WorkflowWsHandler(c *gin.Context) {
 	conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -91,10 +95,10 @@ func WsHandler(c *gin.Context) {
 			response = "Unknown request"
 		}
 
-		WorkflowHub.broadcast <- Message{
-			data:   []byte(response),
-			sender: conn,
-		}
+		WorkflowHub.AssignValueToBroadcast(Message{
+			Data: []byte(response),
+			// sender: conn,
+		})
 
 	}
 }
