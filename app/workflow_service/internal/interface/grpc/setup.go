@@ -10,6 +10,7 @@ import (
 	"github.com/yuudev14-workflow/workflow-service/internal/infra/environment"
 	"github.com/yuudev14-workflow/workflow-service/internal/infra/logging"
 	pb "github.com/yuudev14-workflow/workflow-service/internal/interface/grpc/workflows"
+	workflow_websockets "github.com/yuudev14-workflow/workflow-service/internal/interface/websockets/workflow"
 	"github.com/yuudev14-workflow/workflow-service/internal/tasks"
 	"github.com/yuudev14-workflow/workflow-service/internal/types"
 	"github.com/yuudev14-workflow/workflow-service/internal/workflows"
@@ -85,10 +86,19 @@ func (s *server) HandleTask(ctx context.Context, req *pb.TaskStatusPayload) (*pb
 		Error:         types.Nullable[string]{Value: req.Error, Set: true},
 		Result:        result,
 	})
-	// Example processing:
+
+	if err != nil {
+		return nil, err
+	}
+
+	workflow_websockets.WorkflowHub.AssignValueToBroadcast(workflow_websockets.Message{
+		Data: []byte("asas"),
+		// sender: nil,
+	})
+
 	return &pb.TaskHistory{
 		Id: res.ID.String(),
-	}, err
+	}, nil
 }
 
 func SetupGRPCServer() {

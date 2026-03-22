@@ -7,9 +7,9 @@ import (
 	"github.com/yuudev14-workflow/workflow-service/internal/infra/environment"
 	"github.com/yuudev14-workflow/workflow-service/internal/infra/logging"
 	"github.com/yuudev14-workflow/workflow-service/internal/infra/mq"
-	workflow_websockets "github.com/yuudev14-workflow/workflow-service/internal/infra/websockets/workflow"
 	"github.com/yuudev14-workflow/workflow-service/internal/interface/api"
 	"github.com/yuudev14-workflow/workflow-service/internal/interface/grpc"
+	workflow_websockets "github.com/yuudev14-workflow/workflow-service/internal/interface/websockets/workflow"
 )
 
 // @title 	Workflow Service API
