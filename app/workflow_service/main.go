@@ -33,7 +33,7 @@ func main() {
 	go workflow_websockets.WorkflowHub.Run()
 	app := api.InitRouter(sqlxDB, mqInstance)
 	go grpc.SetupGRPCServer()
-	app.GET("/ws", workflow_websockets.WorkflowWsHandler)
+	app.GET("/ws/workflow", workflow_websockets.WorkflowWsHandler)
 	go app.Run()
 	select {}
 }
