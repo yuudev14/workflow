@@ -12,13 +12,13 @@ import (
 	workflow_websockets "github.com/yuudev14-workflow/workflow-service/internal/interface/websockets/workflow"
 )
 
-func StartApi(db *sqlx.DB, mqInstance mq.MQStruct, app *gin.RouterGroup, workflowStatusWsHub workflow_websockets.WorfkflowStatusWsHub) {
+func StartApi(db *sqlx.DB, mqInstance mq.MQStruct, app *gin.RouterGroup, workflowStatusWsHub workflow_websockets.WorkflowStatusWsHub) {
 	workflow_http_v1.SetupWorkflowController(db, mqInstance, app, workflowStatusWsHub)
 	// auth_api.SetupAuthController(db, app)
 
 }
 
-func InitRouter(db *sqlx.DB, mqInstance mq.MQStruct, workflowStatusWsHub workflow_websockets.WorfkflowStatusWsHub) *gin.Engine {
+func InitRouter(db *sqlx.DB, mqInstance mq.MQStruct, workflowStatusWsHub workflow_websockets.WorkflowStatusWsHub) *gin.Engine {
 
 	app := gin.Default()
 
