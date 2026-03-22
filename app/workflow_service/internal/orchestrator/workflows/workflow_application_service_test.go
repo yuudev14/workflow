@@ -14,6 +14,7 @@ import (
 	mock_edges "github.com/yuudev14-workflow/workflow-service/internal/edges/mocks"
 	"github.com/yuudev14-workflow/workflow-service/internal/infra/logging"
 	mock_mq "github.com/yuudev14-workflow/workflow-service/internal/infra/mq/mock"
+	workflow_websockets "github.com/yuudev14-workflow/workflow-service/internal/interface/websockets/workflow"
 	"github.com/yuudev14-workflow/workflow-service/internal/tasks"
 	mock_tasks "github.com/yuudev14-workflow/workflow-service/internal/tasks/mocks"
 	"github.com/yuudev14-workflow/workflow-service/internal/utils"
@@ -24,10 +25,11 @@ import (
 type testEnv struct {
 	service *WorkflowApplicationServiceImpl
 
-	mockWorkflow *mock_workflows.MockWorkflowService
-	mockTask     *mock_tasks.MockTaskService
-	mockEdge     *mock_edges.MockEdgeService
-	mockTaskSub  *mock_mq.MockTaskPubSub
+	mockWorkflow            *mock_workflows.MockWorkflowService
+	mockTask                *mock_tasks.MockTaskService
+	mockEdge                *mock_edges.MockEdgeService
+	mockTaskSub             *mock_mq.MockTaskPubSub
+	mockWorkflowStatusWsHub *workflow_websockets.WorkflowStatusWsHub
 }
 
 func setupDBMock(t *testing.T) (*sqlx.DB, sqlmock.Sqlmock) {
@@ -50,13 +52,17 @@ func setupTest(t *testing.T) *testEnv {
 	mockTask := mock_tasks.NewMockTaskService(ctrl)
 	mockEdge := mock_edges.NewMockEdgeService(ctrl)
 	mockTaskPubSub := mock_mq.NewMockTaskPubSub(ctrl)
+	mockWorkflowStatusWsHub := workflow_websockets.WorkflowStatusWsHubInstance
+
+	go mockWorkflowStatusWsHub.Run()
 
 	service := &WorkflowApplicationServiceImpl{
-		WorkflowService: mockWorkflow,
-		TaskService:     mockTask,
-		EdgeService:     mockEdge,
-		DB:              &sqlx.DB{},
-		TaskPubSUb:      mockTaskPubSub,
+		WorkflowService:     mockWorkflow,
+		TaskService:         mockTask,
+		EdgeService:         mockEdge,
+		DB:                  &sqlx.DB{},
+		TaskPubSUb:          mockTaskPubSub,
+		WorkflowStatusWsHub: mockWorkflowStatusWsHub,
 	}
 
 	return &testEnv{
@@ -771,6 +777,7 @@ func TestTriggerWorkflow(t *testing.T) {
 					EXPECT().
 					CreateWorkflowHistory(gomock.Any(), workflowID, gomock.Any()).
 					Return(nil, fmt.Errorf("history error"))
+
 			},
 		},
 		{

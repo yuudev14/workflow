@@ -18,21 +18,22 @@ type WorkflowStatusWsMessage struct {
 	Event string      `json:"event"`
 	Data  interface{} `json:"data"`
 }
-type WorfkflowStatusWsHub struct {
+
+type WorkflowStatusWsHub struct {
 	clients    map[*websocket.Conn]bool
 	broadcast  chan WorkflowStatusWsMessage
 	register   chan *websocket.Conn
 	unregister chan *websocket.Conn
 }
 
-var WorkflowStatusWsHub = WorfkflowStatusWsHub{
+var WorkflowStatusWsHubInstance = WorkflowStatusWsHub{
 	clients:    make(map[*websocket.Conn]bool),
 	broadcast:  make(chan WorkflowStatusWsMessage),
 	register:   make(chan *websocket.Conn),
 	unregister: make(chan *websocket.Conn),
 }
 
-func (h *WorfkflowStatusWsHub) Run() {
+func (h *WorkflowStatusWsHub) Run() {
 	for {
 		select {
 		case conn := <-h.register:
@@ -60,8 +61,8 @@ func (h *WorfkflowStatusWsHub) Run() {
 	}
 }
 
-func (h *WorfkflowStatusWsHub) AssignValueToBroadcast(data WorkflowStatusWsMessage) {
-	WorkflowStatusWsHub.broadcast <- data
+func (h *WorkflowStatusWsHub) AssignValueToBroadcast(data WorkflowStatusWsMessage) {
+	WorkflowStatusWsHubInstance.broadcast <- data
 }
 
 func WorkflowWsHandler(c *gin.Context) {
@@ -71,10 +72,10 @@ func WorkflowWsHandler(c *gin.Context) {
 		return
 	}
 
-	WorkflowStatusWsHub.register <- conn
+	WorkflowStatusWsHubInstance.register <- conn
 
 	defer func() {
-		WorkflowStatusWsHub.unregister <- conn
+		WorkflowStatusWsHubInstance.unregister <- conn
 	}()
 
 	select {}

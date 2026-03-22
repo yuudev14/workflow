@@ -22,7 +22,7 @@ type server struct {
 	pb.UnimplementedWorkflowServer
 	workflowService      workflows.WorkflowService
 	taskService          tasks.TaskService
-	worfkflowStatusWsHub workflow_websockets.WorfkflowStatusWsHub
+	worfkflowStatusWsHub workflow_websockets.WorkflowStatusWsHub
 }
 
 func (s *server) HandleWorkflow(ctx context.Context, req *pb.WorkflowStatusPayload) (*pb.WorkflowHistory, error) {
