@@ -9,15 +9,16 @@ import (
 	"github.com/yuudev14-workflow/workflow-service/docs"
 	"github.com/yuudev14-workflow/workflow-service/internal/infra/mq"
 	workflow_http_v1 "github.com/yuudev14-workflow/workflow-service/internal/interface/api/workflow/v1"
+	workflow_websockets "github.com/yuudev14-workflow/workflow-service/internal/interface/websockets/workflow"
 )
 
-func StartApi(db *sqlx.DB, mqInstance mq.MQStruct, app *gin.RouterGroup) {
-	workflow_http_v1.SetupWorkflowController(db, mqInstance, app)
+func StartApi(db *sqlx.DB, mqInstance mq.MQStruct, app *gin.RouterGroup, workflowStatusWsHub workflow_websockets.WorfkflowStatusWsHub) {
+	workflow_http_v1.SetupWorkflowController(db, mqInstance, app, workflowStatusWsHub)
 	// auth_api.SetupAuthController(db, app)
 
 }
 
-func InitRouter(db *sqlx.DB, mqInstance mq.MQStruct) *gin.Engine {
+func InitRouter(db *sqlx.DB, mqInstance mq.MQStruct, workflowStatusWsHub workflow_websockets.WorfkflowStatusWsHub) *gin.Engine {
 
 	app := gin.Default()
 
@@ -36,7 +37,7 @@ func InitRouter(db *sqlx.DB, mqInstance mq.MQStruct) *gin.Engine {
 
 	apiGroup := app.Group("/api")
 
-	StartApi(db, mqInstance, apiGroup)
+	StartApi(db, mqInstance, apiGroup, workflowStatusWsHub)
 
 	app.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 

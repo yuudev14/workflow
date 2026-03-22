@@ -10,6 +10,7 @@ import (
 	"github.com/yuudev14-workflow/workflow-service/internal/edges"
 	"github.com/yuudev14-workflow/workflow-service/internal/infra/logging"
 	"github.com/yuudev14-workflow/workflow-service/internal/infra/mq"
+	workflow_websockets "github.com/yuudev14-workflow/workflow-service/internal/interface/websockets/workflow"
 	"github.com/yuudev14-workflow/workflow-service/internal/tasks"
 	"github.com/yuudev14-workflow/workflow-service/internal/workflows"
 )
@@ -49,20 +50,29 @@ type TaskMessage struct {
 }
 
 type WorkflowApplicationServiceImpl struct {
-	WorkflowService workflows.WorkflowService
-	TaskService     tasks.TaskService
-	EdgeService     edges.EdgeService
-	DB              *sqlx.DB
-	TaskPubSUb      mq.TaskPubSub
+	WorkflowService     workflows.WorkflowService
+	TaskService         tasks.TaskService
+	EdgeService         edges.EdgeService
+	DB                  *sqlx.DB
+	TaskPubSUb          mq.TaskPubSub
+	WorkflowStatusWsHub workflow_websockets.WorfkflowStatusWsHub
 }
 
-func NewWorkflowApplicationService(WorkflowService workflows.WorkflowService, TaskService tasks.TaskService, EdgeService edges.EdgeService, DB *sqlx.DB, TaskPubSUb mq.TaskPubSub) WorkflowApplicationService {
+func NewWorkflowApplicationService(
+	WorkflowService workflows.WorkflowService,
+	TaskService tasks.TaskService,
+	EdgeService edges.EdgeService,
+	DB *sqlx.DB,
+	TaskPubSUb mq.TaskPubSub,
+	workflowStatusWsHub workflow_websockets.WorfkflowStatusWsHub,
+) WorkflowApplicationService {
 	return &WorkflowApplicationServiceImpl{
-		WorkflowService: WorkflowService,
-		TaskService:     TaskService,
-		EdgeService:     EdgeService,
-		DB:              DB,
-		TaskPubSUb:      TaskPubSUb,
+		WorkflowService:     WorkflowService,
+		TaskService:         TaskService,
+		EdgeService:         EdgeService,
+		DB:                  DB,
+		TaskPubSUb:          TaskPubSUb,
+		WorkflowStatusWsHub: workflowStatusWsHub,
 	}
 }
 
@@ -399,6 +409,10 @@ func (w *WorkflowApplicationServiceImpl) TriggerWorkflow(workflowId string) (*Ta
 		tx.Rollback()
 		return nil, workflowHistoryErr
 	}
+	w.WorkflowStatusWsHub.AssignValueToBroadcast(workflow_websockets.WorkflowStatusWsMessage{
+		Data: workflowHistory,
+		// sender: nil,
+	})
 
 	// Log the ID to verify it's correct
 	logging.Sugar.Infof("Created workflow history with ID: %v", workflowHistory.ID)
