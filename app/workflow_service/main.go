@@ -23,6 +23,7 @@ func main() {
 	settings := environment.Setup()
 	logging.Setup(settings.LOGGER_MODE)
 	sqlxDB, err := db.SetupDB(settings.DB_URL)
+	go workflow_websockets.WorkflowStatusWsHub.Run()
 	if err != nil {
 		log.Fatalf("failed to setup DB: %v", err)
 	}
@@ -30,8 +31,7 @@ func main() {
 	mqInstance := mq.ConnectToMQ(settings.MQ_URL, settings.SenderQueueName, settings.ReceiverQueueName)
 	defer mqInstance.MQConn.Close()
 	defer mqInstance.MQChannel.Close()
-	go workflow_websockets.WorkflowHub.Run()
-	app := api.InitRouter(sqlxDB, mqInstance)
+	app := api.InitRouter(sqlxDB, mqInstance, workflow_websockets.WorkflowStatusWsHub)
 	go grpc.SetupGRPCServer()
 	app.GET("/ws/workflow", workflow_websockets.WorkflowWsHandler)
 	go app.Run()
