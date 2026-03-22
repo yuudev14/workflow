@@ -6,7 +6,7 @@ rebuild-service:
 		docker compose -f ./docker/dev.docker-compose.yml up --build $(NAME) -d
 
 rebuild-workflow-service:
-		docker compose -f ./docker/dev.docker-compose.yml up --build workflow_service -d
+		docker compose -f ./docker/dev.docker-compose.yml up --build soar_workflow_service -d
 
 start-dev:
 		docker compose -f ./docker/dev.docker-compose.yml up -d && \
