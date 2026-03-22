@@ -15,7 +15,7 @@ func SetupWorkflowController(
 	db *sqlx.DB,
 	mqInstance mq.MQStruct,
 	route *gin.RouterGroup,
-	workflowStatusWsHub workflow_websockets.WorfkflowStatusWsHub,
+	workflowStatusWsHub workflow_websockets.WorkflowStatusWsHub,
 ) {
 	workflowRepository := workflows.NewWorkflowRepository(db)
 	edgeRepository := edges.NewEdgeRepositoryImpl(db)

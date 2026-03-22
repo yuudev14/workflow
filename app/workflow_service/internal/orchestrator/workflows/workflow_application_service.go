@@ -55,7 +55,7 @@ type WorkflowApplicationServiceImpl struct {
 	EdgeService         edges.EdgeService
 	DB                  *sqlx.DB
 	TaskPubSUb          mq.TaskPubSub
-	WorkflowStatusWsHub workflow_websockets.WorfkflowStatusWsHub
+	WorkflowStatusWsHub workflow_websockets.WorkflowStatusWsHub
 }
 
 func NewWorkflowApplicationService(
@@ -64,7 +64,7 @@ func NewWorkflowApplicationService(
 	EdgeService edges.EdgeService,
 	DB *sqlx.DB,
 	TaskPubSUb mq.TaskPubSub,
-	workflowStatusWsHub workflow_websockets.WorfkflowStatusWsHub,
+	workflowStatusWsHub workflow_websockets.WorkflowStatusWsHub,
 ) WorkflowApplicationService {
 	return &WorkflowApplicationServiceImpl{
 		WorkflowService:     WorkflowService,
