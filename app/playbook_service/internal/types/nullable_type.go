@@ -2,10 +2,7 @@ package types
 
 import (
 	"encoding/json"
-	"fmt"
 	"time"
-
-	"github.com/yuudev14/ytsoar/internal/logging"
 )
 
 type NullableType interface {
@@ -43,8 +40,6 @@ func (pc *JsonType) Scan(val interface{}) error {
 		return nil
 	}
 
-	// Print the raw data type and value
-	logging.Sugar.Debug("Raw value from DB:", val, "Type:", fmt.Sprintf("%T", val))
 	var raw []byte
 
 	switch v := val.(type) {

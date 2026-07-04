@@ -16,7 +16,7 @@ import (
 	"github.com/yuudev14/ytsoar/internal/application/tasks"
 	mock_tasks "github.com/yuudev14/ytsoar/internal/application/tasks/mocks"
 	"github.com/yuudev14/ytsoar/internal/domain"
-	"github.com/yuudev14/ytsoar/internal/logging"
+	"github.com/yuudev14/ytsoar/internal/logger"
 	"github.com/yuudev14/ytsoar/internal/utils"
 )
 
@@ -31,7 +31,7 @@ type testEnv struct {
 }
 
 func setupTest(t *testing.T) *testEnv {
-	logging.Setup("Debug")
+
 	ctrl := gomock.NewController(t)
 
 	mockPlaybook := mock_workflows.NewMockPlaybookService(ctrl)
@@ -51,6 +51,7 @@ func setupTest(t *testing.T) *testEnv {
 		AnyTimes()
 
 	service := &playbooks.PlaybookApplicationServiceImpl{
+		Logger:            logger.NewNop(),
 		PlaybookService:   mockPlaybook,
 		TaskService:       mockTask,
 		EdgeService:       mockEdge,
@@ -71,7 +72,7 @@ func setupTest(t *testing.T) *testEnv {
 
 func TestPreparePlaybookMessage(t *testing.T) {
 
-	service := &playbooks.PlaybookApplicationServiceImpl{}
+	service := &playbooks.PlaybookApplicationServiceImpl{Logger: logger.NewNop()}
 
 	tasksData := []domain.Tasks{
 		{Name: "start"},

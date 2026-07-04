@@ -9,7 +9,7 @@ import (
 	"github.com/yuudev14/ytsoar/internal/application/contracts"
 	"github.com/yuudev14/ytsoar/internal/application/playbooks"
 	"github.com/yuudev14/ytsoar/internal/application/tasks"
-	"github.com/yuudev14/ytsoar/internal/logging"
+	"github.com/yuudev14/ytsoar/internal/logger"
 	"github.com/yuudev14/ytsoar/internal/types"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
@@ -19,17 +19,20 @@ import (
 // executor over gRPC and persists + broadcasts them.
 type StatusServer struct {
 	pb.UnimplementedWorkflowServer
+	logger          logger.Logger
 	playbookService playbooks.PlaybookService
 	taskService     tasks.TaskService
 	broadcaster     contracts.StatusBroadcaster
 }
 
 func NewStatusServer(
+	log logger.Logger,
 	playbookService playbooks.PlaybookService,
 	taskService tasks.TaskService,
 	broadcaster contracts.StatusBroadcaster,
 ) *StatusServer {
 	return &StatusServer{
+		logger:          log,
 		playbookService: playbookService,
 		taskService:     taskService,
 		broadcaster:     broadcaster,
@@ -41,7 +44,7 @@ func (s *StatusServer) HandleWorkflow(ctx context.Context, req *pb.WorkflowStatu
 	// only unmarshal if result is not None
 	if req.Result != nil {
 		if err := json.Unmarshal([]byte(*req.Result), &result); err != nil {
-			logging.Sugar.Error("Error unmarshalling playbook params:", err)
+			s.logger.Error("Error unmarshalling playbook params:", err)
 			return nil, err
 		}
 		result = nil
@@ -69,7 +72,7 @@ func (s *StatusServer) HandleTask(ctx context.Context, req *pb.TaskStatusPayload
 	// only unmarshal if parameters is not None
 	if req.Parameters != nil {
 		if err := json.Unmarshal([]byte(*req.Parameters), &parameters); err != nil {
-			logging.Sugar.Error("Error unmarshalling parameters:", err)
+			s.logger.Error("Error unmarshalling parameters:", err)
 			return nil, err
 		}
 	}
@@ -77,7 +80,7 @@ func (s *StatusServer) HandleTask(ctx context.Context, req *pb.TaskStatusPayload
 	// only unmarshal if result is not ""
 	if req.Result != "" {
 		if err := json.Unmarshal([]byte(req.Result), &result); err != nil {
-			logging.Sugar.Error("Error unmarshalling result:", err)
+			s.logger.Error("Error unmarshalling result:", err)
 			return nil, err
 		}
 	}
@@ -115,6 +118,6 @@ func (s *StatusServer) Serve(addr string) error {
 	grpcServer := grpc.NewServer()
 	pb.RegisterWorkflowServer(grpcServer, s)
 	reflection.Register(grpcServer)
-	logging.Sugar.Infof("gRPC server running on %v", addr)
+	s.logger.Infof("gRPC server running on %v", addr)
 	return grpcServer.Serve(lis)
 }

@@ -11,14 +11,14 @@ import (
 	"github.com/yuudev14/ytsoar/internal/application/playbooks"
 	mock_workflows "github.com/yuudev14/ytsoar/internal/application/playbooks/mocks"
 	"github.com/yuudev14/ytsoar/internal/domain"
-	"github.com/yuudev14/ytsoar/internal/logging"
+	"github.com/yuudev14/ytsoar/internal/logger"
 	"github.com/yuudev14/ytsoar/internal/types"
 	"github.com/yuudev14/ytsoar/internal/utils"
 	"go.uber.org/mock/gomock"
 )
 
 func TestMain(m *testing.M) {
-	logging.Setup("DEBUG")
+
 	os.Exit(m.Run())
 }
 
@@ -26,7 +26,7 @@ func setupService(t *testing.T) (playbooks.PlaybookService, *mock_workflows.Mock
 	ctrl := gomock.NewController(t)
 
 	mockRepo := mock_workflows.NewMockPlaybookRepository(ctrl)
-	service := playbooks.NewPlaybookService(mockRepo)
+	service := playbooks.NewPlaybookService(logger.NewNop(), mockRepo)
 
 	t.Cleanup(ctrl.Finish)
 

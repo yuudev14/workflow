@@ -1,7 +1,6 @@
 package tasks
 
 import (
-	"github.com/google/uuid"
 	"github.com/yuudev14/ytsoar/internal/types"
 )
 
@@ -18,7 +17,7 @@ type TaskPayload struct {
 }
 
 type TaskHistoryFilter struct {
-	PlaybookID *uuid.UUID `form:"playbook_id"`
+	PlaybookID *string `form:"playbook_id" binding:"omitempty,uuid"`
 }
 
 type UpdateTaskHistoryData struct {

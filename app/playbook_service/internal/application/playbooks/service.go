@@ -6,7 +6,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/yuudev14/ytsoar/internal/domain"
-	"github.com/yuudev14/ytsoar/internal/logging"
+	"github.com/yuudev14/ytsoar/internal/logger"
 	"github.com/yuudev14/ytsoar/internal/types"
 )
 
@@ -30,11 +30,13 @@ type PlaybookService interface {
 }
 
 type PlaybookServiceImpl struct {
+	logger             logger.Logger
 	PlaybookRepository PlaybookRepository
 }
 
-func NewPlaybookService(playbookRepository PlaybookRepository) PlaybookService {
+func NewPlaybookService(log logger.Logger, playbookRepository PlaybookRepository) PlaybookService {
 	return &PlaybookServiceImpl{
+		logger:             log,
 		PlaybookRepository: playbookRepository,
 	}
 }
@@ -113,7 +115,7 @@ func (w *PlaybookServiceImpl) CreatePlaybookHistory(ctx context.Context, id stri
 func (w *PlaybookServiceImpl) GetPlaybookById(ctx context.Context, id string) (*domain.Playbooks, error) {
 	playbook, playbookErr := w.PlaybookRepository.GetPlaybookById(ctx, id)
 	if playbookErr != nil {
-		logging.Sugar.Error(fmt.Sprintf("error fetching playbook by id: %v, error: %v", id, playbookErr))
+		w.logger.Error(fmt.Sprintf("error fetching playbook by id: %v, error: %v", id, playbookErr))
 		return nil, playbookErr
 	}
 
@@ -127,7 +129,7 @@ func (w *PlaybookServiceImpl) GetPlaybookById(ctx context.Context, id string) (*
 func (w *PlaybookServiceImpl) GetPlaybookGraphById(ctx context.Context, id string) (*domain.PlaybookGraph, error) {
 	playbook, playbookErr := w.PlaybookRepository.GetPlaybookGraphById(ctx, id)
 	if playbookErr != nil {
-		logging.Sugar.Error(fmt.Sprintf("error fetching playbook by id: %s, error: %v", id, playbookErr))
+		w.logger.Error(fmt.Sprintf("error fetching playbook by id: %s, error: %v", id, playbookErr))
 		return nil, fmt.Errorf("error fetching graph by playbook by id: %s", id)
 	}
 
@@ -151,7 +153,7 @@ func (w *PlaybookServiceImpl) UpdatePlaybook(ctx context.Context, id string, pla
 func (w *PlaybookServiceImpl) UpdatePlaybookHistoryStatus(ctx context.Context, playbookHistoryId string, status string) (*domain.PlaybookHistory, error) {
 	res, err := w.PlaybookRepository.UpdatePlaybookHistoryStatus(ctx, playbookHistoryId, status)
 	if err != nil {
-		logging.Sugar.Error(fmt.Sprintf("error updating status of playbookHistoryId by id: %s, error: %v", playbookHistoryId, err))
+		w.logger.Error(fmt.Sprintf("error updating status of playbookHistoryId by id: %s, error: %v", playbookHistoryId, err))
 		return nil, fmt.Errorf("error updating playbookHistoryId by id: %s", playbookHistoryId)
 	}
 
@@ -166,7 +168,7 @@ func (w *PlaybookServiceImpl) UpdatePlaybookHistoryStatus(ctx context.Context, p
 func (w *PlaybookServiceImpl) UpdatePlaybookHistory(ctx context.Context, playbookHistoryId string, playbookHistory UpdatePlaybookHistoryData) (*domain.PlaybookHistory, error) {
 	res, err := w.PlaybookRepository.UpdatePlaybookHistory(ctx, playbookHistoryId, playbookHistory)
 	if err != nil {
-		logging.Sugar.Error(fmt.Sprintf("error updating playbookHistoryId by id: %s, error: %v", playbookHistoryId, err))
+		w.logger.Error(fmt.Sprintf("error updating playbookHistoryId by id: %s, error: %v", playbookHistoryId, err))
 		return nil, fmt.Errorf("error updating playbookHistoryId by id: %s", playbookHistoryId)
 	}
 

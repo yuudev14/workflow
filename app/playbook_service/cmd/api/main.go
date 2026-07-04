@@ -15,7 +15,7 @@ import (
 	"github.com/yuudev14/ytsoar/internal/application/playbooks"
 	"github.com/yuudev14/ytsoar/internal/application/tasks"
 	"github.com/yuudev14/ytsoar/internal/config"
-	"github.com/yuudev14/ytsoar/internal/logging"
+	"github.com/yuudev14/ytsoar/internal/logger"
 )
 
 // @title 	YTSoar Playbook Service API
@@ -26,7 +26,8 @@ import (
 // @name Authorization
 func main() {
 	cfg := config.Load()
-	logging.Setup(cfg.LoggerMode)
+	appLogger := logger.SetupLogger()
+	defer appLogger.Sync()
 
 	ctx := context.Background()
 	pool, err := db.NewPool(ctx, cfg.DBUrl)
@@ -46,20 +47,21 @@ func main() {
 	}
 	defer mqConn.Close()
 
-	taskPublisher, err := mq.NewTaskPublisher(mqConn, cfg.PlaybookQueueName)
+	taskPublisher, err := mq.NewTaskPublisher(appLogger, mqConn, cfg.PlaybookQueueName)
 	if err != nil {
 		log.Fatalf("failed to setup task publisher: %v", err)
 	}
 
-	playbookRepository := repository.NewPlaybookRepository(queries, pool)
-	taskRepository := repository.NewTaskRepositoryImpl(queries, pool)
-	edgeRepository := repository.NewEdgeRepositoryImpl(queries, pool)
+	playbookRepository := repository.NewPlaybookRepository(appLogger, queries, pool)
+	taskRepository := repository.NewTaskRepositoryImpl(appLogger, queries, pool)
+	edgeRepository := repository.NewEdgeRepositoryImpl(appLogger, queries, pool)
 
-	playbookService := playbooks.NewPlaybookService(playbookRepository)
+	playbookService := playbooks.NewPlaybookService(appLogger, playbookRepository)
 	taskService := tasks.NewTaskServiceImpl(taskRepository)
 	edgeService := edges.NewEdgeServiceImpl(edgeRepository)
 
 	orchestrator := playbooks.NewPlaybookApplicationService(
+		appLogger,
 		playbookService,
 		taskService,
 		edgeService,
@@ -69,13 +71,14 @@ func main() {
 	)
 
 	playbookHandler := handlers.NewPlaybookHandler(
+		appLogger,
 		playbookService,
 		taskService,
 		edgeService,
 		orchestrator,
 	)
 
-	statusServer := grpcserver.NewStatusServer(playbookService, taskService, hub)
+	statusServer := grpcserver.NewStatusServer(appLogger, playbookService, taskService, hub)
 	go func() {
 		if err := statusServer.Serve(cfg.GRPCAddr); err != nil {
 			log.Fatalf("grpc server: %v", err)
