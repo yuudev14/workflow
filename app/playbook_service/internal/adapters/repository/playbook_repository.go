@@ -1,234 +1,350 @@
 package repository
 
 import (
+	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
-	"time"
-
-	"github.com/yuudev14/ytsoar/internal/application/playbooks"
-	"github.com/yuudev14/ytsoar/internal/domain"
 
 	sq "github.com/Masterminds/squirrel"
 	"github.com/google/uuid"
-
-	"github.com/jmoiron/sqlx"
-	"github.com/yuudev14/ytsoar/internal/types"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/yuudev14/ytsoar/db"
+	"github.com/yuudev14/ytsoar/internal/application/playbooks"
+	"github.com/yuudev14/ytsoar/internal/domain"
 	"github.com/yuudev14/ytsoar/internal/utils"
 )
 
 type PlaybookRepositoryImpl struct {
-	*sqlx.DB
+	q    QuerierTx
+	pool *pgxpool.Pool
 }
 
-func NewPlaybookRepository(db *sqlx.DB) *PlaybookRepositoryImpl {
-	return &PlaybookRepositoryImpl{
-		DB: db,
+func NewPlaybookRepository(q QuerierTx, pool *pgxpool.Pool) *PlaybookRepositoryImpl {
+	return &PlaybookRepositoryImpl{q: q, pool: pool}
+}
+
+func (w *PlaybookRepositoryImpl) queriesFromContext(ctx context.Context) db.Querier {
+	if tx, ok := txFromContext(ctx); ok {
+		return w.q.WithTx(tx)
+	}
+	return w.q
+}
+
+func toDomainPlaybook(row db.Playbook) domain.Playbooks {
+	return domain.Playbooks{
+		ID:          fromPgUUID(row.ID),
+		Name:        fromPgTextString(row.Name),
+		Description: fromPgText(row.Description),
+		TriggerType: fromPgUUIDPtr(row.TriggerType),
+		CreatedAt:   row.CreatedAt.Time,
+		UpdatedAt:   row.UpdatedAt.Time,
 	}
 }
 
-// GetPlaybooks implements PlaybookRepository.
-func (w *PlaybookRepositoryImpl) GetPlaybooks(offset int, limit int, filter playbooks.PlaybookFilter) ([]domain.Playbooks, error) {
-
-	statement := sq.Select("*").From("workflows").OrderBy("updated_at DESC").Offset(uint64(offset)).Limit(uint64(limit))
-
-	if filter.Name != nil {
-		statement = statement.Where("name ILIKE ?", fmt.Sprint("%", *filter.Name, "%"))
-
+func toDomainPlaybookHistory(row db.PlaybookHistory) domain.PlaybookHistory {
+	var result interface{}
+	if len(row.Result) > 0 {
+		json.Unmarshal(row.Result, &result)
 	}
-	return DbExecAndReturnMany[domain.Playbooks](
-		w.DB,
-		statement,
-	)
+	return domain.PlaybookHistory{
+		ID:          fromPgUUID(row.ID),
+		PlaybookID:  fromPgUUID(row.PlaybookID),
+		Status:      string(row.Status),
+		Error:       fromPgText(row.Error),
+		Result:      result,
+		TriggeredAt: row.TriggeredAt.Time,
+		Edges:       row.Edges,
+	}
 }
 
-// GetPlaybookHistoryById implements PlaybookRepository.
-func (w *PlaybookRepositoryImpl) GetPlaybookHistoryById(workflowHistoryId uuid.UUID) (*domain.PlaybookHistoryResponse, error) {
-	statement := sq.
-		Select("workflow_history.*, to_jsonb(workflows) AS workflow_data ").
-		From("workflow_history").
-		Join("workflows on workflows.id = workflow_history.workflow_id").
-		Where("workflow_history.id = ?", workflowHistoryId)
-
-	return DbExecAndReturnOne[domain.PlaybookHistoryResponse](
-		w.DB,
-		statement,
-	)
-}
-
-// GetPlaybooks implements PlaybookRepository.
-func (w *PlaybookRepositoryImpl) GetPlaybookHistory(offset int, limit int, filter playbooks.PlaybookHistoryFilter) ([]domain.PlaybookHistoryResponse, error) {
-	// select workflow_history.*, to_jsonb(workflows) AS workflow_data from workflow_history
-	// join workflows on workflows.id = workflow_history.workflow_id
-	statement := sq.Select("workflow_history.*, to_jsonb(workflows) AS workflow_data ").From("workflow_history").Join("workflows on workflows.id = workflow_history.workflow_id").Offset(uint64(offset)).Limit(uint64(limit)).OrderBy("triggered_at DESC")
+// GetPlaybooks implements playbooks.PlaybookRepository.
+func (w *PlaybookRepositoryImpl) GetPlaybooks(ctx context.Context, offset int, limit int, filter playbooks.PlaybookFilter) ([]domain.Playbooks, error) {
+	stmt := sq.Select("*").From("playbooks").
+		PlaceholderFormat(sq.Dollar).
+		OrderBy("updated_at DESC").
+		Offset(uint64(offset)).
+		Limit(uint64(limit))
 
 	if filter.Name != nil {
-		statement = statement.Where("name ILIKE ?", fmt.Sprint("%", filter.Name, "%"))
+		stmt = stmt.Where(sq.Expr("name ILIKE ?", fmt.Sprint("%", *filter.Name, "%")))
+	}
+
+	return CollectRowsFromSqlizer[domain.Playbooks](ctx, stmt, w.pool)
+}
+
+// GetPlaybooksCount implements playbooks.PlaybookRepository.
+func (w *PlaybookRepositoryImpl) GetPlaybooksCount(ctx context.Context, filter playbooks.PlaybookFilter) (int, error) {
+	stmt := sq.Select("count(*)").From("playbooks").
+		PlaceholderFormat(sq.Dollar)
+
+	if filter.Name != nil {
+		stmt = stmt.Where(sq.Expr("name ILIKE ?", fmt.Sprint("%", *filter.Name, "%")))
+	}
+
+	return CollectOneScalarFromSqlizer[int](ctx, stmt, w.pool)
+}
+
+// GetPlaybookHistory implements playbooks.PlaybookRepository.
+func (w *PlaybookRepositoryImpl) GetPlaybookHistory(ctx context.Context, offset int, limit int, filter playbooks.PlaybookHistoryFilter) ([]domain.PlaybookHistoryResponse, error) {
+	stmt := sq.Select("playbook_history.*, to_jsonb(playbooks) AS playbook_data").
+		From("playbook_history").
+		Join("playbooks ON playbooks.id = playbook_history.playbook_id").
+		PlaceholderFormat(sq.Dollar).
+		OrderBy("triggered_at DESC").
+		Offset(uint64(offset)).
+		Limit(uint64(limit))
+
+	if filter.Name != nil {
+		stmt = stmt.Where(sq.Expr("playbooks.name ILIKE ?", fmt.Sprint("%", *filter.Name, "%")))
 	}
 	if filter.PlaybookID != nil {
-		statement = statement.Where("workflow_id = ?", filter.PlaybookID)
+		stmt = stmt.Where(sq.Eq{"playbook_history.playbook_id": *filter.PlaybookID})
 	}
-	return DbExecAndReturnMany[domain.PlaybookHistoryResponse](
-		w.DB,
-		statement,
-	)
+
+	return CollectRowsFromSqlizer[domain.PlaybookHistoryResponse](ctx, stmt, w.pool)
 }
 
-// GetPlaybookHistoryCount implements PlaybookRepository.
-func (w *PlaybookRepositoryImpl) GetPlaybookHistoryCount(filter playbooks.PlaybookHistoryFilter) (int, error) {
-	statement := sq.Select("count(workflow_history.*)").From("workflow_history").Join("workflows on workflows.id = workflow_history.workflow_id")
+// GetPlaybookHistoryCount implements playbooks.PlaybookRepository.
+func (w *PlaybookRepositoryImpl) GetPlaybookHistoryCount(ctx context.Context, filter playbooks.PlaybookHistoryFilter) (int, error) {
+	stmt := sq.Select("count(playbook_history.*)").
+		From("playbook_history").
+		Join("playbooks ON playbooks.id = playbook_history.playbook_id").
+		PlaceholderFormat(sq.Dollar)
 
 	if filter.Name != nil {
-		statement = statement.Where("workflows.name ILIKE ?", fmt.Sprint("%", filter.Name, "%"))
-
+		stmt = stmt.Where(sq.Expr("playbooks.name ILIKE ?", fmt.Sprint("%", *filter.Name, "%")))
 	}
-	return DbExecAndReturnCount(
-		w.DB,
-		statement,
-	)
+
+	return CollectOneScalarFromSqlizer[int](ctx, stmt, w.pool)
 }
 
-// GetPlaybookTriggers implements PlaybookRepository.
-func (w *PlaybookRepositoryImpl) GetPlaybookTriggers() ([]domain.PlaybookTriggers, error) {
-	statement := sq.Select("*").From("workflow_triggers")
-	return DbExecAndReturnMany[domain.PlaybookTriggers](
-		w.DB,
-		statement,
-	)
-}
-
-// GetPlaybooksCount implements PlaybookRepository.
-func (w *PlaybookRepositoryImpl) GetPlaybooksCount(filter playbooks.PlaybookFilter) (int, error) {
-	statement := sq.Select("count(*)").From("workflows")
-
-	if filter.Name != nil {
-		statement = statement.Where("name ILIKE ?", fmt.Sprint("%", filter.Name, "%"))
-
+// GetPlaybookHistoryById implements playbooks.PlaybookRepository.
+func (w *PlaybookRepositoryImpl) GetPlaybookHistoryById(ctx context.Context, playbookHistoryId uuid.UUID) (*domain.PlaybookHistoryResponse, error) {
+	row, err := w.queriesFromContext(ctx).GetPlaybookHistoryById(ctx, toPgUUID(playbookHistoryId))
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, nil
+		}
+		return nil, err
 	}
-	return DbExecAndReturnCount(
-		w.DB,
-		statement,
-	)
+
+	var result *json.RawMessage
+	if len(row.Result) > 0 {
+		raw := json.RawMessage(row.Result)
+		result = &raw
+	}
+	return &domain.PlaybookHistoryResponse{
+		ID:           fromPgUUID(row.ID),
+		PlaybookID:   fromPgUUID(row.PlaybookID),
+		PlaybookData: row.PlaybookData,
+		Status:       string(row.Status),
+		Error:        fromPgText(row.Error),
+		Result:       result,
+		TriggeredAt:  row.TriggeredAt.Time,
+		Edges:        row.Edges,
+	}, nil
 }
 
-// GetPlaybookById implements PlaybookRepository.
-func (w *PlaybookRepositoryImpl) GetPlaybookById(id string) (*domain.Playbooks, error) {
-	statement := sq.Select("*").From("workflows").Where("id = ?", id)
-	return DbExecAndReturnOne[domain.Playbooks](
-		w.DB,
-		statement,
-	)
+// GetPlaybookTriggers implements playbooks.PlaybookRepository.
+func (w *PlaybookRepositoryImpl) GetPlaybookTriggers(ctx context.Context) ([]domain.PlaybookTriggers, error) {
+	rows, err := w.queriesFromContext(ctx).GetPlaybookTriggers(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	triggers := make([]domain.PlaybookTriggers, 0, len(rows))
+	for _, row := range rows {
+		triggers = append(triggers, domain.PlaybookTriggers{
+			ID:          fromPgUUID(row.ID),
+			Name:        fromPgTextString(row.Name),
+			Description: fromPgText(row.Description),
+		})
+	}
+	return triggers, nil
 }
 
-// GetPlaybookById implements PlaybookRepository.
-func (w *PlaybookRepositoryImpl) GetPlaybookGraphById(id string) (*domain.PlaybookGraph, error) {
-	statement := sq.Select(`
-	workflows.*,
-	(SELECT JSON_AGG(tasks.*)
-        FROM tasks
-        WHERE tasks.workflow_id = workflows.id) AS tasks,
-	(SELECT JSON_AGG(edges.*)
-        FROM edges
-        WHERE edges.workflow_id = workflows.id) AS edges
-	`).From("workflows").Where("id = ?", id)
-	return DbExecAndReturnOne[domain.PlaybookGraph](
-		w.DB,
-		statement,
-	)
+// GetPlaybookById implements playbooks.PlaybookRepository.
+func (w *PlaybookRepositoryImpl) GetPlaybookById(ctx context.Context, id string) (*domain.Playbooks, error) {
+	pgID, err := toPgUUIDFromString(id)
+	if err != nil {
+		return nil, err
+	}
+
+	row, err := w.queriesFromContext(ctx).GetPlaybookById(ctx, pgID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, nil
+		}
+		return nil, err
+	}
+
+	playbook := toDomainPlaybook(row)
+	return &playbook, nil
 }
 
-// CreatePlaybookHistory implements PlaybookRepository.
-func (w *PlaybookRepositoryImpl) CreatePlaybookHistory(tx *sqlx.Tx, id string, edges []domain.ResponseEdges) (*domain.PlaybookHistory, error) {
+// GetPlaybookGraphById implements playbooks.PlaybookRepository.
+func (w *PlaybookRepositoryImpl) GetPlaybookGraphById(ctx context.Context, id string) (*domain.PlaybookGraph, error) {
+	pgID, err := toPgUUIDFromString(id)
+	if err != nil {
+		return nil, err
+	}
+
+	row, err := w.queriesFromContext(ctx).GetPlaybookGraphById(ctx, pgID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, nil
+		}
+		return nil, err
+	}
+
+	var tasks, edges *json.RawMessage
+	if len(row.Tasks) > 0 {
+		raw := json.RawMessage(row.Tasks)
+		tasks = &raw
+	}
+	if len(row.Edges) > 0 {
+		raw := json.RawMessage(row.Edges)
+		edges = &raw
+	}
+	return &domain.PlaybookGraph{
+		ID:          fromPgUUID(row.ID),
+		Name:        fromPgTextString(row.Name),
+		Description: fromPgText(row.Description),
+		TriggerType: uuidPtrToStringPtr(fromPgUUIDPtr(row.TriggerType)),
+		CreatedAt:   row.CreatedAt.Time,
+		UpdatedAt:   row.UpdatedAt.Time,
+		Tasks:       tasks,
+		Edges:       edges,
+	}, nil
+}
+
+// CreatePlaybook implements playbooks.PlaybookRepository.
+func (w *PlaybookRepositoryImpl) CreatePlaybook(ctx context.Context, playbook playbooks.PlaybookPayload) (*domain.Playbooks, error) {
+	row, err := w.queriesFromContext(ctx).CreatePlaybook(ctx, db.CreatePlaybookParams{
+		Name:        toPgTextFromString(playbook.Name),
+		Description: toPgText(playbook.Description),
+		TriggerType: toPgUUIDPtr(playbook.TriggerType),
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	created := toDomainPlaybook(row)
+	return &created, nil
+}
+
+// UpdatePlaybook implements playbooks.PlaybookRepository.
+func (w *PlaybookRepositoryImpl) UpdatePlaybook(ctx context.Context, id string, playbook playbooks.UpdatePlaybookData) (*domain.Playbooks, error) {
+	pgID, err := toPgUUIDFromString(id)
+	if err != nil {
+		return nil, err
+	}
+
+	row, err := w.queriesFromContext(ctx).UpdatePlaybook(ctx, db.UpdatePlaybookParams{
+		NameSet:        playbook.Name.Set,
+		Name:           toPgTextFromNullable(playbook.Name),
+		DescriptionSet: playbook.Description.Set,
+		Description:    toPgTextFromNullable(playbook.Description),
+		TriggerTypeSet: playbook.TriggerType.Set,
+		TriggerType:    toPgUUIDFromNullable(playbook.TriggerType),
+		ID:             pgID,
+	})
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, nil
+		}
+		return nil, err
+	}
+
+	updated := toDomainPlaybook(row)
+	return &updated, nil
+}
+
+// CreatePlaybookHistory implements playbooks.PlaybookRepository.
+func (w *PlaybookRepositoryImpl) CreatePlaybookHistory(ctx context.Context, id string, edges []domain.ResponseEdges) (*domain.PlaybookHistory, error) {
+	pgID, err := toPgUUIDFromString(id)
+	if err != nil {
+		return nil, err
+	}
+
 	modifiedEdges := make([]map[string]interface{}, len(edges))
-
 	for i, edge := range edges {
 		modifiedEdges[i] = map[string]interface{}{
 			"id":                    edge.ID,
 			"destination_id":        edge.DestinationID,
 			"source_id":             edge.SourceID,
-			"workflow_id":           edge.PlaybookID,
+			"playbook_id":           edge.PlaybookID,
 			"destination_task_name": edge.DestinationTaskName,
 			"source_task_name":      edge.SourceTaskName,
 			"destination_handle":    utils.NullStringToInterface(edge.DestinationHandle),
 			"source_handle":         utils.NullStringToInterface(edge.SourceHandle),
 		}
-
 	}
 	edgesJSON, _ := json.Marshal(modifiedEdges)
-	statement := sq.Insert("workflow_history").Columns("workflow_id", "triggered_at", "edges").Values(id, time.Now(), edgesJSON).Suffix("RETURNING *")
-	return DbExecAndReturnOne[domain.PlaybookHistory](
-		tx,
-		statement,
-	)
-}
 
-// function for creating a workflow:
-func (w *PlaybookRepositoryImpl) CreatePlaybook(workflow playbooks.PlaybookPayload) (*domain.Playbooks, error) {
-	statement := sq.Insert("workflows").Columns("name", "description", "trigger_type").Values(workflow.Name, workflow.Description, workflow.TriggerType).Suffix("RETURNING *")
-	return DbExecAndReturnOne[domain.Playbooks](
-		w.DB,
-		statement,
-	)
-}
-
-// updatePlaybook implements PlaybookRepository.
-func (w *PlaybookRepositoryImpl) UpdatePlaybook(id string, workflow playbooks.UpdatePlaybookData) (*domain.Playbooks, error) {
-
-	data := GenerateKeyValueQuery(map[string]types.Nullable[any]{
-		"name":         workflow.Name.ToNullableAny(),
-		"description":  workflow.Description.ToNullableAny(),
-		"trigger_type": workflow.TriggerType.ToNullableAny(),
+	row, err := w.queriesFromContext(ctx).CreatePlaybookHistory(ctx, db.CreatePlaybookHistoryParams{
+		PlaybookID: pgID,
+		Edges:      edgesJSON,
 	})
-
-	statement := sq.Update("workflows").SetMap(data).Where(sq.Eq{"id": id}).Suffix("RETURNING *")
-
-	return DbExecAndReturnOne[domain.Playbooks](
-		w.DB,
-		statement,
-	)
-}
-
-// updatePlaybook implements PlaybookRepository.
-func (w *PlaybookRepositoryImpl) UpdatePlaybookTx(tx *sqlx.Tx, id string, workflow playbooks.UpdatePlaybookData) (*domain.Playbooks, error) {
-
-	data := GenerateKeyValueQuery(map[string]types.Nullable[any]{
-		"name":         workflow.Name.ToNullableAny(),
-		"description":  workflow.Description.ToNullableAny(),
-		"trigger_type": workflow.TriggerType.ToNullableAny(),
-	})
-
-	statement := sq.Update("workflows").SetMap(data).Where(sq.Eq{"id": id}).Suffix("RETURNING *")
-
-	return DbExecAndReturnOne[domain.Playbooks](
-		tx,
-		statement,
-	)
-}
-
-// UpdatePlaybookHistory implements PlaybookRepository.
-func (w *PlaybookRepositoryImpl) UpdatePlaybookHistory(workflowHistoryId string, workflowHistory playbooks.UpdatePlaybookHistoryData) (*domain.PlaybookHistory, error) {
-	data := GenerateKeyValueQuery(map[string]types.Nullable[any]{
-		"status": workflowHistory.Status.ToNullableAny(),
-		"error":  workflowHistory.Error.ToNullableAny(),
-	})
-
-	jsonData, err := json.Marshal(workflowHistory.Result)
 	if err != nil {
 		return nil, err
 	}
 
-	data["result"] = jsonData
-	statement := sq.Update("workflow_history").SetMap(data).Where(sq.Eq{"id": workflowHistoryId}).Suffix("RETURNING *")
-	return DbExecAndReturnOne[domain.PlaybookHistory](
-		w.DB,
-		statement,
-	)
+	history := toDomainPlaybookHistory(row)
+	return &history, nil
 }
 
-// UpdatePlaybookHistoryStatus implements PlaybookRepository.
-func (w *PlaybookRepositoryImpl) UpdatePlaybookHistoryStatus(workflowHistoryId string, status string) (*domain.PlaybookHistory, error) {
-	statement := sq.Update("workflow_history").Set("status", status).Where(sq.Eq{"id": workflowHistoryId}).Suffix("RETURNING *")
-	return DbExecAndReturnOne[domain.PlaybookHistory](
-		w.DB,
-		statement,
-	)
+// UpdatePlaybookHistory implements playbooks.PlaybookRepository.
+func (w *PlaybookRepositoryImpl) UpdatePlaybookHistory(ctx context.Context, playbookHistoryId string, playbookHistory playbooks.UpdatePlaybookHistoryData) (*domain.PlaybookHistory, error) {
+	pgID, err := toPgUUIDFromString(playbookHistoryId)
+	if err != nil {
+		return nil, err
+	}
+
+	jsonData, err := json.Marshal(playbookHistory.Result)
+	if err != nil {
+		return nil, err
+	}
+
+	row, err := w.queriesFromContext(ctx).UpdatePlaybookHistory(ctx, db.UpdatePlaybookHistoryParams{
+		StatusSet: playbookHistory.Status.Set,
+		Status:    toNullPlaybookStatus(playbookHistory.Status),
+		ErrorSet:  playbookHistory.Error.Set,
+		Error:     toPgTextFromNullable(playbookHistory.Error),
+		Result:    jsonData,
+		ID:        pgID,
+	})
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, nil
+		}
+		return nil, err
+	}
+
+	history := toDomainPlaybookHistory(row)
+	return &history, nil
+}
+
+// UpdatePlaybookHistoryStatus implements playbooks.PlaybookRepository.
+func (w *PlaybookRepositoryImpl) UpdatePlaybookHistoryStatus(ctx context.Context, playbookHistoryId string, status string) (*domain.PlaybookHistory, error) {
+	pgID, err := toPgUUIDFromString(playbookHistoryId)
+	if err != nil {
+		return nil, err
+	}
+
+	row, err := w.queriesFromContext(ctx).UpdatePlaybookHistoryStatus(ctx, db.UpdatePlaybookHistoryStatusParams{
+		ID:     pgID,
+		Status: db.PlaybookStatus(status),
+	})
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, nil
+		}
+		return nil, err
+	}
+
+	history := toDomainPlaybookHistory(row)
+	return &history, nil
 }

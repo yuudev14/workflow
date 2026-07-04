@@ -9,12 +9,12 @@ import (
 
 type PlaybookFilter struct {
 	Name       *string    `form:"name"`
-	PlaybookID *uuid.UUID `form:"workflow_id"`
+	PlaybookID *uuid.UUID `form:"playbook_id"`
 }
 
 type PlaybookHistoryFilter struct {
 	Name       *string    `form:"name"`
-	PlaybookID *uuid.UUID `form:"workflow_id"`
+	PlaybookID *uuid.UUID `form:"playbook_id"`
 }
 
 type UpdatePlaybookData struct {

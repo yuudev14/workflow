@@ -1,6 +1,7 @@
 package edges_test
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"testing"
@@ -33,7 +34,7 @@ func setupService(t *testing.T) (edges.EdgeService, *mock_edges.MockEdgeReposito
 func TestServiceGetEdgesByPlaybookIdSuccess(t *testing.T) {
 	service, mockRepo := setupService(t)
 
-	workflowID := uuid.New().String()
+	playbookID := uuid.New().String()
 
 	returnedEdges := []domain.ResponseEdges{
 		{
@@ -46,10 +47,10 @@ func TestServiceGetEdgesByPlaybookIdSuccess(t *testing.T) {
 
 	mockRepo.
 		EXPECT().
-		GetEdgesByPlaybookId(workflowID).
+		GetEdgesByPlaybookId(gomock.Any(), playbookID).
 		Return(returnedEdges, nil)
 
-	result, err := service.GetEdgesByPlaybookId(workflowID)
+	result, err := service.GetEdgesByPlaybookId(context.Background(), playbookID)
 
 	assert.NoError(t, err)
 	assert.Len(t, result, 2)
@@ -58,14 +59,14 @@ func TestServiceGetEdgesByPlaybookIdSuccess(t *testing.T) {
 func TestServiceGetEdgesByPlaybookIdFail(t *testing.T) {
 	service, mockRepo := setupService(t)
 
-	workflowID := uuid.New().String()
+	playbookID := uuid.New().String()
 
 	mockRepo.
 		EXPECT().
-		GetEdgesByPlaybookId(workflowID).
+		GetEdgesByPlaybookId(gomock.Any(), playbookID).
 		Return(nil, fmt.Errorf("error occurred"))
 
-	result, err := service.GetEdgesByPlaybookId(workflowID)
+	result, err := service.GetEdgesByPlaybookId(context.Background(), playbookID)
 
 	assert.Error(t, err)
 	assert.Nil(t, result)
@@ -85,10 +86,10 @@ func TestServiceInsertEdgesSuccess(t *testing.T) {
 
 	mockRepo.
 		EXPECT().
-		InsertEdges(nil, edgesData).
+		InsertEdges(gomock.Any(), edgesData).
 		Return(edgesData, nil)
 
-	result, err := service.InsertEdges(nil, edgesData)
+	result, err := service.InsertEdges(context.Background(), edgesData)
 
 	assert.NoError(t, err)
 	assert.Len(t, result, 2)
@@ -105,10 +106,10 @@ func TestServiceInsertEdgesFail(t *testing.T) {
 
 	mockRepo.
 		EXPECT().
-		InsertEdges(nil, edgesData).
+		InsertEdges(gomock.Any(), edgesData).
 		Return(nil, fmt.Errorf("insert error"))
 
-	result, err := service.InsertEdges(nil, edgesData)
+	result, err := service.InsertEdges(context.Background(), edgesData)
 
 	assert.Error(t, err)
 	assert.Nil(t, result)
@@ -124,10 +125,10 @@ func TestServiceDeleteEdgesSuccess(t *testing.T) {
 
 	mockRepo.
 		EXPECT().
-		DeleteEdges(nil, edgeIds).
+		DeleteEdges(gomock.Any(), edgeIds).
 		Return(nil)
 
-	err := service.DeleteEdges(nil, edgeIds)
+	err := service.DeleteEdges(context.Background(), edgeIds)
 
 	assert.NoError(t, err)
 }
@@ -141,10 +142,10 @@ func TestServiceDeleteEdgesFail(t *testing.T) {
 
 	mockRepo.
 		EXPECT().
-		DeleteEdges(nil, edgeIds).
+		DeleteEdges(gomock.Any(), edgeIds).
 		Return(fmt.Errorf("delete error"))
 
-	err := service.DeleteEdges(nil, edgeIds)
+	err := service.DeleteEdges(context.Background(), edgeIds)
 
 	assert.Error(t, err)
 }
@@ -152,14 +153,14 @@ func TestServiceDeleteEdgesFail(t *testing.T) {
 func TestServiceDeleteAllPlaybookEdgesSuccess(t *testing.T) {
 	service, mockRepo := setupService(t)
 
-	workflowID := uuid.New().String()
+	playbookID := uuid.New().String()
 
 	mockRepo.
 		EXPECT().
-		DeleteAllPlaybookEdges(nil, workflowID).
+		DeleteAllPlaybookEdges(gomock.Any(), playbookID).
 		Return(nil)
 
-	err := service.DeleteAllPlaybookEdges(nil, workflowID)
+	err := service.DeleteAllPlaybookEdges(context.Background(), playbookID)
 
 	assert.NoError(t, err)
 }
@@ -167,14 +168,14 @@ func TestServiceDeleteAllPlaybookEdgesSuccess(t *testing.T) {
 func TestServiceDeleteAllPlaybookEdgesFail(t *testing.T) {
 	service, mockRepo := setupService(t)
 
-	workflowID := uuid.New().String()
+	playbookID := uuid.New().String()
 
 	mockRepo.
 		EXPECT().
-		DeleteAllPlaybookEdges(nil, workflowID).
+		DeleteAllPlaybookEdges(gomock.Any(), playbookID).
 		Return(fmt.Errorf("delete error"))
 
-	err := service.DeleteAllPlaybookEdges(nil, workflowID)
+	err := service.DeleteAllPlaybookEdges(context.Background(), playbookID)
 
 	assert.Error(t, err)
 }

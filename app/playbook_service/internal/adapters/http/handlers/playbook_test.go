@@ -94,7 +94,7 @@ func TestControllerGetPlaybooksSuccess(t *testing.T) {
 	mockServices.
 		PlaybookService.
 		EXPECT().
-		GetPlaybooksData(0, 10, playbooks.PlaybookFilter{}).
+		GetPlaybooksData(gomock.Any(), 0, 10, playbooks.PlaybookFilter{}).
 		Return(expected, nil)
 
 	controller.GetPlaybooks(c)
@@ -115,7 +115,7 @@ func TestControllerGetPlaybooksError(t *testing.T) {
 
 	mockServices.PlaybookService.
 		EXPECT().
-		GetPlaybooksData(0, 10, playbooks.PlaybookFilter{}).
+		GetPlaybooksData(gomock.Any(), 0, 10, playbooks.PlaybookFilter{}).
 		Return(types.Entries[domain.Playbooks]{}, fmt.Errorf("service error"))
 
 	controller.GetPlaybooks(c)
@@ -136,8 +136,8 @@ func TestControllerGetPlaybooksInvalidQuery(t *testing.T) {
 			expectedStatus: http.StatusBadRequest,
 		},
 		{
-			name:           "invalid workflow_id",
-			query:          "/playbooks/v1?offset=0&limit=10&workflow_id=invalid-uuid",
+			name:           "invalid playbook_id",
+			query:          "/playbooks/v1?offset=0&limit=10&playbook_id=invalid-uuid",
 			expectedStatus: http.StatusBadRequest,
 		},
 	}
@@ -186,7 +186,7 @@ func TestControllerGetPlaybookGraphByIdSuccess(t *testing.T) {
 
 	mockServices.PlaybookService.
 		EXPECT().
-		GetPlaybookGraphById(uuid.String()).
+		GetPlaybookGraphById(gomock.Any(), uuid.String()).
 		Return(expected, nil)
 
 	controller.GetPlaybookGraphById(c)
@@ -234,7 +234,7 @@ func TestControllerGetPlaybookGraphByIdError(t *testing.T) {
 
 			mockServices.PlaybookService.
 				EXPECT().
-				GetPlaybookGraphById(uuid.String()).
+				GetPlaybookGraphById(gomock.Any(), uuid.String()).
 				Return(tt.expectedReturn, fmt.Errorf("%s", tt.error_))
 
 			controller.GetPlaybookGraphById(c)
@@ -269,7 +269,7 @@ func TestControllerGetPlaybookHistorySuccess(t *testing.T) {
 
 	mockServices.PlaybookService.
 		EXPECT().
-		GetPlaybooksHistoryData(0, 10, playbooks.PlaybookHistoryFilter{}).
+		GetPlaybooksHistoryData(gomock.Any(), 0, 10, playbooks.PlaybookHistoryFilter{}).
 		Return(expected, nil)
 
 	controller.GetPlaybookHistory(c)
@@ -291,7 +291,7 @@ func TestControllerGetPlaybooksHistoryError(t *testing.T) {
 
 	mockServices.PlaybookService.
 		EXPECT().
-		GetPlaybooksHistoryData(0, 10, playbooks.PlaybookHistoryFilter{}).
+		GetPlaybooksHistoryData(gomock.Any(), 0, 10, playbooks.PlaybookHistoryFilter{}).
 		Return(types.Entries[domain.PlaybookHistoryResponse]{}, fmt.Errorf("service error"))
 
 	controller.GetPlaybookHistory(c)
@@ -312,8 +312,8 @@ func TestControllerGetPlaybooksHistoryInvalidQuery(t *testing.T) {
 			expectedStatus: http.StatusBadRequest,
 		},
 		{
-			name:           "invalid workflow_id",
-			query:          "/playbooks/v1/history?offset=0&limit=10&workflow_id=invalid-uuid",
+			name:           "invalid playbook_id",
+			query:          "/playbooks/v1/history?offset=0&limit=10&playbook_id=invalid-uuid",
 			expectedStatus: http.StatusBadRequest,
 		},
 	}
@@ -347,7 +347,7 @@ func TestControllerGetPlaybookTriggerTypesSuccess(t *testing.T) {
 
 	mockServices.PlaybookService.
 		EXPECT().
-		GetPlaybookTriggers().
+		GetPlaybookTriggers(gomock.Any()).
 		Return(expected, nil)
 
 	controller.GetPlaybookTriggerTypes(c)
@@ -363,7 +363,7 @@ func TestControllerGetPlaybookTriggerTypesError(t *testing.T) {
 
 	mockServices.PlaybookService.
 		EXPECT().
-		GetPlaybookTriggers().
+		GetPlaybookTriggers(gomock.Any()).
 		Return(nil, fmt.Errorf("error"))
 
 	controller.GetPlaybookTriggerTypes(c)
@@ -385,12 +385,12 @@ func TestControllerGetTaskHistoryByPlaybookHistoryIdSuccess(t *testing.T) {
 
 	mockServices.PlaybookService.
 		EXPECT().
-		GetPlaybookHistoryById(historyID).
+		GetPlaybookHistoryById(gomock.Any(), historyID).
 		Return(&domain.PlaybookHistoryResponse{}, nil)
 
 	mockServices.TaskService.
 		EXPECT().
-		GetTaskHistoryByPlaybookHistoryId(historyID.String(), tasks.TaskHistoryFilter{}).
+		GetTaskHistoryByPlaybookHistoryId(gomock.Any(), historyID.String(), tasks.TaskHistoryFilter{}).
 		Return([]domain.TaskHistory{}, nil)
 
 	controller.GetTaskHistoryByPlaybookHistoryId(c)
@@ -415,7 +415,7 @@ func TestControllerCreatePlaybookSuccess(t *testing.T) {
 	mockService.
 		PlaybookService.
 		EXPECT().
-		CreatePlaybook(gomock.Any()).
+		CreatePlaybook(gomock.Any(), gomock.Any()).
 		Return(&domain.Playbooks{}, nil)
 
 	controller.CreatePlaybook(c)
@@ -446,7 +446,7 @@ func TestControllerUpdatePlaybookSuccess(t *testing.T) {
 	mockService.
 		PlaybookService.
 		EXPECT().
-		UpdatePlaybook(id, gomock.Any()).
+		UpdatePlaybook(gomock.Any(), id, gomock.Any()).
 		Return(&domain.Playbooks{}, nil)
 
 	controller.UpdatePlaybook(c)
@@ -469,13 +469,13 @@ func TestControllerGetTasksByPlaybookIdSuccess(t *testing.T) {
 	mockService.
 		PlaybookService.
 		EXPECT().
-		GetPlaybookById(id).
+		GetPlaybookById(gomock.Any(), id).
 		Return(&domain.Playbooks{}, nil)
 
 	mockService.
 		TaskService.
 		EXPECT().
-		GetTasksByPlaybookId(id).
+		GetTasksByPlaybookId(gomock.Any(), id).
 		Return([]domain.Tasks{}, nil)
 
 	controller.GetTasksByPlaybookId(c)
@@ -523,7 +523,7 @@ func TestControllerUpdateTaskStatus(t *testing.T) {
 				mockService.
 					TaskService.
 					EXPECT().
-					UpdateTaskStatus(gomock.Any(), gomock.Any(), tt.status).
+					UpdateTaskStatus(gomock.Any(), gomock.Any(), gomock.Any(), tt.status).
 					Return(&domain.TaskHistory{}, nil)
 			}
 
@@ -574,7 +574,7 @@ func TestControllerUpdatePlaybookStatus(t *testing.T) {
 				mockService.
 					PlaybookService.
 					EXPECT().
-					UpdatePlaybookHistoryStatus(gomock.Any(), tt.status).
+					UpdatePlaybookHistoryStatus(gomock.Any(), gomock.Any(), tt.status).
 					Return(&domain.PlaybookHistory{}, nil)
 			}
 

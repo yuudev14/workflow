@@ -7,14 +7,17 @@ export
 .PHONY: swag
 
 
-DATABASE_URL := postgres://$(DB_USER):$(DB_PASSWORD)@$(DB_HOST)/$(DB_NAME)?sslmode=disable
-MIGRATIONS_PATH := file://db/migrations
+DATABASE_URL := postgres://$(DB_USER):$(DB_PASSWORD)@$(DB_HOST):$(DB_PORT)/$(DB_NAME)?sslmode=disable
+MIGRATIONS_DIR := db/migrations
 
 migrate:
-		migrate -source $(MIGRATIONS_PATH) -database $(DATABASE_URL) up
+		goose -dir $(MIGRATIONS_DIR) postgres "$(DATABASE_URL)" up
 
 migrate-down:
-		migrate -source $(MIGRATIONS_PATH) -database $(DATABASE_URL) down
+		goose -dir $(MIGRATIONS_DIR) postgres "$(DATABASE_URL)" down
+
+sqlc:
+		cd db && sqlc generate
 
 UNIT_TEST_PKGS := $(shell go list ./... | grep -vE '/mocks|/grpc')
 

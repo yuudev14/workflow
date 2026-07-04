@@ -62,7 +62,7 @@ func (w *PlaybookHandler) GetPlaybooks(c *gin.Context) {
 		"filter", filter,
 	)
 
-	workflows, err := w.PlaybookService.GetPlaybooksData(
+	workflows, err := w.PlaybookService.GetPlaybooksData(c.Request.Context(),
 		query.Offset,
 		query.Limit,
 		filter,
@@ -79,7 +79,7 @@ func (w *PlaybookHandler) GetPlaybookGraphById(c *gin.Context) {
 	response := rest.Response{C: c}
 	workflowId := c.Param("playbook_id")
 
-	workflow, workflowErr := w.PlaybookService.GetPlaybookGraphById(workflowId)
+	workflow, workflowErr := w.PlaybookService.GetPlaybookGraphById(c.Request.Context(), workflowId)
 
 	if workflowErr != nil {
 		logging.Sugar.Error(workflowErr)
@@ -120,7 +120,7 @@ func (w *PlaybookHandler) GetPlaybookHistory(c *gin.Context) {
 	logging.Sugar.Debugf("filter: %v", filter)
 
 	logging.Sugar.Debug("getting worflows")
-	histories, historiesErr := w.PlaybookService.GetPlaybooksHistoryData(query.Offset, query.Limit, filter)
+	histories, historiesErr := w.PlaybookService.GetPlaybooksHistoryData(c.Request.Context(), query.Offset, query.Limit, filter)
 
 	if historiesErr != nil {
 		response.ResponseError(http.StatusBadRequest, historiesErr.Error())
@@ -133,7 +133,7 @@ func (w *PlaybookHandler) GetPlaybookHistory(c *gin.Context) {
 
 func (w *PlaybookHandler) GetPlaybookTriggerTypes(c *gin.Context) {
 	response := rest.Response{C: c}
-	workflowTriggers, workflowErr := w.PlaybookService.GetPlaybookTriggers()
+	workflowTriggers, workflowErr := w.PlaybookService.GetPlaybookTriggers(c.Request.Context())
 
 	if workflowErr != nil {
 		logging.Sugar.Error(workflowErr)
@@ -148,7 +148,7 @@ func (w *PlaybookHandler) GetPlaybookById(c *gin.Context) {
 	response := rest.Response{C: c}
 	workflowId := c.Param("playbook_id")
 
-	_, workflowErr := w.PlaybookService.GetPlaybookById(workflowId)
+	_, workflowErr := w.PlaybookService.GetPlaybookById(c.Request.Context(), workflowId)
 
 	if workflowErr != nil {
 		logging.Sugar.Error(workflowErr)
@@ -156,7 +156,7 @@ func (w *PlaybookHandler) GetPlaybookById(c *gin.Context) {
 		return
 	}
 
-	newTasks, newTaskErr := w.TaskService.GetTasksByPlaybookId(workflowId)
+	newTasks, newTaskErr := w.TaskService.GetTasksByPlaybookId(c.Request.Context(), workflowId)
 	if newTaskErr != nil {
 		logging.Sugar.Errorf("error: ", newTaskErr)
 		response.ResponseError(http.StatusBadRequest, newTaskErr.Error())
@@ -177,7 +177,7 @@ func (w *PlaybookHandler) GetTaskHistoryByPlaybookHistoryId(c *gin.Context) {
 		response.ResponseError(http.StatusNotFound, uuidErr)
 	}
 
-	workflowHistory, workflowHistoryErr := w.PlaybookService.GetPlaybookHistoryById(workflowHistoryUUID)
+	workflowHistory, workflowHistoryErr := w.PlaybookService.GetPlaybookHistoryById(c.Request.Context(), workflowHistoryUUID)
 
 	if workflowHistoryErr != nil {
 		logging.Sugar.Error(workflowHistoryErr)
@@ -188,7 +188,7 @@ func (w *PlaybookHandler) GetTaskHistoryByPlaybookHistoryId(c *gin.Context) {
 	logging.Sugar.Debugf("filter: %v", taskHistoryFilter)
 
 	logging.Sugar.Debug("getting worflows")
-	tasksHistory, err := w.TaskService.GetTaskHistoryByPlaybookHistoryId(workflowHistoryId, taskHistoryFilter)
+	tasksHistory, err := w.TaskService.GetTaskHistoryByPlaybookHistoryId(c.Request.Context(), workflowHistoryId, taskHistoryFilter)
 
 	if err != nil {
 		response.ResponseError(http.StatusBadRequest, err.Error())
@@ -213,7 +213,7 @@ func (w *PlaybookHandler) CreatePlaybook(c *gin.Context) {
 		return
 	}
 
-	workflow, err := w.PlaybookService.CreatePlaybook(body)
+	workflow, err := w.PlaybookService.CreatePlaybook(c.Request.Context(), body)
 
 	logging.Sugar.Debug("added workflow...")
 
@@ -239,7 +239,7 @@ func (w *PlaybookHandler) UpdatePlaybook(c *gin.Context) {
 		return
 	}
 
-	workflow, err := w.PlaybookService.UpdatePlaybook(workflowId, body)
+	workflow, err := w.PlaybookService.UpdatePlaybook(c.Request.Context(), workflowId, body)
 
 	logging.Sugar.Debug("added workflow...")
 
@@ -264,7 +264,7 @@ func (w *PlaybookHandler) UpdatePlaybookTasks(c *gin.Context) {
 		return
 	}
 
-	workflow, workflowErr := w.PlaybookApplicationService.UpdatePlaybookTasks(workflowId, body)
+	workflow, workflowErr := w.PlaybookApplicationService.UpdatePlaybookTasks(c.Request.Context(), workflowId, body)
 
 	if workflowErr != nil {
 		logging.Sugar.Error(workflowErr)
@@ -279,7 +279,7 @@ func (w *PlaybookHandler) GetTasksByPlaybookId(c *gin.Context) {
 	response := rest.Response{C: c}
 	workflowId := c.Param("playbook_id")
 
-	_, workflowErr := w.PlaybookService.GetPlaybookById(workflowId)
+	_, workflowErr := w.PlaybookService.GetPlaybookById(c.Request.Context(), workflowId)
 
 	if workflowErr != nil {
 		logging.Sugar.Error(workflowErr)
@@ -287,7 +287,7 @@ func (w *PlaybookHandler) GetTasksByPlaybookId(c *gin.Context) {
 		return
 	}
 
-	newTasks, newTaskErr := w.TaskService.GetTasksByPlaybookId(workflowId)
+	newTasks, newTaskErr := w.TaskService.GetTasksByPlaybookId(c.Request.Context(), workflowId)
 	if newTaskErr != nil {
 		logging.Sugar.Errorf("error: ", newTaskErr)
 		response.ResponseError(http.StatusBadRequest, newTaskErr.Error())
@@ -302,7 +302,7 @@ func (w *PlaybookHandler) GetTasksByPlaybookId(c *gin.Context) {
 func (w *PlaybookHandler) Trigger(c *gin.Context) {
 	response := rest.Response{C: c}
 	workflowId := c.Param("playbook_id")
-	data, triggerErr := w.PlaybookApplicationService.TriggerPlaybook(workflowId)
+	data, triggerErr := w.PlaybookApplicationService.TriggerPlaybook(c.Request.Context(), workflowId)
 	if triggerErr != nil {
 		logging.Sugar.Errorf("error when sending the message to queue", triggerErr)
 		response.ResponseError(http.StatusBadGateway, triggerErr.Error())
@@ -367,7 +367,7 @@ func (w *PlaybookHandler) UpdateTaskStatus(c *gin.Context) {
 		return
 	}
 
-	task, updateTaskErr := w.TaskService.UpdateTaskStatus(workflowHistoryId, taskId, body.Status)
+	task, updateTaskErr := w.TaskService.UpdateTaskStatus(c.Request.Context(), workflowHistoryId, taskId, body.Status)
 
 	if updateTaskErr != nil {
 		logging.Sugar.Errorf(fmt.Sprintf("%v", updateTaskErr))
@@ -399,7 +399,7 @@ func (w *PlaybookHandler) UpdatePlaybookStatus(c *gin.Context) {
 		return
 	}
 
-	workflow, updatePlaybookErr := w.PlaybookService.UpdatePlaybookHistoryStatus(workflowHistoryId, body.Status)
+	workflow, updatePlaybookErr := w.PlaybookService.UpdatePlaybookHistoryStatus(c.Request.Context(), workflowHistoryId, body.Status)
 
 	if updatePlaybookErr != nil {
 		logging.Sugar.Errorf(fmt.Sprintf("%v", updatePlaybookErr))

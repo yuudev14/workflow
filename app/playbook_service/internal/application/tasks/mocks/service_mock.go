@@ -10,10 +10,10 @@
 package mocks
 
 import (
+	context "context"
 	reflect "reflect"
 
 	uuid "github.com/google/uuid"
-	sqlx "github.com/jmoiron/sqlx"
 	tasks "github.com/yuudev14/ytsoar/internal/application/tasks"
 	domain "github.com/yuudev14/ytsoar/internal/domain"
 	gomock "go.uber.org/mock/gomock"
@@ -44,120 +44,120 @@ func (m *MockTaskService) EXPECT() *MockTaskServiceMockRecorder {
 }
 
 // CreateTaskHistory mocks base method.
-func (m *MockTaskService) CreateTaskHistory(tx *sqlx.Tx, workflowHistoryId string, arg2 []domain.Tasks, graph map[uuid.UUID][]uuid.UUID) ([]domain.TaskHistory, error) {
+func (m *MockTaskService) CreateTaskHistory(ctx context.Context, playbookHistoryId string, arg2 []domain.Tasks, graph map[uuid.UUID][]uuid.UUID) ([]domain.TaskHistory, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "CreateTaskHistory", tx, workflowHistoryId, arg2, graph)
+	ret := m.ctrl.Call(m, "CreateTaskHistory", ctx, playbookHistoryId, arg2, graph)
 	ret0, _ := ret[0].([]domain.TaskHistory)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // CreateTaskHistory indicates an expected call of CreateTaskHistory.
-func (mr *MockTaskServiceMockRecorder) CreateTaskHistory(tx, workflowHistoryId, arg2, graph any) *gomock.Call {
+func (mr *MockTaskServiceMockRecorder) CreateTaskHistory(ctx, playbookHistoryId, arg2, graph any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateTaskHistory", reflect.TypeOf((*MockTaskService)(nil).CreateTaskHistory), tx, workflowHistoryId, arg2, graph)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateTaskHistory", reflect.TypeOf((*MockTaskService)(nil).CreateTaskHistory), ctx, playbookHistoryId, arg2, graph)
 }
 
 // DeleteTasks mocks base method.
-func (m *MockTaskService) DeleteTasks(tx *sqlx.Tx, taskIds []uuid.UUID) error {
+func (m *MockTaskService) DeleteTasks(ctx context.Context, taskIds []uuid.UUID) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "DeleteTasks", tx, taskIds)
+	ret := m.ctrl.Call(m, "DeleteTasks", ctx, taskIds)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // DeleteTasks indicates an expected call of DeleteTasks.
-func (mr *MockTaskServiceMockRecorder) DeleteTasks(tx, taskIds any) *gomock.Call {
+func (mr *MockTaskServiceMockRecorder) DeleteTasks(ctx, taskIds any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteTasks", reflect.TypeOf((*MockTaskService)(nil).DeleteTasks), tx, taskIds)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteTasks", reflect.TypeOf((*MockTaskService)(nil).DeleteTasks), ctx, taskIds)
 }
 
 // GetTaskHistoryByPlaybookHistoryId mocks base method.
-func (m *MockTaskService) GetTaskHistoryByPlaybookHistoryId(id string, filter tasks.TaskHistoryFilter) ([]domain.TaskHistory, error) {
+func (m *MockTaskService) GetTaskHistoryByPlaybookHistoryId(ctx context.Context, id string, filter tasks.TaskHistoryFilter) ([]domain.TaskHistory, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetTaskHistoryByPlaybookHistoryId", id, filter)
+	ret := m.ctrl.Call(m, "GetTaskHistoryByPlaybookHistoryId", ctx, id, filter)
 	ret0, _ := ret[0].([]domain.TaskHistory)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetTaskHistoryByPlaybookHistoryId indicates an expected call of GetTaskHistoryByPlaybookHistoryId.
-func (mr *MockTaskServiceMockRecorder) GetTaskHistoryByPlaybookHistoryId(id, filter any) *gomock.Call {
+func (mr *MockTaskServiceMockRecorder) GetTaskHistoryByPlaybookHistoryId(ctx, id, filter any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetTaskHistoryByPlaybookHistoryId", reflect.TypeOf((*MockTaskService)(nil).GetTaskHistoryByPlaybookHistoryId), id, filter)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetTaskHistoryByPlaybookHistoryId", reflect.TypeOf((*MockTaskService)(nil).GetTaskHistoryByPlaybookHistoryId), ctx, id, filter)
 }
 
 // GetTaskHistoryCount mocks base method.
-func (m *MockTaskService) GetTaskHistoryCount(filter tasks.TaskHistoryFilter) (int, error) {
+func (m *MockTaskService) GetTaskHistoryCount(ctx context.Context, filter tasks.TaskHistoryFilter) (int, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetTaskHistoryCount", filter)
+	ret := m.ctrl.Call(m, "GetTaskHistoryCount", ctx, filter)
 	ret0, _ := ret[0].(int)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetTaskHistoryCount indicates an expected call of GetTaskHistoryCount.
-func (mr *MockTaskServiceMockRecorder) GetTaskHistoryCount(filter any) *gomock.Call {
+func (mr *MockTaskServiceMockRecorder) GetTaskHistoryCount(ctx, filter any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetTaskHistoryCount", reflect.TypeOf((*MockTaskService)(nil).GetTaskHistoryCount), filter)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetTaskHistoryCount", reflect.TypeOf((*MockTaskService)(nil).GetTaskHistoryCount), ctx, filter)
 }
 
 // GetTasksByPlaybookId mocks base method.
-func (m *MockTaskService) GetTasksByPlaybookId(workflowId string) ([]domain.Tasks, error) {
+func (m *MockTaskService) GetTasksByPlaybookId(ctx context.Context, playbookId string) ([]domain.Tasks, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetTasksByPlaybookId", workflowId)
+	ret := m.ctrl.Call(m, "GetTasksByPlaybookId", ctx, playbookId)
 	ret0, _ := ret[0].([]domain.Tasks)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetTasksByPlaybookId indicates an expected call of GetTasksByPlaybookId.
-func (mr *MockTaskServiceMockRecorder) GetTasksByPlaybookId(workflowId any) *gomock.Call {
+func (mr *MockTaskServiceMockRecorder) GetTasksByPlaybookId(ctx, playbookId any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetTasksByPlaybookId", reflect.TypeOf((*MockTaskService)(nil).GetTasksByPlaybookId), workflowId)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetTasksByPlaybookId", reflect.TypeOf((*MockTaskService)(nil).GetTasksByPlaybookId), ctx, playbookId)
 }
 
 // UpdateTaskHistory mocks base method.
-func (m *MockTaskService) UpdateTaskHistory(workflowHistoryId, taskId string, taskHistory tasks.UpdateTaskHistoryData) (*domain.TaskHistory, error) {
+func (m *MockTaskService) UpdateTaskHistory(ctx context.Context, playbookHistoryId, taskId string, taskHistory tasks.UpdateTaskHistoryData) (*domain.TaskHistory, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "UpdateTaskHistory", workflowHistoryId, taskId, taskHistory)
+	ret := m.ctrl.Call(m, "UpdateTaskHistory", ctx, playbookHistoryId, taskId, taskHistory)
 	ret0, _ := ret[0].(*domain.TaskHistory)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // UpdateTaskHistory indicates an expected call of UpdateTaskHistory.
-func (mr *MockTaskServiceMockRecorder) UpdateTaskHistory(workflowHistoryId, taskId, taskHistory any) *gomock.Call {
+func (mr *MockTaskServiceMockRecorder) UpdateTaskHistory(ctx, playbookHistoryId, taskId, taskHistory any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateTaskHistory", reflect.TypeOf((*MockTaskService)(nil).UpdateTaskHistory), workflowHistoryId, taskId, taskHistory)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateTaskHistory", reflect.TypeOf((*MockTaskService)(nil).UpdateTaskHistory), ctx, playbookHistoryId, taskId, taskHistory)
 }
 
 // UpdateTaskStatus mocks base method.
-func (m *MockTaskService) UpdateTaskStatus(workflowHistoryId, taskId, status string) (*domain.TaskHistory, error) {
+func (m *MockTaskService) UpdateTaskStatus(ctx context.Context, playbookHistoryId, taskId, status string) (*domain.TaskHistory, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "UpdateTaskStatus", workflowHistoryId, taskId, status)
+	ret := m.ctrl.Call(m, "UpdateTaskStatus", ctx, playbookHistoryId, taskId, status)
 	ret0, _ := ret[0].(*domain.TaskHistory)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // UpdateTaskStatus indicates an expected call of UpdateTaskStatus.
-func (mr *MockTaskServiceMockRecorder) UpdateTaskStatus(workflowHistoryId, taskId, status any) *gomock.Call {
+func (mr *MockTaskServiceMockRecorder) UpdateTaskStatus(ctx, playbookHistoryId, taskId, status any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateTaskStatus", reflect.TypeOf((*MockTaskService)(nil).UpdateTaskStatus), workflowHistoryId, taskId, status)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateTaskStatus", reflect.TypeOf((*MockTaskService)(nil).UpdateTaskStatus), ctx, playbookHistoryId, taskId, status)
 }
 
 // UpsertTasks mocks base method.
-func (m *MockTaskService) UpsertTasks(tx *sqlx.Tx, workflowId uuid.UUID, arg2 []domain.Tasks) ([]domain.Tasks, error) {
+func (m *MockTaskService) UpsertTasks(ctx context.Context, playbookId uuid.UUID, arg2 []domain.Tasks) ([]domain.Tasks, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "UpsertTasks", tx, workflowId, arg2)
+	ret := m.ctrl.Call(m, "UpsertTasks", ctx, playbookId, arg2)
 	ret0, _ := ret[0].([]domain.Tasks)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // UpsertTasks indicates an expected call of UpsertTasks.
-func (mr *MockTaskServiceMockRecorder) UpsertTasks(tx, workflowId, arg2 any) *gomock.Call {
+func (mr *MockTaskServiceMockRecorder) UpsertTasks(ctx, playbookId, arg2 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpsertTasks", reflect.TypeOf((*MockTaskService)(nil).UpsertTasks), tx, workflowId, arg2)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpsertTasks", reflect.TypeOf((*MockTaskService)(nil).UpsertTasks), ctx, playbookId, arg2)
 }
