@@ -18,7 +18,7 @@ type TaskPayload struct {
 }
 
 type TaskHistoryFilter struct {
-	PlaybookID *uuid.UUID `form:"workflow_id"`
+	PlaybookID *uuid.UUID `form:"playbook_id"`
 }
 
 type UpdateTaskHistoryData struct {

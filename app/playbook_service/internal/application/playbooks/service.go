@@ -1,10 +1,10 @@
 package playbooks
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/google/uuid"
-	"github.com/jmoiron/sqlx"
 	"github.com/yuudev14/ytsoar/internal/domain"
 	"github.com/yuudev14/ytsoar/internal/logging"
 	"github.com/yuudev14/ytsoar/internal/types"
@@ -12,73 +12,64 @@ import (
 
 //go:generate mockgen -destination=mocks/service_mock.go -package=mocks . PlaybookService
 type PlaybookService interface {
-	GetPlaybooks(offset int, limit int, filter PlaybookFilter) ([]domain.Playbooks, error)
-	GetPlaybooksData(offset int, limit int, filter PlaybookFilter) (types.Entries[domain.Playbooks], error)
-	GetPlaybookHistoryById(workflowHistoryId uuid.UUID) (*domain.PlaybookHistoryResponse, error)
-	GetPlaybookHistory(offset int, limit int, filter PlaybookHistoryFilter) ([]domain.PlaybookHistoryResponse, error)
-	GetPlaybookHistoryCount(filter PlaybookHistoryFilter) (int, error)
-	GetPlaybookTriggers() ([]domain.PlaybookTriggers, error)
-	GetPlaybooksCount(filter PlaybookFilter) (int, error)
-	GetPlaybookById(id string) (*domain.Playbooks, error)
-	GetPlaybooksHistoryData(offset int, limit int, filter PlaybookHistoryFilter) (types.Entries[domain.PlaybookHistoryResponse], error)
-	GetPlaybookGraphById(id string) (*domain.PlaybookGraph, error)
-	CreatePlaybook(workflow PlaybookPayload) (*domain.Playbooks, error)
-	UpdatePlaybook(id string, workflow UpdatePlaybookData) (*domain.Playbooks, error)
-	UpdatePlaybookTx(tx *sqlx.Tx, id string, workflow UpdatePlaybookData) (*domain.Playbooks, error)
-	CreatePlaybookHistory(tx *sqlx.Tx, id string, edges []domain.ResponseEdges) (*domain.PlaybookHistory, error)
-	UpdatePlaybookHistory(workflowHistoryId string, workflowHistory UpdatePlaybookHistoryData) (*domain.PlaybookHistory, error)
-	UpdatePlaybookHistoryStatus(workflowHistoryId string, status string) (*domain.PlaybookHistory, error)
+	GetPlaybooks(ctx context.Context, offset int, limit int, filter PlaybookFilter) ([]domain.Playbooks, error)
+	GetPlaybooksData(ctx context.Context, offset int, limit int, filter PlaybookFilter) (types.Entries[domain.Playbooks], error)
+	GetPlaybookHistoryById(ctx context.Context, playbookHistoryId uuid.UUID) (*domain.PlaybookHistoryResponse, error)
+	GetPlaybookHistory(ctx context.Context, offset int, limit int, filter PlaybookHistoryFilter) ([]domain.PlaybookHistoryResponse, error)
+	GetPlaybookHistoryCount(ctx context.Context, filter PlaybookHistoryFilter) (int, error)
+	GetPlaybookTriggers(ctx context.Context) ([]domain.PlaybookTriggers, error)
+	GetPlaybooksCount(ctx context.Context, filter PlaybookFilter) (int, error)
+	GetPlaybookById(ctx context.Context, id string) (*domain.Playbooks, error)
+	GetPlaybooksHistoryData(ctx context.Context, offset int, limit int, filter PlaybookHistoryFilter) (types.Entries[domain.PlaybookHistoryResponse], error)
+	GetPlaybookGraphById(ctx context.Context, id string) (*domain.PlaybookGraph, error)
+	CreatePlaybook(ctx context.Context, playbook PlaybookPayload) (*domain.Playbooks, error)
+	UpdatePlaybook(ctx context.Context, id string, playbook UpdatePlaybookData) (*domain.Playbooks, error)
+	CreatePlaybookHistory(ctx context.Context, id string, edges []domain.ResponseEdges) (*domain.PlaybookHistory, error)
+	UpdatePlaybookHistory(ctx context.Context, playbookHistoryId string, playbookHistory UpdatePlaybookHistoryData) (*domain.PlaybookHistory, error)
+	UpdatePlaybookHistoryStatus(ctx context.Context, playbookHistoryId string, status string) (*domain.PlaybookHistory, error)
 }
 
 type PlaybookServiceImpl struct {
 	PlaybookRepository PlaybookRepository
 }
 
-func NewPlaybookService(PlaybookRepository PlaybookRepository) PlaybookService {
+func NewPlaybookService(playbookRepository PlaybookRepository) PlaybookService {
 	return &PlaybookServiceImpl{
-		PlaybookRepository: PlaybookRepository,
+		PlaybookRepository: playbookRepository,
 	}
 }
 
 // GetPlaybooks implements PlaybookService.
-func (w *PlaybookServiceImpl) GetPlaybooks(offset int, limit int, filter PlaybookFilter) ([]domain.Playbooks, error) {
-	return w.PlaybookRepository.GetPlaybooks(offset, limit, filter)
+func (w *PlaybookServiceImpl) GetPlaybooks(ctx context.Context, offset int, limit int, filter PlaybookFilter) ([]domain.Playbooks, error) {
+	return w.PlaybookRepository.GetPlaybooks(ctx, offset, limit, filter)
 }
 
 // GetPlaybooksData implements [PlaybookService].
-func (w *PlaybookServiceImpl) GetPlaybooksData(offset int, limit int, filter PlaybookFilter) (types.Entries[domain.Playbooks], error) {
-	workflows, err := w.GetPlaybooks(
-		offset,
-		limit,
-		filter,
-	)
+func (w *PlaybookServiceImpl) GetPlaybooksData(ctx context.Context, offset int, limit int, filter PlaybookFilter) (types.Entries[domain.Playbooks], error) {
+	playbooks, err := w.GetPlaybooks(ctx, offset, limit, filter)
 	if err != nil {
 		return types.Entries[domain.Playbooks]{}, err
 	}
 
-	total, err := w.GetPlaybooksCount(filter)
+	total, err := w.GetPlaybooksCount(ctx, filter)
 	if err != nil {
 		return types.Entries[domain.Playbooks]{}, err
 	}
 
 	return types.Entries[domain.Playbooks]{
-		Entries: workflows,
+		Entries: playbooks,
 		Total:   total,
 	}, nil
 }
 
-// GetPlaybooksData implements [PlaybookService].
-func (w *PlaybookServiceImpl) GetPlaybooksHistoryData(offset int, limit int, filter PlaybookHistoryFilter) (types.Entries[domain.PlaybookHistoryResponse], error) {
-	histories, err := w.GetPlaybookHistory(
-		offset,
-		limit,
-		filter,
-	)
+// GetPlaybooksHistoryData implements [PlaybookService].
+func (w *PlaybookServiceImpl) GetPlaybooksHistoryData(ctx context.Context, offset int, limit int, filter PlaybookHistoryFilter) (types.Entries[domain.PlaybookHistoryResponse], error) {
+	histories, err := w.GetPlaybookHistory(ctx, offset, limit, filter)
 	if err != nil {
 		return types.Entries[domain.PlaybookHistoryResponse]{}, err
 	}
 
-	total, err := w.GetPlaybookHistoryCount(filter)
+	total, err := w.GetPlaybookHistoryCount(ctx, filter)
 	if err != nil {
 		return types.Entries[domain.PlaybookHistoryResponse]{}, err
 	}
@@ -89,105 +80,98 @@ func (w *PlaybookServiceImpl) GetPlaybooksHistoryData(offset int, limit int, fil
 	}, nil
 }
 
-func (w *PlaybookServiceImpl) GetPlaybookHistoryById(workflowHistoryId uuid.UUID) (*domain.PlaybookHistoryResponse, error) {
-	return w.PlaybookRepository.GetPlaybookHistoryById(workflowHistoryId)
+func (w *PlaybookServiceImpl) GetPlaybookHistoryById(ctx context.Context, playbookHistoryId uuid.UUID) (*domain.PlaybookHistoryResponse, error) {
+	return w.PlaybookRepository.GetPlaybookHistoryById(ctx, playbookHistoryId)
 }
 
 // GetPlaybookHistory implements PlaybookService.
-func (w *PlaybookServiceImpl) GetPlaybookHistory(offset int, limit int, filter PlaybookHistoryFilter) ([]domain.PlaybookHistoryResponse, error) {
-	return w.PlaybookRepository.GetPlaybookHistory(offset, limit, filter)
+func (w *PlaybookServiceImpl) GetPlaybookHistory(ctx context.Context, offset int, limit int, filter PlaybookHistoryFilter) ([]domain.PlaybookHistoryResponse, error) {
+	return w.PlaybookRepository.GetPlaybookHistory(ctx, offset, limit, filter)
 }
 
 // GetPlaybookHistoryCount implements PlaybookService.
-func (w *PlaybookServiceImpl) GetPlaybookHistoryCount(filter PlaybookHistoryFilter) (int, error) {
-	return w.PlaybookRepository.GetPlaybookHistoryCount(filter)
+func (w *PlaybookServiceImpl) GetPlaybookHistoryCount(ctx context.Context, filter PlaybookHistoryFilter) (int, error) {
+	return w.PlaybookRepository.GetPlaybookHistoryCount(ctx, filter)
 }
 
 // GetPlaybookTriggers implements PlaybookService.
-func (w *PlaybookServiceImpl) GetPlaybookTriggers() ([]domain.PlaybookTriggers, error) {
-	return w.PlaybookRepository.GetPlaybookTriggers()
+func (w *PlaybookServiceImpl) GetPlaybookTriggers(ctx context.Context) ([]domain.PlaybookTriggers, error) {
+	return w.PlaybookRepository.GetPlaybookTriggers(ctx)
 }
 
 // GetPlaybooksCount implements PlaybookService.
-func (w *PlaybookServiceImpl) GetPlaybooksCount(filter PlaybookFilter) (int, error) {
-	return w.PlaybookRepository.GetPlaybooksCount(filter)
+func (w *PlaybookServiceImpl) GetPlaybooksCount(ctx context.Context, filter PlaybookFilter) (int, error) {
+	return w.PlaybookRepository.GetPlaybooksCount(ctx, filter)
 }
 
 // CreatePlaybookHistory implements PlaybookService.
-func (w *PlaybookServiceImpl) CreatePlaybookHistory(tx *sqlx.Tx, id string, edges []domain.ResponseEdges) (*domain.PlaybookHistory, error) {
-	return w.PlaybookRepository.CreatePlaybookHistory(tx, id, edges)
+func (w *PlaybookServiceImpl) CreatePlaybookHistory(ctx context.Context, id string, edges []domain.ResponseEdges) (*domain.PlaybookHistory, error) {
+	return w.PlaybookRepository.CreatePlaybookHistory(ctx, id, edges)
 }
 
 // GetPlaybookById implements PlaybookService.
-func (w *PlaybookServiceImpl) GetPlaybookById(id string) (*domain.Playbooks, error) {
-	workflow, workflowErr := w.PlaybookRepository.GetPlaybookById(id)
-	if workflowErr != nil {
-		logging.Sugar.Error(fmt.Sprintf("error fetching workflow by id: %v, error: %v", id, workflowErr))
-		return nil, workflowErr
+func (w *PlaybookServiceImpl) GetPlaybookById(ctx context.Context, id string) (*domain.Playbooks, error) {
+	playbook, playbookErr := w.PlaybookRepository.GetPlaybookById(ctx, id)
+	if playbookErr != nil {
+		logging.Sugar.Error(fmt.Sprintf("error fetching playbook by id: %v, error: %v", id, playbookErr))
+		return nil, playbookErr
 	}
 
-	if workflow == nil {
-		return nil, fmt.Errorf("workflow is not found")
+	if playbook == nil {
+		return nil, fmt.Errorf("playbook is not found")
 	}
-	return workflow, nil
+	return playbook, nil
 }
 
-// GetPlaybookById implements PlaybookService.
-func (w *PlaybookServiceImpl) GetPlaybookGraphById(id string) (*domain.PlaybookGraph, error) {
-	workflow, workflowErr := w.PlaybookRepository.GetPlaybookGraphById(id)
-	if workflowErr != nil {
-		logging.Sugar.Error(fmt.Sprintf("error fetching workflow by id: %s, error: %v", id, workflowErr))
-		return nil, fmt.Errorf("error fetching graph by workflow by id: %s", id)
+// GetPlaybookGraphById implements PlaybookService.
+func (w *PlaybookServiceImpl) GetPlaybookGraphById(ctx context.Context, id string) (*domain.PlaybookGraph, error) {
+	playbook, playbookErr := w.PlaybookRepository.GetPlaybookGraphById(ctx, id)
+	if playbookErr != nil {
+		logging.Sugar.Error(fmt.Sprintf("error fetching playbook by id: %s, error: %v", id, playbookErr))
+		return nil, fmt.Errorf("error fetching graph by playbook by id: %s", id)
 	}
 
-	if workflow == nil {
-		return nil, fmt.Errorf("workflow is not found")
+	if playbook == nil {
+		return nil, fmt.Errorf("playbook is not found")
 	}
-	return workflow, nil
+	return playbook, nil
 }
 
-// function for creating a workflow:
-func (w *PlaybookServiceImpl) CreatePlaybook(workflow PlaybookPayload) (*domain.Playbooks, error) {
-	return w.PlaybookRepository.CreatePlaybook(workflow)
+// CreatePlaybook implements PlaybookService.
+func (w *PlaybookServiceImpl) CreatePlaybook(ctx context.Context, playbook PlaybookPayload) (*domain.Playbooks, error) {
+	return w.PlaybookRepository.CreatePlaybook(ctx, playbook)
 }
 
-// updatePlaybook implements PlaybookRepository.
-func (w *PlaybookServiceImpl) UpdatePlaybook(id string, workflow UpdatePlaybookData) (*domain.Playbooks, error) {
-	return w.PlaybookRepository.UpdatePlaybook(id, workflow)
+// UpdatePlaybook implements PlaybookService.
+func (w *PlaybookServiceImpl) UpdatePlaybook(ctx context.Context, id string, playbook UpdatePlaybookData) (*domain.Playbooks, error) {
+	return w.PlaybookRepository.UpdatePlaybook(ctx, id, playbook)
 }
 
-// updatePlaybookTx implements PlaybookRepository.
-func (w *PlaybookServiceImpl) UpdatePlaybookTx(tx *sqlx.Tx, id string, workflow UpdatePlaybookData) (*domain.Playbooks, error) {
-	return w.PlaybookRepository.UpdatePlaybookTx(tx, id, workflow)
-}
-
-// UpdatePlaybookHistoryStatus implements PlaybookRepository.
-func (w *PlaybookServiceImpl) UpdatePlaybookHistoryStatus(workflowHistoryId string, status string) (*domain.PlaybookHistory, error) {
-	res, err := w.PlaybookRepository.UpdatePlaybookHistoryStatus(workflowHistoryId, status)
-
+// UpdatePlaybookHistoryStatus implements PlaybookService.
+func (w *PlaybookServiceImpl) UpdatePlaybookHistoryStatus(ctx context.Context, playbookHistoryId string, status string) (*domain.PlaybookHistory, error) {
+	res, err := w.PlaybookRepository.UpdatePlaybookHistoryStatus(ctx, playbookHistoryId, status)
 	if err != nil {
-		logging.Sugar.Error(fmt.Sprintf("error updating status of workflowHistoryId by id: %s, error: %v", workflowHistoryId, err))
-		return nil, fmt.Errorf("error updating workflowHistoryId by id: %s", workflowHistoryId)
+		logging.Sugar.Error(fmt.Sprintf("error updating status of playbookHistoryId by id: %s, error: %v", playbookHistoryId, err))
+		return nil, fmt.Errorf("error updating playbookHistoryId by id: %s", playbookHistoryId)
 	}
 
 	if res == nil {
-		return nil, fmt.Errorf("no workflow status was updated")
+		return nil, fmt.Errorf("no playbook status was updated")
 	}
 
 	return res, nil
 }
 
-// UpdatePlaybookHistoryStatus implements PlaybookRepository.
-func (w *PlaybookServiceImpl) UpdatePlaybookHistory(workflowHistoryId string, workflowHistory UpdatePlaybookHistoryData) (*domain.PlaybookHistory, error) {
-	res, err := w.PlaybookRepository.UpdatePlaybookHistory(workflowHistoryId, workflowHistory)
-
+// UpdatePlaybookHistory implements PlaybookService.
+func (w *PlaybookServiceImpl) UpdatePlaybookHistory(ctx context.Context, playbookHistoryId string, playbookHistory UpdatePlaybookHistoryData) (*domain.PlaybookHistory, error) {
+	res, err := w.PlaybookRepository.UpdatePlaybookHistory(ctx, playbookHistoryId, playbookHistory)
 	if err != nil {
-		logging.Sugar.Error(fmt.Sprintf("error updating workflowHistoryId by id: %s, error: %v", workflowHistoryId, err))
-		return nil, fmt.Errorf("error updating workflowHistoryId by id: %s", workflowHistoryId)
+		logging.Sugar.Error(fmt.Sprintf("error updating playbookHistoryId by id: %s, error: %v", playbookHistoryId, err))
+		return nil, fmt.Errorf("error updating playbookHistoryId by id: %s", playbookHistoryId)
 	}
 
 	if res == nil {
-		return nil, fmt.Errorf("no workflow status was updated")
+		return nil, fmt.Errorf("no playbook status was updated")
 	}
 
 	return res, nil

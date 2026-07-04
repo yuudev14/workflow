@@ -1,25 +1,22 @@
 package db
 
 import (
+	"context"
 	"fmt"
 
-	"github.com/jmoiron/sqlx"
-	_ "github.com/lib/pq"
-	"github.com/yuudev14/ytsoar/internal/logging"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-// SetupDB opens and pings the Postgres connection pool.
-func SetupDB(dataSourceName string) (*sqlx.DB, error) {
-	logging.Sugar.Infof("Connecting to DB... %v", dataSourceName)
-	DB, err := sqlx.Open("postgres", dataSourceName)
+// NewPool opens and pings a pgx connection pool.
+func NewPool(ctx context.Context, dataSourceName string) (*pgxpool.Pool, error) {
+	pool, err := pgxpool.New(ctx, dataSourceName)
 	if err != nil {
-		logging.Sugar.Errorf("error opening database: %v", err.Error())
 		return nil, fmt.Errorf("error opening database: %w", err)
 	}
 
-	if err := DB.Ping(); err != nil {
-		logging.Sugar.Errorf("error connecting to database: %v %v", dataSourceName, err.Error())
+	if err := pool.Ping(ctx); err != nil {
+		pool.Close()
 		return nil, fmt.Errorf("error connecting to database: %w", err)
 	}
-	return DB, nil
+	return pool, nil
 }

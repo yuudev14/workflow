@@ -1,12 +1,11 @@
 package playbooks_test
 
 import (
+	"context"
 	"fmt"
 	"testing"
 
-	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/google/uuid"
-	"github.com/jmoiron/sqlx"
 	"github.com/stretchr/testify/assert"
 	"go.uber.org/mock/gomock"
 
@@ -31,18 +30,6 @@ type testEnv struct {
 	mockBroadcaster *mock_contracts.MockStatusBroadcaster
 }
 
-func setupDBMock(t *testing.T) (*sqlx.DB, sqlmock.Sqlmock) {
-
-	db, mock, err := sqlmock.New()
-	if err != nil {
-		t.Fatalf("error creating sqlmock: %v", err)
-	}
-
-	sqlxDB := sqlx.NewDb(db, "sqlmock")
-
-	return sqlxDB, mock
-}
-
 func setupTest(t *testing.T) *testEnv {
 	logging.Setup("Debug")
 	ctrl := gomock.NewController(t)
@@ -54,11 +41,20 @@ func setupTest(t *testing.T) *testEnv {
 	mockBroadcaster := mock_contracts.NewMockStatusBroadcaster(ctrl)
 	mockBroadcaster.EXPECT().Broadcast(gomock.Any()).AnyTimes()
 
+	// transactions pass straight through so the closure body runs against the mocks
+	mockTx := mock_contracts.NewMockTxManager(ctrl)
+	mockTx.EXPECT().
+		WithinTransaction(gomock.Any(), gomock.Any()).
+		DoAndReturn(func(ctx context.Context, fn func(context.Context) error) error {
+			return fn(ctx)
+		}).
+		AnyTimes()
+
 	service := &playbooks.PlaybookApplicationServiceImpl{
 		PlaybookService:   mockPlaybook,
 		TaskService:       mockTask,
 		EdgeService:       mockEdge,
-		DB:                &sqlx.DB{},
+		Tx:                mockTx,
 		TaskPublisher:     mockTaskPubSub,
 		StatusBroadcaster: mockBroadcaster,
 	}
@@ -136,7 +132,7 @@ func TestDeleteEdges(t *testing.T) {
 			mockSetup: func(testEnv *testEnv, workflowId string) {
 				testEnv.mockEdge.
 					EXPECT().
-					GetEdgesByPlaybookId(workflowId).
+					GetEdgesByPlaybookId(gomock.Any(), workflowId).
 					Return([]domain.ResponseEdges{}, nil)
 			},
 			withError: false,
@@ -150,7 +146,7 @@ func TestDeleteEdges(t *testing.T) {
 			mockSetup: func(testEnv *testEnv, workflowId string) {
 				testEnv.mockEdge.
 					EXPECT().
-					GetEdgesByPlaybookId(workflowId).
+					GetEdgesByPlaybookId(gomock.Any(), workflowId).
 					Return([]domain.ResponseEdges{
 						{
 							ID:                  uuid.New(),
@@ -180,7 +176,7 @@ func TestDeleteEdges(t *testing.T) {
 			mockSetup: func(testEnv *testEnv, workflowId string) {
 				testEnv.mockEdge.
 					EXPECT().
-					GetEdgesByPlaybookId(workflowId).
+					GetEdgesByPlaybookId(gomock.Any(), workflowId).
 					Return([]domain.ResponseEdges{}, fmt.Errorf("error occured"))
 
 				// testEnv.mockEdge.
@@ -202,7 +198,7 @@ func TestDeleteEdges(t *testing.T) {
 			tt.mockSetup(env, workflowID.String())
 
 			err := env.service.DeleteEdges(
-				nil,
+				context.Background(),
 				workflowID,
 				tt.payload,
 			)
@@ -242,7 +238,7 @@ func TestUpsertTasks(t *testing.T) {
 		UpsertTasks(gomock.Any(), workflowID, gomock.Any()).
 		Return(expected, nil)
 
-	result, err := env.service.UpsertTasks(nil, workflowID, nodes)
+	result, err := env.service.UpsertTasks(context.Background(), workflowID, nodes)
 
 	if err != nil {
 		t.Fatalf("unexpected error")
@@ -290,7 +286,7 @@ func TestInsertEdges(t *testing.T) {
 	}
 
 	err := env.service.InsertEdges(
-		nil,
+		context.Background(),
 		workflowID,
 		edgesPayload,
 		tasksList,
@@ -317,7 +313,7 @@ func TestDeleteTasks(t *testing.T) {
 			mockSetup: func(testEnv *testEnv, workflowId string) {
 				testEnv.mockTask.
 					EXPECT().
-					GetTasksByPlaybookId(workflowId).
+					GetTasksByPlaybookId(gomock.Any(), workflowId).
 					Return([]domain.Tasks{
 						{
 							ID:   uuid.New(),
@@ -342,7 +338,7 @@ func TestDeleteTasks(t *testing.T) {
 			mockSetup: func(testEnv *testEnv, workflowId string) {
 				testEnv.mockTask.
 					EXPECT().
-					GetTasksByPlaybookId(workflowId).
+					GetTasksByPlaybookId(gomock.Any(), workflowId).
 					Return([]domain.Tasks{
 						{
 							ID:   uuid.New(),
@@ -362,7 +358,7 @@ func TestDeleteTasks(t *testing.T) {
 			mockSetup: func(testEnv *testEnv, workflowId string) {
 				testEnv.mockTask.
 					EXPECT().
-					GetTasksByPlaybookId(workflowId).
+					GetTasksByPlaybookId(gomock.Any(), workflowId).
 					Return([]domain.Tasks{}, fmt.Errorf("error occured"))
 			},
 			withError: true,
@@ -377,7 +373,7 @@ func TestDeleteTasks(t *testing.T) {
 
 			tt.mockSetup(env, workflowID.String())
 
-			err := env.service.DeleteTasks(nil, workflowID, tt.payload)
+			err := env.service.DeleteTasks(context.Background(), workflowID, tt.payload)
 
 			if tt.withError {
 				assert.Error(t, err)
@@ -393,25 +389,22 @@ func TestDeleteTasks(t *testing.T) {
 func TestUpdatePlaybookTasks(t *testing.T) {
 	tests := []struct {
 		name      string
-		mockSetup func(env *testEnv, workflowID uuid.UUID, dbMock sqlmock.Sqlmock, payload playbooks.UpdatePlaybookTasksPayload)
+		mockSetup func(env *testEnv, workflowID uuid.UUID, payload playbooks.UpdatePlaybookTasksPayload)
 		withError bool
 	}{
 		{
 			name:      "no error",
 			withError: false,
-			mockSetup: func(env *testEnv, workflowID uuid.UUID, dbMock sqlmock.Sqlmock, payload playbooks.UpdatePlaybookTasksPayload) {
-
-				dbMock.ExpectBegin()
-				dbMock.ExpectCommit()
+			mockSetup: func(env *testEnv, workflowID uuid.UUID, payload playbooks.UpdatePlaybookTasksPayload) {
 
 				env.mockPlaybook.
 					EXPECT().
-					UpdatePlaybookTx(gomock.Any(), workflowID.String(), *payload.Task).
+					UpdatePlaybook(gomock.Any(), workflowID.String(), *payload.Task).
 					Return(&domain.Playbooks{}, nil)
 
 				env.mockEdge.
 					EXPECT().
-					GetEdgesByPlaybookId(workflowID.String()).
+					GetEdgesByPlaybookId(gomock.Any(), workflowID.String()).
 					Return([]domain.ResponseEdges{}, nil)
 
 				env.mockTask.
@@ -421,7 +414,7 @@ func TestUpdatePlaybookTasks(t *testing.T) {
 
 				env.mockTask.
 					EXPECT().
-					GetTasksByPlaybookId(workflowID.String()).
+					GetTasksByPlaybookId(gomock.Any(), workflowID.String()).
 					Return([]domain.Tasks{
 						{
 							ID:   uuid.New(),
@@ -431,26 +424,23 @@ func TestUpdatePlaybookTasks(t *testing.T) {
 
 				env.mockPlaybook.
 					EXPECT().
-					GetPlaybookGraphById(gomock.Any()).
+					GetPlaybookGraphById(gomock.Any(), gomock.Any()).
 					Return(&domain.PlaybookGraph{}, nil)
 			},
 		},
 		{
 			name:      "error in the finale",
 			withError: true,
-			mockSetup: func(env *testEnv, workflowID uuid.UUID, dbMock sqlmock.Sqlmock, payload playbooks.UpdatePlaybookTasksPayload) {
-
-				dbMock.ExpectBegin()
-				dbMock.ExpectCommit()
+			mockSetup: func(env *testEnv, workflowID uuid.UUID, payload playbooks.UpdatePlaybookTasksPayload) {
 
 				env.mockPlaybook.
 					EXPECT().
-					UpdatePlaybookTx(gomock.Any(), workflowID.String(), *payload.Task).
+					UpdatePlaybook(gomock.Any(), workflowID.String(), *payload.Task).
 					Return(&domain.Playbooks{}, nil)
 
 				env.mockEdge.
 					EXPECT().
-					GetEdgesByPlaybookId(workflowID.String()).
+					GetEdgesByPlaybookId(gomock.Any(), workflowID.String()).
 					Return([]domain.ResponseEdges{}, nil)
 
 				env.mockTask.
@@ -460,7 +450,7 @@ func TestUpdatePlaybookTasks(t *testing.T) {
 
 				env.mockTask.
 					EXPECT().
-					GetTasksByPlaybookId(workflowID.String()).
+					GetTasksByPlaybookId(gomock.Any(), workflowID.String()).
 					Return([]domain.Tasks{
 						{
 							ID:   uuid.New(),
@@ -470,59 +460,50 @@ func TestUpdatePlaybookTasks(t *testing.T) {
 
 				env.mockPlaybook.
 					EXPECT().
-					GetPlaybookGraphById(gomock.Any()).
+					GetPlaybookGraphById(gomock.Any(), gomock.Any()).
 					Return(nil, fmt.Errorf("error occured"))
 			},
 		},
 		{
 			name:      "error in update workflow",
 			withError: true,
-			mockSetup: func(env *testEnv, workflowID uuid.UUID, dbMock sqlmock.Sqlmock, payload playbooks.UpdatePlaybookTasksPayload) {
-
-				dbMock.ExpectBegin()
-				dbMock.ExpectCommit()
+			mockSetup: func(env *testEnv, workflowID uuid.UUID, payload playbooks.UpdatePlaybookTasksPayload) {
 
 				env.mockPlaybook.
 					EXPECT().
-					UpdatePlaybookTx(gomock.Any(), workflowID.String(), *payload.Task).
+					UpdatePlaybook(gomock.Any(), workflowID.String(), *payload.Task).
 					Return(nil, fmt.Errorf("error occured"))
 			},
 		},
 		{
 			name:      "error in GetEdgesByPlaybookId",
 			withError: true,
-			mockSetup: func(env *testEnv, workflowID uuid.UUID, dbMock sqlmock.Sqlmock, payload playbooks.UpdatePlaybookTasksPayload) {
-
-				dbMock.ExpectBegin()
-				dbMock.ExpectCommit()
+			mockSetup: func(env *testEnv, workflowID uuid.UUID, payload playbooks.UpdatePlaybookTasksPayload) {
 
 				env.mockPlaybook.
 					EXPECT().
-					UpdatePlaybookTx(gomock.Any(), workflowID.String(), *payload.Task).
+					UpdatePlaybook(gomock.Any(), workflowID.String(), *payload.Task).
 					Return(&domain.Playbooks{}, nil)
 
 				env.mockEdge.
 					EXPECT().
-					GetEdgesByPlaybookId(workflowID.String()).
+					GetEdgesByPlaybookId(gomock.Any(), workflowID.String()).
 					Return([]domain.ResponseEdges{}, fmt.Errorf("error occured"))
 			},
 		},
 		{
 			name:      "no error in UpsertTasks",
 			withError: true,
-			mockSetup: func(env *testEnv, workflowID uuid.UUID, dbMock sqlmock.Sqlmock, payload playbooks.UpdatePlaybookTasksPayload) {
-
-				dbMock.ExpectBegin()
-				dbMock.ExpectCommit()
+			mockSetup: func(env *testEnv, workflowID uuid.UUID, payload playbooks.UpdatePlaybookTasksPayload) {
 
 				env.mockPlaybook.
 					EXPECT().
-					UpdatePlaybookTx(gomock.Any(), workflowID.String(), *payload.Task).
+					UpdatePlaybook(gomock.Any(), workflowID.String(), *payload.Task).
 					Return(&domain.Playbooks{}, nil)
 
 				env.mockEdge.
 					EXPECT().
-					GetEdgesByPlaybookId(workflowID.String()).
+					GetEdgesByPlaybookId(gomock.Any(), workflowID.String()).
 					Return([]domain.ResponseEdges{}, nil)
 
 				env.mockTask.
@@ -535,19 +516,16 @@ func TestUpdatePlaybookTasks(t *testing.T) {
 		{
 			name:      "error in GetTasksByPlaybookId",
 			withError: true,
-			mockSetup: func(env *testEnv, workflowID uuid.UUID, dbMock sqlmock.Sqlmock, payload playbooks.UpdatePlaybookTasksPayload) {
-
-				dbMock.ExpectBegin()
-				dbMock.ExpectCommit()
+			mockSetup: func(env *testEnv, workflowID uuid.UUID, payload playbooks.UpdatePlaybookTasksPayload) {
 
 				env.mockPlaybook.
 					EXPECT().
-					UpdatePlaybookTx(gomock.Any(), workflowID.String(), *payload.Task).
+					UpdatePlaybook(gomock.Any(), workflowID.String(), *payload.Task).
 					Return(&domain.Playbooks{}, nil)
 
 				env.mockEdge.
 					EXPECT().
-					GetEdgesByPlaybookId(workflowID.String()).
+					GetEdgesByPlaybookId(gomock.Any(), workflowID.String()).
 					Return([]domain.ResponseEdges{}, nil)
 
 				env.mockTask.
@@ -557,7 +535,7 @@ func TestUpdatePlaybookTasks(t *testing.T) {
 
 				env.mockTask.
 					EXPECT().
-					GetTasksByPlaybookId(workflowID.String()).
+					GetTasksByPlaybookId(gomock.Any(), workflowID.String()).
 					Return([]domain.Tasks{
 						{
 							ID:   uuid.New(),
@@ -575,7 +553,6 @@ func TestUpdatePlaybookTasks(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			db, dbMock := setupDBMock(t)
 			nodes := []tasks.TaskPayload{
 				{
 					Name: "start",
@@ -595,17 +572,15 @@ func TestUpdatePlaybookTasks(t *testing.T) {
 			}
 
 			env := setupTest(t)
-			env.service.DB = db
 
 			workflowID := uuid.New()
 
 			tt.mockSetup(
 				env,
 				workflowID,
-				dbMock,
 				payload,
 			)
-			_, err := env.service.UpdatePlaybookTasks(workflowID.String(), payload)
+			_, err := env.service.UpdatePlaybookTasks(context.Background(), workflowID.String(), payload)
 			if tt.withError {
 				assert.Error(t, err)
 			} else {
@@ -641,78 +616,75 @@ func TestTriggerPlaybook(t *testing.T) {
 
 	tests := []struct {
 		name      string
-		mockSetup func(env *testEnv, workflowID string, dbMock sqlmock.Sqlmock)
+		mockSetup func(env *testEnv, workflowID string)
 		withError bool
 	}{
 		{
 			name:      "workflow error",
 			withError: true,
-			mockSetup: func(env *testEnv, workflowID string, dbMock sqlmock.Sqlmock) {
+			mockSetup: func(env *testEnv, workflowID string) {
 
 				env.mockPlaybook.
 					EXPECT().
-					GetPlaybookById(workflowID).
+					GetPlaybookById(gomock.Any(), workflowID).
 					Return(nil, fmt.Errorf("workflow error"))
 			},
 		},
 		{
 			name:      "task error",
 			withError: true,
-			mockSetup: func(env *testEnv, workflowID string, dbMock sqlmock.Sqlmock) {
+			mockSetup: func(env *testEnv, workflowID string) {
 
 				env.mockPlaybook.
 					EXPECT().
-					GetPlaybookById(workflowID).
+					GetPlaybookById(gomock.Any(), workflowID).
 					Return(&domain.Playbooks{}, nil)
 
 				env.mockTask.
 					EXPECT().
-					GetTasksByPlaybookId(workflowID).
+					GetTasksByPlaybookId(gomock.Any(), workflowID).
 					Return(nil, fmt.Errorf("task error"))
 			},
 		},
 		{
 			name:      "edge error",
 			withError: true,
-			mockSetup: func(env *testEnv, workflowID string, dbMock sqlmock.Sqlmock) {
+			mockSetup: func(env *testEnv, workflowID string) {
 
 				env.mockPlaybook.
 					EXPECT().
-					GetPlaybookById(workflowID).
+					GetPlaybookById(gomock.Any(), workflowID).
 					Return(&domain.Playbooks{}, nil)
 
 				env.mockTask.
 					EXPECT().
-					GetTasksByPlaybookId(workflowID).
+					GetTasksByPlaybookId(gomock.Any(), workflowID).
 					Return([]domain.Tasks{}, nil)
 
 				env.mockEdge.
 					EXPECT().
-					GetEdgesByPlaybookId(workflowID).
+					GetEdgesByPlaybookId(gomock.Any(), workflowID).
 					Return(nil, fmt.Errorf("edge error"))
 			},
 		},
 		{
 			name:      "create workflow history error",
 			withError: true,
-			mockSetup: func(env *testEnv, workflowID string, dbMock sqlmock.Sqlmock) {
-
-				dbMock.ExpectBegin()
-				dbMock.ExpectRollback()
+			mockSetup: func(env *testEnv, workflowID string) {
 
 				env.mockPlaybook.
 					EXPECT().
-					GetPlaybookById(workflowID).
+					GetPlaybookById(gomock.Any(), workflowID).
 					Return(&domain.Playbooks{}, nil)
 
 				env.mockTask.
 					EXPECT().
-					GetTasksByPlaybookId(workflowID).
+					GetTasksByPlaybookId(gomock.Any(), workflowID).
 					Return([]domain.Tasks{}, nil)
 
 				env.mockEdge.
 					EXPECT().
-					GetEdgesByPlaybookId(workflowID).
+					GetEdgesByPlaybookId(gomock.Any(), workflowID).
 					Return([]domain.ResponseEdges{}, nil)
 
 				env.mockPlaybook.
@@ -725,24 +697,21 @@ func TestTriggerPlaybook(t *testing.T) {
 		{
 			name:      "create task history error",
 			withError: true,
-			mockSetup: func(env *testEnv, workflowID string, dbMock sqlmock.Sqlmock) {
-
-				dbMock.ExpectBegin()
-				dbMock.ExpectRollback()
+			mockSetup: func(env *testEnv, workflowID string) {
 
 				env.mockPlaybook.
 					EXPECT().
-					GetPlaybookById(workflowID).
+					GetPlaybookById(gomock.Any(), workflowID).
 					Return(&domain.Playbooks{}, nil)
 
 				env.mockTask.
 					EXPECT().
-					GetTasksByPlaybookId(workflowID).
+					GetTasksByPlaybookId(gomock.Any(), workflowID).
 					Return([]domain.Tasks{}, nil)
 
 				env.mockEdge.
 					EXPECT().
-					GetEdgesByPlaybookId(workflowID).
+					GetEdgesByPlaybookId(gomock.Any(), workflowID).
 					Return([]domain.ResponseEdges{}, nil)
 
 				historyID := uuid.New()
@@ -761,26 +730,23 @@ func TestTriggerPlaybook(t *testing.T) {
 		{
 			name:      "mq error",
 			withError: true,
-			mockSetup: func(env *testEnv, workflowID string, dbMock sqlmock.Sqlmock) {
-
-				dbMock.ExpectBegin()
-				dbMock.ExpectCommit()
+			mockSetup: func(env *testEnv, workflowID string) {
 
 				env.mockPlaybook.
 					EXPECT().
-					GetPlaybookById(workflowID).
+					GetPlaybookById(gomock.Any(), workflowID).
 					Return(&domain.Playbooks{}, nil)
 
 				env.mockTask.
 					EXPECT().
-					GetTasksByPlaybookId(workflowID).
+					GetTasksByPlaybookId(gomock.Any(), workflowID).
 					Return([]domain.Tasks{
 						{ID: uuid.New(), Name: "task1"},
 					}, nil)
 
 				env.mockEdge.
 					EXPECT().
-					GetEdgesByPlaybookId(workflowID).
+					GetEdgesByPlaybookId(gomock.Any(), workflowID).
 					Return([]domain.ResponseEdges{}, nil)
 
 				historyID := uuid.New()
@@ -804,26 +770,23 @@ func TestTriggerPlaybook(t *testing.T) {
 		{
 			name:      "success",
 			withError: false,
-			mockSetup: func(env *testEnv, workflowID string, dbMock sqlmock.Sqlmock) {
-
-				dbMock.ExpectBegin()
-				dbMock.ExpectCommit()
+			mockSetup: func(env *testEnv, workflowID string) {
 
 				env.mockPlaybook.
 					EXPECT().
-					GetPlaybookById(workflowID).
+					GetPlaybookById(gomock.Any(), workflowID).
 					Return(&domain.Playbooks{}, nil)
 
 				env.mockTask.
 					EXPECT().
-					GetTasksByPlaybookId(workflowID).
+					GetTasksByPlaybookId(gomock.Any(), workflowID).
 					Return([]domain.Tasks{
 						{ID: uuid.New(), Name: "task1"},
 					}, nil)
 
 				env.mockEdge.
 					EXPECT().
-					GetEdgesByPlaybookId(workflowID).
+					GetEdgesByPlaybookId(gomock.Any(), workflowID).
 					Return([]domain.ResponseEdges{}, nil)
 
 				historyID := uuid.New()
@@ -850,16 +813,13 @@ func TestTriggerPlaybook(t *testing.T) {
 
 		t.Run(tt.name, func(t *testing.T) {
 
-			db, dbMock := setupDBMock(t)
-
 			env := setupTest(t)
-			env.service.DB = db
 
 			workflowID := uuid.New().String()
 
-			tt.mockSetup(env, workflowID, dbMock)
+			tt.mockSetup(env, workflowID)
 
-			_, err := env.service.TriggerPlaybook(workflowID)
+			_, err := env.service.TriggerPlaybook(context.Background(), workflowID)
 
 			if tt.withError {
 				assert.Error(t, err)

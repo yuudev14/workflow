@@ -11,11 +11,11 @@ export interface Playbook {
 
 export interface PlaybookHistory {
   id: string;
-  workflow_id: string;
+  playbook_id: string;
   status: "success" | "failed";
   error: Record<string, any> | null;
   result: Record<string, any>;
-  workflow_data: Pick<
+  playbook_data: Pick<
     Playbook,
     "id" | "name" | "created_at" | "updated_at" | "description" | "trigger_type"
   >;
@@ -24,16 +24,15 @@ export interface PlaybookHistory {
 }
 
 export type PlaybookHistoryFilter = Partial<
-  Omit<PlaybookHistory, "workflow_data" | "triggered_at"> & {
+  Omit<PlaybookHistory, "playbook_data" | "triggered_at"> & {
     triggered_at_start: Date;
     triggered_at_end: Date;
-    workflow_history_id: string;
   }
 >;
 
 export type Tasks = {
   id: string;
-  workflow_id: string;
+  playbook_id: string;
   name: string;
   description: string | null;
   parameters: Record<string, unknown> | null;
@@ -54,7 +53,7 @@ export type TaskHistory = Pick<
   "id" | "name" | "description" | "parameters" | "config" |
   "x" | "y" | "connector_name" | "connector_id" | "operation"
 > & {
-  workflow_history_id: string;
+  playbook_history_id: string;
   task_id: string;
   status: TaskStatus;
   error: Record<string, unknown> | null;
@@ -67,7 +66,7 @@ export interface Edges {
   id: string;
   destination_id: string;
   source_id: string;
-  workflow_id: string;
+  playbook_id: string;
   source_handle: string | null;
   destination_handle: string | null;
 }

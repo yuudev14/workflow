@@ -1,12 +1,12 @@
 package playbooks
 
 import (
+	"context"
 	"database/sql"
 	"encoding/json"
 	"fmt"
 
 	"github.com/google/uuid"
-	"github.com/jmoiron/sqlx"
 	"github.com/yuudev14/ytsoar/internal/application/contracts"
 	"github.com/yuudev14/ytsoar/internal/application/edges"
 	"github.com/yuudev14/ytsoar/internal/application/tasks"
@@ -17,38 +17,20 @@ import (
 //go:generate mockgen -destination=mocks/orchestrator_mock.go -package=mocks . PlaybookApplicationService
 
 type PlaybookApplicationService interface {
-	TriggerPlaybook(playbookId string) (*domain.TaskMessage, error)
+	TriggerPlaybook(ctx context.Context, playbookId string) (*domain.TaskMessage, error)
 	PreparePlaybookMessage(tasks []domain.Tasks, edges []domain.ResponseEdges) (map[string]domain.Tasks, map[string][]string)
-	UpsertTasks(
-		tx *sqlx.Tx,
-		playbookUUID uuid.UUID,
-		nodes []tasks.TaskPayload,
-	) ([]domain.Tasks, error)
-	InsertEdges(
-		tx *sqlx.Tx,
-		playbookUUID uuid.UUID,
-		edges map[string][]string,
-		tasks []domain.Tasks,
-		handles *map[string]map[string]domain.EdgeHandle,
-	) error
-	DeleteTasks(
-		tx *sqlx.Tx,
-		playbookUUID uuid.UUID,
-		nodes []tasks.TaskPayload,
-	) error
-	DeleteEdges(
-		tx *sqlx.Tx,
-		playbookUUID uuid.UUID,
-		edges map[string][]string,
-	) error
-	UpdatePlaybookTasks(playbookId string, body UpdatePlaybookTasksPayload) (*domain.PlaybookGraph, error)
+	UpsertTasks(ctx context.Context, playbookUUID uuid.UUID, nodes []tasks.TaskPayload) ([]domain.Tasks, error)
+	InsertEdges(ctx context.Context, playbookUUID uuid.UUID, edges map[string][]string, tasks []domain.Tasks, handles *map[string]map[string]domain.EdgeHandle) error
+	DeleteTasks(ctx context.Context, playbookUUID uuid.UUID, nodes []tasks.TaskPayload) error
+	DeleteEdges(ctx context.Context, playbookUUID uuid.UUID, edges map[string][]string) error
+	UpdatePlaybookTasks(ctx context.Context, playbookId string, body UpdatePlaybookTasksPayload) (*domain.PlaybookGraph, error)
 }
 
 type PlaybookApplicationServiceImpl struct {
 	PlaybookService   PlaybookService
 	TaskService       tasks.TaskService
 	EdgeService       edges.EdgeService
-	DB                *sqlx.DB
+	Tx                contracts.TxManager
 	TaskPublisher     contracts.TaskPublisher
 	StatusBroadcaster contracts.StatusBroadcaster
 }
@@ -57,7 +39,7 @@ func NewPlaybookApplicationService(
 	playbookService PlaybookService,
 	taskService tasks.TaskService,
 	edgeService edges.EdgeService,
-	db *sqlx.DB,
+	tx contracts.TxManager,
 	taskPublisher contracts.TaskPublisher,
 	statusBroadcaster contracts.StatusBroadcaster,
 ) PlaybookApplicationService {
@@ -65,14 +47,14 @@ func NewPlaybookApplicationService(
 		PlaybookService:   playbookService,
 		TaskService:       taskService,
 		EdgeService:       edgeService,
-		DB:                db,
+		Tx:                tx,
 		TaskPublisher:     taskPublisher,
 		StatusBroadcaster: statusBroadcaster,
 	}
 }
 
 func (w *PlaybookApplicationServiceImpl) UpsertTasks(
-	tx *sqlx.Tx,
+	ctx context.Context,
 	playbookUUID uuid.UUID,
 	nodes []tasks.TaskPayload,
 ) ([]domain.Tasks, error) {
@@ -102,13 +84,13 @@ func (w *PlaybookApplicationServiceImpl) UpsertTasks(
 	logging.Sugar.Debugf("node to add: %v", nodeToUpsert)
 	// save the tasks
 	if len(nodeToUpsert) > 0 {
-		return w.TaskService.UpsertTasks(tx, playbookUUID, nodeToUpsert)
+		return w.TaskService.UpsertTasks(ctx, playbookUUID, nodeToUpsert)
 	}
 	return nil, nil
 }
 
 func (w *PlaybookApplicationServiceImpl) InsertEdges(
-	tx *sqlx.Tx,
+	ctx context.Context,
 	playbookUUID uuid.UUID,
 	edges_ map[string][]string,
 	tasks []domain.Tasks,
@@ -164,14 +146,14 @@ func (w *PlaybookApplicationServiceImpl) InsertEdges(
 	logging.Sugar.Debugf("edges to add: %v", edgeToInsert)
 	// save the edges
 	if len(edgeToInsert) > 0 {
-		_, err := w.EdgeService.InsertEdges(tx, edgeToInsert)
+		_, err := w.EdgeService.InsertEdges(ctx, edgeToInsert)
 		return err
 	}
 	return nil
 }
 
 func (w *PlaybookApplicationServiceImpl) DeleteTasks(
-	tx *sqlx.Tx,
+	ctx context.Context,
 	playbookUUID uuid.UUID,
 	nodes []tasks.TaskPayload,
 ) error {
@@ -180,7 +162,7 @@ func (w *PlaybookApplicationServiceImpl) DeleteTasks(
 	tasksBodyMap := make(map[string]bool)
 
 	// verify nodes name should be unique
-	tasks, tasksErr := w.TaskService.GetTasksByPlaybookId(playbookUUID.String())
+	tasks, tasksErr := w.TaskService.GetTasksByPlaybookId(ctx, playbookUUID.String())
 	if tasksErr != nil {
 		return tasksErr
 	}
@@ -201,16 +183,14 @@ func (w *PlaybookApplicationServiceImpl) DeleteTasks(
 
 	logging.Sugar.Debugf("node to delete: %v", nodeToDelete)
 	if len(nodeToDelete) > 0 {
-		err := w.TaskService.DeleteTasks(tx, nodeToDelete)
-		return err
-
+		return w.TaskService.DeleteTasks(ctx, nodeToDelete)
 	}
 	return nil
 }
 
 // delete edges that doesnt exist in the body payload
 func (w *PlaybookApplicationServiceImpl) DeleteEdges(
-	tx *sqlx.Tx,
+	ctx context.Context,
 	playbookUUID uuid.UUID,
 	edges map[string][]string,
 ) error {
@@ -220,10 +200,10 @@ func (w *PlaybookApplicationServiceImpl) DeleteEdges(
 
 	// delete all edges from the playbook if nothing is in the payload
 	if len(edges) == 0 {
-		return w.EdgeService.DeleteAllPlaybookEdges(tx, playbookUUID.String())
+		return w.EdgeService.DeleteAllPlaybookEdges(ctx, playbookUUID.String())
 	}
 
-	playbookEdges, playbookEdgesErr := w.EdgeService.GetEdgesByPlaybookId(playbookUUID.String())
+	playbookEdges, playbookEdgesErr := w.EdgeService.GetEdgesByPlaybookId(ctx, playbookUUID.String())
 	logging.Sugar.Debug("playbook edges", playbookEdges)
 
 	if playbookEdgesErr != nil {
@@ -248,9 +228,7 @@ func (w *PlaybookApplicationServiceImpl) DeleteEdges(
 
 	logging.Sugar.Debugf("edge to delete: %v", edgeToDelete)
 	if len(edgeToDelete) > 0 {
-		deleteEdgesError := w.EdgeService.DeleteEdges(tx, edgeToDelete)
-		return deleteEdgesError
-
+		return w.EdgeService.DeleteEdges(ctx, edgeToDelete)
 	}
 	return nil
 
@@ -272,145 +250,109 @@ func validatePlaybookTaskPayload(body UpdatePlaybookTasksPayload) error {
 }
 
 func (w *PlaybookApplicationServiceImpl) UpdatePlaybookTasks(
+	ctx context.Context,
 	playbookId string,
 	body UpdatePlaybookTasksPayload,
 ) (*domain.PlaybookGraph, error) {
-	tx, err := w.DB.Beginx()
-	if err != nil {
-		tx.Rollback()
-		return nil, err
-	}
-
-	if body.Task != nil {
-		_, errTask := w.PlaybookService.UpdatePlaybookTx(tx, playbookId, *body.Task)
-
-		logging.Sugar.Debug("updated playbook...")
-
-		if errTask != nil {
-			return nil, errTask
-		}
-	}
-
 	// validate if start node in body payload
-	payloadErr := validatePlaybookTaskPayload(body)
-
-	if payloadErr != nil {
+	if payloadErr := validatePlaybookTaskPayload(body); payloadErr != nil {
 		return nil, payloadErr
 	}
 
 	playbookUUID, err := uuid.Parse(playbookId)
-
 	if err != nil {
 		return nil, err
 	}
 
-	// delete the edges first
-	deleteEdgesErr := w.DeleteEdges(tx, playbookUUID, body.Edges)
-	if deleteEdgesErr != nil {
-		logging.Sugar.Error(deleteEdgesErr)
-		tx.Rollback()
-		return nil, deleteEdgesErr
+	txErr := w.Tx.WithinTransaction(ctx, func(ctx context.Context) error {
+		if body.Task != nil {
+			if _, errTask := w.PlaybookService.UpdatePlaybook(ctx, playbookId, *body.Task); errTask != nil {
+				return errTask
+			}
+			logging.Sugar.Debug("updated playbook...")
+		}
+
+		// delete the edges first
+		if deleteEdgesErr := w.DeleteEdges(ctx, playbookUUID, body.Edges); deleteEdgesErr != nil {
+			logging.Sugar.Error(deleteEdgesErr)
+			return deleteEdgesErr
+		}
+
+		// upsert the tasks. insert if doesnt exist, update when exist
+		insertedTasks, upsertTasksErr := w.UpsertTasks(ctx, playbookUUID, body.Nodes)
+		if upsertTasksErr != nil {
+			logging.Sugar.Error(upsertTasksErr)
+			return upsertTasksErr
+		}
+
+		// delete the tasks the we dont need anymore
+		if deleteTaskError := w.DeleteTasks(ctx, playbookUUID, body.Nodes); deleteTaskError != nil {
+			logging.Sugar.Error(deleteTaskError)
+			return deleteTaskError
+		}
+
+		// insert the new edges
+		logging.Sugar.Info("insert edges")
+		if insertEdgeError := w.InsertEdges(ctx, playbookUUID, body.Edges, insertedTasks, body.Handles); insertEdgeError != nil {
+			logging.Sugar.Error(insertEdgeError)
+			return insertEdgeError
+		}
+
+		logging.Sugar.Debug("added playbook...")
+		return nil
+	})
+	if txErr != nil {
+		return nil, txErr
 	}
 
-	// upsert the tasks. insert if doesnt exist, update when exist
-	insertedTasks, upsertTasksErr := w.UpsertTasks(tx, playbookUUID, body.Nodes)
-	if upsertTasksErr != nil {
-		logging.Sugar.Error(upsertTasksErr)
-		tx.Rollback()
-		return nil, upsertTasksErr
-	}
-
-	// delete the tasks the we dont need anymore
-	deleteTaskError := w.DeleteTasks(tx, playbookUUID, body.Nodes)
-	if deleteTaskError != nil {
-		logging.Sugar.Error(deleteTaskError)
-		tx.Rollback()
-		return nil, deleteTaskError
-	}
-
-	// insert the new edges
-	logging.Sugar.Info("insert edges")
-	insertEdgeError := w.InsertEdges(tx, playbookUUID, body.Edges, insertedTasks, body.Handles)
-	if insertEdgeError != nil {
-		logging.Sugar.Error(insertEdgeError)
-		tx.Rollback()
-		return nil, insertEdgeError
-	}
-
-	logging.Sugar.Debug("added playbook...")
-	commitErr := tx.Commit()
-
-	if commitErr != nil {
-		logging.Sugar.Error(commitErr)
-		tx.Rollback()
-		return nil, commitErr
-	}
-
-	playbookGraph, playbookErr := w.PlaybookService.GetPlaybookGraphById(playbookId)
-
+	playbookGraph, playbookErr := w.PlaybookService.GetPlaybookGraphById(ctx, playbookId)
 	if playbookErr != nil {
 		logging.Sugar.Error(playbookErr)
 		return nil, playbookErr
 	}
 
 	return playbookGraph, nil
-
 }
 
 // TriggerPlaybook implements PlaybookApplicationService.
-func (w *PlaybookApplicationServiceImpl) TriggerPlaybook(playbookId string) (*domain.TaskMessage, error) {
-	_, playbookErr := w.PlaybookService.GetPlaybookById(playbookId)
-
+func (w *PlaybookApplicationServiceImpl) TriggerPlaybook(ctx context.Context, playbookId string) (*domain.TaskMessage, error) {
+	_, playbookErr := w.PlaybookService.GetPlaybookById(ctx, playbookId)
 	if playbookErr != nil {
 		logging.Sugar.Error(playbookErr)
 		return nil, playbookErr
 	}
-	taskData, tasksErr := w.TaskService.GetTasksByPlaybookId(playbookId)
+
+	taskData, tasksErr := w.TaskService.GetTasksByPlaybookId(ctx, playbookId)
 	if tasksErr != nil {
-		logging.Sugar.Errorf("error: ", tasksErr)
+		logging.Sugar.Errorf("error: %v", tasksErr)
 		return nil, tasksErr
 	}
 
-	edges, edgesErr := w.EdgeService.GetEdgesByPlaybookId(playbookId)
-
+	edges, edgesErr := w.EdgeService.GetEdgesByPlaybookId(ctx, playbookId)
 	if edgesErr != nil {
-		logging.Sugar.Errorf("error: ", edgesErr)
+		logging.Sugar.Errorf("error: %v", edgesErr)
 		return nil, edgesErr
 	}
 
 	tasksMap, graph := w.PreparePlaybookMessage(taskData, edges)
 
-	// create transacton
+	var playbookHistory *domain.PlaybookHistory
+	txErr := w.Tx.WithinTransaction(ctx, func(ctx context.Context) error {
+		history, historyErr := w.PlaybookService.CreatePlaybookHistory(ctx, playbookId, edges)
+		if historyErr != nil {
+			return historyErr
+		}
+		playbookHistory = history
 
-	tx, txErr := w.DB.Beginx()
+		w.StatusBroadcaster.Broadcast(playbookHistory)
+
+		// Log the ID to verify it's correct
+		logging.Sugar.Infof("Created playbook history with ID: %v", playbookHistory.ID)
+		_, createTaskHistoryErr := w.TaskService.CreateTaskHistory(ctx, playbookHistory.ID.String(), taskData, GetGraphUUIDS(edges))
+		return createTaskHistoryErr
+	})
 	if txErr != nil {
-		tx.Rollback()
 		return nil, txErr
-	}
-
-	playbookHistory, playbookHistoryErr := w.PlaybookService.CreatePlaybookHistory(tx, playbookId, edges)
-	if playbookHistoryErr != nil {
-		tx.Rollback()
-		return nil, playbookHistoryErr
-	}
-	w.StatusBroadcaster.Broadcast(playbookHistory)
-
-	// Log the ID to verify it's correct
-	logging.Sugar.Infof("Created playbook history with ID: %v", playbookHistory.ID)
-	_, createTaskHistoryErr := w.TaskService.CreateTaskHistory(tx, playbookHistory.ID.String(), taskData, GetGraphUUIDS(edges))
-
-	if createTaskHistoryErr != nil {
-		tx.Rollback()
-		return nil, createTaskHistoryErr
-	}
-
-	commitErr := tx.Commit()
-
-	if commitErr != nil {
-		logging.Sugar.Error(commitErr)
-		tx.Rollback()
-		return nil, commitErr
-
 	}
 
 	body := domain.TaskMessage{
@@ -419,10 +361,8 @@ func (w *PlaybookApplicationServiceImpl) TriggerPlaybook(playbookId string) (*do
 		PlaybookHistoryId: playbookHistory.ID,
 	}
 
-	mqErr := w.TaskPublisher.SendMessage(body)
-
-	if mqErr != nil {
-		logging.Sugar.Errorf("error when sending the message to queue", mqErr)
+	if mqErr := w.TaskPublisher.SendMessage(body); mqErr != nil {
+		logging.Sugar.Errorf("error when sending the message to queue: %v", mqErr)
 		return nil, mqErr
 	}
 	return &body, nil

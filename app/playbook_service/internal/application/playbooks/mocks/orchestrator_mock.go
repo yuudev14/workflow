@@ -10,10 +10,10 @@
 package mocks
 
 import (
+	context "context"
 	reflect "reflect"
 
 	uuid "github.com/google/uuid"
-	sqlx "github.com/jmoiron/sqlx"
 	playbooks "github.com/yuudev14/ytsoar/internal/application/playbooks"
 	tasks "github.com/yuudev14/ytsoar/internal/application/tasks"
 	domain "github.com/yuudev14/ytsoar/internal/domain"
@@ -45,45 +45,45 @@ func (m *MockPlaybookApplicationService) EXPECT() *MockPlaybookApplicationServic
 }
 
 // DeleteEdges mocks base method.
-func (m *MockPlaybookApplicationService) DeleteEdges(tx *sqlx.Tx, playbookUUID uuid.UUID, edges map[string][]string) error {
+func (m *MockPlaybookApplicationService) DeleteEdges(ctx context.Context, playbookUUID uuid.UUID, edges map[string][]string) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "DeleteEdges", tx, playbookUUID, edges)
+	ret := m.ctrl.Call(m, "DeleteEdges", ctx, playbookUUID, edges)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // DeleteEdges indicates an expected call of DeleteEdges.
-func (mr *MockPlaybookApplicationServiceMockRecorder) DeleteEdges(tx, playbookUUID, edges any) *gomock.Call {
+func (mr *MockPlaybookApplicationServiceMockRecorder) DeleteEdges(ctx, playbookUUID, edges any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteEdges", reflect.TypeOf((*MockPlaybookApplicationService)(nil).DeleteEdges), tx, playbookUUID, edges)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteEdges", reflect.TypeOf((*MockPlaybookApplicationService)(nil).DeleteEdges), ctx, playbookUUID, edges)
 }
 
 // DeleteTasks mocks base method.
-func (m *MockPlaybookApplicationService) DeleteTasks(tx *sqlx.Tx, playbookUUID uuid.UUID, nodes []tasks.TaskPayload) error {
+func (m *MockPlaybookApplicationService) DeleteTasks(ctx context.Context, playbookUUID uuid.UUID, nodes []tasks.TaskPayload) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "DeleteTasks", tx, playbookUUID, nodes)
+	ret := m.ctrl.Call(m, "DeleteTasks", ctx, playbookUUID, nodes)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // DeleteTasks indicates an expected call of DeleteTasks.
-func (mr *MockPlaybookApplicationServiceMockRecorder) DeleteTasks(tx, playbookUUID, nodes any) *gomock.Call {
+func (mr *MockPlaybookApplicationServiceMockRecorder) DeleteTasks(ctx, playbookUUID, nodes any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteTasks", reflect.TypeOf((*MockPlaybookApplicationService)(nil).DeleteTasks), tx, playbookUUID, nodes)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteTasks", reflect.TypeOf((*MockPlaybookApplicationService)(nil).DeleteTasks), ctx, playbookUUID, nodes)
 }
 
 // InsertEdges mocks base method.
-func (m *MockPlaybookApplicationService) InsertEdges(tx *sqlx.Tx, playbookUUID uuid.UUID, edges map[string][]string, arg3 []domain.Tasks, handles *map[string]map[string]domain.EdgeHandle) error {
+func (m *MockPlaybookApplicationService) InsertEdges(ctx context.Context, playbookUUID uuid.UUID, edges map[string][]string, arg3 []domain.Tasks, handles *map[string]map[string]domain.EdgeHandle) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "InsertEdges", tx, playbookUUID, edges, arg3, handles)
+	ret := m.ctrl.Call(m, "InsertEdges", ctx, playbookUUID, edges, arg3, handles)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // InsertEdges indicates an expected call of InsertEdges.
-func (mr *MockPlaybookApplicationServiceMockRecorder) InsertEdges(tx, playbookUUID, edges, arg3, handles any) *gomock.Call {
+func (mr *MockPlaybookApplicationServiceMockRecorder) InsertEdges(ctx, playbookUUID, edges, arg3, handles any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "InsertEdges", reflect.TypeOf((*MockPlaybookApplicationService)(nil).InsertEdges), tx, playbookUUID, edges, arg3, handles)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "InsertEdges", reflect.TypeOf((*MockPlaybookApplicationService)(nil).InsertEdges), ctx, playbookUUID, edges, arg3, handles)
 }
 
 // PreparePlaybookMessage mocks base method.
@@ -102,46 +102,46 @@ func (mr *MockPlaybookApplicationServiceMockRecorder) PreparePlaybookMessage(arg
 }
 
 // TriggerPlaybook mocks base method.
-func (m *MockPlaybookApplicationService) TriggerPlaybook(playbookId string) (*domain.TaskMessage, error) {
+func (m *MockPlaybookApplicationService) TriggerPlaybook(ctx context.Context, playbookId string) (*domain.TaskMessage, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "TriggerPlaybook", playbookId)
+	ret := m.ctrl.Call(m, "TriggerPlaybook", ctx, playbookId)
 	ret0, _ := ret[0].(*domain.TaskMessage)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // TriggerPlaybook indicates an expected call of TriggerPlaybook.
-func (mr *MockPlaybookApplicationServiceMockRecorder) TriggerPlaybook(playbookId any) *gomock.Call {
+func (mr *MockPlaybookApplicationServiceMockRecorder) TriggerPlaybook(ctx, playbookId any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "TriggerPlaybook", reflect.TypeOf((*MockPlaybookApplicationService)(nil).TriggerPlaybook), playbookId)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "TriggerPlaybook", reflect.TypeOf((*MockPlaybookApplicationService)(nil).TriggerPlaybook), ctx, playbookId)
 }
 
 // UpdatePlaybookTasks mocks base method.
-func (m *MockPlaybookApplicationService) UpdatePlaybookTasks(playbookId string, body playbooks.UpdatePlaybookTasksPayload) (*domain.PlaybookGraph, error) {
+func (m *MockPlaybookApplicationService) UpdatePlaybookTasks(ctx context.Context, playbookId string, body playbooks.UpdatePlaybookTasksPayload) (*domain.PlaybookGraph, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "UpdatePlaybookTasks", playbookId, body)
+	ret := m.ctrl.Call(m, "UpdatePlaybookTasks", ctx, playbookId, body)
 	ret0, _ := ret[0].(*domain.PlaybookGraph)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // UpdatePlaybookTasks indicates an expected call of UpdatePlaybookTasks.
-func (mr *MockPlaybookApplicationServiceMockRecorder) UpdatePlaybookTasks(playbookId, body any) *gomock.Call {
+func (mr *MockPlaybookApplicationServiceMockRecorder) UpdatePlaybookTasks(ctx, playbookId, body any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdatePlaybookTasks", reflect.TypeOf((*MockPlaybookApplicationService)(nil).UpdatePlaybookTasks), playbookId, body)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdatePlaybookTasks", reflect.TypeOf((*MockPlaybookApplicationService)(nil).UpdatePlaybookTasks), ctx, playbookId, body)
 }
 
 // UpsertTasks mocks base method.
-func (m *MockPlaybookApplicationService) UpsertTasks(tx *sqlx.Tx, playbookUUID uuid.UUID, nodes []tasks.TaskPayload) ([]domain.Tasks, error) {
+func (m *MockPlaybookApplicationService) UpsertTasks(ctx context.Context, playbookUUID uuid.UUID, nodes []tasks.TaskPayload) ([]domain.Tasks, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "UpsertTasks", tx, playbookUUID, nodes)
+	ret := m.ctrl.Call(m, "UpsertTasks", ctx, playbookUUID, nodes)
 	ret0, _ := ret[0].([]domain.Tasks)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // UpsertTasks indicates an expected call of UpsertTasks.
-func (mr *MockPlaybookApplicationServiceMockRecorder) UpsertTasks(tx, playbookUUID, nodes any) *gomock.Call {
+func (mr *MockPlaybookApplicationServiceMockRecorder) UpsertTasks(ctx, playbookUUID, nodes any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpsertTasks", reflect.TypeOf((*MockPlaybookApplicationService)(nil).UpsertTasks), tx, playbookUUID, nodes)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpsertTasks", reflect.TypeOf((*MockPlaybookApplicationService)(nil).UpsertTasks), ctx, playbookUUID, nodes)
 }

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"log"
 
 	"github.com/yuudev14/ytsoar/db"
@@ -27,10 +28,14 @@ func main() {
 	cfg := config.Load()
 	logging.Setup(cfg.LoggerMode)
 
-	sqlxDB, err := db.SetupDB(cfg.DBUrl)
+	ctx := context.Background()
+	pool, err := db.NewPool(ctx, cfg.DBUrl)
 	if err != nil {
 		log.Fatalf("failed to setup DB: %v", err)
 	}
+	defer pool.Close()
+	queries := db.New(pool)
+	txManager := repository.NewPgxTxManager(pool)
 
 	hub := ws.NewHub()
 	go hub.Run()
@@ -46,9 +51,9 @@ func main() {
 		log.Fatalf("failed to setup task publisher: %v", err)
 	}
 
-	playbookRepository := repository.NewPlaybookRepository(sqlxDB)
-	taskRepository := repository.NewTaskRepositoryImpl(sqlxDB)
-	edgeRepository := repository.NewEdgeRepositoryImpl(sqlxDB)
+	playbookRepository := repository.NewPlaybookRepository(queries, pool)
+	taskRepository := repository.NewTaskRepositoryImpl(queries, pool)
+	edgeRepository := repository.NewEdgeRepositoryImpl(queries, pool)
 
 	playbookService := playbooks.NewPlaybookService(playbookRepository)
 	taskService := tasks.NewTaskServiceImpl(taskRepository)
@@ -58,7 +63,7 @@ func main() {
 		playbookService,
 		taskService,
 		edgeService,
-		sqlxDB,
+		txManager,
 		taskPublisher,
 		hub,
 	)

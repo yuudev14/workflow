@@ -1,60 +1,58 @@
 package tasks
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/google/uuid"
-	"github.com/jmoiron/sqlx"
 	"github.com/yuudev14/ytsoar/internal/domain"
 )
 
 //go:generate mockgen -destination=mocks/service_mock.go -package=mocks . TaskService
 type TaskService interface {
-	GetTasksByPlaybookId(workflowId string) ([]domain.Tasks, error)
-	UpsertTasks(tx *sqlx.Tx, workflowId uuid.UUID, tasks []domain.Tasks) ([]domain.Tasks, error)
-	DeleteTasks(tx *sqlx.Tx, taskIds []uuid.UUID) error
-	CreateTaskHistory(tx *sqlx.Tx, workflowHistoryId string, tasks []domain.Tasks, graph map[uuid.UUID][]uuid.UUID) ([]domain.TaskHistory, error)
-	UpdateTaskStatus(workflowHistoryId string, taskId string, status string) (*domain.TaskHistory, error)
-	UpdateTaskHistory(workflowHistoryId string, taskId string, taskHistory UpdateTaskHistoryData) (*domain.TaskHistory, error)
-	GetTaskHistoryByPlaybookHistoryId(id string, filter TaskHistoryFilter) ([]domain.TaskHistory, error)
-	GetTaskHistoryCount(filter TaskHistoryFilter) (int, error)
+	GetTasksByPlaybookId(ctx context.Context, playbookId string) ([]domain.Tasks, error)
+	UpsertTasks(ctx context.Context, playbookId uuid.UUID, tasks []domain.Tasks) ([]domain.Tasks, error)
+	DeleteTasks(ctx context.Context, taskIds []uuid.UUID) error
+	CreateTaskHistory(ctx context.Context, playbookHistoryId string, tasks []domain.Tasks, graph map[uuid.UUID][]uuid.UUID) ([]domain.TaskHistory, error)
+	UpdateTaskStatus(ctx context.Context, playbookHistoryId string, taskId string, status string) (*domain.TaskHistory, error)
+	UpdateTaskHistory(ctx context.Context, playbookHistoryId string, taskId string, taskHistory UpdateTaskHistoryData) (*domain.TaskHistory, error)
+	GetTaskHistoryByPlaybookHistoryId(ctx context.Context, id string, filter TaskHistoryFilter) ([]domain.TaskHistory, error)
+	GetTaskHistoryCount(ctx context.Context, filter TaskHistoryFilter) (int, error)
 }
 
 type TaskServiceImpl struct {
 	TaskRepository TaskRepository
 }
 
-func NewTaskServiceImpl(TaskService TaskRepository) TaskService {
+func NewTaskServiceImpl(taskRepository TaskRepository) TaskService {
 	return &TaskServiceImpl{
-		TaskRepository: TaskService,
+		TaskRepository: taskRepository,
 	}
 }
 
 // CreateTaskHistory implements TaskService.
-func (t *TaskServiceImpl) CreateTaskHistory(tx *sqlx.Tx, workflowHistoryId string, tasks []domain.Tasks, graph map[uuid.UUID][]uuid.UUID) ([]domain.TaskHistory, error) {
-	return t.TaskRepository.CreateTaskHistory(tx, workflowHistoryId, tasks, graph)
+func (t *TaskServiceImpl) CreateTaskHistory(ctx context.Context, playbookHistoryId string, tasks []domain.Tasks, graph map[uuid.UUID][]uuid.UUID) ([]domain.TaskHistory, error) {
+	return t.TaskRepository.CreateTaskHistory(ctx, playbookHistoryId, tasks, graph)
 }
 
-// get tasks by workflow id
-func (t *TaskServiceImpl) GetTasksByPlaybookId(workflowId string) ([]domain.Tasks, error) {
-	return t.TaskRepository.GetTasksByPlaybookId(workflowId), nil
+// GetTasksByPlaybookId implements TaskService.
+func (t *TaskServiceImpl) GetTasksByPlaybookId(ctx context.Context, playbookId string) ([]domain.Tasks, error) {
+	return t.TaskRepository.GetTasksByPlaybookId(ctx, playbookId), nil
 }
 
-// upsert tasks. insert multiple tasks.
-// if task does not exist yet add the task in the database
-// else update the content of the task
-func (t *TaskServiceImpl) UpsertTasks(tx *sqlx.Tx, workflowId uuid.UUID, tasks []domain.Tasks) ([]domain.Tasks, error) {
-	return t.TaskRepository.UpsertTasks(tx, workflowId, tasks)
+// UpsertTasks inserts the tasks or updates their content when they exist.
+func (t *TaskServiceImpl) UpsertTasks(ctx context.Context, playbookId uuid.UUID, tasks []domain.Tasks) ([]domain.Tasks, error) {
+	return t.TaskRepository.UpsertTasks(ctx, playbookId, tasks)
 }
 
-// Delete multiple tasks based on the taskIds
-func (t *TaskServiceImpl) DeleteTasks(tx *sqlx.Tx, taskIds []uuid.UUID) error {
-	return t.TaskRepository.DeleteTasks(tx, taskIds)
+// DeleteTasks deletes multiple tasks by id.
+func (t *TaskServiceImpl) DeleteTasks(ctx context.Context, taskIds []uuid.UUID) error {
+	return t.TaskRepository.DeleteTasks(ctx, taskIds)
 }
 
 // UpdateTaskStatus implements TaskService.
-func (t *TaskServiceImpl) UpdateTaskStatus(workflowHistoryId string, taskId string, status string) (*domain.TaskHistory, error) {
-	res, err := t.TaskRepository.UpdateTaskStatus(workflowHistoryId, taskId, status)
+func (t *TaskServiceImpl) UpdateTaskStatus(ctx context.Context, playbookHistoryId string, taskId string, status string) (*domain.TaskHistory, error) {
+	res, err := t.TaskRepository.UpdateTaskStatus(ctx, playbookHistoryId, taskId, status)
 	if err != nil {
 		return nil, err
 	}
@@ -66,9 +64,9 @@ func (t *TaskServiceImpl) UpdateTaskStatus(workflowHistoryId string, taskId stri
 	return res, nil
 }
 
-// UpdateTaskStatus implements TaskService.
-func (t *TaskServiceImpl) UpdateTaskHistory(workflowHistoryId string, taskId string, taskHistory UpdateTaskHistoryData) (*domain.TaskHistory, error) {
-	res, err := t.TaskRepository.UpdateTaskHistory(workflowHistoryId, taskId, taskHistory)
+// UpdateTaskHistory implements TaskService.
+func (t *TaskServiceImpl) UpdateTaskHistory(ctx context.Context, playbookHistoryId string, taskId string, taskHistory UpdateTaskHistoryData) (*domain.TaskHistory, error) {
+	res, err := t.TaskRepository.UpdateTaskHistory(ctx, playbookHistoryId, taskId, taskHistory)
 	if err != nil {
 		return nil, err
 	}
@@ -80,12 +78,12 @@ func (t *TaskServiceImpl) UpdateTaskHistory(workflowHistoryId string, taskId str
 	return res, nil
 }
 
-// GetPlaybookById implements PlaybookService.
-func (t *TaskServiceImpl) GetTaskHistoryByPlaybookHistoryId(id string, filter TaskHistoryFilter) ([]domain.TaskHistory, error) {
-	return t.TaskRepository.GetTaskHistoryByPlaybookHistoryId(id, filter)
+// GetTaskHistoryByPlaybookHistoryId implements TaskService.
+func (t *TaskServiceImpl) GetTaskHistoryByPlaybookHistoryId(ctx context.Context, id string, filter TaskHistoryFilter) ([]domain.TaskHistory, error) {
+	return t.TaskRepository.GetTaskHistoryByPlaybookHistoryId(ctx, id, filter)
 }
 
-// GetTaskHistoryCount implements PlaybookService.
-func (t *TaskServiceImpl) GetTaskHistoryCount(filter TaskHistoryFilter) (int, error) {
-	return t.TaskRepository.GetTaskHistoryCount(filter)
+// GetTaskHistoryCount implements TaskService.
+func (t *TaskServiceImpl) GetTaskHistoryCount(ctx context.Context, filter TaskHistoryFilter) (int, error) {
+	return t.TaskRepository.GetTaskHistoryCount(ctx, filter)
 }

@@ -1,6 +1,7 @@
 package tasks_test
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"testing"
@@ -33,7 +34,7 @@ func setupService(t *testing.T) (tasks.TaskService, *mock_tasks.MockTaskReposito
 func TestServiceGetTasksByPlaybookIdSuccess(t *testing.T) {
 	service, mockRepo := setupService(t)
 
-	workflowID := uuid.New().String()
+	playbookID := uuid.New().String()
 
 	returnedTasks := []domain.Tasks{
 		{ID: uuid.New()},
@@ -42,10 +43,10 @@ func TestServiceGetTasksByPlaybookIdSuccess(t *testing.T) {
 
 	mockRepo.
 		EXPECT().
-		GetTasksByPlaybookId(workflowID).
+		GetTasksByPlaybookId(gomock.Any(), playbookID).
 		Return(returnedTasks)
 
-	result, err := service.GetTasksByPlaybookId(workflowID)
+	result, err := service.GetTasksByPlaybookId(context.Background(), playbookID)
 
 	assert.NoError(t, err)
 	assert.Len(t, result, 2)
@@ -54,7 +55,7 @@ func TestServiceGetTasksByPlaybookIdSuccess(t *testing.T) {
 func TestServiceUpsertTasksSuccess(t *testing.T) {
 	service, mockRepo := setupService(t)
 
-	workflowID := uuid.New()
+	playbookID := uuid.New()
 
 	tasksData := []domain.Tasks{
 		{ID: uuid.New()},
@@ -62,10 +63,10 @@ func TestServiceUpsertTasksSuccess(t *testing.T) {
 
 	mockRepo.
 		EXPECT().
-		UpsertTasks(nil, workflowID, tasksData).
+		UpsertTasks(gomock.Any(), playbookID, tasksData).
 		Return(tasksData, nil)
 
-	result, err := service.UpsertTasks(nil, workflowID, tasksData)
+	result, err := service.UpsertTasks(context.Background(), playbookID, tasksData)
 
 	assert.NoError(t, err)
 	assert.Len(t, result, 1)
@@ -74,7 +75,7 @@ func TestServiceUpsertTasksSuccess(t *testing.T) {
 func TestServiceUpsertTasksFail(t *testing.T) {
 	service, mockRepo := setupService(t)
 
-	workflowID := uuid.New()
+	playbookID := uuid.New()
 
 	tasksData := []domain.Tasks{
 		{ID: uuid.New()},
@@ -82,10 +83,10 @@ func TestServiceUpsertTasksFail(t *testing.T) {
 
 	mockRepo.
 		EXPECT().
-		UpsertTasks(nil, workflowID, tasksData).
+		UpsertTasks(gomock.Any(), playbookID, tasksData).
 		Return(nil, fmt.Errorf("db error"))
 
-	result, err := service.UpsertTasks(nil, workflowID, tasksData)
+	result, err := service.UpsertTasks(context.Background(), playbookID, tasksData)
 
 	assert.Error(t, err)
 	assert.Nil(t, result)
@@ -101,10 +102,10 @@ func TestServiceDeleteTasksSuccess(t *testing.T) {
 
 	mockRepo.
 		EXPECT().
-		DeleteTasks(nil, taskIDs).
+		DeleteTasks(gomock.Any(), taskIDs).
 		Return(nil)
 
-	err := service.DeleteTasks(nil, taskIDs)
+	err := service.DeleteTasks(context.Background(), taskIDs)
 
 	assert.NoError(t, err)
 }
@@ -118,10 +119,10 @@ func TestServiceDeleteTasksFail(t *testing.T) {
 
 	mockRepo.
 		EXPECT().
-		DeleteTasks(nil, taskIDs).
+		DeleteTasks(gomock.Any(), taskIDs).
 		Return(fmt.Errorf("delete error"))
 
-	err := service.DeleteTasks(nil, taskIDs)
+	err := service.DeleteTasks(context.Background(), taskIDs)
 
 	assert.Error(t, err)
 }
@@ -129,7 +130,7 @@ func TestServiceDeleteTasksFail(t *testing.T) {
 func TestServiceCreateTaskHistorySuccess(t *testing.T) {
 	service, mockRepo := setupService(t)
 
-	workflowHistoryID := uuid.New().String()
+	playbookHistoryID := uuid.New().String()
 
 	taskList := []domain.Tasks{
 		{ID: uuid.New()},
@@ -145,10 +146,10 @@ func TestServiceCreateTaskHistorySuccess(t *testing.T) {
 
 	mockRepo.
 		EXPECT().
-		CreateTaskHistory(nil, workflowHistoryID, taskList, graph).
+		CreateTaskHistory(gomock.Any(), playbookHistoryID, taskList, graph).
 		Return(returnedHistory, nil)
 
-	result, err := service.CreateTaskHistory(nil, workflowHistoryID, taskList, graph)
+	result, err := service.CreateTaskHistory(context.Background(), playbookHistoryID, taskList, graph)
 
 	assert.NoError(t, err)
 	assert.Len(t, result, 1)
@@ -157,7 +158,7 @@ func TestServiceCreateTaskHistorySuccess(t *testing.T) {
 func TestServiceUpdateTaskStatusSuccess(t *testing.T) {
 	service, mockRepo := setupService(t)
 
-	workflowHistoryID := uuid.New().String()
+	playbookHistoryID := uuid.New().String()
 	taskID := uuid.New().String()
 	status := "completed"
 
@@ -167,10 +168,10 @@ func TestServiceUpdateTaskStatusSuccess(t *testing.T) {
 
 	mockRepo.
 		EXPECT().
-		UpdateTaskStatus(workflowHistoryID, taskID, status).
+		UpdateTaskStatus(gomock.Any(), playbookHistoryID, taskID, status).
 		Return(returnedHistory, nil)
 
-	result, err := service.UpdateTaskStatus(workflowHistoryID, taskID, status)
+	result, err := service.UpdateTaskStatus(context.Background(), playbookHistoryID, taskID, status)
 
 	assert.NoError(t, err)
 	assert.NotNil(t, result)
@@ -179,7 +180,7 @@ func TestServiceUpdateTaskStatusSuccess(t *testing.T) {
 func TestServiceUpdateTaskStatusFail(t *testing.T) {
 	service, mockRepo := setupService(t)
 
-	workflowHistoryID := uuid.New().String()
+	playbookHistoryID := uuid.New().String()
 	taskID := uuid.New().String()
 	status := "completed"
 
@@ -196,10 +197,10 @@ func TestServiceUpdateTaskStatusFail(t *testing.T) {
 
 			mockRepo.
 				EXPECT().
-				UpdateTaskStatus(workflowHistoryID, taskID, status).
+				UpdateTaskStatus(gomock.Any(), playbookHistoryID, taskID, status).
 				Return(nil, tt.err)
 
-			result, err := service.UpdateTaskStatus(workflowHistoryID, taskID, status)
+			result, err := service.UpdateTaskStatus(context.Background(), playbookHistoryID, taskID, status)
 
 			assert.Error(t, err)
 			assert.Nil(t, result)
@@ -210,7 +211,7 @@ func TestServiceUpdateTaskStatusFail(t *testing.T) {
 func TestServiceUpdateTaskHistorySuccess(t *testing.T) {
 	service, mockRepo := setupService(t)
 
-	workflowHistoryID := uuid.New().String()
+	playbookHistoryID := uuid.New().String()
 	taskID := uuid.New().String()
 
 	updateData := tasks.UpdateTaskHistoryData{}
@@ -221,10 +222,10 @@ func TestServiceUpdateTaskHistorySuccess(t *testing.T) {
 
 	mockRepo.
 		EXPECT().
-		UpdateTaskHistory(workflowHistoryID, taskID, updateData).
+		UpdateTaskHistory(gomock.Any(), playbookHistoryID, taskID, updateData).
 		Return(returnedHistory, nil)
 
-	result, err := service.UpdateTaskHistory(workflowHistoryID, taskID, updateData)
+	result, err := service.UpdateTaskHistory(context.Background(), playbookHistoryID, taskID, updateData)
 
 	assert.NoError(t, err)
 	assert.NotNil(t, result)
@@ -233,7 +234,7 @@ func TestServiceUpdateTaskHistorySuccess(t *testing.T) {
 func TestServiceUpdateTaskHistoryFail(t *testing.T) {
 	service, mockRepo := setupService(t)
 
-	workflowHistoryID := uuid.New().String()
+	playbookHistoryID := uuid.New().String()
 	taskID := uuid.New().String()
 
 	updateData := tasks.UpdateTaskHistoryData{}
@@ -251,10 +252,10 @@ func TestServiceUpdateTaskHistoryFail(t *testing.T) {
 
 			mockRepo.
 				EXPECT().
-				UpdateTaskHistory(workflowHistoryID, taskID, updateData).
+				UpdateTaskHistory(gomock.Any(), playbookHistoryID, taskID, updateData).
 				Return(nil, tt.err)
 
-			result, err := service.UpdateTaskHistory(workflowHistoryID, taskID, updateData)
+			result, err := service.UpdateTaskHistory(context.Background(), playbookHistoryID, taskID, updateData)
 
 			assert.Error(t, err)
 			assert.Nil(t, result)
@@ -265,7 +266,7 @@ func TestServiceUpdateTaskHistoryFail(t *testing.T) {
 func TestServiceGetTaskHistoryByPlaybookHistoryIdSuccess(t *testing.T) {
 	service, mockRepo := setupService(t)
 
-	workflowHistoryID := uuid.New().String()
+	playbookHistoryID := uuid.New().String()
 
 	returnedHistory := []domain.TaskHistory{
 		{ID: uuid.New()},
@@ -274,10 +275,10 @@ func TestServiceGetTaskHistoryByPlaybookHistoryIdSuccess(t *testing.T) {
 
 	mockRepo.
 		EXPECT().
-		GetTaskHistoryByPlaybookHistoryId(workflowHistoryID, tasks.TaskHistoryFilter{}).
+		GetTaskHistoryByPlaybookHistoryId(gomock.Any(), playbookHistoryID, tasks.TaskHistoryFilter{}).
 		Return(returnedHistory, nil)
 
-	result, err := service.GetTaskHistoryByPlaybookHistoryId(workflowHistoryID, tasks.TaskHistoryFilter{})
+	result, err := service.GetTaskHistoryByPlaybookHistoryId(context.Background(), playbookHistoryID, tasks.TaskHistoryFilter{})
 
 	assert.NoError(t, err)
 	assert.Len(t, result, 2)
@@ -288,10 +289,10 @@ func TestServiceGetTaskHistoryCountSuccess(t *testing.T) {
 
 	mockRepo.
 		EXPECT().
-		GetTaskHistoryCount(tasks.TaskHistoryFilter{}).
+		GetTaskHistoryCount(gomock.Any(), tasks.TaskHistoryFilter{}).
 		Return(5, nil)
 
-	count, err := service.GetTaskHistoryCount(tasks.TaskHistoryFilter{})
+	count, err := service.GetTaskHistoryCount(context.Background(), tasks.TaskHistoryFilter{})
 
 	assert.NoError(t, err)
 	assert.Equal(t, 5, count)

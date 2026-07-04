@@ -24,7 +24,7 @@ type Playbooks struct {
 
 type PlaybookHistory struct {
 	ID          uuid.UUID       `db:"id" json:"id"`
-	PlaybookID  uuid.UUID       `db:"workflow_id" json:"workflow_id"`
+	PlaybookID  uuid.UUID       `db:"playbook_id" json:"playbook_id"`
 	Status      string          `db:"status" json:"status"`
 	Error       *string         `db:"error" json:"error"`
 	Result      interface{}     `db:"result" json:"result"`
@@ -45,8 +45,8 @@ type PlaybookGraph struct {
 
 type PlaybookHistoryResponse struct {
 	ID           uuid.UUID        `db:"id" json:"id"`
-	PlaybookID   uuid.UUID        `db:"workflow_id" json:"workflow_id"`
-	PlaybookData json.RawMessage  `db:"workflow_data" json:"workflow_data"`
+	PlaybookID   uuid.UUID        `db:"playbook_id" json:"playbook_id"`
+	PlaybookData json.RawMessage  `db:"playbook_data" json:"playbook_data"`
 	Status       string           `db:"status" json:"status"`
 	Error        *string          `db:"error" json:"error"`
 	Result       *json.RawMessage `db:"result" json:"result"`

@@ -10,10 +10,10 @@
 package mocks
 
 import (
+	context "context"
 	reflect "reflect"
 
 	uuid "github.com/google/uuid"
-	sqlx "github.com/jmoiron/sqlx"
 	domain "github.com/yuudev14/ytsoar/internal/domain"
 	gomock "go.uber.org/mock/gomock"
 )
@@ -43,59 +43,59 @@ func (m *MockEdgeRepository) EXPECT() *MockEdgeRepositoryMockRecorder {
 }
 
 // DeleteAllPlaybookEdges mocks base method.
-func (m *MockEdgeRepository) DeleteAllPlaybookEdges(tx *sqlx.Tx, playbookId string) error {
+func (m *MockEdgeRepository) DeleteAllPlaybookEdges(ctx context.Context, playbookId string) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "DeleteAllPlaybookEdges", tx, playbookId)
+	ret := m.ctrl.Call(m, "DeleteAllPlaybookEdges", ctx, playbookId)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // DeleteAllPlaybookEdges indicates an expected call of DeleteAllPlaybookEdges.
-func (mr *MockEdgeRepositoryMockRecorder) DeleteAllPlaybookEdges(tx, playbookId any) *gomock.Call {
+func (mr *MockEdgeRepositoryMockRecorder) DeleteAllPlaybookEdges(ctx, playbookId any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteAllPlaybookEdges", reflect.TypeOf((*MockEdgeRepository)(nil).DeleteAllPlaybookEdges), tx, playbookId)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteAllPlaybookEdges", reflect.TypeOf((*MockEdgeRepository)(nil).DeleteAllPlaybookEdges), ctx, playbookId)
 }
 
 // DeleteEdges mocks base method.
-func (m *MockEdgeRepository) DeleteEdges(tx *sqlx.Tx, edgeIds []uuid.UUID) error {
+func (m *MockEdgeRepository) DeleteEdges(ctx context.Context, edgeIds []uuid.UUID) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "DeleteEdges", tx, edgeIds)
+	ret := m.ctrl.Call(m, "DeleteEdges", ctx, edgeIds)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // DeleteEdges indicates an expected call of DeleteEdges.
-func (mr *MockEdgeRepositoryMockRecorder) DeleteEdges(tx, edgeIds any) *gomock.Call {
+func (mr *MockEdgeRepositoryMockRecorder) DeleteEdges(ctx, edgeIds any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteEdges", reflect.TypeOf((*MockEdgeRepository)(nil).DeleteEdges), tx, edgeIds)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteEdges", reflect.TypeOf((*MockEdgeRepository)(nil).DeleteEdges), ctx, edgeIds)
 }
 
 // GetEdgesByPlaybookId mocks base method.
-func (m *MockEdgeRepository) GetEdgesByPlaybookId(playbookId string) ([]domain.ResponseEdges, error) {
+func (m *MockEdgeRepository) GetEdgesByPlaybookId(ctx context.Context, playbookId string) ([]domain.ResponseEdges, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetEdgesByPlaybookId", playbookId)
+	ret := m.ctrl.Call(m, "GetEdgesByPlaybookId", ctx, playbookId)
 	ret0, _ := ret[0].([]domain.ResponseEdges)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetEdgesByPlaybookId indicates an expected call of GetEdgesByPlaybookId.
-func (mr *MockEdgeRepositoryMockRecorder) GetEdgesByPlaybookId(playbookId any) *gomock.Call {
+func (mr *MockEdgeRepositoryMockRecorder) GetEdgesByPlaybookId(ctx, playbookId any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetEdgesByPlaybookId", reflect.TypeOf((*MockEdgeRepository)(nil).GetEdgesByPlaybookId), playbookId)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetEdgesByPlaybookId", reflect.TypeOf((*MockEdgeRepository)(nil).GetEdgesByPlaybookId), ctx, playbookId)
 }
 
 // InsertEdges mocks base method.
-func (m *MockEdgeRepository) InsertEdges(tx *sqlx.Tx, edges []domain.Edges) ([]domain.Edges, error) {
+func (m *MockEdgeRepository) InsertEdges(ctx context.Context, edges []domain.Edges) ([]domain.Edges, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "InsertEdges", tx, edges)
+	ret := m.ctrl.Call(m, "InsertEdges", ctx, edges)
 	ret0, _ := ret[0].([]domain.Edges)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // InsertEdges indicates an expected call of InsertEdges.
-func (mr *MockEdgeRepositoryMockRecorder) InsertEdges(tx, edges any) *gomock.Call {
+func (mr *MockEdgeRepositoryMockRecorder) InsertEdges(ctx, edges any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "InsertEdges", reflect.TypeOf((*MockEdgeRepository)(nil).InsertEdges), tx, edges)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "InsertEdges", reflect.TypeOf((*MockEdgeRepository)(nil).InsertEdges), ctx, edges)
 }
