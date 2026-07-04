@@ -13,16 +13,17 @@ import (
 	"github.com/yuudev14/ytsoar/db"
 	"github.com/yuudev14/ytsoar/internal/application/tasks"
 	"github.com/yuudev14/ytsoar/internal/domain"
-	"github.com/yuudev14/ytsoar/internal/logging"
+	"github.com/yuudev14/ytsoar/internal/logger"
 )
 
 type TaskRepositoryImpl struct {
-	q    QuerierTx
-	pool *pgxpool.Pool
+	logger logger.Logger
+	q      QuerierTx
+	pool   *pgxpool.Pool
 }
 
-func NewTaskRepositoryImpl(q QuerierTx, pool *pgxpool.Pool) *TaskRepositoryImpl {
-	return &TaskRepositoryImpl{q: q, pool: pool}
+func NewTaskRepositoryImpl(log logger.Logger, q QuerierTx, pool *pgxpool.Pool) *TaskRepositoryImpl {
+	return &TaskRepositoryImpl{logger: log, q: q, pool: pool}
 }
 
 func (t *TaskRepositoryImpl) queriesFromContext(ctx context.Context) db.Querier {
@@ -87,13 +88,13 @@ func toDomainTaskHistory(row db.TaskHistory) domain.TaskHistory {
 func (t *TaskRepositoryImpl) GetTasksByPlaybookId(ctx context.Context, playbookId string) []domain.Tasks {
 	pgID, err := toPgUUIDFromString(playbookId)
 	if err != nil {
-		logging.Sugar.Warn(err)
+		t.logger.Warn(err)
 		return nil
 	}
 
 	rows, err := t.queriesFromContext(ctx).GetTasksByPlaybookId(ctx, pgID)
 	if err != nil {
-		logging.Sugar.Warn(err)
+		t.logger.Warn(err)
 		return nil
 	}
 
@@ -292,5 +293,5 @@ func (t *TaskRepositoryImpl) GetTaskHistoryCount(ctx context.Context, filter tas
 		stmt = stmt.Where(sq.Eq{"playbook_history_id": *filter.PlaybookID})
 	}
 
-	return CollectOneScalarFromSqlizer[int](ctx, stmt, t.pool)
+	return CollectOneScalarFromSqlizer[int](ctx, stmt, t.pool, t.logger)
 }

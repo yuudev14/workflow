@@ -17,7 +17,7 @@ import (
 	"github.com/yuudev14/ytsoar/internal/application/tasks"
 	mock_tasks "github.com/yuudev14/ytsoar/internal/application/tasks/mocks"
 	"github.com/yuudev14/ytsoar/internal/domain"
-	"github.com/yuudev14/ytsoar/internal/logging"
+	"github.com/yuudev14/ytsoar/internal/logger"
 	"github.com/yuudev14/ytsoar/internal/types"
 	"go.uber.org/mock/gomock"
 )
@@ -36,8 +36,6 @@ func setupController(t *testing.T) (
 	*httptest.ResponseRecorder,
 ) {
 
-	logging.Setup("Debug")
-
 	ctrl := gomock.NewController(t)
 
 	mockPlaybookService := mock_workflows.NewMockPlaybookService(ctrl)
@@ -51,6 +49,7 @@ func setupController(t *testing.T) (
 	c, _ := gin.CreateTestContext(recorder)
 
 	controller := &PlaybookHandler{
+		logger:                     logger.NewNop(),
 		PlaybookService:            mockPlaybookService,
 		TaskService:                mockTaskService,
 		EdgeService:                mockEdgeService,

@@ -3,6 +3,8 @@ package repository
 import (
 	"context"
 
+	"github.com/yuudev14/ytsoar/internal/logger"
+
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -11,12 +13,13 @@ import (
 )
 
 type EdgeRepositoryImpl struct {
-	q    QuerierTx
-	pool *pgxpool.Pool
+	logger logger.Logger
+	q      QuerierTx
+	pool   *pgxpool.Pool
 }
 
-func NewEdgeRepositoryImpl(q QuerierTx, pool *pgxpool.Pool) *EdgeRepositoryImpl {
-	return &EdgeRepositoryImpl{q: q, pool: pool}
+func NewEdgeRepositoryImpl(log logger.Logger, q QuerierTx, pool *pgxpool.Pool) *EdgeRepositoryImpl {
+	return &EdgeRepositoryImpl{logger: log, q: q, pool: pool}
 }
 
 func (e *EdgeRepositoryImpl) queriesFromContext(ctx context.Context) db.Querier {

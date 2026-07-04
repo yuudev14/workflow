@@ -11,12 +11,11 @@ import (
 	"github.com/yuudev14/ytsoar/internal/application/tasks"
 	mock_tasks "github.com/yuudev14/ytsoar/internal/application/tasks/mocks"
 	"github.com/yuudev14/ytsoar/internal/domain"
-	"github.com/yuudev14/ytsoar/internal/logging"
 	"go.uber.org/mock/gomock"
 )
 
 func TestMain(m *testing.M) {
-	logging.Setup("DEBUG")
+
 	os.Exit(m.Run())
 }
 

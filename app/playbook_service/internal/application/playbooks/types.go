@@ -8,13 +8,13 @@ import (
 )
 
 type PlaybookFilter struct {
-	Name       *string    `form:"name"`
-	PlaybookID *uuid.UUID `form:"playbook_id"`
+	Name       *string `form:"name" binding:"omitempty"`
+	PlaybookID *string `form:"playbook_id" binding:"omitempty,uuid"`
 }
 
 type PlaybookHistoryFilter struct {
-	Name       *string    `form:"name"`
-	PlaybookID *uuid.UUID `form:"playbook_id"`
+	Name       *string `form:"name" binding:"omitempty"`
+	PlaybookID *string `form:"playbook_id" binding:"omitempty,uuid"`
 }
 
 type UpdatePlaybookData struct {
