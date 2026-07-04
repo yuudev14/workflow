@@ -2,9 +2,9 @@ import {
   Node,
   NodeProps,
 } from "@xyflow/react";
-import { Workflow } from "lucide-react";
+import { Workflow as PlaybookIcon } from "lucide-react";
 import { Avatar, AvatarFallback } from "../../ui/avatar";
-import { Tasks } from "@/services/worfklows/workflows.schema";
+import { Tasks } from "@/services/playbooks/playbooks.schema";
 import { FLOW_SELECT_TRIGGER_ID } from "@/settings/reactFlowIds";
 import RenderHandles from "./RenderHandles";
 import DeleteNodeButton from "./DeleteNodeButton";
@@ -18,7 +18,7 @@ const PlaybookNode: React.FC<NodeProps<Node<Tasks>>> = (props) => {
       <div className="flex items-center w-full gap-3">
         <Avatar className="size-10">
           <AvatarFallback>
-            <Workflow className="size-6 text-primary" />
+            <PlaybookIcon className="size-6 text-primary" />
           </AvatarFallback>
         </Avatar>
         <div className="flex flex-col items-start mr-11">

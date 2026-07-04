@@ -23,7 +23,7 @@ async def consume_messages():
 
         # Declaring queue
         worlflow_queue: aio_pika.abc.AbstractQueue = await channel.declare_queue(
-            settings.workflow_queue,
+            settings.playbook_queue,
             durable=True,
             auto_delete=False,
             exclusive=False,
@@ -39,7 +39,7 @@ async def consume_messages():
                         logger.info(json.dumps(json_body, indent=2))
                         graph = json_body.get("graph")
                         task_information = json_body.get("tasks")
-                        workflow_history_id = json_body.get("workflow_history_id")
+                        workflow_history_id = json_body.get("playbook_history_id")
 
                         task_information = json_body["tasks"]
                         graph = json_body["graph"]
