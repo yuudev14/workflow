@@ -11,7 +11,7 @@ import (
 	"github.com/yuudev14/ytsoar/internal/application/edges"
 	"github.com/yuudev14/ytsoar/internal/application/tasks"
 	"github.com/yuudev14/ytsoar/internal/domain"
-	"github.com/yuudev14/ytsoar/internal/logging"
+	"github.com/yuudev14/ytsoar/internal/logger"
 )
 
 //go:generate mockgen -destination=mocks/orchestrator_mock.go -package=mocks . PlaybookApplicationService
@@ -27,6 +27,7 @@ type PlaybookApplicationService interface {
 }
 
 type PlaybookApplicationServiceImpl struct {
+	Logger            logger.Logger
 	PlaybookService   PlaybookService
 	TaskService       tasks.TaskService
 	EdgeService       edges.EdgeService
@@ -36,6 +37,7 @@ type PlaybookApplicationServiceImpl struct {
 }
 
 func NewPlaybookApplicationService(
+	log logger.Logger,
 	playbookService PlaybookService,
 	taskService tasks.TaskService,
 	edgeService edges.EdgeService,
@@ -44,6 +46,7 @@ func NewPlaybookApplicationService(
 	statusBroadcaster contracts.StatusBroadcaster,
 ) PlaybookApplicationService {
 	return &PlaybookApplicationServiceImpl{
+		Logger:            log,
 		PlaybookService:   playbookService,
 		TaskService:       taskService,
 		EdgeService:       edgeService,
@@ -81,7 +84,7 @@ func (w *PlaybookApplicationServiceImpl) UpsertTasks(
 		})
 	}
 
-	logging.Sugar.Debugf("node to add: %v", nodeToUpsert)
+	w.Logger.Debugf("node to add: %v", nodeToUpsert)
 	// save the tasks
 	if len(nodeToUpsert) > 0 {
 		return w.TaskService.UpsertTasks(ctx, playbookUUID, nodeToUpsert)
@@ -107,8 +110,8 @@ func (w *PlaybookApplicationServiceImpl) InsertEdges(
 		tasksMap[task.Name] = task.ID
 	}
 
-	logging.Sugar.Debugf("tasksMap: %v", tasksMap)
-	logging.Sugar.Debugf("edges: %v", edges_)
+	w.Logger.Debugf("tasksMap: %v", tasksMap)
+	w.Logger.Debugf("edges: %v", edges_)
 
 	for key, values := range edges_ {
 		for _, val := range values {
@@ -138,12 +141,12 @@ func (w *PlaybookApplicationServiceImpl) InsertEdges(
 				}
 				edgeToInsert = append(edgeToInsert, edge)
 			} else {
-				logging.Sugar.Infof("edges data that are not added: %v %v", key, val)
+				w.Logger.Infof("edges data that are not added: %v %v", key, val)
 			}
 		}
 	}
 
-	logging.Sugar.Debugf("edges to add: %v", edgeToInsert)
+	w.Logger.Debugf("edges to add: %v", edgeToInsert)
 	// save the edges
 	if len(edgeToInsert) > 0 {
 		_, err := w.EdgeService.InsertEdges(ctx, edgeToInsert)
@@ -166,22 +169,22 @@ func (w *PlaybookApplicationServiceImpl) DeleteTasks(
 	if tasksErr != nil {
 		return tasksErr
 	}
-	logging.Sugar.Debugf("tasks: %v", tasks)
+	w.Logger.Debugf("tasks: %v", tasks)
 
 	for _, node := range nodes {
 		tasksBodyMap[node.Name] = true
 	}
-	logging.Sugar.Debugf("tasksBodyMap: %v", tasksBodyMap)
+	w.Logger.Debugf("tasksBodyMap: %v", tasksBodyMap)
 	// 2. if node not in new nodes to be updated, delete
 	for _, node := range tasks {
 		_, ok := tasksBodyMap[node.Name]
-		logging.Sugar.Debugf("checking if node to be deleted for: %v", node.Name)
+		w.Logger.Debugf("checking if node to be deleted for: %v", node.Name)
 		if !ok {
 			nodeToDelete = append(nodeToDelete, node.ID)
 		}
 	}
 
-	logging.Sugar.Debugf("node to delete: %v", nodeToDelete)
+	w.Logger.Debugf("node to delete: %v", nodeToDelete)
 	if len(nodeToDelete) > 0 {
 		return w.TaskService.DeleteTasks(ctx, nodeToDelete)
 	}
@@ -204,10 +207,10 @@ func (w *PlaybookApplicationServiceImpl) DeleteEdges(
 	}
 
 	playbookEdges, playbookEdgesErr := w.EdgeService.GetEdgesByPlaybookId(ctx, playbookUUID.String())
-	logging.Sugar.Debug("playbook edges", playbookEdges)
+	w.Logger.Debug("playbook edges", playbookEdges)
 
 	if playbookEdgesErr != nil {
-		logging.Sugar.Error(playbookEdgesErr)
+		w.Logger.Error(playbookEdgesErr)
 		return playbookEdgesErr
 	}
 
@@ -226,7 +229,7 @@ func (w *PlaybookApplicationServiceImpl) DeleteEdges(
 		}
 	}
 
-	logging.Sugar.Debugf("edge to delete: %v", edgeToDelete)
+	w.Logger.Debugf("edge to delete: %v", edgeToDelete)
 	if len(edgeToDelete) > 0 {
 		return w.EdgeService.DeleteEdges(ctx, edgeToDelete)
 	}
@@ -269,36 +272,36 @@ func (w *PlaybookApplicationServiceImpl) UpdatePlaybookTasks(
 			if _, errTask := w.PlaybookService.UpdatePlaybook(ctx, playbookId, *body.Task); errTask != nil {
 				return errTask
 			}
-			logging.Sugar.Debug("updated playbook...")
+			w.Logger.Debug("updated playbook...")
 		}
 
 		// delete the edges first
 		if deleteEdgesErr := w.DeleteEdges(ctx, playbookUUID, body.Edges); deleteEdgesErr != nil {
-			logging.Sugar.Error(deleteEdgesErr)
+			w.Logger.Error(deleteEdgesErr)
 			return deleteEdgesErr
 		}
 
 		// upsert the tasks. insert if doesnt exist, update when exist
 		insertedTasks, upsertTasksErr := w.UpsertTasks(ctx, playbookUUID, body.Nodes)
 		if upsertTasksErr != nil {
-			logging.Sugar.Error(upsertTasksErr)
+			w.Logger.Error(upsertTasksErr)
 			return upsertTasksErr
 		}
 
 		// delete the tasks the we dont need anymore
 		if deleteTaskError := w.DeleteTasks(ctx, playbookUUID, body.Nodes); deleteTaskError != nil {
-			logging.Sugar.Error(deleteTaskError)
+			w.Logger.Error(deleteTaskError)
 			return deleteTaskError
 		}
 
 		// insert the new edges
-		logging.Sugar.Info("insert edges")
+		w.Logger.Info("insert edges")
 		if insertEdgeError := w.InsertEdges(ctx, playbookUUID, body.Edges, insertedTasks, body.Handles); insertEdgeError != nil {
-			logging.Sugar.Error(insertEdgeError)
+			w.Logger.Error(insertEdgeError)
 			return insertEdgeError
 		}
 
-		logging.Sugar.Debug("added playbook...")
+		w.Logger.Debug("added playbook...")
 		return nil
 	})
 	if txErr != nil {
@@ -307,7 +310,7 @@ func (w *PlaybookApplicationServiceImpl) UpdatePlaybookTasks(
 
 	playbookGraph, playbookErr := w.PlaybookService.GetPlaybookGraphById(ctx, playbookId)
 	if playbookErr != nil {
-		logging.Sugar.Error(playbookErr)
+		w.Logger.Error(playbookErr)
 		return nil, playbookErr
 	}
 
@@ -318,19 +321,19 @@ func (w *PlaybookApplicationServiceImpl) UpdatePlaybookTasks(
 func (w *PlaybookApplicationServiceImpl) TriggerPlaybook(ctx context.Context, playbookId string) (*domain.TaskMessage, error) {
 	_, playbookErr := w.PlaybookService.GetPlaybookById(ctx, playbookId)
 	if playbookErr != nil {
-		logging.Sugar.Error(playbookErr)
+		w.Logger.Error(playbookErr)
 		return nil, playbookErr
 	}
 
 	taskData, tasksErr := w.TaskService.GetTasksByPlaybookId(ctx, playbookId)
 	if tasksErr != nil {
-		logging.Sugar.Errorf("error: %v", tasksErr)
+		w.Logger.Errorf("error: %v", tasksErr)
 		return nil, tasksErr
 	}
 
 	edges, edgesErr := w.EdgeService.GetEdgesByPlaybookId(ctx, playbookId)
 	if edgesErr != nil {
-		logging.Sugar.Errorf("error: %v", edgesErr)
+		w.Logger.Errorf("error: %v", edgesErr)
 		return nil, edgesErr
 	}
 
@@ -347,7 +350,7 @@ func (w *PlaybookApplicationServiceImpl) TriggerPlaybook(ctx context.Context, pl
 		w.StatusBroadcaster.Broadcast(playbookHistory)
 
 		// Log the ID to verify it's correct
-		logging.Sugar.Infof("Created playbook history with ID: %v", playbookHistory.ID)
+		w.Logger.Infof("Created playbook history with ID: %v", playbookHistory.ID)
 		_, createTaskHistoryErr := w.TaskService.CreateTaskHistory(ctx, playbookHistory.ID.String(), taskData, GetGraphUUIDS(edges))
 		return createTaskHistoryErr
 	})
@@ -362,7 +365,7 @@ func (w *PlaybookApplicationServiceImpl) TriggerPlaybook(ctx context.Context, pl
 	}
 
 	if mqErr := w.TaskPublisher.SendMessage(body); mqErr != nil {
-		logging.Sugar.Errorf("error when sending the message to queue: %v", mqErr)
+		w.Logger.Errorf("error when sending the message to queue: %v", mqErr)
 		return nil, mqErr
 	}
 	return &body, nil

@@ -13,16 +13,18 @@ import (
 	"github.com/yuudev14/ytsoar/db"
 	"github.com/yuudev14/ytsoar/internal/application/playbooks"
 	"github.com/yuudev14/ytsoar/internal/domain"
+	"github.com/yuudev14/ytsoar/internal/logger"
 	"github.com/yuudev14/ytsoar/internal/utils"
 )
 
 type PlaybookRepositoryImpl struct {
-	q    QuerierTx
-	pool *pgxpool.Pool
+	logger logger.Logger
+	q      QuerierTx
+	pool   *pgxpool.Pool
 }
 
-func NewPlaybookRepository(q QuerierTx, pool *pgxpool.Pool) *PlaybookRepositoryImpl {
-	return &PlaybookRepositoryImpl{q: q, pool: pool}
+func NewPlaybookRepository(log logger.Logger, q QuerierTx, pool *pgxpool.Pool) *PlaybookRepositoryImpl {
+	return &PlaybookRepositoryImpl{logger: log, q: q, pool: pool}
 }
 
 func (w *PlaybookRepositoryImpl) queriesFromContext(ctx context.Context) db.Querier {
@@ -71,7 +73,7 @@ func (w *PlaybookRepositoryImpl) GetPlaybooks(ctx context.Context, offset int, l
 		stmt = stmt.Where(sq.Expr("name ILIKE ?", fmt.Sprint("%", *filter.Name, "%")))
 	}
 
-	return CollectRowsFromSqlizer[domain.Playbooks](ctx, stmt, w.pool)
+	return CollectRowsFromSqlizer[domain.Playbooks](ctx, stmt, w.pool, w.logger)
 }
 
 // GetPlaybooksCount implements playbooks.PlaybookRepository.
@@ -83,7 +85,7 @@ func (w *PlaybookRepositoryImpl) GetPlaybooksCount(ctx context.Context, filter p
 		stmt = stmt.Where(sq.Expr("name ILIKE ?", fmt.Sprint("%", *filter.Name, "%")))
 	}
 
-	return CollectOneScalarFromSqlizer[int](ctx, stmt, w.pool)
+	return CollectOneScalarFromSqlizer[int](ctx, stmt, w.pool, w.logger)
 }
 
 // GetPlaybookHistory implements playbooks.PlaybookRepository.
@@ -103,7 +105,7 @@ func (w *PlaybookRepositoryImpl) GetPlaybookHistory(ctx context.Context, offset 
 		stmt = stmt.Where(sq.Eq{"playbook_history.playbook_id": *filter.PlaybookID})
 	}
 
-	return CollectRowsFromSqlizer[domain.PlaybookHistoryResponse](ctx, stmt, w.pool)
+	return CollectRowsFromSqlizer[domain.PlaybookHistoryResponse](ctx, stmt, w.pool, w.logger)
 }
 
 // GetPlaybookHistoryCount implements playbooks.PlaybookRepository.
@@ -117,7 +119,7 @@ func (w *PlaybookRepositoryImpl) GetPlaybookHistoryCount(ctx context.Context, fi
 		stmt = stmt.Where(sq.Expr("playbooks.name ILIKE ?", fmt.Sprint("%", *filter.Name, "%")))
 	}
 
-	return CollectOneScalarFromSqlizer[int](ctx, stmt, w.pool)
+	return CollectOneScalarFromSqlizer[int](ctx, stmt, w.pool, w.logger)
 }
 
 // GetPlaybookHistoryById implements playbooks.PlaybookRepository.

@@ -10,7 +10,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/yuudev14/ytsoar/db"
-	"github.com/yuudev14/ytsoar/internal/logging"
+	"github.com/yuudev14/ytsoar/internal/logger"
 	"github.com/yuudev14/ytsoar/internal/types"
 )
 
@@ -20,13 +20,14 @@ func CollectRowsFromSqlizer[T any](
 	ctx context.Context,
 	stmt sq.Sqlizer,
 	pool *pgxpool.Pool,
+	log logger.Logger,
 ) ([]T, error) {
 	sqlStr, args, err := stmt.ToSql()
 	if err != nil {
 		return nil, err
 	}
 
-	logging.Sugar.Debugw("sql collect rows", "sql", sqlStr, "args", args)
+	log.Debugw("sql collect rows", "sql", sqlStr, "args", args)
 	rows, err := pool.Query(ctx, sqlStr, args...)
 	if err != nil {
 		return nil, err
@@ -42,6 +43,7 @@ func CollectOneScalarFromSqlizer[T any](
 	ctx context.Context,
 	stmt sq.Sqlizer,
 	pool *pgxpool.Pool,
+	log logger.Logger,
 ) (T, error) {
 	var v T
 	sqlStr, args, err := stmt.ToSql()
@@ -49,7 +51,7 @@ func CollectOneScalarFromSqlizer[T any](
 		return v, err
 	}
 
-	logging.Sugar.Debugw("sql collect scalar", "sql", sqlStr, "args", args)
+	log.Debugw("sql collect scalar", "sql", sqlStr, "args", args)
 	if err := pool.QueryRow(ctx, sqlStr, args...).Scan(&v); err != nil {
 		return v, err
 	}
