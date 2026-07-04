@@ -25,14 +25,14 @@ const navData = {
   },
   navMain: [
     {
-      title: "Workflow",
+      title: "Playbooks",
       url: "#",
       icon: SquareTerminal,
       isActive: true,
       items: [
         {
-          title: "Workflows",
-          url: "/workflows",
+          title: "Playbooks",
+          url: "/playbooks",
         },
         {
           title: "Scheduler",
@@ -53,7 +53,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     <Sidebar collapsible="icon" {...props}>
       <SidebarHeader>
         <Link href={"/"}>
-          Workflow
+          YTSoar
         </Link>
 
       </SidebarHeader>

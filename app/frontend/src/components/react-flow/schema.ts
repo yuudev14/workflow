@@ -1,4 +1,4 @@
-import { TaskHistory, Tasks } from "@/services/worfklows/workflows.schema";
+import { TaskHistory, Tasks } from "@/services/playbooks/playbooks.schema";
 
 export type PlaybookTaskNode = (Tasks | Partial<Partial<Tasks>>) & {
   label?: string
