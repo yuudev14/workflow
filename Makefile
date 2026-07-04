@@ -5,20 +5,20 @@ rebuild-containers:
 rebuild-service:
 		docker compose -f ./docker/dev.docker-compose.yml up --build $(NAME) -d
 
-rebuild-workflow-service:
-		docker compose -f ./docker/dev.docker-compose.yml up --build soar_workflow_service -d
+rebuild-playbook-service:
+		docker compose -f ./docker/dev.docker-compose.yml up --build ytsoar_playbook_service -d
 
 start-dev:
 		docker compose -f ./docker/dev.docker-compose.yml up -d && \
-		cd ./app/workflow-frontend && \
+		cd ./app/frontend && \
 		npm run dev
 
 lint:
-		cd ./app/workflow-frontend && \
+		cd ./app/frontend && \
 		npm run lint
 
 build:
-		cd ./app/workflow-frontend && \
+		cd ./app/frontend && \
 		npm run build
 
 show-logs:

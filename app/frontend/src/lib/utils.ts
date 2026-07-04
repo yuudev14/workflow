@@ -1,7 +1,7 @@
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
 import moment from "moment"
-import { TaskStatus } from "@/services/worfklows/workflows.schema";
+import { TaskStatus } from "@/services/playbooks/playbooks.schema";
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));

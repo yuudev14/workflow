@@ -9,7 +9,7 @@ class Settings(BaseSettings):
     grpc_workflow_host: str = "localhost:50051"
 
     mq_url: str = "amqp://guest:guest@localhost:5672/"
-    workflow_queue: str = "workflow"
+    playbook_queue: str = "playbook"
     workflow_processor_queue: str = "workflow_processor"
     use_celery: bool = False
 
