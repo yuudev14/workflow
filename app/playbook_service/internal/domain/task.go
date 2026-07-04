@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/lib/pq"
 )
 
 type Position struct {
@@ -13,7 +12,7 @@ type Position struct {
 
 type Tasks struct {
 	ID            uuid.UUID       `db:"id" json:"id"`
-	PlaybookID    string          `db:"workflow_id" json:"workflow_id"`
+	PlaybookID    string          `db:"playbook_id" json:"playbook_id"`
 	Status        string          `db:"status" json:"status"`
 	Name          string          `db:"name" json:"name"`
 	Config        *string         `db:"config" json:"config"`
@@ -31,7 +30,7 @@ type Tasks struct {
 
 type TaskHistory struct {
 	ID                uuid.UUID        `db:"id" json:"id"`
-	PlaybookHistoryID uuid.UUID        `db:"workflow_history_id" json:"workflow_history_id"`
+	PlaybookHistoryID uuid.UUID        `db:"playbook_history_id" json:"playbook_history_id"`
 	TaskID            uuid.UUID        `db:"task_id" json:"task_id"`
 	Status            string           `db:"status" json:"status"`
 	Error             *string          `db:"error" json:"error"`
@@ -46,5 +45,5 @@ type TaskHistory struct {
 	Parameters        json.RawMessage  `db:"parameters" json:"parameters"`
 	X                 float32          `db:"x" json:"x"`
 	Y                 float32          `db:"y" json:"y"`
-	DestinationIDs    pq.StringArray   `db:"destination_ids" json:"destination_ids"`
+	DestinationIDs    []uuid.UUID      `db:"destination_ids" json:"destination_ids"`
 }

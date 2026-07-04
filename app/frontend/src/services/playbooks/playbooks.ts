@@ -68,11 +68,11 @@ export default class PlaybookService {
   };
 
   public static getPlaybooksHistoryByPlaybookId = async (
-    worfklowHistoryId: string,
+    playbookId: string,
     offset: number = 0,
     limit: number = 50
   ): Promise<EntryResponse<PlaybookHistory>> => {
-    return await this.getPlaybooksHistory(offset, limit, {workflow_history_id: worfklowHistoryId});
+    return await this.getPlaybooksHistory(offset, limit, {playbook_id: playbookId});
   };
 
 

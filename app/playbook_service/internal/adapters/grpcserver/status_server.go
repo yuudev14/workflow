@@ -46,7 +46,7 @@ func (s *StatusServer) HandleWorkflow(ctx context.Context, req *pb.WorkflowStatu
 		}
 		result = nil
 	}
-	res, err := s.playbookService.UpdatePlaybookHistory(req.WorkflowHistoryId, playbooks.UpdatePlaybookHistoryData{
+	res, err := s.playbookService.UpdatePlaybookHistory(ctx, req.WorkflowHistoryId, playbooks.UpdatePlaybookHistoryData{
 		Status: types.Nullable[string]{Value: req.Status, Set: true},
 		Error:  types.Nullable[string]{Value: req.Error, Set: true},
 		Result: result,
@@ -81,7 +81,7 @@ func (s *StatusServer) HandleTask(ctx context.Context, req *pb.TaskStatusPayload
 			return nil, err
 		}
 	}
-	res, err := s.taskService.UpdateTaskHistory(req.WorkflowHistoryId, req.TaskId, tasks.UpdateTaskHistoryData{
+	res, err := s.taskService.UpdateTaskHistory(ctx, req.WorkflowHistoryId, req.TaskId, tasks.UpdateTaskHistoryData{
 		Name:          req.Name,
 		Description:   req.Description,
 		Parameters:    parameters,

@@ -8,7 +8,7 @@ import (
 
 type Schedulers struct {
 	ID         uuid.UUID `db:"id" json:"id"`
-	PlaybookID string    `db:"workflow_id" json:"workflow_id"`
+	PlaybookID string    `db:"playbook_id" json:"playbook_id"`
 	Cron       string    `db:"cron" json:"cron"`
 	CreatedAt  time.Time `db:"created_at" json:"created_at"`
 	UpdatedAt  time.Time `db:"updated_at" json:"updated_at"`

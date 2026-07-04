@@ -10,10 +10,10 @@
 package mocks
 
 import (
+	context "context"
 	reflect "reflect"
 
 	uuid "github.com/google/uuid"
-	sqlx "github.com/jmoiron/sqlx"
 	playbooks "github.com/yuudev14/ytsoar/internal/application/playbooks"
 	domain "github.com/yuudev14/ytsoar/internal/domain"
 	types "github.com/yuudev14/ytsoar/internal/types"
@@ -45,241 +45,226 @@ func (m *MockPlaybookService) EXPECT() *MockPlaybookServiceMockRecorder {
 }
 
 // CreatePlaybook mocks base method.
-func (m *MockPlaybookService) CreatePlaybook(workflow playbooks.PlaybookPayload) (*domain.Playbooks, error) {
+func (m *MockPlaybookService) CreatePlaybook(ctx context.Context, playbook playbooks.PlaybookPayload) (*domain.Playbooks, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "CreatePlaybook", workflow)
+	ret := m.ctrl.Call(m, "CreatePlaybook", ctx, playbook)
 	ret0, _ := ret[0].(*domain.Playbooks)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // CreatePlaybook indicates an expected call of CreatePlaybook.
-func (mr *MockPlaybookServiceMockRecorder) CreatePlaybook(workflow any) *gomock.Call {
+func (mr *MockPlaybookServiceMockRecorder) CreatePlaybook(ctx, playbook any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreatePlaybook", reflect.TypeOf((*MockPlaybookService)(nil).CreatePlaybook), workflow)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreatePlaybook", reflect.TypeOf((*MockPlaybookService)(nil).CreatePlaybook), ctx, playbook)
 }
 
 // CreatePlaybookHistory mocks base method.
-func (m *MockPlaybookService) CreatePlaybookHistory(tx *sqlx.Tx, id string, edges []domain.ResponseEdges) (*domain.PlaybookHistory, error) {
+func (m *MockPlaybookService) CreatePlaybookHistory(ctx context.Context, id string, edges []domain.ResponseEdges) (*domain.PlaybookHistory, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "CreatePlaybookHistory", tx, id, edges)
+	ret := m.ctrl.Call(m, "CreatePlaybookHistory", ctx, id, edges)
 	ret0, _ := ret[0].(*domain.PlaybookHistory)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // CreatePlaybookHistory indicates an expected call of CreatePlaybookHistory.
-func (mr *MockPlaybookServiceMockRecorder) CreatePlaybookHistory(tx, id, edges any) *gomock.Call {
+func (mr *MockPlaybookServiceMockRecorder) CreatePlaybookHistory(ctx, id, edges any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreatePlaybookHistory", reflect.TypeOf((*MockPlaybookService)(nil).CreatePlaybookHistory), tx, id, edges)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreatePlaybookHistory", reflect.TypeOf((*MockPlaybookService)(nil).CreatePlaybookHistory), ctx, id, edges)
 }
 
 // GetPlaybookById mocks base method.
-func (m *MockPlaybookService) GetPlaybookById(id string) (*domain.Playbooks, error) {
+func (m *MockPlaybookService) GetPlaybookById(ctx context.Context, id string) (*domain.Playbooks, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetPlaybookById", id)
+	ret := m.ctrl.Call(m, "GetPlaybookById", ctx, id)
 	ret0, _ := ret[0].(*domain.Playbooks)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetPlaybookById indicates an expected call of GetPlaybookById.
-func (mr *MockPlaybookServiceMockRecorder) GetPlaybookById(id any) *gomock.Call {
+func (mr *MockPlaybookServiceMockRecorder) GetPlaybookById(ctx, id any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetPlaybookById", reflect.TypeOf((*MockPlaybookService)(nil).GetPlaybookById), id)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetPlaybookById", reflect.TypeOf((*MockPlaybookService)(nil).GetPlaybookById), ctx, id)
 }
 
 // GetPlaybookGraphById mocks base method.
-func (m *MockPlaybookService) GetPlaybookGraphById(id string) (*domain.PlaybookGraph, error) {
+func (m *MockPlaybookService) GetPlaybookGraphById(ctx context.Context, id string) (*domain.PlaybookGraph, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetPlaybookGraphById", id)
+	ret := m.ctrl.Call(m, "GetPlaybookGraphById", ctx, id)
 	ret0, _ := ret[0].(*domain.PlaybookGraph)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetPlaybookGraphById indicates an expected call of GetPlaybookGraphById.
-func (mr *MockPlaybookServiceMockRecorder) GetPlaybookGraphById(id any) *gomock.Call {
+func (mr *MockPlaybookServiceMockRecorder) GetPlaybookGraphById(ctx, id any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetPlaybookGraphById", reflect.TypeOf((*MockPlaybookService)(nil).GetPlaybookGraphById), id)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetPlaybookGraphById", reflect.TypeOf((*MockPlaybookService)(nil).GetPlaybookGraphById), ctx, id)
 }
 
 // GetPlaybookHistory mocks base method.
-func (m *MockPlaybookService) GetPlaybookHistory(offset, limit int, filter playbooks.PlaybookHistoryFilter) ([]domain.PlaybookHistoryResponse, error) {
+func (m *MockPlaybookService) GetPlaybookHistory(ctx context.Context, offset, limit int, filter playbooks.PlaybookHistoryFilter) ([]domain.PlaybookHistoryResponse, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetPlaybookHistory", offset, limit, filter)
+	ret := m.ctrl.Call(m, "GetPlaybookHistory", ctx, offset, limit, filter)
 	ret0, _ := ret[0].([]domain.PlaybookHistoryResponse)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetPlaybookHistory indicates an expected call of GetPlaybookHistory.
-func (mr *MockPlaybookServiceMockRecorder) GetPlaybookHistory(offset, limit, filter any) *gomock.Call {
+func (mr *MockPlaybookServiceMockRecorder) GetPlaybookHistory(ctx, offset, limit, filter any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetPlaybookHistory", reflect.TypeOf((*MockPlaybookService)(nil).GetPlaybookHistory), offset, limit, filter)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetPlaybookHistory", reflect.TypeOf((*MockPlaybookService)(nil).GetPlaybookHistory), ctx, offset, limit, filter)
 }
 
 // GetPlaybookHistoryById mocks base method.
-func (m *MockPlaybookService) GetPlaybookHistoryById(workflowHistoryId uuid.UUID) (*domain.PlaybookHistoryResponse, error) {
+func (m *MockPlaybookService) GetPlaybookHistoryById(ctx context.Context, playbookHistoryId uuid.UUID) (*domain.PlaybookHistoryResponse, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetPlaybookHistoryById", workflowHistoryId)
+	ret := m.ctrl.Call(m, "GetPlaybookHistoryById", ctx, playbookHistoryId)
 	ret0, _ := ret[0].(*domain.PlaybookHistoryResponse)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetPlaybookHistoryById indicates an expected call of GetPlaybookHistoryById.
-func (mr *MockPlaybookServiceMockRecorder) GetPlaybookHistoryById(workflowHistoryId any) *gomock.Call {
+func (mr *MockPlaybookServiceMockRecorder) GetPlaybookHistoryById(ctx, playbookHistoryId any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetPlaybookHistoryById", reflect.TypeOf((*MockPlaybookService)(nil).GetPlaybookHistoryById), workflowHistoryId)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetPlaybookHistoryById", reflect.TypeOf((*MockPlaybookService)(nil).GetPlaybookHistoryById), ctx, playbookHistoryId)
 }
 
 // GetPlaybookHistoryCount mocks base method.
-func (m *MockPlaybookService) GetPlaybookHistoryCount(filter playbooks.PlaybookHistoryFilter) (int, error) {
+func (m *MockPlaybookService) GetPlaybookHistoryCount(ctx context.Context, filter playbooks.PlaybookHistoryFilter) (int, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetPlaybookHistoryCount", filter)
+	ret := m.ctrl.Call(m, "GetPlaybookHistoryCount", ctx, filter)
 	ret0, _ := ret[0].(int)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetPlaybookHistoryCount indicates an expected call of GetPlaybookHistoryCount.
-func (mr *MockPlaybookServiceMockRecorder) GetPlaybookHistoryCount(filter any) *gomock.Call {
+func (mr *MockPlaybookServiceMockRecorder) GetPlaybookHistoryCount(ctx, filter any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetPlaybookHistoryCount", reflect.TypeOf((*MockPlaybookService)(nil).GetPlaybookHistoryCount), filter)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetPlaybookHistoryCount", reflect.TypeOf((*MockPlaybookService)(nil).GetPlaybookHistoryCount), ctx, filter)
 }
 
 // GetPlaybookTriggers mocks base method.
-func (m *MockPlaybookService) GetPlaybookTriggers() ([]domain.PlaybookTriggers, error) {
+func (m *MockPlaybookService) GetPlaybookTriggers(ctx context.Context) ([]domain.PlaybookTriggers, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetPlaybookTriggers")
+	ret := m.ctrl.Call(m, "GetPlaybookTriggers", ctx)
 	ret0, _ := ret[0].([]domain.PlaybookTriggers)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetPlaybookTriggers indicates an expected call of GetPlaybookTriggers.
-func (mr *MockPlaybookServiceMockRecorder) GetPlaybookTriggers() *gomock.Call {
+func (mr *MockPlaybookServiceMockRecorder) GetPlaybookTriggers(ctx any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetPlaybookTriggers", reflect.TypeOf((*MockPlaybookService)(nil).GetPlaybookTriggers))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetPlaybookTriggers", reflect.TypeOf((*MockPlaybookService)(nil).GetPlaybookTriggers), ctx)
 }
 
 // GetPlaybooks mocks base method.
-func (m *MockPlaybookService) GetPlaybooks(offset, limit int, filter playbooks.PlaybookFilter) ([]domain.Playbooks, error) {
+func (m *MockPlaybookService) GetPlaybooks(ctx context.Context, offset, limit int, filter playbooks.PlaybookFilter) ([]domain.Playbooks, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetPlaybooks", offset, limit, filter)
+	ret := m.ctrl.Call(m, "GetPlaybooks", ctx, offset, limit, filter)
 	ret0, _ := ret[0].([]domain.Playbooks)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetPlaybooks indicates an expected call of GetPlaybooks.
-func (mr *MockPlaybookServiceMockRecorder) GetPlaybooks(offset, limit, filter any) *gomock.Call {
+func (mr *MockPlaybookServiceMockRecorder) GetPlaybooks(ctx, offset, limit, filter any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetPlaybooks", reflect.TypeOf((*MockPlaybookService)(nil).GetPlaybooks), offset, limit, filter)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetPlaybooks", reflect.TypeOf((*MockPlaybookService)(nil).GetPlaybooks), ctx, offset, limit, filter)
 }
 
 // GetPlaybooksCount mocks base method.
-func (m *MockPlaybookService) GetPlaybooksCount(filter playbooks.PlaybookFilter) (int, error) {
+func (m *MockPlaybookService) GetPlaybooksCount(ctx context.Context, filter playbooks.PlaybookFilter) (int, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetPlaybooksCount", filter)
+	ret := m.ctrl.Call(m, "GetPlaybooksCount", ctx, filter)
 	ret0, _ := ret[0].(int)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetPlaybooksCount indicates an expected call of GetPlaybooksCount.
-func (mr *MockPlaybookServiceMockRecorder) GetPlaybooksCount(filter any) *gomock.Call {
+func (mr *MockPlaybookServiceMockRecorder) GetPlaybooksCount(ctx, filter any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetPlaybooksCount", reflect.TypeOf((*MockPlaybookService)(nil).GetPlaybooksCount), filter)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetPlaybooksCount", reflect.TypeOf((*MockPlaybookService)(nil).GetPlaybooksCount), ctx, filter)
 }
 
 // GetPlaybooksData mocks base method.
-func (m *MockPlaybookService) GetPlaybooksData(offset, limit int, filter playbooks.PlaybookFilter) (types.Entries[domain.Playbooks], error) {
+func (m *MockPlaybookService) GetPlaybooksData(ctx context.Context, offset, limit int, filter playbooks.PlaybookFilter) (types.Entries[domain.Playbooks], error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetPlaybooksData", offset, limit, filter)
+	ret := m.ctrl.Call(m, "GetPlaybooksData", ctx, offset, limit, filter)
 	ret0, _ := ret[0].(types.Entries[domain.Playbooks])
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetPlaybooksData indicates an expected call of GetPlaybooksData.
-func (mr *MockPlaybookServiceMockRecorder) GetPlaybooksData(offset, limit, filter any) *gomock.Call {
+func (mr *MockPlaybookServiceMockRecorder) GetPlaybooksData(ctx, offset, limit, filter any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetPlaybooksData", reflect.TypeOf((*MockPlaybookService)(nil).GetPlaybooksData), offset, limit, filter)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetPlaybooksData", reflect.TypeOf((*MockPlaybookService)(nil).GetPlaybooksData), ctx, offset, limit, filter)
 }
 
 // GetPlaybooksHistoryData mocks base method.
-func (m *MockPlaybookService) GetPlaybooksHistoryData(offset, limit int, filter playbooks.PlaybookHistoryFilter) (types.Entries[domain.PlaybookHistoryResponse], error) {
+func (m *MockPlaybookService) GetPlaybooksHistoryData(ctx context.Context, offset, limit int, filter playbooks.PlaybookHistoryFilter) (types.Entries[domain.PlaybookHistoryResponse], error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetPlaybooksHistoryData", offset, limit, filter)
+	ret := m.ctrl.Call(m, "GetPlaybooksHistoryData", ctx, offset, limit, filter)
 	ret0, _ := ret[0].(types.Entries[domain.PlaybookHistoryResponse])
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetPlaybooksHistoryData indicates an expected call of GetPlaybooksHistoryData.
-func (mr *MockPlaybookServiceMockRecorder) GetPlaybooksHistoryData(offset, limit, filter any) *gomock.Call {
+func (mr *MockPlaybookServiceMockRecorder) GetPlaybooksHistoryData(ctx, offset, limit, filter any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetPlaybooksHistoryData", reflect.TypeOf((*MockPlaybookService)(nil).GetPlaybooksHistoryData), offset, limit, filter)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetPlaybooksHistoryData", reflect.TypeOf((*MockPlaybookService)(nil).GetPlaybooksHistoryData), ctx, offset, limit, filter)
 }
 
 // UpdatePlaybook mocks base method.
-func (m *MockPlaybookService) UpdatePlaybook(id string, workflow playbooks.UpdatePlaybookData) (*domain.Playbooks, error) {
+func (m *MockPlaybookService) UpdatePlaybook(ctx context.Context, id string, playbook playbooks.UpdatePlaybookData) (*domain.Playbooks, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "UpdatePlaybook", id, workflow)
+	ret := m.ctrl.Call(m, "UpdatePlaybook", ctx, id, playbook)
 	ret0, _ := ret[0].(*domain.Playbooks)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // UpdatePlaybook indicates an expected call of UpdatePlaybook.
-func (mr *MockPlaybookServiceMockRecorder) UpdatePlaybook(id, workflow any) *gomock.Call {
+func (mr *MockPlaybookServiceMockRecorder) UpdatePlaybook(ctx, id, playbook any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdatePlaybook", reflect.TypeOf((*MockPlaybookService)(nil).UpdatePlaybook), id, workflow)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdatePlaybook", reflect.TypeOf((*MockPlaybookService)(nil).UpdatePlaybook), ctx, id, playbook)
 }
 
 // UpdatePlaybookHistory mocks base method.
-func (m *MockPlaybookService) UpdatePlaybookHistory(workflowHistoryId string, workflowHistory playbooks.UpdatePlaybookHistoryData) (*domain.PlaybookHistory, error) {
+func (m *MockPlaybookService) UpdatePlaybookHistory(ctx context.Context, playbookHistoryId string, playbookHistory playbooks.UpdatePlaybookHistoryData) (*domain.PlaybookHistory, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "UpdatePlaybookHistory", workflowHistoryId, workflowHistory)
+	ret := m.ctrl.Call(m, "UpdatePlaybookHistory", ctx, playbookHistoryId, playbookHistory)
 	ret0, _ := ret[0].(*domain.PlaybookHistory)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // UpdatePlaybookHistory indicates an expected call of UpdatePlaybookHistory.
-func (mr *MockPlaybookServiceMockRecorder) UpdatePlaybookHistory(workflowHistoryId, workflowHistory any) *gomock.Call {
+func (mr *MockPlaybookServiceMockRecorder) UpdatePlaybookHistory(ctx, playbookHistoryId, playbookHistory any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdatePlaybookHistory", reflect.TypeOf((*MockPlaybookService)(nil).UpdatePlaybookHistory), workflowHistoryId, workflowHistory)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdatePlaybookHistory", reflect.TypeOf((*MockPlaybookService)(nil).UpdatePlaybookHistory), ctx, playbookHistoryId, playbookHistory)
 }
 
 // UpdatePlaybookHistoryStatus mocks base method.
-func (m *MockPlaybookService) UpdatePlaybookHistoryStatus(workflowHistoryId, status string) (*domain.PlaybookHistory, error) {
+func (m *MockPlaybookService) UpdatePlaybookHistoryStatus(ctx context.Context, playbookHistoryId, status string) (*domain.PlaybookHistory, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "UpdatePlaybookHistoryStatus", workflowHistoryId, status)
+	ret := m.ctrl.Call(m, "UpdatePlaybookHistoryStatus", ctx, playbookHistoryId, status)
 	ret0, _ := ret[0].(*domain.PlaybookHistory)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // UpdatePlaybookHistoryStatus indicates an expected call of UpdatePlaybookHistoryStatus.
-func (mr *MockPlaybookServiceMockRecorder) UpdatePlaybookHistoryStatus(workflowHistoryId, status any) *gomock.Call {
+func (mr *MockPlaybookServiceMockRecorder) UpdatePlaybookHistoryStatus(ctx, playbookHistoryId, status any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdatePlaybookHistoryStatus", reflect.TypeOf((*MockPlaybookService)(nil).UpdatePlaybookHistoryStatus), workflowHistoryId, status)
-}
-
-// UpdatePlaybookTx mocks base method.
-func (m *MockPlaybookService) UpdatePlaybookTx(tx *sqlx.Tx, id string, workflow playbooks.UpdatePlaybookData) (*domain.Playbooks, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "UpdatePlaybookTx", tx, id, workflow)
-	ret0, _ := ret[0].(*domain.Playbooks)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// UpdatePlaybookTx indicates an expected call of UpdatePlaybookTx.
-func (mr *MockPlaybookServiceMockRecorder) UpdatePlaybookTx(tx, id, workflow any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdatePlaybookTx", reflect.TypeOf((*MockPlaybookService)(nil).UpdatePlaybookTx), tx, id, workflow)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdatePlaybookHistoryStatus", reflect.TypeOf((*MockPlaybookService)(nil).UpdatePlaybookHistoryStatus), ctx, playbookHistoryId, status)
 }

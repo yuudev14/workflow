@@ -27,7 +27,7 @@ const Page = () => {
               key={`playbook-${workflow.id}`}
               className="flex flex-col items-start w-full gap-2 p-4 text-sm leading-tight border rounded-sm dark:hover:bg-muted/30 hover:bg-background/30 bg-background shadow-2xs dark:shadow-none whitespace-nowrap dark:bg-muted/50 hover:text-sidebar-accent-foreground">
               <div className="flex flex-col w-full">
-                <p className="text-lg font-medium">{workflow.workflow_data.name}</p>
+                <p className="text-lg font-medium">{workflow.playbook_data.name}</p>
                 <p className="text-xs">{workflow.triggered_at}</p>
               </div>
             </Link>
