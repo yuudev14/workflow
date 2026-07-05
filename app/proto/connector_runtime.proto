@@ -1,0 +1,36 @@
+syntax = "proto3";
+
+option go_package = "github.com/yuudev14/ytsoar/gen/connectorruntimepb";
+
+// ConnectorRuntime is implemented by every connector host (the Python
+// connectors service and, later, the Node.js runtime). The Go executor calls
+// ExecuteOperation once per playbook node and waits for the result.
+service ConnectorRuntime {
+  rpc ExecuteOperation (ExecuteOperationRequest) returns (ExecuteOperationResponse) {}
+  rpc HealthCheck (HealthCheckRequest) returns (HealthCheckResponse) {}
+}
+
+message ExecuteOperationRequest {
+  string connector_id = 1;
+  string operation = 2;
+  optional string config_name = 3;
+  // raw stored task parameters (JSON); templating happens in the runtime
+  string parameters_json = 4;
+  // accumulated step outputs keyed by task name (JSON object)
+  string steps_json = 5;
+  string playbook_history_id = 6;
+  string task_id = 7;
+  uint32 timeout_ms = 8;
+}
+
+message ExecuteOperationResponse {
+  // JSON-encoded result of the operation
+  string result_json = 1;
+  string error = 2;
+}
+
+message HealthCheckRequest {}
+
+message HealthCheckResponse {
+  bool ok = 1;
+}
