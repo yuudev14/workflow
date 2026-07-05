@@ -56,12 +56,14 @@ func main() {
 		log.Fatalf("failed to setup status publisher: %v", err)
 	}
 
-	connectorRuntime, err := grpcruntime.New(appLogger, cfg.ConnectorRuntimeAddr)
+	// The worker never runs user code: every dynamic node (python/js
+	// connectors, code snippets) goes to the credential-free sandbox over
+	// gRPC. Go builtin connectors later join the byConnector map here.
+	sandboxRuntime, err := grpcruntime.New(appLogger, cfg.SandboxAddr)
 	if err != nil {
-		log.Fatalf("failed to setup connector runtime client: %v", err)
+		log.Fatalf("failed to setup sandbox runtime client: %v", err)
 	}
-	// Phase 3 adds localexec code runners; Phase 5 the Go connector registry.
-	resolver := execution.NewStaticResolver(connectorRuntime, nil)
+	resolver := execution.NewStaticResolver(sandboxRuntime, nil)
 
 	executor := execution.NewExecutor(
 		appLogger,
@@ -80,7 +82,7 @@ func main() {
 
 	appLogger.Infow("worker started",
 		"queue", cfg.GoPlaybookQueueName,
-		"connector_runtime", cfg.ConnectorRuntimeAddr,
+		"sandbox", cfg.SandboxAddr,
 		"status_exchange", cfg.StatusExchangeName,
 	)
 	if err := consumer.Start(ctx); err != nil && !errors.Is(err, context.Canceled) {
