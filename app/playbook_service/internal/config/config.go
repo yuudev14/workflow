@@ -15,6 +15,14 @@ type Config struct {
 	JWTSecret         string
 	HTTPAddr          string
 	GRPCAddr          string
+
+	// Executor selects which DAG executor handles triggered playbooks:
+	// "python" publishes to PlaybookQueueName (Celery consumer), "go" to
+	// GoPlaybookQueueName (cmd/worker). Removed at Phase 4 cutover.
+	Executor             string
+	GoPlaybookQueueName  string
+	StatusExchangeName   string
+	ConnectorRuntimeAddr string
 }
 
 // Load reads .env (when present) and assembles the root configuration.
@@ -39,6 +47,11 @@ func LoadFrom(dest string) Config {
 		JWTSecret:         getEnvOr("JWT_SECRET", "secret"),
 		HTTPAddr:          getEnvOr("HTTP_ADDR", ":8080"),
 		GRPCAddr:          getEnvOr("GRPC_ADDR", ":50051"),
+
+		Executor:             getEnvOr("EXECUTOR", "python"),
+		GoPlaybookQueueName:  getEnvOr("GO_PLAYBOOK_QUEUE", "playbook_go"),
+		StatusExchangeName:   getEnvOr("STATUS_EXCHANGE", "playbook.status"),
+		ConnectorRuntimeAddr: getEnvOr("CONNECTOR_RUNTIME_ADDR", "localhost:50052"),
 	}
 }
 

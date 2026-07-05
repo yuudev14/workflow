@@ -19,15 +19,19 @@ from starlette.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 
 from src.services.consumer import consume_messages
+from src.grpc_server.runtime_service import serve as serve_connector_runtime
+from src.settings import settings
 from src.api import routes
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     consumer_task = None
+    grpc_server = serve_connector_runtime(settings.connector_runtime_port)
     try:
         consumer_task = asyncio.create_task(consume_messages())
         yield
     finally:
+        grpc_server.stop(grace=2)
         if consumer_task:
             consumer_task.cancel()
             try:

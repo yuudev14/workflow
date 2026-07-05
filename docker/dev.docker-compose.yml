@@ -67,6 +67,8 @@ services:
     container_name: ytsoar_connectors
     ports:
       - "8000:8000"
+    expose:
+      - "50052"
     volumes:
       - ../app/connectors-service:/app
     environment:
@@ -75,6 +77,7 @@ services:
       - MQ_URL=amqp://guest:guest@ytsoar_rabbitmq:5672
       - use_celery=true
       - grpc_workflow_host=ytsoar_api:50051
+      - connector_runtime_port=50052
     networks:
       - ytsoar
     depends_on:
@@ -104,6 +107,10 @@ services:
       - MQ_PORT=5672
       - AIR_POLL=true
       - AIR_WATCH_TMOUT=500ms
+      # EXECUTOR=python|go picks which executor consumes triggered playbooks
+      - EXECUTOR=${EXECUTOR:-python}
+      - GO_PLAYBOOK_QUEUE=playbook_go
+      - STATUS_EXCHANGE=playbook.status
     networks:
       - ytsoar
     depends_on:
@@ -111,6 +118,47 @@ services:
         condition: service_healthy
       ytsoar_rabbitmq:
         condition: service_healthy
+  ytsoar_playbook_worker:
+    build:
+      context: ../app/playbook_service
+      dockerfile: Dockerfile.dev
+    image: ytsoar/playbook-service:latest
+    container_name: ytsoar_playbook_worker
+    entrypoint:
+      [
+        "air",
+        "--build.cmd",
+        "go build -o ./tmp/worker ./cmd/worker",
+        "--build.bin",
+        "tmp/worker",
+      ]
+    restart: unless-stopped
+    volumes:
+      - ../app/playbook_service:/app
+    environment:
+      - DB_USER=postgres
+      - DB_PASSWORD=password
+      - DB_HOST=ytsoar_postgres
+      - DB_PORT=5432
+      - DB_NAME=ytsoar
+      - MQ_USER=guest
+      - MQ_PASSWORD=guest
+      - MQ_HOST=ytsoar_rabbitmq
+      - MQ_PORT=5672
+      - AIR_POLL=true
+      - GO_PLAYBOOK_QUEUE=playbook_go
+      - STATUS_EXCHANGE=playbook.status
+      - CONNECTOR_RUNTIME_ADDR=ytsoar_connectors:50052
+    networks:
+      - ytsoar
+    depends_on:
+      ytsoar_postgres:
+        condition: service_healthy
+      ytsoar_rabbitmq:
+        condition: service_healthy
+      # migrations run in the API entrypoint; restart covers the race in dev
+      ytsoar_playbook_service:
+        condition: service_started
   ytsoar_nginx:
     build: ../app/nginx
     container_name: ytsoar_nginx
