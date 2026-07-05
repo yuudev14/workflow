@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"log"
 
 	"github.com/yuudev14/ytsoar/db"
@@ -47,10 +48,23 @@ func main() {
 	}
 	defer mqConn.Close()
 
-	taskPublisher, err := mq.NewTaskPublisher(appLogger, mqConn, cfg.PlaybookQueueName)
+	// EXECUTOR picks which executor consumes triggered playbooks: the Python
+	// Celery path (default queue) or the Go worker (playbook_go).
+	publishQueue := cfg.PlaybookQueueName
+	if cfg.Executor == "go" {
+		publishQueue = cfg.GoPlaybookQueueName
+	}
+	taskPublisher, err := mq.NewTaskPublisher(appLogger, mqConn, publishQueue)
 	if err != nil {
 		log.Fatalf("failed to setup task publisher: %v", err)
 	}
+
+	statusConsumer := mq.NewStatusConsumer(appLogger, mqConn, cfg.StatusExchangeName, hub)
+	go func() {
+		if err := statusConsumer.Start(ctx); err != nil && !errors.Is(err, context.Canceled) {
+			appLogger.Errorf("status consumer stopped: %v", err)
+		}
+	}()
 
 	playbookRepository := repository.NewPlaybookRepository(appLogger, queries, pool)
 	taskRepository := repository.NewTaskRepositoryImpl(appLogger, queries, pool)
