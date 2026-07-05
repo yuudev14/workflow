@@ -6,7 +6,7 @@ rebuild-service:
 		docker compose -f ./docker/dev.docker-compose.yml up --build $(NAME) -d
 
 rebuild-playbook-service:
-		docker compose -f ./docker/dev.docker-compose.yml up --build ytsoar_playbook_service -d
+		docker compose -f ./docker/dev.docker-compose.yml up --build ytsoar_api -d
 
 start-dev:
 		docker compose -f ./docker/dev.docker-compose.yml up -d && \

@@ -18,11 +18,21 @@ type Config struct {
 
 	// Executor selects which DAG executor handles triggered playbooks:
 	// "python" publishes to PlaybookQueueName (Celery consumer), "go" to
-	// GoPlaybookQueueName (cmd/worker). Removed at Phase 4 cutover.
-	Executor             string
-	GoPlaybookQueueName  string
-	StatusExchangeName   string
-	ConnectorRuntimeAddr string
+	// GoPlaybookQueueName (cmd/worker). Removed at cutover.
+	Executor            string
+	GoPlaybookQueueName string
+	StatusExchangeName  string
+
+	// SandboxAddr is where the worker sends every dynamic node
+	// (ConnectorRuntime gRPC on cmd/sandbox).
+	SandboxAddr string
+
+	// Sandbox-only settings: the listen address, the directory containing the
+	// connectors/ Python package, and the connectors-node/ tree holding JS
+	// connectors. Empty dirs disable that connector kind.
+	SandboxListenAddr string
+	ConnectorsDir     string
+	ConnectorsNodeDir string
 }
 
 // Load reads .env (when present) and assembles the root configuration.
@@ -48,10 +58,14 @@ func LoadFrom(dest string) Config {
 		HTTPAddr:          getEnvOr("HTTP_ADDR", ":8080"),
 		GRPCAddr:          getEnvOr("GRPC_ADDR", ":50051"),
 
-		Executor:             getEnvOr("EXECUTOR", "python"),
-		GoPlaybookQueueName:  getEnvOr("GO_PLAYBOOK_QUEUE", "playbook_go"),
-		StatusExchangeName:   getEnvOr("STATUS_EXCHANGE", "playbook.status"),
-		ConnectorRuntimeAddr: getEnvOr("CONNECTOR_RUNTIME_ADDR", "localhost:50052"),
+		Executor:            getEnvOr("EXECUTOR", "python"),
+		GoPlaybookQueueName: getEnvOr("GO_PLAYBOOK_QUEUE", "playbook_go"),
+		StatusExchangeName:  getEnvOr("STATUS_EXCHANGE", "playbook.status"),
+
+		SandboxAddr:       getEnvOr("SANDBOX_ADDR", "localhost:50052"),
+		SandboxListenAddr: getEnvOr("SANDBOX_LISTEN_ADDR", ":50052"),
+		ConnectorsDir:     getEnvOr("CONNECTORS_DIR", ""),
+		ConnectorsNodeDir: getEnvOr("CONNECTORS_NODE_DIR", ""),
 	}
 }
 

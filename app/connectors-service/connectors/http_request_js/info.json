@@ -1,0 +1,27 @@
+{
+  "name": "HTTP Request (JS)",
+  "id": "http_request_js",
+  "runtime": "node",
+  "operations": [
+    {
+      "operation": "get_request",
+      "title": "GET Request",
+      "description": "Perform an HTTP GET request (JS connector)",
+      "annotation": "get_request",
+      "enabled": true,
+      "parameters": [
+        {
+          "title": "URL",
+          "description": "",
+          "required": true,
+          "editable": true,
+          "visible": true,
+          "type": "text",
+          "tooltip": "",
+          "name": "url",
+          "placeholder": "https://example.com"
+        }
+      ]
+    }
+  ]
+}

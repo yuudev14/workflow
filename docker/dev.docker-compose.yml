@@ -85,16 +85,16 @@ services:
         condition: service_healthy
       ytsoar_rabbitmq:
         condition: service_healthy
-  ytsoar_playbook_service:
+  ytsoar_api:
     build:
-      context: ../app/playbook_service
+      context: ../app/ytsoar
       dockerfile: Dockerfile.dev
-    image: ytsoar/playbook-service:latest
+    image: ytsoar/backend:latest
     container_name: ytsoar_api
     ports:
       - "8080:8080"
     volumes:
-      - ../app/playbook_service:/app
+      - ../app/ytsoar:/app
     environment:
       - DB_USER=postgres
       - DB_PASSWORD=password
@@ -120,9 +120,9 @@ services:
         condition: service_healthy
   ytsoar_playbook_worker:
     build:
-      context: ../app/playbook_service
+      context: ../app/ytsoar
       dockerfile: Dockerfile.dev
-    image: ytsoar/playbook-service:latest
+    image: ytsoar/backend:latest
     container_name: ytsoar_playbook_worker
     entrypoint:
       [
@@ -133,8 +133,9 @@ services:
         "tmp/worker",
       ]
     restart: unless-stopped
+    mem_limit: 1g
     volumes:
-      - ../app/playbook_service:/app
+      - ../app/ytsoar:/app
     environment:
       - DB_USER=postgres
       - DB_PASSWORD=password
@@ -148,7 +149,7 @@ services:
       - AIR_POLL=true
       - GO_PLAYBOOK_QUEUE=playbook_go
       - STATUS_EXCHANGE=playbook.status
-      - CONNECTOR_RUNTIME_ADDR=ytsoar_connectors:50052
+      - SANDBOX_ADDR=ytsoar_sandbox:50052
     networks:
       - ytsoar
     depends_on:
@@ -156,9 +157,42 @@ services:
         condition: service_healthy
       ytsoar_rabbitmq:
         condition: service_healthy
-      # migrations run in the API entrypoint; restart covers the race in dev
-      ytsoar_playbook_service:
+      ytsoar_sandbox:
         condition: service_started
+      # migrations run in the API entrypoint; restart covers the race in dev
+      ytsoar_api:
+        condition: service_started
+  ytsoar_sandbox:
+    build:
+      context: ../app/ytsoar
+      dockerfile: Dockerfile.dev
+    image: ytsoar/backend:latest
+    container_name: ytsoar_sandbox
+    entrypoint:
+      [
+        "air",
+        "--build.cmd",
+        "go build -o ./tmp/sandbox ./cmd/sandbox",
+        "--build.bin",
+        "tmp/sandbox",
+      ]
+    restart: unless-stopped
+    mem_limit: 1g
+    expose:
+      - "50052"
+    volumes:
+      - ../app/ytsoar:/app
+      # python connectors tree (contains connectors/ and src/, reused by the harness)
+      - ../app/connectors-service:/opt/connectors
+      - ../app/connectors-node:/connectors-node
+    # deliberately NO DB_*/MQ_* env: the sandbox holds zero credentials
+    environment:
+      - AIR_POLL=true
+      - SANDBOX_LISTEN_ADDR=:50052
+      - CONNECTORS_DIR=/opt/connectors
+      - CONNECTORS_NODE_DIR=/connectors-node
+    networks:
+      - ytsoar
   ytsoar_nginx:
     build: ../app/nginx
     container_name: ytsoar_nginx
@@ -169,7 +203,7 @@ services:
     restart: unless-stopped
     depends_on:
       - ytsoar_connectors
-      - ytsoar_playbook_service
+      - ytsoar_api
     networks:
       - ytsoar
 volumes:
