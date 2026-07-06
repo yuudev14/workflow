@@ -16,22 +16,27 @@ var pythonConnectorHarness string
 
 // PythonConnectorRunner executes Python connectors in a fresh `python3 -I`
 // child, reusing connectors/core/connector.py inside the harness so importlib
-// loading, TOML configs and jinja2 templating behave exactly like the Python
-// service. root is the directory containing the connectors/ package.
-// It implements execution.NodeRuntime.
+// loading, TOML configs and jinja2 templating behave exactly like before.
+// treeDir is the unified connectors tree; it must literally be named
+// "connectors" because the harness imports `connectors.<id>.connector`, so
+// the tree's parent goes on sys.path. It implements execution.NodeRuntime.
 type PythonConnectorRunner struct {
 	logger logger.Logger
 	root   string
 }
 
-func NewPythonConnectorRunner(log logger.Logger, root string) (*PythonConnectorRunner, error) {
-	absRoot, err := filepath.Abs(root)
+func NewPythonConnectorRunner(log logger.Logger, treeDir string) (*PythonConnectorRunner, error) {
+	absTree, err := filepath.Abs(treeDir)
 	if err != nil {
 		return nil, err
 	}
+	if filepath.Base(absTree) != "connectors" {
+		return nil, fmt.Errorf(
+			"connectors tree %s must be a directory named 'connectors' (python imports connectors.<id>.connector)", absTree)
+	}
 	return &PythonConnectorRunner{
 		logger: log,
-		root:   absRoot,
+		root:   filepath.Dir(absTree),
 	}, nil
 }
 
@@ -48,7 +53,7 @@ func (r *PythonConnectorRunner) Execute(ctx context.Context, req execution.Execu
 	if req.Task.Config != nil && *req.Task.Config != "" {
 		configName = req.Task.Config
 	}
-	payload, err := json.Marshal(map[string]interface{}{
+	payload, err := json.Marshal(map[string]any{
 		"connectors_root": r.root,
 		"connector_id":    *req.Task.ConnectorID,
 		"operation":       req.Task.Operation,

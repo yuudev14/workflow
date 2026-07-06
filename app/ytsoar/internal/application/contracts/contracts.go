@@ -6,14 +6,14 @@ import "context"
 
 // TaskPublisher publishes a triggered playbook message to the message queue.
 type TaskPublisher interface {
-	SendMessage(message interface{}) error
+	SendMessage(message any) error
 }
 
 //go:generate mockgen -destination=mocks/status_broadcaster_mock.go -package=mocks . StatusBroadcaster
 
 // StatusBroadcaster pushes playbook/task status updates to connected clients.
 type StatusBroadcaster interface {
-	Broadcast(data interface{})
+	Broadcast(data any)
 }
 
 //go:generate mockgen -destination=mocks/tx_manager_mock.go -package=mocks . TxManager

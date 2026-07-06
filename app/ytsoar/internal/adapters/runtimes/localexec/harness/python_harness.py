@@ -27,13 +27,18 @@ def main():
     params = render(payload.get("params") or {}, variables)
     code = params.get("code") or ""
 
+    # stdout is the JSON result channel: reroute user print()s to stderr so
+    # they cannot corrupt it.
+    result_out = sys.stdout
+    sys.stdout = sys.stderr
+
     local_vars = {}
     exec(
         compile(code, "user_code", "exec"),
         {"params": params, "steps": variables["steps"]},
         local_vars,
     )
-    print(json.dumps({"code_output": local_vars.get("result")}, default=str))
+    print(json.dumps({"code_output": local_vars.get("result")}, default=str), file=result_out)
 
 
 main()

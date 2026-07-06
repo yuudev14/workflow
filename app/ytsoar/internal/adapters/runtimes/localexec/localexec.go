@@ -80,8 +80,8 @@ func nodePathEnv() []string {
 	return nil
 }
 
-func decodeParameters(raw json.RawMessage) (map[string]interface{}, error) {
-	params := map[string]interface{}{}
+func decodeParameters(raw json.RawMessage) (map[string]any, error) {
+	params := map[string]any{}
 	if len(raw) > 0 {
 		if err := json.Unmarshal(raw, &params); err != nil {
 			return nil, fmt.Errorf("task parameters are not a JSON object: %w", err)

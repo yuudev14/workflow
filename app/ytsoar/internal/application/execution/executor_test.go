@@ -132,7 +132,7 @@ func TestExecutorDiamondOrderingAndStepsThreading(t *testing.T) {
 
 	var mu sync.Mutex
 	var order []string
-	stepsSeenByD := map[string]interface{}{}
+	stepsSeenByD := map[string]any{}
 
 	f.runtime.EXPECT().
 		Execute(gomock.Any(), gomock.Any()).

@@ -27,7 +27,7 @@ type PlaybookHistory struct {
 	PlaybookID  uuid.UUID       `db:"playbook_id" json:"playbook_id"`
 	Status      string          `db:"status" json:"status"`
 	Error       *string         `db:"error" json:"error"`
-	Result      interface{}     `db:"result" json:"result"`
+	Result      any             `db:"result" json:"result"`
 	TriggeredAt time.Time       `db:"triggered_at" json:"triggered_at"`
 	Edges       json.RawMessage `db:"edges" json:"edges"`
 }

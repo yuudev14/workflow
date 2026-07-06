@@ -32,9 +32,9 @@ func (i *Nullable[T]) ToNullableAny() Nullable[any] {
 	return Nullable[any]{Value: &value, Set: i.Set}
 }
 
-type JsonType map[string]interface{}
+type JsonType map[string]any
 
-func (pc *JsonType) Scan(val interface{}) error {
+func (pc *JsonType) Scan(val any) error {
 	if val == nil {
 		*pc = nil // Explicitly set to nil if value is null
 		return nil

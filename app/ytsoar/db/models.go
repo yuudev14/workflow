@@ -19,7 +19,7 @@ const (
 	PlaybookStatusFailed     PlaybookStatus = "failed"
 )
 
-func (e *PlaybookStatus) Scan(src interface{}) error {
+func (e *PlaybookStatus) Scan(src any) error {
 	switch s := src.(type) {
 	case []byte:
 		*e = PlaybookStatus(s)
@@ -37,7 +37,7 @@ type NullPlaybookStatus struct {
 }
 
 // Scan implements the Scanner interface.
-func (ns *NullPlaybookStatus) Scan(value interface{}) error {
+func (ns *NullPlaybookStatus) Scan(value any) error {
 	if value == nil {
 		ns.PlaybookStatus, ns.Valid = "", false
 		return nil
@@ -63,7 +63,7 @@ const (
 	TaskStatusFailed     TaskStatus = "failed"
 )
 
-func (e *TaskStatus) Scan(src interface{}) error {
+func (e *TaskStatus) Scan(src any) error {
 	switch s := src.(type) {
 	case []byte:
 		*e = TaskStatus(s)
@@ -81,7 +81,7 @@ type NullTaskStatus struct {
 }
 
 // Scan implements the Scanner interface.
-func (ns *NullTaskStatus) Scan(value interface{}) error {
+func (ns *NullTaskStatus) Scan(value any) error {
 	if value == nil {
 		ns.TaskStatus, ns.Valid = "", false
 		return nil

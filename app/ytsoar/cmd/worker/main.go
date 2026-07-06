@@ -75,13 +75,13 @@ func main() {
 		nodeTimeout,
 	)
 
-	consumer, err := mq.NewTaskConsumer(appLogger, mqConn, cfg.GoPlaybookQueueName, executor)
+	consumer, err := mq.NewTaskConsumer(appLogger, mqConn, cfg.PlaybookQueueName, executor)
 	if err != nil {
 		log.Fatalf("failed to setup task consumer: %v", err)
 	}
 
 	appLogger.Infow("worker started",
-		"queue", cfg.GoPlaybookQueueName,
+		"queue", cfg.PlaybookQueueName,
 		"sandbox", cfg.SandboxAddr,
 		"status_exchange", cfg.StatusExchangeName,
 	)

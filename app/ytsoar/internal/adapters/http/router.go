@@ -10,7 +10,11 @@ import (
 	"github.com/yuudev14/ytsoar/internal/adapters/ws"
 )
 
-func NewRouter(playbookHandler *handlers.PlaybookHandler, hub *ws.Hub) *gin.Engine {
+func NewRouter(
+	playbookHandler *handlers.PlaybookHandler,
+	connectorHandler *handlers.ConnectorHandler,
+	hub *ws.Hub,
+) *gin.Engine {
 	app := gin.Default()
 
 	config := cors.Config{
@@ -25,6 +29,7 @@ func NewRouter(playbookHandler *handlers.PlaybookHandler, hub *ws.Hub) *gin.Engi
 
 	apiGroup := app.Group("/api")
 	playbookHandler.RegisterRoutes(apiGroup)
+	connectorHandler.RegisterRoutes(apiGroup)
 
 	app.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 	app.GET("/ws/playbook", hub.ServeWS)

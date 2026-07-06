@@ -8,7 +8,7 @@ import (
 )
 
 // function for validating the request body
-func ValidateData[T any](valid validation.Validation, data T) (bool, int, interface{}) {
+func ValidateData[T any](valid validation.Validation, data T) (bool, int, any) {
 
 	check, validErr := valid.Valid(data)
 
@@ -25,7 +25,7 @@ func ValidateData[T any](valid validation.Validation, data T) (bool, int, interf
 }
 
 // binding and validating request body
-func BindFormAndValidate[T any](c *gin.Context, form *T) (bool, int, interface{}) {
+func BindFormAndValidate[T any](c *gin.Context, form *T) (bool, int, any) {
 	err := c.ShouldBindJSON(&form)
 
 	if err != nil {
@@ -39,7 +39,7 @@ func BindFormAndValidate[T any](c *gin.Context, form *T) (bool, int, interface{}
 }
 
 // binding and validating request body
-func BindQueryAndValidate[T any](c *gin.Context, form *T) (bool, int, interface{}) {
+func BindQueryAndValidate[T any](c *gin.Context, form *T) (bool, int, any) {
 	err := c.ShouldBindQuery(&form)
 
 	if err != nil {

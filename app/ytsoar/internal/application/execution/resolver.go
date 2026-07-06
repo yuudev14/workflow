@@ -7,7 +7,7 @@ import (
 )
 
 // StaticResolver routes tasks by connector id; connectors without an explicit
-// mapping fall through to the default runtime (the Python connectors-service).
+// mapping fall through to the default runtime.
 type StaticResolver struct {
 	defaultRuntime NodeRuntime
 	byConnector    map[string]NodeRuntime
