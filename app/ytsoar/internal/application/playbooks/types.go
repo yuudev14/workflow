@@ -29,7 +29,7 @@ type UpdatePlaybookData struct {
 type UpdatePlaybookHistoryData struct {
 	Status types.Nullable[string] `json:"status,omitempty"`
 	Error  types.Nullable[string] `json:"error,omitempty"`
-	Result interface{}            `json:"result,omitempty"`
+	Result any                    `json:"result,omitempty"`
 }
 
 type PlaybookPayload struct {

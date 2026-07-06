@@ -36,8 +36,8 @@ func NewStatusPublisher(log logger.Logger, conn *Connection, exchange string) (*
 	}, nil
 }
 
-func (p *StatusPublisher) Publish(event string, data interface{}) error {
-	body, err := json.Marshal(map[string]interface{}{
+func (p *StatusPublisher) Publish(event string, data any) error {
+	body, err := json.Marshal(map[string]any{
 		"event": event,
 		"data":  data,
 	})

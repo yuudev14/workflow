@@ -6,12 +6,13 @@ import (
 	"log"
 
 	"github.com/yuudev14/ytsoar/db"
-	"github.com/yuudev14/ytsoar/internal/adapters/grpcserver"
+	"github.com/yuudev14/ytsoar/internal/adapters/connectorstore"
 	api "github.com/yuudev14/ytsoar/internal/adapters/http"
 	"github.com/yuudev14/ytsoar/internal/adapters/http/handlers"
 	"github.com/yuudev14/ytsoar/internal/adapters/mq"
 	"github.com/yuudev14/ytsoar/internal/adapters/repository"
 	"github.com/yuudev14/ytsoar/internal/adapters/ws"
+	"github.com/yuudev14/ytsoar/internal/application/connectors"
 	"github.com/yuudev14/ytsoar/internal/application/edges"
 	"github.com/yuudev14/ytsoar/internal/application/playbooks"
 	"github.com/yuudev14/ytsoar/internal/application/tasks"
@@ -48,13 +49,7 @@ func main() {
 	}
 	defer mqConn.Close()
 
-	// EXECUTOR picks which executor consumes triggered playbooks: the Python
-	// Celery path (default queue) or the Go worker (playbook_go).
-	publishQueue := cfg.PlaybookQueueName
-	if cfg.Executor == "go" {
-		publishQueue = cfg.GoPlaybookQueueName
-	}
-	taskPublisher, err := mq.NewTaskPublisher(appLogger, mqConn, publishQueue)
+	taskPublisher, err := mq.NewTaskPublisher(appLogger, mqConn, cfg.PlaybookQueueName)
 	if err != nil {
 		log.Fatalf("failed to setup task publisher: %v", err)
 	}
@@ -92,14 +87,11 @@ func main() {
 		orchestrator,
 	)
 
-	statusServer := grpcserver.NewStatusServer(appLogger, playbookService, taskService, hub)
-	go func() {
-		if err := statusServer.Serve(cfg.GRPCAddr); err != nil {
-			log.Fatalf("grpc server: %v", err)
-		}
-	}()
+	connectorStore := connectorstore.NewFSStore(appLogger, cfg.ConnectorsDir)
+	connectorService := connectors.NewConnectorService(appLogger, connectorStore)
+	connectorHandler := handlers.NewConnectorHandler(appLogger, connectorService)
 
-	app := api.NewRouter(playbookHandler, hub)
+	app := api.NewRouter(playbookHandler, connectorHandler, hub)
 	if err := app.Run(cfg.HTTPAddr); err != nil {
 		log.Fatalf("http server: %v", err)
 	}

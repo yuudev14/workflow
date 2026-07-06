@@ -16,14 +16,14 @@ import (
 // templating against it happens inside the runtime, not here.
 type ExecutionRequest struct {
 	Task              domain.Tasks
-	Steps             map[string]interface{}
+	Steps             map[string]any
 	PlaybookHistoryID uuid.UUID
 	Timeout           time.Duration
 }
 
 // NodeRuntime executes one playbook node and returns its JSON-encoded result.
-// Implementations: grpcruntime (Python connectors-service), localexec code
-// runners (Phase 3), goconnectors registry (Phase 5).
+// Implementations: grpcruntime (worker side, dials the sandbox), localexec
+// subprocess runners (sandbox side), goconnectors registry (final phase).
 type NodeRuntime interface {
 	Execute(ctx context.Context, req ExecutionRequest) (json.RawMessage, error)
 }
@@ -37,5 +37,5 @@ type RuntimeResolver interface {
 // API process (fanout exchange -> WS hub). data is the updated history row,
 // the same struct the hub broadcasts today.
 type StatusPublisher interface {
-	Publish(event string, data interface{}) error
+	Publish(event string, data any) error
 }

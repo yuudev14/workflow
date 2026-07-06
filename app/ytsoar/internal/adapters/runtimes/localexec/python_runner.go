@@ -32,7 +32,7 @@ func (r *PythonRunner) Execute(ctx context.Context, req execution.ExecutionReque
 		return nil, fmt.Errorf("code parameter is required for %s", req.Task.Name)
 	}
 
-	payload, err := json.Marshal(map[string]interface{}{
+	payload, err := json.Marshal(map[string]any{
 		"params": params,
 		"steps":  req.Steps,
 	})
