@@ -1,0 +1,42 @@
+{
+  // Attach configs for the dockerized Go services. Start the stack with the
+  // debug override first:
+  //   docker compose -f docker/dev.docker-compose.yml -f docker/debug.docker-compose.yml up
+  // Then F5 one of these. After an air hot-reload, attach again.
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Attach to ytsoar_api (docker)",
+      "type": "go",
+      "request": "attach",
+      "mode": "remote",
+      "host": "localhost",
+      "port": 2345,
+      "substitutePath": [
+        { "from": "${workspaceFolder}/app/ytsoar", "to": "/app" }
+      ]
+    },
+    {
+      "name": "Attach to ytsoar_playbook_worker (docker)",
+      "type": "go",
+      "request": "attach",
+      "mode": "remote",
+      "host": "localhost",
+      "port": 2346,
+      "substitutePath": [
+        { "from": "${workspaceFolder}/app/ytsoar", "to": "/app" }
+      ]
+    },
+    {
+      "name": "Attach to ytsoar_sandbox (docker)",
+      "type": "go",
+      "request": "attach",
+      "mode": "remote",
+      "host": "localhost",
+      "port": 2347,
+      "substitutePath": [
+        { "from": "${workspaceFolder}/app/ytsoar", "to": "/app" }
+      ]
+    }
+  ]
+}

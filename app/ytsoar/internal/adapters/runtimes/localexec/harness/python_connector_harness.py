@@ -18,6 +18,19 @@ def main():
     os.chdir(root)
     sys.path.insert(0, root)
 
+    # per-connector vendored dependencies: `make connector-deps` pip-installs
+    # <id>/requirements.txt into <id>/deps with --target. Prepending keeps each
+    # connector's pins isolated (fresh subprocess per run) and lets them win
+    # over the image's baseline packages.
+    deps = os.path.join(root, "connectors", payload["connector_id"], "deps")
+    if os.path.isdir(deps):
+        sys.path.insert(0, deps)
+
+    # stdout is the JSON result channel: reroute connector prints/logs to
+    # stderr so they cannot corrupt it.
+    result_out = sys.stdout
+    sys.stdout = sys.stderr
+
     from connectors.core.connector import Connector
 
     connector = Connector.get_class_container(payload["connector_id"])
@@ -32,7 +45,7 @@ def main():
     result = connector.execute(
         configs=config, params=params, operation=payload["operation"]
     )
-    print(json.dumps(result, default=str))
+    print(json.dumps(result, default=str), file=result_out)
 
 
 main()
