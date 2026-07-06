@@ -41,17 +41,28 @@ func requireNode(t *testing.T) {
 	}
 }
 
-func requireNunjucks(t *testing.T) {
+// requireTypeScriptNode skips when node cannot evaluate TypeScript natively
+// (--input-type=commonjs-typescript needs Node >= 23.6) — the node harnesses
+// are TypeScript, so every test that executes them needs this.
+func requireTypeScriptNode(t *testing.T) {
 	t.Helper()
 	requireNode(t)
+	if err := exec.Command("node", "--input-type=commonjs-typescript", "-e", "const ok: boolean = true;").Run(); err != nil {
+		t.Skip("node lacks native TypeScript type stripping (need >= 23.6)")
+	}
+}
+
+func requireNunjucks(t *testing.T) {
+	t.Helper()
+	requireTypeScriptNode(t)
 	if err := exec.Command("node", "-e", `require("nunjucks")`).Run(); err != nil {
 		t.Skip("nunjucks not resolvable via NODE_PATH")
 	}
 }
 
-func codeRequest(t *testing.T, code string, extraParams map[string]interface{}, steps map[string]interface{}, timeout time.Duration) execution.ExecutionRequest {
+func codeRequest(t *testing.T, code string, extraParams map[string]any, steps map[string]any, timeout time.Duration) execution.ExecutionRequest {
 	t.Helper()
-	params := map[string]interface{}{"code": code}
+	params := map[string]any{"code": code}
 	for key, value := range extraParams {
 		params[key] = value
 	}
@@ -72,9 +83,9 @@ func codeRequest(t *testing.T, code string, extraParams map[string]interface{}, 
 	}
 }
 
-func codeOutput(t *testing.T, raw json.RawMessage) interface{} {
+func codeOutput(t *testing.T, raw json.RawMessage) any {
 	t.Helper()
-	var decoded map[string]interface{}
+	var decoded map[string]any
 	require.NoError(t, json.Unmarshal(raw, &decoded))
 	return decoded["code_output"]
 }
@@ -84,8 +95,8 @@ func TestPythonRunnerReturnsResult(t *testing.T) {
 	runner := localexec.NewPythonRunner(logger.NewNop())
 
 	raw, err := runner.Execute(context.Background(),
-		codeRequest(t, "result = params['x'] + len(steps)", map[string]interface{}{"x": 41},
-			map[string]interface{}{"A": "done"}, 10*time.Second))
+		codeRequest(t, "result = params['x'] + len(steps)", map[string]any{"x": 41},
+			map[string]any{"A": "done"}, 10*time.Second))
 
 	require.NoError(t, err)
 	assert.Equal(t, float64(42), codeOutput(t, raw))
@@ -97,8 +108,8 @@ func TestPythonRunnerTemplating(t *testing.T) {
 
 	raw, err := runner.Execute(context.Background(),
 		codeRequest(t, `result = params["greeting"]`,
-			map[string]interface{}{"greeting": `{{ var.steps["A"] }}`},
-			map[string]interface{}{"A": "hello"}, 10*time.Second))
+			map[string]any{"greeting": `{{ var.steps["A"] }}`},
+			map[string]any{"A": "hello"}, 10*time.Second))
 
 	require.NoError(t, err)
 	assert.Equal(t, "hello", codeOutput(t, raw))
@@ -149,12 +160,12 @@ func TestPythonRunnerRequiresCode(t *testing.T) {
 }
 
 func TestNodeRunnerReturnsResult(t *testing.T) {
-	requireNode(t)
+	requireTypeScriptNode(t)
 	runner := localexec.NewNodeRunner(logger.NewNop())
 
 	raw, err := runner.Execute(context.Background(),
 		codeRequest(t, "const result = await Promise.resolve(params.x * 2);",
-			map[string]interface{}{"x": 21}, nil, 10*time.Second))
+			map[string]any{"x": 21}, nil, 10*time.Second))
 
 	require.NoError(t, err)
 	assert.Equal(t, float64(42), codeOutput(t, raw))
@@ -166,15 +177,15 @@ func TestNodeRunnerTemplating(t *testing.T) {
 
 	raw, err := runner.Execute(context.Background(),
 		codeRequest(t, "const result = params.greeting;",
-			map[string]interface{}{"greeting": `{{ var.steps["A"] }}`},
-			map[string]interface{}{"A": "hello"}, 10*time.Second))
+			map[string]any{"greeting": `{{ var.steps["A"] }}`},
+			map[string]any{"A": "hello"}, 10*time.Second))
 
 	require.NoError(t, err)
 	assert.Equal(t, "hello", codeOutput(t, raw))
 }
 
 func TestNodeRunnerErrorIsCaptured(t *testing.T) {
-	requireNode(t)
+	requireTypeScriptNode(t)
 	runner := localexec.NewNodeRunner(logger.NewNop())
 
 	_, err := runner.Execute(context.Background(),
@@ -184,7 +195,7 @@ func TestNodeRunnerErrorIsCaptured(t *testing.T) {
 }
 
 func TestNodeRunnerTimeoutKillsProcess(t *testing.T) {
-	requireNode(t)
+	requireTypeScriptNode(t)
 	runner := localexec.NewNodeRunner(logger.NewNop())
 
 	start := time.Now()
@@ -195,21 +206,89 @@ func TestNodeRunnerTimeoutKillsProcess(t *testing.T) {
 	assert.Less(t, time.Since(start), 5*time.Second)
 }
 
+// realTSCore is the actual core shipped in the repo tree, relative to this
+// package directory — the tests exercise the real class-discovery/templating
+// contract, not a fake. The implementation is TypeScript; plain-JS connectors
+// reach it through the 1-line connector.js shim (extensionless require never
+// resolves .ts), so the temp tree replicates both files.
+const realTSCore = "../../../../../connectors/core/connector.ts"
+
+const jsCoreShim = `module.exports = require("./connector.ts");`
+
+func writeCore(t *testing.T, dir string) {
+	t.Helper()
+	core, err := os.ReadFile(realTSCore)
+	require.NoError(t, err, "repo TS core must exist at %s", realTSCore)
+	require.NoError(t, os.MkdirAll(filepath.Join(dir, "core"), 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "core", "connector.ts"), core, 0o644))
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "core", "connector.js"), []byte(jsCoreShim), 0o644))
+}
+
 func writeNodeConnector(t *testing.T, dir string) {
 	t.Helper()
+	writeCore(t, dir)
+
 	connectorDir := filepath.Join(dir, "echo_js")
 	require.NoError(t, os.MkdirAll(filepath.Join(connectorDir, "configs"), 0o755))
-	connectorJS := `module.exports.operations = {
-  async echo(config, params) {
-    return { echoed: params.msg, cfg: config.key };
-  },
-};`
+	connectorJS := `const { Connector } = require("../core/connector");
+
+class EchoConnector extends Connector {
+  async execute(configs, params, operation) {
+    const operations = {
+      echo: () => ({ echoed: params.msg, cfg: configs.key, op: operation }),
+    };
+    const handler = operations[operation];
+    if (!handler) {
+      throw new Error("operation (" + operation + ") does not exist in EchoConnector");
+    }
+    return handler();
+  }
+
+  async healthCheck() {
+    return true;
+  }
+}
+
+module.exports = { EchoConnector };`
 	require.NoError(t, os.WriteFile(filepath.Join(connectorDir, "connector.js"), []byte(connectorJS), 0o644))
+	require.NoError(t, os.WriteFile(filepath.Join(connectorDir, "info.json"),
+		[]byte(`{"id":"echo_js","name":"Echo JS","runtime":"node"}`), 0o644))
+	require.NoError(t, os.WriteFile(filepath.Join(connectorDir, "configs", "default.toml"), []byte("key = \"value\"\n"), 0o644))
+}
+
+// writeTSConnector adds a TypeScript connector (connector.ts, no .js) to the
+// tree — Node executes it directly via native type stripping.
+func writeTSConnector(t *testing.T, dir string) {
+	t.Helper()
+
+	connectorDir := filepath.Join(dir, "echo_ts")
+	require.NoError(t, os.MkdirAll(filepath.Join(connectorDir, "configs"), 0o755))
+	connectorTS := `const { Connector } = require("../core/connector.ts");
+
+type Values = Record<string, unknown>;
+
+class EchoTS extends Connector {
+  async execute(configs: Values, params: Values, operation: string): Promise<unknown> {
+    if (operation !== "echo") {
+      throw new Error("operation (" + operation + ") does not exist in EchoTS");
+    }
+    return { echoed: params.msg, cfg: configs.key, op: operation };
+  }
+
+  async healthCheck(): Promise<boolean> {
+    return true;
+  }
+}
+
+module.exports = { EchoTS };`
+	require.NoError(t, os.WriteFile(filepath.Join(connectorDir, "connector.ts"), []byte(connectorTS), 0o644))
+	require.NoError(t, os.WriteFile(filepath.Join(connectorDir, "info.json"),
+		[]byte(`{"id":"echo_ts","name":"Echo TS","runtime":"node"}`), 0o644))
 	require.NoError(t, os.WriteFile(filepath.Join(connectorDir, "configs", "default.toml"), []byte("key = \"value\"\n"), 0o644))
 }
 
 func TestNodeConnectorRunnerExecutesOperation(t *testing.T) {
-	requireNode(t)
+	requireTypeScriptNode(t)
 	dir := t.TempDir()
 	writeNodeConnector(t, dir)
 
@@ -232,14 +311,98 @@ func TestNodeConnectorRunnerExecutesOperation(t *testing.T) {
 	})
 
 	require.NoError(t, err)
-	var decoded map[string]interface{}
+	var decoded map[string]any
 	require.NoError(t, json.Unmarshal(raw, &decoded))
 	assert.Equal(t, "hi", decoded["echoed"])
 	assert.Equal(t, "value", decoded["cfg"])
+	assert.Equal(t, "echo", decoded["op"])
+}
+
+func TestNodeConnectorRunnerExecutesTypeScriptConnector(t *testing.T) {
+	requireTypeScriptNode(t)
+	dir := t.TempDir()
+	writeCore(t, dir)
+	writeTSConnector(t, dir)
+
+	runner, err := localexec.NewNodeConnectorRunner(logger.NewNop(), dir)
+	require.NoError(t, err)
+
+	connectorID := "echo_ts"
+	configName := "default"
+	raw, err := runner.Execute(context.Background(), execution.ExecutionRequest{
+		Task: domain.Tasks{
+			ID:          uuid.New(),
+			Name:        "echo_node",
+			ConnectorID: &connectorID,
+			Config:      &configName,
+			Operation:   "echo",
+			Parameters:  json.RawMessage(`{"msg":"hi"}`),
+		},
+		PlaybookHistoryID: uuid.New(),
+		Timeout:           10 * time.Second,
+	})
+
+	require.NoError(t, err)
+	var decoded map[string]any
+	require.NoError(t, json.Unmarshal(raw, &decoded))
+	assert.Equal(t, "hi", decoded["echoed"])
+	assert.Equal(t, "value", decoded["cfg"])
+	assert.Equal(t, "echo", decoded["op"])
+}
+
+// Vendored per-connector dependencies: <id>/node_modules (populated by `make
+// connector-deps` from <id>/package.json) resolve through Node's standard
+// upward walk from the connector file — no harness involvement.
+func TestNodeConnectorRunnerVendoredDeps(t *testing.T) {
+	requireTypeScriptNode(t)
+	dir := t.TempDir()
+	writeCore(t, dir)
+
+	connectorDir := filepath.Join(dir, "dep_js")
+	libDir := filepath.Join(connectorDir, "node_modules", "fakelib")
+	require.NoError(t, os.MkdirAll(libDir, 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(libDir, "package.json"),
+		[]byte(`{"name":"fakelib","version":"1.0.0","main":"index.js"}`), 0o644))
+	require.NoError(t, os.WriteFile(filepath.Join(libDir, "index.js"),
+		[]byte(`module.exports = { value: "from-node-modules" };`), 0o644))
+	connectorJS := `const { Connector } = require("../core/connector");
+const fakelib = require("fakelib");
+
+class DepConnector extends Connector {
+  async execute(configs, params, operation) {
+    return { dep: fakelib.value };
+  }
+}
+
+module.exports = { DepConnector };`
+	require.NoError(t, os.WriteFile(filepath.Join(connectorDir, "connector.js"), []byte(connectorJS), 0o644))
+	require.NoError(t, os.WriteFile(filepath.Join(connectorDir, "info.json"),
+		[]byte(`{"id":"dep_js","name":"Dep JS","runtime":"node"}`), 0o644))
+
+	runner, err := localexec.NewNodeConnectorRunner(logger.NewNop(), dir)
+	require.NoError(t, err)
+
+	connectorID := "dep_js"
+	raw, err := runner.Execute(context.Background(), execution.ExecutionRequest{
+		Task: domain.Tasks{
+			ID:          uuid.New(),
+			Name:        "dep_node",
+			ConnectorID: &connectorID,
+			Operation:   "dep",
+			Parameters:  json.RawMessage(`{}`),
+		},
+		PlaybookHistoryID: uuid.New(),
+		Timeout:           10 * time.Second,
+	})
+
+	require.NoError(t, err)
+	var decoded map[string]any
+	require.NoError(t, json.Unmarshal(raw, &decoded))
+	assert.Equal(t, "from-node-modules", decoded["dep"])
 }
 
 func TestNodeConnectorRunnerUnknownOperation(t *testing.T) {
-	requireNode(t)
+	requireTypeScriptNode(t)
 	dir := t.TempDir()
 	writeNodeConnector(t, dir)
 
@@ -265,12 +428,16 @@ func TestNodeConnectorRunnerUnknownOperation(t *testing.T) {
 func TestListNodeConnectors(t *testing.T) {
 	dir := t.TempDir()
 	writeNodeConnector(t, dir)
-	// a dir without connector.js and a plain file must both be ignored
+	writeTSConnector(t, dir) // ships only connector.ts — still listed
+	// python connectors, dirs without info.json and plain files are ignored
+	require.NoError(t, os.MkdirAll(filepath.Join(dir, "python_connector"), 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "python_connector", "info.json"),
+		[]byte(`{"id":"python_connector"}`), 0o644))
 	require.NoError(t, os.MkdirAll(filepath.Join(dir, "not_a_connector"), 0o755))
 	require.NoError(t, os.WriteFile(filepath.Join(dir, "README.md"), []byte("x"), 0o644))
 
 	ids, err := localexec.ListNodeConnectors(dir)
 
 	require.NoError(t, err)
-	assert.Equal(t, []string{"echo_js"}, ids)
+	assert.Equal(t, []string{"echo_js", "echo_ts"}, ids)
 }

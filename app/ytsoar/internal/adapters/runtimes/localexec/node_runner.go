@@ -10,11 +10,13 @@ import (
 	"github.com/yuudev14/ytsoar/internal/logger"
 )
 
-//go:embed harness/node_harness.js
+//go:embed harness/node_harness.ts
 var nodeHarness string
 
 // NodeRunner executes code_snippet_js nodes in a fresh `node` child with a
-// capped V8 heap. It implements execution.NodeRuntime.
+// capped V8 heap. The harness is TypeScript evaluated through Node's native
+// type stripping (--input-type=commonjs-typescript, Node >= 23.6); the user
+// snippet itself stays JavaScript. It implements execution.NodeRuntime.
 type NodeRunner struct {
 	logger        logger.Logger
 	memoryLimitMB int
@@ -36,7 +38,7 @@ func (r *NodeRunner) Execute(ctx context.Context, req execution.ExecutionRequest
 		return nil, fmt.Errorf("code parameter is required for %s", req.Task.Name)
 	}
 
-	payload, err := json.Marshal(map[string]interface{}{
+	payload, err := json.Marshal(map[string]any{
 		"params": params,
 		"steps":  req.Steps,
 	})
@@ -46,7 +48,8 @@ func (r *NodeRunner) Execute(ctx context.Context, req execution.ExecutionRequest
 
 	r.logger.Debugw("running javascript code node", "task", req.Task.Name)
 	out, err := runSubprocess(ctx, req.Timeout, payload, scrubbedEnv(nodePathEnv()...),
-		"node", fmt.Sprintf("--max-old-space-size=%d", r.memoryLimitMB), "-e", nodeHarness)
+		"node", fmt.Sprintf("--max-old-space-size=%d", r.memoryLimitMB),
+		"--input-type=commonjs-typescript", "-e", nodeHarness)
 	if err != nil {
 		return nil, err
 	}
