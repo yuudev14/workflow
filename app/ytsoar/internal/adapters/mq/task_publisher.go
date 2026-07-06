@@ -27,7 +27,7 @@ func NewTaskPublisher(log logger.Logger, conn *Connection, queueName string) (*T
 	}, nil
 }
 
-func (p *TaskPublisher) SendMessage(message interface{}) error {
+func (p *TaskPublisher) SendMessage(message any) error {
 	jsonData, jsonErr := json.Marshal(message)
 	if jsonErr != nil {
 		return jsonErr

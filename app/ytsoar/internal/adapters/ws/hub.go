@@ -17,7 +17,7 @@ var upgrader = websocket.Upgrader{
 // It implements contracts.StatusBroadcaster.
 type Hub struct {
 	clients    map[*websocket.Conn]bool
-	broadcast  chan interface{}
+	broadcast  chan any
 	register   chan *websocket.Conn
 	unregister chan *websocket.Conn
 }
@@ -25,7 +25,7 @@ type Hub struct {
 func NewHub() *Hub {
 	return &Hub{
 		clients:    make(map[*websocket.Conn]bool),
-		broadcast:  make(chan interface{}),
+		broadcast:  make(chan any),
 		register:   make(chan *websocket.Conn),
 		unregister: make(chan *websocket.Conn),
 	}
@@ -54,7 +54,7 @@ func (h *Hub) Run() {
 	}
 }
 
-func (h *Hub) Broadcast(data interface{}) {
+func (h *Hub) Broadcast(data any) {
 	h.broadcast <- data
 }
 

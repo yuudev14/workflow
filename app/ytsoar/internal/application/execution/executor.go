@@ -174,7 +174,7 @@ func (e *Executor) processNode(ctx context.Context, msg domain.TaskMessage, node
 		return err
 	}
 
-	var decoded interface{}
+	var decoded any
 	if len(raw) > 0 {
 		if err := json.Unmarshal(raw, &decoded); err != nil {
 			e.logger.Warnw("runtime returned non-JSON result, storing as string", "node", node, "error", err)
@@ -192,7 +192,7 @@ func (e *Executor) setTaskStatus(
 	msg domain.TaskMessage,
 	task domain.Tasks,
 	status string,
-	result interface{},
+	result any,
 	execErr error,
 ) error {
 	var errStr *string
@@ -200,7 +200,7 @@ func (e *Executor) setTaskStatus(
 		s := execErr.Error()
 		errStr = &s
 	}
-	var parameters interface{}
+	var parameters any
 	if len(task.Parameters) > 0 {
 		if err := json.Unmarshal(task.Parameters, &parameters); err != nil {
 			e.logger.Warnw("could not decode task parameters", "task", task.Name, "error", err)
@@ -235,7 +235,7 @@ func (e *Executor) finishPlaybook(
 	ctx context.Context,
 	msg domain.TaskMessage,
 	status string,
-	result interface{},
+	result any,
 	execErr error,
 ) error {
 	var errStr *string

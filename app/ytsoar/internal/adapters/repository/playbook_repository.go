@@ -46,7 +46,7 @@ func toDomainPlaybook(row db.Playbook) domain.Playbooks {
 }
 
 func toDomainPlaybookHistory(row db.PlaybookHistory) domain.PlaybookHistory {
-	var result interface{}
+	var result any
 	if len(row.Result) > 0 {
 		json.Unmarshal(row.Result, &result)
 	}
@@ -271,9 +271,9 @@ func (w *PlaybookRepositoryImpl) CreatePlaybookHistory(ctx context.Context, id s
 		return nil, err
 	}
 
-	modifiedEdges := make([]map[string]interface{}, len(edges))
+	modifiedEdges := make([]map[string]any, len(edges))
 	for i, edge := range edges {
-		modifiedEdges[i] = map[string]interface{}{
+		modifiedEdges[i] = map[string]any{
 			"id":                    edge.ID,
 			"destination_id":        edge.DestinationID,
 			"source_id":             edge.SourceID,

@@ -48,7 +48,7 @@ func (s *RuntimeServer) ExecuteOperation(ctx context.Context, req *runtimepb.Exe
 		task.ID = taskID
 	}
 
-	steps := map[string]interface{}{}
+	steps := map[string]any{}
 	if req.StepsJson != "" {
 		if err := json.Unmarshal([]byte(req.StepsJson), &steps); err != nil {
 			return &runtimepb.ExecuteOperationResponse{Error: "invalid steps_json: " + err.Error()}, nil

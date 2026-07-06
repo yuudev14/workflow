@@ -8,6 +8,7 @@ package connectorruntimepb
 
 import (
 	context "context"
+
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
@@ -110,7 +111,7 @@ func RegisterConnectorRuntimeServer(s grpc.ServiceRegistrar, srv ConnectorRuntim
 	s.RegisterService(&ConnectorRuntime_ServiceDesc, srv)
 }
 
-func _ConnectorRuntime_ExecuteOperation_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _ConnectorRuntime_ExecuteOperation_Handler(srv any, ctx context.Context, dec func(any) error, interceptor grpc.UnaryServerInterceptor) (any, error) {
 	in := new(ExecuteOperationRequest)
 	if err := dec(in); err != nil {
 		return nil, err
@@ -122,13 +123,13 @@ func _ConnectorRuntime_ExecuteOperation_Handler(srv interface{}, ctx context.Con
 		Server:     srv,
 		FullMethod: ConnectorRuntime_ExecuteOperation_FullMethodName,
 	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+	handler := func(ctx context.Context, req any) (any, error) {
 		return srv.(ConnectorRuntimeServer).ExecuteOperation(ctx, req.(*ExecuteOperationRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _ConnectorRuntime_HealthCheck_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _ConnectorRuntime_HealthCheck_Handler(srv any, ctx context.Context, dec func(any) error, interceptor grpc.UnaryServerInterceptor) (any, error) {
 	in := new(HealthCheckRequest)
 	if err := dec(in); err != nil {
 		return nil, err
@@ -140,7 +141,7 @@ func _ConnectorRuntime_HealthCheck_Handler(srv interface{}, ctx context.Context,
 		Server:     srv,
 		FullMethod: ConnectorRuntime_HealthCheck_FullMethodName,
 	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+	handler := func(ctx context.Context, req any) (any, error) {
 		return srv.(ConnectorRuntimeServer).HealthCheck(ctx, req.(*HealthCheckRequest))
 	}
 	return interceptor(ctx, in, info, handler)
