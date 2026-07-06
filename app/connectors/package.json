@@ -1,0 +1,10 @@
+{
+  "name": "ytsoar-connectors",
+  "private": true,
+  "type": "commonjs",
+  "description": "Editor/type support only — connectors run via Node's native type stripping; nothing here is needed at runtime.",
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "typescript": "^5.8.0"
+  }
+}

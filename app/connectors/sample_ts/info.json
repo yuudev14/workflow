@@ -1,0 +1,52 @@
+{
+  "name": "Sample TS",
+  "id": "sample_ts",
+  "runtime": "node",
+  "configuration": {
+    "fields": [
+      {
+        "title": "Server URL",
+        "description": "Specify the URL of the server to connect and perform automated operations.",
+        "type": "text",
+        "name": "server_url",
+        "required": true,
+        "editable": true,
+        "visible": true,
+        "value": "https://example.com",
+        "tooltip": "Specify the URL of the server to connect and perform automated operations."
+      },
+      {
+        "title": "API Key",
+        "description": "Specify the API key to access the endpoint to connect and perform the automated operations",
+        "required": true,
+        "editable": true,
+        "visible": true,
+        "type": "password",
+        "name": "api_key",
+        "tooltip": "Specify the API key to access the endpoint to connect and perform the automated operations"
+      }
+    ]
+  },
+  "operations": [
+    {
+      "operation": "operation1",
+      "title": "sample_operation",
+      "description": "",
+      "annotation": "sample_operation",
+      "enabled": true,
+      "parameters": [
+        {
+          "title": "task1",
+          "description": "",
+          "required": true,
+          "editable": true,
+          "visible": true,
+          "type": "text",
+          "tooltip": "",
+          "name": "task1",
+          "placeholder": ""
+        }
+      ]
+    }
+  ]
+}
