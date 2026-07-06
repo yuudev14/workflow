@@ -18,7 +18,7 @@ import (
 
 type PlaybookApplicationService interface {
 	TriggerPlaybook(ctx context.Context, playbookId string) (*domain.TaskMessage, error)
-	PreparePlaybookMessage(tasks []domain.Tasks, edges []domain.ResponseEdges) (map[string]domain.Tasks, map[string][]string)
+	PreparePlaybookMessage(tasks []domain.Tasks, edges []domain.ResponseEdges) (map[string]domain.Tasks, map[string][]string, []domain.EdgeRef)
 	UpsertTasks(ctx context.Context, playbookUUID uuid.UUID, nodes []tasks.TaskPayload) ([]domain.Tasks, error)
 	InsertEdges(ctx context.Context, playbookUUID uuid.UUID, edges map[string][]string, tasks []domain.Tasks, handles *map[string]map[string]domain.EdgeHandle) error
 	DeleteTasks(ctx context.Context, playbookUUID uuid.UUID, nodes []tasks.TaskPayload) error
@@ -337,7 +337,7 @@ func (w *PlaybookApplicationServiceImpl) TriggerPlaybook(ctx context.Context, pl
 		return nil, edgesErr
 	}
 
-	tasksMap, graph := w.PreparePlaybookMessage(taskData, edges)
+	tasksMap, graph, edgeRefs := w.PreparePlaybookMessage(taskData, edges)
 
 	var playbookHistory *domain.PlaybookHistory
 	txErr := w.Tx.WithinTransaction(ctx, func(ctx context.Context) error {
@@ -362,6 +362,7 @@ func (w *PlaybookApplicationServiceImpl) TriggerPlaybook(ctx context.Context, pl
 		Graph:             graph,
 		Tasks:             tasksMap,
 		PlaybookHistoryId: playbookHistory.ID,
+		Edges:             edgeRefs,
 	}
 
 	if mqErr := w.TaskPublisher.SendMessage(body); mqErr != nil {
@@ -372,9 +373,10 @@ func (w *PlaybookApplicationServiceImpl) TriggerPlaybook(ctx context.Context, pl
 }
 
 // PreparePlaybookMessage implements PlaybookApplicationService.
-func (w *PlaybookApplicationServiceImpl) PreparePlaybookMessage(tasksData []domain.Tasks, edges []domain.ResponseEdges) (map[string]domain.Tasks, map[string][]string) {
+func (w *PlaybookApplicationServiceImpl) PreparePlaybookMessage(tasksData []domain.Tasks, edges []domain.ResponseEdges) (map[string]domain.Tasks, map[string][]string, []domain.EdgeRef) {
 	tasksMap := make(map[string]domain.Tasks)
 	graph := map[string][]string{}
+	edgeRefs := make([]domain.EdgeRef, 0, len(edges))
 
 	for _, task := range tasksData {
 		tasksMap[task.Name] = task
@@ -393,9 +395,19 @@ func (w *PlaybookApplicationServiceImpl) PreparePlaybookMessage(tasksData []doma
 		if !taskNameOk {
 			graph[edge.DestinationTaskName] = []string{}
 		}
+
+		ref := domain.EdgeRef{
+			Source:      edge.SourceTaskName,
+			Destination: edge.DestinationTaskName,
+		}
+		if edge.SourceHandle.Valid {
+			handle := edge.SourceHandle.String
+			ref.SourceHandle = &handle
+		}
+		edgeRefs = append(edgeRefs, ref)
 	}
 
-	return tasksMap, graph
+	return tasksMap, graph, edgeRefs
 }
 
 func GetGraphUUIDS(edges []domain.ResponseEdges) map[uuid.UUID][]uuid.UUID {

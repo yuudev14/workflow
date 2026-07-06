@@ -101,7 +101,10 @@ must stick to erasable syntax — no enums, namespaces or parameter properties
 
 Copy a template to start: `app/connectors/sample` (Python),
 `app/connectors/sample_js` (JavaScript) or `app/connectors/sample_ts`
-(TypeScript).
+(TypeScript). Or upload one as a zip (files at the zip root or under one
+folder): `POST /api/connectors/v1` with multipart field `file` — the API
+validates it, installs its dependencies, and records an audit row;
+`DELETE /api/connectors/v1/<id>` removes it.
 
 Params support templating against earlier node outputs:
 `{{ var.steps["node name"] }}`.
@@ -170,7 +173,6 @@ docker/            dev compose stack
 
 ## Roadmap
 
-- Connector upload API (zip upload + validation + audit table)
 - Built-in Go connectors (http_request, transforms) inside the worker
 - Conditional branching on edges
 - Alerts and incidents alongside playbooks

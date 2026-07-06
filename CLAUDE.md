@@ -55,9 +55,12 @@ nunjucks for JS/TS).
 ### Connectors tree (`app/connectors/`)
 
 Layout: `<id>/{info.json, connector.py|connector.ts|connector.js, configs/*.toml}`.
-The API is the only writer (upload endpoint is planned — design in
-`~/.claude/plans/i-wanted-to-plan-declarative-umbrella.md` §6). The sandbox
-mounts it read-only.
+The API is the only writer: `POST /api/connectors/v1` uploads a zip
+(validated: info.json + id pattern + runtime entry file + traversal/size
+checks; reserved ids core/code_snippet*), extracts it into the tree, runs the
+dep installs, and upserts an audit row in the `connectors` table (checksum,
+uploaded_by, enabled). `DELETE /api/connectors/v1/:id` removes both. The
+sandbox mounts the tree read-only.
 
 **All three languages use the same class contract** (user wants symmetry):
 - Python: class inheriting `connectors.core.connector.Connector`

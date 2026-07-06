@@ -41,6 +41,20 @@ func (m *MockConnectorService) EXPECT() *MockConnectorServiceMockRecorder {
 	return m.recorder
 }
 
+// DeleteConnector mocks base method.
+func (m *MockConnectorService) DeleteConnector(ctx context.Context, connectorID string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DeleteConnector", ctx, connectorID)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// DeleteConnector indicates an expected call of DeleteConnector.
+func (mr *MockConnectorServiceMockRecorder) DeleteConnector(ctx, connectorID any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteConnector", reflect.TypeOf((*MockConnectorService)(nil).DeleteConnector), ctx, connectorID)
+}
+
 // GetConnector mocks base method.
 func (m *MockConnectorService) GetConnector(ctx context.Context, connectorID string) (domain.ConnectorInfo, error) {
 	m.ctrl.T.Helper()
@@ -69,4 +83,19 @@ func (m *MockConnectorService) GetConnectors(ctx context.Context) ([]domain.Conn
 func (mr *MockConnectorServiceMockRecorder) GetConnectors(ctx any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetConnectors", reflect.TypeOf((*MockConnectorService)(nil).GetConnectors), ctx)
+}
+
+// UploadConnector mocks base method.
+func (m *MockConnectorService) UploadConnector(ctx context.Context, zipBytes []byte, uploadedBy string) (domain.ConnectorInfo, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "UploadConnector", ctx, zipBytes, uploadedBy)
+	ret0, _ := ret[0].(domain.ConnectorInfo)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// UploadConnector indicates an expected call of UploadConnector.
+func (mr *MockConnectorServiceMockRecorder) UploadConnector(ctx, zipBytes, uploadedBy any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UploadConnector", reflect.TypeOf((*MockConnectorService)(nil).UploadConnector), ctx, zipBytes, uploadedBy)
 }

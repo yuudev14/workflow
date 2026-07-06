@@ -87,12 +87,13 @@ func (mr *MockPlaybookApplicationServiceMockRecorder) InsertEdges(ctx, playbookU
 }
 
 // PreparePlaybookMessage mocks base method.
-func (m *MockPlaybookApplicationService) PreparePlaybookMessage(arg0 []domain.Tasks, edges []domain.ResponseEdges) (map[string]domain.Tasks, map[string][]string) {
+func (m *MockPlaybookApplicationService) PreparePlaybookMessage(arg0 []domain.Tasks, edges []domain.ResponseEdges) (map[string]domain.Tasks, map[string][]string, []domain.EdgeRef) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "PreparePlaybookMessage", arg0, edges)
 	ret0, _ := ret[0].(map[string]domain.Tasks)
 	ret1, _ := ret[1].(map[string][]string)
-	return ret0, ret1
+	ret2, _ := ret[2].([]domain.EdgeRef)
+	return ret0, ret1, ret2
 }
 
 // PreparePlaybookMessage indicates an expected call of PreparePlaybookMessage.
