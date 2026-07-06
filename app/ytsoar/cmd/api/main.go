@@ -7,6 +7,7 @@ import (
 
 	"github.com/yuudev14/ytsoar/db"
 	"github.com/yuudev14/ytsoar/internal/adapters/connectorstore"
+	"github.com/yuudev14/ytsoar/internal/adapters/depsinstall"
 	api "github.com/yuudev14/ytsoar/internal/adapters/http"
 	"github.com/yuudev14/ytsoar/internal/adapters/http/handlers"
 	"github.com/yuudev14/ytsoar/internal/adapters/mq"
@@ -88,7 +89,11 @@ func main() {
 	)
 
 	connectorStore := connectorstore.NewFSStore(appLogger, cfg.ConnectorsDir)
-	connectorService := connectors.NewConnectorService(appLogger, connectorStore)
+	connectorWriter := connectorstore.NewFSWriter(appLogger, cfg.ConnectorsDir)
+	connectorRepository := repository.NewConnectorRepositoryImpl(appLogger, queries, pool)
+	connectorInstaller := depsinstall.New(appLogger, cfg.ConnectorsDir)
+	connectorService := connectors.NewConnectorService(appLogger, connectorStore,
+		connectorWriter, connectorRepository, connectorInstaller)
 	connectorHandler := handlers.NewConnectorHandler(appLogger, connectorService)
 
 	app := api.NewRouter(playbookHandler, connectorHandler, hub)

@@ -15,8 +15,10 @@ type Querier interface {
 	CreatePlaybookHistory(ctx context.Context, arg CreatePlaybookHistoryParams) (PlaybookHistory, error)
 	CreateTaskHistory(ctx context.Context, arg CreateTaskHistoryParams) (TaskHistory, error)
 	DeleteAllPlaybookEdges(ctx context.Context, playbookID pgtype.UUID) error
+	DeleteConnectorRecord(ctx context.Context, id string) (int64, error)
 	DeleteEdges(ctx context.Context, ids []pgtype.UUID) error
 	DeleteTasks(ctx context.Context, ids []pgtype.UUID) error
+	GetConnectorRecord(ctx context.Context, id string) (Connector, error)
 	GetEdgesByPlaybookId(ctx context.Context, playbookID pgtype.UUID) ([]GetEdgesByPlaybookIdRow, error)
 	GetPlaybookById(ctx context.Context, id pgtype.UUID) (Playbook, error)
 	GetPlaybookGraphById(ctx context.Context, id pgtype.UUID) (GetPlaybookGraphByIdRow, error)
@@ -29,6 +31,7 @@ type Querier interface {
 	UpdatePlaybookHistoryStatus(ctx context.Context, arg UpdatePlaybookHistoryStatusParams) (PlaybookHistory, error)
 	UpdateTaskHistory(ctx context.Context, arg UpdateTaskHistoryParams) (TaskHistory, error)
 	UpdateTaskStatus(ctx context.Context, arg UpdateTaskStatusParams) (TaskHistory, error)
+	UpsertConnector(ctx context.Context, arg UpsertConnectorParams) (Connector, error)
 	UpsertEdge(ctx context.Context, arg UpsertEdgeParams) (Edge, error)
 	UpsertTask(ctx context.Context, arg UpsertTaskParams) (Task, error)
 }

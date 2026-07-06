@@ -2,6 +2,7 @@ package playbooks_test
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"testing"
 
@@ -88,10 +89,11 @@ func TestPreparePlaybookMessage(t *testing.T) {
 		{
 			SourceTaskName:      "task1",
 			DestinationTaskName: "task2",
+			SourceHandle:        sql.NullString{String: "true", Valid: true},
 		},
 	}
 
-	tasksMap, graph := service.PreparePlaybookMessage(tasksData, edgesData)
+	tasksMap, graph, edgeRefs := service.PreparePlaybookMessage(tasksData, edgesData)
 
 	if len(tasksMap) != 3 {
 		t.Fatalf("expected 3 tasks")
@@ -103,6 +105,16 @@ func TestPreparePlaybookMessage(t *testing.T) {
 
 	if graph["task1"][0] != "task2" {
 		t.Fatalf("graph incorrect")
+	}
+
+	if len(edgeRefs) != 2 {
+		t.Fatalf("expected 2 edge refs")
+	}
+	if edgeRefs[0].SourceHandle != nil {
+		t.Fatalf("edge without handle must carry nil source_handle")
+	}
+	if edgeRefs[1].SourceHandle == nil || *edgeRefs[1].SourceHandle != "true" {
+		t.Fatalf("source_handle not propagated onto the wire")
 	}
 }
 

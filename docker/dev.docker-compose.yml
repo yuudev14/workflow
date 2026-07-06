@@ -91,6 +91,8 @@ services:
     mem_limit: 1g
     volumes:
       - ../app/ytsoar:/app
+      # read-only: go builtin connectors load their TOML configs from here
+      - ../app/connectors:/opt/ytsoar/connectors:ro
     environment:
       - DB_USER=postgres
       - DB_PASSWORD=password
@@ -104,6 +106,7 @@ services:
       - AIR_POLL=true
       - STATUS_EXCHANGE=playbook.status
       - SANDBOX_ADDR=ytsoar_sandbox:50052
+      - CONNECTORS_DIR=/opt/ytsoar/connectors
     networks:
       - ytsoar
     depends_on:

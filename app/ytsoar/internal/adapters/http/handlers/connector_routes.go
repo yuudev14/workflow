@@ -7,5 +7,7 @@ func (h *ConnectorHandler) RegisterRoutes(route *gin.RouterGroup) {
 	{
 		group.GET("", h.GetConnectors)
 		group.GET("/:connector_id", h.GetConnector)
+		group.POST("", h.UploadConnector)
+		group.DELETE("/:connector_id", h.DeleteConnector)
 	}
 }
