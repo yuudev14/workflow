@@ -14,8 +14,8 @@ import (
 )
 
 // Client implements execution.NodeRuntime against any ConnectorRuntime gRPC
-// server (the Python connectors-service today). The connection is dialed once
-// and reused; per-call deadlines come from the request context.
+// server (the sandbox). The connection is dialed once and reused; per-call
+// deadlines come from the request context.
 type Client struct {
 	logger logger.Logger
 	client pb.ConnectorRuntimeClient
