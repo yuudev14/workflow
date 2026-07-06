@@ -71,7 +71,7 @@ func TestPythonConnectorRunnerExecutesOperation(t *testing.T) {
 	requirePython(t)
 	root := fakeConnectorsTree(t)
 
-	runner, err := localexec.NewPythonConnectorRunner(logger.NewNop(), root)
+	runner, err := localexec.NewPythonConnectorRunner(logger.NewNop(), filepath.Join(root, "connectors"))
 	require.NoError(t, err)
 
 	connectorID := "echo_py"
@@ -90,18 +90,63 @@ func TestPythonConnectorRunnerExecutesOperation(t *testing.T) {
 	})
 
 	require.NoError(t, err)
-	var decoded map[string]interface{}
+	var decoded map[string]any
 	require.NoError(t, json.Unmarshal(raw, &decoded))
 	assert.Equal(t, "hi", decoded["echoed"])
 	assert.Equal(t, "value", decoded["cfg"])
 	assert.Equal(t, "echo", decoded["op"])
 }
 
+// Vendored per-connector dependencies: <id>/deps (populated by `make
+// connector-deps` from <id>/requirements.txt) must be importable by the
+// connector, isolated per run.
+func TestPythonConnectorRunnerVendoredDeps(t *testing.T) {
+	requirePython(t)
+	root := fakeConnectorsTree(t)
+
+	mustWrite := func(rel, content string) {
+		path := filepath.Join(root, rel)
+		require.NoError(t, os.MkdirAll(filepath.Dir(path), 0o755))
+		require.NoError(t, os.WriteFile(path, []byte(content), 0o644))
+	}
+	mustWrite("connectors/dep_py/deps/fakelib.py", "VALUE = \"from-deps\"\n")
+	mustWrite("connectors/dep_py/connector.py", `import fakelib
+
+from connectors.core.connector import Connector
+
+
+class DepConnector(Connector):
+    def execute(self, configs, params, operation, *args, **kwargs):
+        return {"dep": fakelib.VALUE}
+`)
+
+	runner, err := localexec.NewPythonConnectorRunner(logger.NewNop(), filepath.Join(root, "connectors"))
+	require.NoError(t, err)
+
+	connectorID := "dep_py"
+	raw, err := runner.Execute(context.Background(), execution.ExecutionRequest{
+		Task: domain.Tasks{
+			ID:          uuid.New(),
+			Name:        "dep_node",
+			ConnectorID: &connectorID,
+			Operation:   "dep",
+			Parameters:  json.RawMessage(`{}`),
+		},
+		PlaybookHistoryID: uuid.New(),
+		Timeout:           10 * time.Second,
+	})
+
+	require.NoError(t, err)
+	var decoded map[string]any
+	require.NoError(t, json.Unmarshal(raw, &decoded))
+	assert.Equal(t, "from-deps", decoded["dep"])
+}
+
 func TestPythonConnectorRunnerUnknownConnector(t *testing.T) {
 	requirePython(t)
 	root := fakeConnectorsTree(t)
 
-	runner, err := localexec.NewPythonConnectorRunner(logger.NewNop(), root)
+	runner, err := localexec.NewPythonConnectorRunner(logger.NewNop(), filepath.Join(root, "connectors"))
 	require.NoError(t, err)
 
 	connectorID := "ghost"
@@ -121,7 +166,9 @@ func TestPythonConnectorRunnerUnknownConnector(t *testing.T) {
 }
 
 func TestPythonConnectorRunnerRequiresConnectorID(t *testing.T) {
-	runner, err := localexec.NewPythonConnectorRunner(logger.NewNop(), t.TempDir())
+	tree := filepath.Join(t.TempDir(), "connectors")
+	require.NoError(t, os.MkdirAll(tree, 0o755))
+	runner, err := localexec.NewPythonConnectorRunner(logger.NewNop(), tree)
 	require.NoError(t, err)
 
 	_, err = runner.Execute(context.Background(), execution.ExecutionRequest{
@@ -130,4 +177,10 @@ func TestPythonConnectorRunnerRequiresConnectorID(t *testing.T) {
 	})
 
 	assert.ErrorContains(t, err, "connector id is none")
+}
+
+func TestPythonConnectorRunnerRejectsMisnamedTree(t *testing.T) {
+	_, err := localexec.NewPythonConnectorRunner(logger.NewNop(), t.TempDir())
+
+	assert.ErrorContains(t, err, "must be a directory named 'connectors'")
 }
