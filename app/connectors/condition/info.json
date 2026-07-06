@@ -1,0 +1,52 @@
+{
+  "name": "Condition",
+  "id": "condition",
+  "runtime": "go",
+  "configuration": {
+    "fields": []
+  },
+  "operations": [
+    {
+      "operation": "evaluate",
+      "title": "Evaluate condition",
+      "description": "Compares two values and branches the playbook: edges from the true handle run when the comparison holds, edges from the false handle when it does not.",
+      "annotation": "evaluate",
+      "enabled": true,
+      "parameters": [
+        {
+          "title": "Left value",
+          "name": "left",
+          "description": "Left operand. Supports templates, e.g. {{ var.steps[\"node name\"].status }}",
+          "required": true,
+          "editable": true,
+          "visible": true,
+          "type": "text",
+          "tooltip": "Left operand (templates allowed)",
+          "placeholder": "{{ var.steps[\"my task\"].status }}"
+        },
+        {
+          "title": "Operator",
+          "name": "operator",
+          "description": "One of: ==, !=, >, <, >=, <=, contains, not_contains",
+          "required": true,
+          "editable": true,
+          "visible": true,
+          "type": "text",
+          "tooltip": "==, !=, >, <, >=, <=, contains, not_contains",
+          "placeholder": "=="
+        },
+        {
+          "title": "Right value",
+          "name": "right",
+          "description": "Right operand. Supports templates.",
+          "required": true,
+          "editable": true,
+          "visible": true,
+          "type": "text",
+          "tooltip": "Right operand (templates allowed)",
+          "placeholder": "200"
+        }
+      ]
+    }
+  ]
+}

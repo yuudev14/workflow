@@ -10,5 +10,6 @@ CREATE TYPE task_status AS ENUM (
     'pending',
     'in_progress',
     'success',
-    'failed'
+    'failed',
+    'skipped'
 );

@@ -102,6 +102,21 @@ func (mr *MockQuerierTxMockRecorder) DeleteAllPlaybookEdges(ctx, playbookID any)
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteAllPlaybookEdges", reflect.TypeOf((*MockQuerierTx)(nil).DeleteAllPlaybookEdges), ctx, playbookID)
 }
 
+// DeleteConnectorRecord mocks base method.
+func (m *MockQuerierTx) DeleteConnectorRecord(ctx context.Context, id string) (int64, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DeleteConnectorRecord", ctx, id)
+	ret0, _ := ret[0].(int64)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// DeleteConnectorRecord indicates an expected call of DeleteConnectorRecord.
+func (mr *MockQuerierTxMockRecorder) DeleteConnectorRecord(ctx, id any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteConnectorRecord", reflect.TypeOf((*MockQuerierTx)(nil).DeleteConnectorRecord), ctx, id)
+}
+
 // DeleteEdges mocks base method.
 func (m *MockQuerierTx) DeleteEdges(ctx context.Context, ids []pgtype.UUID) error {
 	m.ctrl.T.Helper()
@@ -128,6 +143,21 @@ func (m *MockQuerierTx) DeleteTasks(ctx context.Context, ids []pgtype.UUID) erro
 func (mr *MockQuerierTxMockRecorder) DeleteTasks(ctx, ids any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteTasks", reflect.TypeOf((*MockQuerierTx)(nil).DeleteTasks), ctx, ids)
+}
+
+// GetConnectorRecord mocks base method.
+func (m *MockQuerierTx) GetConnectorRecord(ctx context.Context, id string) (db.Connector, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetConnectorRecord", ctx, id)
+	ret0, _ := ret[0].(db.Connector)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetConnectorRecord indicates an expected call of GetConnectorRecord.
+func (mr *MockQuerierTxMockRecorder) GetConnectorRecord(ctx, id any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetConnectorRecord", reflect.TypeOf((*MockQuerierTx)(nil).GetConnectorRecord), ctx, id)
 }
 
 // GetEdgesByPlaybookId mocks base method.
@@ -308,6 +338,21 @@ func (m *MockQuerierTx) UpdateTaskStatus(ctx context.Context, arg db.UpdateTaskS
 func (mr *MockQuerierTxMockRecorder) UpdateTaskStatus(ctx, arg any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateTaskStatus", reflect.TypeOf((*MockQuerierTx)(nil).UpdateTaskStatus), ctx, arg)
+}
+
+// UpsertConnector mocks base method.
+func (m *MockQuerierTx) UpsertConnector(ctx context.Context, arg db.UpsertConnectorParams) (db.Connector, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "UpsertConnector", ctx, arg)
+	ret0, _ := ret[0].(db.Connector)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// UpsertConnector indicates an expected call of UpsertConnector.
+func (mr *MockQuerierTxMockRecorder) UpsertConnector(ctx, arg any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpsertConnector", reflect.TypeOf((*MockQuerierTx)(nil).UpsertConnector), ctx, arg)
 }
 
 // UpsertEdge mocks base method.

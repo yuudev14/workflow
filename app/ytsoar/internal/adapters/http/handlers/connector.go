@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"errors"
+	"io"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -56,4 +57,62 @@ func (h *ConnectorHandler) GetConnector(c *gin.Context) {
 		return
 	}
 	response.ResponseSuccess(info)
+}
+
+// UploadConnector godoc
+// @Summary Upload a connector as a zip (multipart field "file")
+// @Tags connectors
+// @Router /api/connectors/v1 [post]
+func (h *ConnectorHandler) UploadConnector(c *gin.Context) {
+	response := rest.Response{C: c}
+
+	c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, connectors.MaxUploadBytes)
+	fileHeader, err := c.FormFile("file")
+	if err != nil {
+		response.ResponseError(http.StatusBadRequest, "multipart field 'file' with the connector zip is required")
+		return
+	}
+	file, err := fileHeader.Open()
+	if err != nil {
+		response.ResponseError(http.StatusBadRequest, err.Error())
+		return
+	}
+	defer file.Close()
+	zipBytes, err := io.ReadAll(file)
+	if err != nil {
+		response.ResponseError(http.StatusBadRequest, err.Error())
+		return
+	}
+
+	info, err := h.ConnectorService.UploadConnector(c.Request.Context(), zipBytes, c.PostForm("uploaded_by"))
+	if err != nil {
+		if errors.Is(err, connectors.ErrInvalidConnector) {
+			response.ResponseError(http.StatusBadRequest, err.Error())
+			return
+		}
+		h.logger.Error(err)
+		response.ResponseError(http.StatusInternalServerError, err.Error())
+		return
+	}
+	c.JSON(http.StatusCreated, info)
+}
+
+// DeleteConnector godoc
+// @Summary Delete a connector from the tree
+// @Tags connectors
+// @Router /api/connectors/v1/{connector_id} [delete]
+func (h *ConnectorHandler) DeleteConnector(c *gin.Context) {
+	response := rest.Response{C: c}
+
+	err := h.ConnectorService.DeleteConnector(c.Request.Context(), c.Param("connector_id"))
+	if err != nil {
+		if errors.Is(err, connectors.ErrConnectorNotFound) {
+			response.ResponseError(http.StatusNotFound, err.Error())
+			return
+		}
+		h.logger.Error(err)
+		response.ResponseError(http.StatusInternalServerError, err.Error())
+		return
+	}
+	c.Status(http.StatusNoContent)
 }

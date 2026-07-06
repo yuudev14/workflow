@@ -2,9 +2,10 @@ version: "2"
 sql:
   - engine: "postgresql"
     queries: "queries"
+    # enums first: migrations may ALTER TYPE ... ADD VALUE on them
     schema:
-      - "migrations"
       - "enums.sql"
+      - "migrations"
     gen:
       go:
         package: "db"

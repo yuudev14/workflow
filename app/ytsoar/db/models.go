@@ -19,7 +19,7 @@ const (
 	PlaybookStatusFailed     PlaybookStatus = "failed"
 )
 
-func (e *PlaybookStatus) Scan(src any) error {
+func (e *PlaybookStatus) Scan(src interface{}) error {
 	switch s := src.(type) {
 	case []byte:
 		*e = PlaybookStatus(s)
@@ -37,7 +37,7 @@ type NullPlaybookStatus struct {
 }
 
 // Scan implements the Scanner interface.
-func (ns *NullPlaybookStatus) Scan(value any) error {
+func (ns *NullPlaybookStatus) Scan(value interface{}) error {
 	if value == nil {
 		ns.PlaybookStatus, ns.Valid = "", false
 		return nil
@@ -61,9 +61,10 @@ const (
 	TaskStatusInProgress TaskStatus = "in_progress"
 	TaskStatusSuccess    TaskStatus = "success"
 	TaskStatusFailed     TaskStatus = "failed"
+	TaskStatusSkipped    TaskStatus = "skipped"
 )
 
-func (e *TaskStatus) Scan(src any) error {
+func (e *TaskStatus) Scan(src interface{}) error {
 	switch s := src.(type) {
 	case []byte:
 		*e = TaskStatus(s)
@@ -81,7 +82,7 @@ type NullTaskStatus struct {
 }
 
 // Scan implements the Scanner interface.
-func (ns *NullTaskStatus) Scan(value any) error {
+func (ns *NullTaskStatus) Scan(value interface{}) error {
 	if value == nil {
 		ns.TaskStatus, ns.Valid = "", false
 		return nil
@@ -96,6 +97,18 @@ func (ns NullTaskStatus) Value() (driver.Value, error) {
 		return nil, nil
 	}
 	return string(ns.TaskStatus), nil
+}
+
+type Connector struct {
+	ID         string             `json:"id"`
+	Name       string             `json:"name"`
+	Runtime    string             `json:"runtime"`
+	Version    string             `json:"version"`
+	Checksum   string             `json:"checksum"`
+	UploadedBy string             `json:"uploaded_by"`
+	Enabled    bool               `json:"enabled"`
+	CreatedAt  pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt  pgtype.Timestamptz `json:"updated_at"`
 }
 
 type Edge struct {

@@ -11,7 +11,9 @@ import (
 	"github.com/yuudev14/ytsoar/db"
 	"github.com/yuudev14/ytsoar/internal/adapters/mq"
 	"github.com/yuudev14/ytsoar/internal/adapters/repository"
+	"github.com/yuudev14/ytsoar/internal/adapters/runtimes/goconnectors"
 	"github.com/yuudev14/ytsoar/internal/adapters/runtimes/grpcruntime"
+	"github.com/yuudev14/ytsoar/internal/adapters/templating"
 	"github.com/yuudev14/ytsoar/internal/application/execution"
 	"github.com/yuudev14/ytsoar/internal/application/playbooks"
 	"github.com/yuudev14/ytsoar/internal/application/tasks"
@@ -56,14 +58,22 @@ func main() {
 		log.Fatalf("failed to setup status publisher: %v", err)
 	}
 
-	// The worker never runs user code: every dynamic node (python/js
+	// The worker never runs user code: every dynamic node (python/js/ts
 	// connectors, code snippets) goes to the credential-free sandbox over
-	// gRPC. Go builtin connectors later join the byConnector map here.
+	// gRPC. Go builtins are OUR code and run in-process via the registry.
 	sandboxRuntime, err := grpcruntime.New(appLogger, cfg.SandboxAddr)
 	if err != nil {
 		log.Fatalf("failed to setup sandbox runtime client: %v", err)
 	}
-	resolver := execution.NewStaticResolver(sandboxRuntime, nil)
+
+	registry := goconnectors.NewRegistry(appLogger, templating.NewGonjaEngine(), cfg.ConnectorsDir)
+	registry.Register("http_request", goconnectors.NewHTTPRequestConnector())
+	registry.Register("condition", goconnectors.NewConditionConnector())
+	byConnector := map[string]execution.NodeRuntime{}
+	for _, id := range registry.IDs() {
+		byConnector[id] = registry
+	}
+	resolver := execution.NewStaticResolver(sandboxRuntime, byConnector)
 
 	executor := execution.NewExecutor(
 		appLogger,
