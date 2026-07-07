@@ -11,14 +11,15 @@ import {
 import "@xyflow/react/dist/style.css";
 import { useTheme } from "next-themes";
 import { useMemo } from "react";
-import { PlaybookNode, StartNode, TaskHistoryNode } from "./nodes";
+import { ConditionNode, PlaybookNode, StartNode, TaskHistoryNode } from "./nodes";
 import RemovableEdge from "./RemovableEdge";
 import EdgeHistory from "./EdgeHistory";
 
 const nodeTypes = {
   playbookNodes: PlaybookNode,
   startNode: StartNode,
-  taskHistoryNode: TaskHistoryNode
+  taskHistoryNode: TaskHistoryNode,
+  conditionNode: ConditionNode
 };
 
 const edgeTypes = {

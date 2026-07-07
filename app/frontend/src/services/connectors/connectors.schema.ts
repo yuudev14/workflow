@@ -38,7 +38,7 @@ export interface Parameter {
   required: boolean;
   editable: boolean;
   visible: boolean;
-  type: 'text' | 'number' | 'boolean' | 'code'; 
+  type: 'text' | 'number' | 'boolean' | 'code' | 'cases' | 'conditions';
   tooltip?: string; 
   name: string; 
   placeholder?: string;

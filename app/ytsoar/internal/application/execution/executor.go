@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/yuudev14/ytsoar/internal/application/playbooks"
@@ -304,33 +305,57 @@ func buildEdgeHandles(edges []domain.EdgeRef) map[edgeKey][]*string {
 	return handles
 }
 
-// edgeFollowed decides whether a completed node follows the edge to child.
-// Only source_handle "true"/"false" is conditional: it requires the node's
-// output to be {"result": <matching bool>} (the condition builtin's shape).
-// Edges without handle metadata — including whole messages without the
-// additive edges field — always follow.
+// edgeFollowed decides whether a completed node follows the edge to child. A
+// branch handle (a condition's "true"/"false", or a switch case id / "else") is
+// only followed when it matches the node's {"result": ...}. Everything else always
+// follows: directional editor handles ("source-*"/"target-*"), unlabeled edges,
+// and output that isn't a condition result.
 func edgeFollowed(handles map[edgeKey][]*string, node string, child string, output any) bool {
 	entries, ok := handles[edgeKey{source: node, destination: child}]
 	if !ok || len(entries) == 0 {
 		return true
 	}
+	selector, hasSelector := conditionResult(output)
 	for _, handle := range entries {
-		if handle == nil || (*handle != "true" && *handle != "false") {
+		if handle == nil || isDirectionalHandle(*handle) {
 			return true
 		}
-		outMap, isMap := output.(map[string]any)
-		if !isMap {
-			continue
+		if !hasSelector {
+			return true
 		}
-		result, isBool := outMap["result"].(bool)
-		if !isBool {
-			continue
-		}
-		if result == (*handle == "true") {
+		if *handle == selector {
 			return true
 		}
 	}
 	return false
+}
+
+// conditionResult pulls the branch selector out of a node's output. A condition
+// returns {"result": ...} — a bool for true/false, or a case id / "else" for a
+// switch — which becomes the handle string an edge must match to be followed.
+func conditionResult(output any) (string, bool) {
+	outMap, ok := output.(map[string]any)
+	if !ok {
+		return "", false
+	}
+	switch result := outMap["result"].(type) {
+	case bool:
+		if result {
+			return "true", true
+		}
+		return "false", true
+	case string:
+		return result, true
+	default:
+		return "", false
+	}
+}
+
+// isDirectionalHandle reports whether a source_handle is one of React Flow's
+// positional editor handles (source-top, target-left, ...) rather than a
+// semantic condition branch — positional handles never gate an edge.
+func isDirectionalHandle(handle string) bool {
+	return strings.HasPrefix(handle, "source-") || strings.HasPrefix(handle, "target-")
 }
 
 // buildIndegree mirrors the Python executor's invert_graph: nodes that appear

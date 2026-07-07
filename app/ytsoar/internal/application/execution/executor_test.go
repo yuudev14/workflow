@@ -113,11 +113,42 @@ func newExecutorFixture(t *testing.T, maxParallel int) *executorFixture {
 
 func (f *executorFixture) run(t *testing.T, graph map[string][]string, taskInfo map[string]domain.Tasks) error {
 	t.Helper()
+	return f.runWithEdges(t, graph, taskInfo, nil)
+}
+
+func (f *executorFixture) runWithEdges(t *testing.T, graph map[string][]string, taskInfo map[string]domain.Tasks, edges []domain.EdgeRef) error {
+	t.Helper()
 	return f.executor.Run(context.Background(), domain.TaskMessage{
 		Graph:             graph,
 		Tasks:             taskInfo,
 		PlaybookHistoryId: uuid.New(),
+		Edges:             edges,
 	})
+}
+
+// edgeRef builds a wire edge; handle "" means a plain edge (nil source_handle).
+func edgeRef(source, destination, handle string) domain.EdgeRef {
+	ref := domain.EdgeRef{Source: source, Destination: destination}
+	if handle != "" {
+		ref.SourceHandle = &handle
+	}
+	return ref
+}
+
+// conditionRuntime returns runtime outputs per node name; the "cond" node
+// yields the condition builtin's {"result": bool} shape.
+func conditionRuntime(f *executorFixture, condResult bool, executed *[]string, mu *sync.Mutex) {
+	f.runtime.EXPECT().
+		Execute(gomock.Any(), gomock.Any()).
+		DoAndReturn(func(_ context.Context, req execution.ExecutionRequest) (json.RawMessage, error) {
+			mu.Lock()
+			*executed = append(*executed, req.Task.Name)
+			mu.Unlock()
+			if req.Task.Name == "cond" {
+				return json.RawMessage(fmt.Sprintf(`{"result":%t}`, condResult)), nil
+			}
+			return json.RawMessage(`{}`), nil
+		}).AnyTimes()
 }
 
 func TestExecutorDiamondOrderingAndStepsThreading(t *testing.T) {
@@ -265,6 +296,202 @@ func TestExecutorRejectsCyclicGraph(t *testing.T) {
 	assert.ErrorContains(t, err, "cycle")
 	assert.Equal(t, "failed", f.playbookFinal)
 	assert.Empty(t, f.taskStatuses)
+}
+
+func TestExecutorConditionFollowsTruePathSkipsFalse(t *testing.T) {
+	graph := map[string][]string{
+		"start": {"cond"},
+		"cond":  {"yes", "no"},
+		"yes":   {},
+		"no":    {"after"},
+		"after": {},
+	}
+	edges := []domain.EdgeRef{
+		edgeRef("cond", "yes", "true"),
+		edgeRef("cond", "no", "false"),
+	}
+	f := newExecutorFixture(t, 4)
+
+	var mu sync.Mutex
+	var executed []string
+	conditionRuntime(f, true, &executed, &mu)
+
+	err := f.runWithEdges(t, graph, tasksFor(graph), edges)
+
+	assert.NoError(t, err)
+	assert.Equal(t, "success", f.playbookFinal)
+	assert.Equal(t, []string{"in_progress", "success"}, f.taskStatuses["yes"])
+	// false branch and everything downstream of it is skipped, not executed.
+	assert.Equal(t, []string{"skipped"}, f.taskStatuses["no"])
+	assert.Equal(t, []string{"skipped"}, f.taskStatuses["after"])
+	mu.Lock()
+	assert.NotContains(t, executed, "no")
+	assert.NotContains(t, executed, "after")
+	mu.Unlock()
+}
+
+func TestExecutorConditionFalsePathSkipsTrueSubtree(t *testing.T) {
+	graph := map[string][]string{
+		"start": {"cond"},
+		"cond":  {"yes", "no"},
+		"yes":   {"child"},
+		"child": {},
+		"no":    {},
+	}
+	edges := []domain.EdgeRef{
+		edgeRef("cond", "yes", "true"),
+		edgeRef("cond", "no", "false"),
+	}
+	f := newExecutorFixture(t, 4)
+
+	var mu sync.Mutex
+	var executed []string
+	conditionRuntime(f, false, &executed, &mu)
+
+	err := f.runWithEdges(t, graph, tasksFor(graph), edges)
+
+	assert.NoError(t, err)
+	assert.Equal(t, "success", f.playbookFinal)
+	assert.Equal(t, []string{"in_progress", "success"}, f.taskStatuses["no"])
+	// true branch skips, and the skip propagates to its whole subtree.
+	assert.Equal(t, []string{"skipped"}, f.taskStatuses["yes"])
+	assert.Equal(t, []string{"skipped"}, f.taskStatuses["child"])
+	mu.Lock()
+	assert.NotContains(t, executed, "yes")
+	assert.NotContains(t, executed, "child")
+	mu.Unlock()
+}
+
+func TestExecutorJoinRunsWhenOneParentFollowed(t *testing.T) {
+	// join has two incoming edges: the taken (true) branch and the skipped
+	// (false) branch both point at it. One followed parent is enough to run it.
+	graph := map[string][]string{
+		"start": {"cond"},
+		"cond":  {"yes", "no"},
+		"yes":   {"join"},
+		"no":    {"join"},
+		"join":  {},
+	}
+	edges := []domain.EdgeRef{
+		edgeRef("cond", "yes", "true"),
+		edgeRef("cond", "no", "false"),
+	}
+	f := newExecutorFixture(t, 4)
+
+	var mu sync.Mutex
+	var executed []string
+	conditionRuntime(f, true, &executed, &mu)
+
+	err := f.runWithEdges(t, graph, tasksFor(graph), edges)
+
+	assert.NoError(t, err)
+	assert.Equal(t, "success", f.playbookFinal)
+	assert.Equal(t, []string{"in_progress", "success"}, f.taskStatuses["yes"])
+	assert.Equal(t, []string{"skipped"}, f.taskStatuses["no"])
+	// join runs because the true branch reached it, even though "no" skipped.
+	assert.Equal(t, []string{"in_progress", "success"}, f.taskStatuses["join"])
+	mu.Lock()
+	assert.Contains(t, executed, "join")
+	mu.Unlock()
+}
+
+func TestExecutorSwitchFollowsMatchingCaseSkipsRest(t *testing.T) {
+	// if/else-if/else from one node: three labeled handles, one taken.
+	graph := map[string][]string{
+		"start": {"cond"},
+		"cond":  {"a", "b", "c"},
+		"a":     {},
+		"b":     {},
+		"c":     {},
+	}
+	edges := []domain.EdgeRef{
+		edgeRef("cond", "a", "case-0"),
+		edgeRef("cond", "b", "case-1"),
+		edgeRef("cond", "c", "else"),
+	}
+	f := newExecutorFixture(t, 4)
+
+	var mu sync.Mutex
+	var executed []string
+	f.runtime.EXPECT().
+		Execute(gomock.Any(), gomock.Any()).
+		DoAndReturn(func(_ context.Context, req execution.ExecutionRequest) (json.RawMessage, error) {
+			mu.Lock()
+			executed = append(executed, req.Task.Name)
+			mu.Unlock()
+			if req.Task.Name == "cond" {
+				return json.RawMessage(`{"result":"case-1"}`), nil
+			}
+			return json.RawMessage(`{}`), nil
+		}).AnyTimes()
+
+	err := f.runWithEdges(t, graph, tasksFor(graph), edges)
+
+	assert.NoError(t, err)
+	assert.Equal(t, "success", f.playbookFinal)
+	assert.Equal(t, []string{"in_progress", "success"}, f.taskStatuses["b"])
+	assert.Equal(t, []string{"skipped"}, f.taskStatuses["a"])
+	assert.Equal(t, []string{"skipped"}, f.taskStatuses["c"])
+	mu.Lock()
+	assert.NotContains(t, executed, "a")
+	assert.NotContains(t, executed, "c")
+	mu.Unlock()
+}
+
+func TestExecutorSwitchFallsThroughToElse(t *testing.T) {
+	graph := map[string][]string{
+		"start":    {"cond"},
+		"cond":     {"a", "fallback"},
+		"a":        {},
+		"fallback": {},
+	}
+	edges := []domain.EdgeRef{
+		edgeRef("cond", "a", "case-0"),
+		edgeRef("cond", "fallback", "else"),
+	}
+	f := newExecutorFixture(t, 4)
+
+	f.runtime.EXPECT().
+		Execute(gomock.Any(), gomock.Any()).
+		DoAndReturn(func(_ context.Context, req execution.ExecutionRequest) (json.RawMessage, error) {
+			if req.Task.Name == "cond" {
+				return json.RawMessage(`{"result":"else"}`), nil
+			}
+			return json.RawMessage(`{}`), nil
+		}).AnyTimes()
+
+	err := f.runWithEdges(t, graph, tasksFor(graph), edges)
+
+	assert.NoError(t, err)
+	assert.Equal(t, []string{"in_progress", "success"}, f.taskStatuses["fallback"])
+	assert.Equal(t, []string{"skipped"}, f.taskStatuses["a"])
+}
+
+func TestExecutorDirectionalHandlesAlwaysFollow(t *testing.T) {
+	// a normal node whose output happens to carry a "result" field must not
+	// have its positional editor edges gated.
+	graph := map[string][]string{
+		"start": {"A"},
+		"A":     {"B"},
+		"B":     {},
+	}
+	edges := []domain.EdgeRef{
+		edgeRef("start", "A", "source-bottom"),
+		edgeRef("A", "B", "source-right"),
+	}
+	f := newExecutorFixture(t, 4)
+
+	f.runtime.EXPECT().
+		Execute(gomock.Any(), gomock.Any()).
+		DoAndReturn(func(_ context.Context, req execution.ExecutionRequest) (json.RawMessage, error) {
+			return json.RawMessage(`{"result":"anything"}`), nil
+		}).AnyTimes()
+
+	err := f.runWithEdges(t, graph, tasksFor(graph), edges)
+
+	assert.NoError(t, err)
+	assert.Equal(t, []string{"in_progress", "success"}, f.taskStatuses["A"])
+	assert.Equal(t, []string{"in_progress", "success"}, f.taskStatuses["B"])
 }
 
 func TestStaticResolverRouting(t *testing.T) {

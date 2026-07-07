@@ -119,38 +119,151 @@ func TestHTTPRequestConnectorUnknownOperation(t *testing.T) {
 	assert.ErrorContains(t, err, "post_request")
 }
 
-func TestConditionConnector(t *testing.T) {
+// TestConditionConnectorSwitchSimple covers the simple switch: ordered
+// left/operator/right cases; the first that matches wins by its stable id, else
+// "else". A compare error (e.g. ">" on non-numeric) counts as no match.
+func TestConditionConnectorSwitchSimple(t *testing.T) {
 	conn := goconnectors.NewConditionConnector()
 	cases := []struct {
 		name     string
-		params   map[string]any
-		expected bool
+		cases    any
+		expected string
 	}{
-		{"string equal", map[string]any{"left": "a", "operator": "==", "right": "a"}, true},
-		{"string not equal", map[string]any{"left": "a", "operator": "!=", "right": "b"}, true},
-		{"numeric equal across formats", map[string]any{"left": "5", "operator": "==", "right": "5.0"}, true},
-		{"greater", map[string]any{"left": "200", "operator": ">=", "right": "200"}, true},
-		{"less false", map[string]any{"left": "300", "operator": "<", "right": "200"}, false},
-		{"contains", map[string]any{"left": "hello world", "operator": "contains", "right": "world"}, true},
-		{"not contains", map[string]any{"left": "hello", "operator": "not_contains", "right": "x"}, true},
+		{"first matches", []any{
+			map[string]any{"id": "a", "left": "x", "operator": "==", "right": "x"},
+			map[string]any{"id": "b", "left": "1", "operator": "==", "right": "1"},
+		}, "a"},
+		{"second matches", []any{
+			map[string]any{"id": "a", "left": "1", "operator": "==", "right": "2"},
+			map[string]any{"id": "b", "left": "5", "operator": ">", "right": "3"},
+		}, "b"},
+		{"numeric across formats", []any{
+			map[string]any{"id": "a", "left": "5", "operator": "==", "right": "5.0"},
+		}, "a"},
+		{"contains", []any{
+			map[string]any{"id": "a", "left": "hello world", "operator": "contains", "right": "world"},
+		}, "a"},
+		{"compare error counts as no match", []any{
+			map[string]any{"id": "a", "left": "abc", "operator": ">", "right": "1"},
+			map[string]any{"id": "b", "left": "2", "operator": ">", "right": "1"},
+		}, "b"},
+		{"none match falls to else", []any{
+			map[string]any{"id": "a", "left": "1", "operator": "==", "right": "2"},
+		}, "else"},
+		{"missing id falls back to positional", []any{
+			map[string]any{"left": "1", "operator": "==", "right": "2"},
+			map[string]any{"left": "1", "operator": "==", "right": "1"},
+		}, "case-1"},
+		{"empty cases", []any{}, "else"},
+		{"missing cases", nil, "else"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			result, err := conn.Execute(context.Background(), nil, tc.params, "evaluate")
+			result, err := conn.Execute(context.Background(), nil,
+				map[string]any{"cases": tc.cases}, "switch")
 			require.NoError(t, err)
 			assert.Equal(t, map[string]any{"result": tc.expected}, result)
 		})
 	}
 }
 
-func TestConditionConnectorErrors(t *testing.T) {
+func TestConditionConnectorUnknownOperation(t *testing.T) {
 	conn := goconnectors.NewConditionConnector()
+	_, err := conn.Execute(context.Background(), nil, map[string]any{}, "bogus")
+	assert.ErrorContains(t, err, "bogus")
+}
 
-	_, err := conn.Execute(context.Background(), nil,
-		map[string]any{"left": "abc", "operator": ">", "right": "1"}, "evaluate")
-	assert.ErrorContains(t, err, "numeric")
+// TestConditionConnectorSwitchExpression covers the advanced switch: each case is
+// a template expression the registry already rendered to "True"/"False"/etc. The
+// first truthy case's stable id wins (positional fallback with no id), else
+// "else". It also exercises truthy() coercion of rendered values.
+func TestConditionConnectorSwitchExpression(t *testing.T) {
+	conn := goconnectors.NewConditionConnector()
+	cases := []struct {
+		name     string
+		cases    any
+		expected string
+	}{
+		{"first truthy", []any{
+			map[string]any{"id": "a", "expression": "True"},
+			map[string]any{"id": "b", "expression": "True"},
+		}, "a"},
+		{"second truthy", []any{
+			map[string]any{"id": "a", "expression": "False"},
+			map[string]any{"id": "b", "expression": "True"},
+		}, "b"},
+		{"none truthy falls to else", []any{
+			map[string]any{"id": "a", "expression": "False"},
+			map[string]any{"id": "b", "expression": ""},
+		}, "else"},
+		{"empty list and none are falsy, text is truthy", []any{
+			map[string]any{"id": "a", "expression": "[]"},
+			map[string]any{"id": "b", "expression": "None"},
+			map[string]any{"id": "c", "expression": "malicious"},
+		}, "c"},
+		{"missing id falls back to positional", []any{
+			map[string]any{"expression": "False"},
+			map[string]any{"expression": "True"},
+		}, "case-1"},
+		{"empty cases", []any{}, "else"},
+		{"missing cases", nil, "else"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			result, err := conn.Execute(context.Background(), nil,
+				map[string]any{"cases": tc.cases}, "switch_expression")
+			require.NoError(t, err)
+			assert.Equal(t, map[string]any{"result": tc.expected}, result)
+		})
+	}
+}
 
-	_, err = conn.Execute(context.Background(), nil,
-		map[string]any{"left": "a", "operator": "~", "right": "b"}, "evaluate")
-	assert.ErrorContains(t, err, "unknown operator")
+// TestConditionSwitchExpressionThroughRegistry proves the advanced switch end to
+// end: case expressions rendered by the real gonja engine pick the first matching
+// branch.
+func TestConditionSwitchExpressionThroughRegistry(t *testing.T) {
+	registry := goconnectors.NewRegistry(logger.NewNop(), templating.NewGonjaEngine(), "")
+	registry.Register("condition", goconnectors.NewConditionConnector())
+
+	connectorID := "condition"
+	steps := map[string]any{"scan": map[string]any{"score": float64(60)}}
+	// score 60: first case (>90) false, second case (>50) true -> its id "med"
+	params, err := json.Marshal(map[string]any{
+		"cases": []map[string]any{
+			{"id": "high", "expression": `{{ var.steps["scan"].score > 90 }}`},
+			{"id": "med", "expression": `{{ var.steps["scan"].score > 50 }}`},
+		},
+	})
+	require.NoError(t, err)
+
+	raw, err := registry.Execute(context.Background(), execution.ExecutionRequest{
+		Task:  domain.Tasks{Name: "cond", ConnectorID: &connectorID, Operation: "switch_expression", Parameters: params},
+		Steps: steps,
+	})
+	require.NoError(t, err)
+	assert.JSONEq(t, `{"result":"med"}`, string(raw))
+}
+
+// TestConditionSwitchThroughRegistry proves the simple switch end to end:
+// templated left/right values, structured compare picking the first match.
+func TestConditionSwitchThroughRegistry(t *testing.T) {
+	registry := goconnectors.NewRegistry(logger.NewNop(), templating.NewGonjaEngine(), "")
+	registry.Register("condition", goconnectors.NewConditionConnector())
+
+	connectorID := "condition"
+	steps := map[string]any{"scan": map[string]any{"verdict": "malicious"}}
+	params, err := json.Marshal(map[string]any{
+		"cases": []map[string]any{
+			{"id": "clean", "left": `{{ var.steps["scan"].verdict }}`, "operator": "==", "right": "clean"},
+			{"id": "bad", "left": `{{ var.steps["scan"].verdict }}`, "operator": "==", "right": "malicious"},
+		},
+	})
+	require.NoError(t, err)
+
+	raw, err := registry.Execute(context.Background(), execution.ExecutionRequest{
+		Task:  domain.Tasks{Name: "cond", ConnectorID: &connectorID, Operation: "switch", Parameters: params},
+		Steps: steps,
+	})
+	require.NoError(t, err)
+	assert.JSONEq(t, `{"result":"bad"}`, string(raw))
 }
