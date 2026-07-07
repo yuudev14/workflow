@@ -38,7 +38,9 @@ that has no credentials, as short-lived isolated subprocesses.
 - **Worker** (`app/ytsoar/cmd/worker`) — consumes the `playbook` queue and runs
   the graph. Independent nodes run in parallel; any failure stops the run.
   For each node it calls the sandbox over gRPC, saves the result, and
-  publishes a status event. It never runs user code itself.
+  publishes a status event. It never runs user code itself. First-party **Go
+  builtin connectors** (`http_request`, `condition`) are the exception: they are
+  trusted Go code and run in-process in the worker, not the sandbox.
 - **Sandbox** (`app/ytsoar/cmd/sandbox`) — runs all connectors and code
   snippets. Each run is a fresh `python3` or `node` process with a clean
   environment, its own process group, and a hard timeout. The container has
@@ -171,8 +173,24 @@ app/proto/         connector_runtime.proto (worker <-> sandbox contract)
 docker/            dev compose stack
 ```
 
+## Branching
+
+The `condition` builtin is a **switch**: an ordered list of cases, and the flow
+takes the first one that matches (or the **else** branch when none do). It comes
+in two modes:
+
+- **Switch** — each case is a simple comparison: a left value, an operator
+  (`==`, `!=`, `>`, `contains`, …), and a right value. No templating to learn.
+- **Switch (advanced expression)** — each case is a full template expression,
+  e.g. `{{ var.steps["scan"].score > 90 }}`, taken when it reads truthy.
+
+In the editor you connect the condition node to the destination nodes, then in its
+settings pick which node each case goes to (plus one for **else**). At run time the
+worker follows only the matching branch — nodes on a branch that was not taken
+complete as `skipped` and their subtree skips too. A node that several branches
+feed into runs as long as at least one of those branches was taken.
+
 ## Roadmap
 
-- Built-in Go connectors (http_request, transforms) inside the worker
-- Conditional branching on edges
+- More built-in Go connectors (transforms, enrichment)
 - Alerts and incidents alongside playbooks

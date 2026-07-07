@@ -18,10 +18,60 @@ ONE module (`github.com/yuudev14/ytsoar`, dir `app/ytsoar`) plus the frontend:
 | frontend | Next.js | — | visual editor, `app/frontend` |
 
 Flow: UI → API (saves history in one tx, publishes `TaskMessage` to queue
-`playbook`) → worker (per node: gRPC `ExecuteOperation` to `SANDBOX_ADDR`) →
-worker saves results + publishes to fanout exchange `playbook.status` → API →
-WS. Wire format `TaskMessage{graph map[string][]string, tasks, playbook_history_id}`
-must never change.
+`playbook`) → worker (per node: gRPC `ExecuteOperation` to `SANDBOX_ADDR`, OR
+in-process for Go builtins) → worker saves results + publishes to fanout exchange
+`playbook.status` → API → WS. Wire format
+`TaskMessage{graph map[string][]string, tasks, playbook_history_id}` — the
+existing fields must never change or be renamed. New fields may only be **added**
+and must be optional (`omitempty`) so old producers/consumers keep working; that
+is how `edges` (conditional branching, below) was introduced.
+
+### Go builtin connectors (in-worker, trusted)
+
+Some connectors run **in-process in the worker**, not in the sandbox — they are
+first-party trusted Go code, so the trust boundary doesn't apply. The worker's
+`RuntimeResolver` sends a task to the Go registry
+(`internal/adapters/runtimes/goconnectors`) when its `connector_id` is registered
+there, otherwise to the sandbox over gRPC. Builtins today: `http_request` and
+`condition`. Each has an `info.json` in the connectors tree with `"runtime":
+"go"` (metadata only — the registry IS the implementation; `runtime: "go"` is NOT
+uploadable, uploads allow python/node only). Params are templated with the
+`TemplateEngine` port; the adapter is **gonja** (jinja2 fidelity, matches the
+python/node runtimes — do NOT swap to pongo2, it can't parse
+`{{ var.steps["node name"].field }}`). TOML configs load exactly like the node
+runner.
+
+### Conditional branching
+
+The `condition` builtin is a **switch**: an ordered `cases` list, each with a
+stable `id` naming its branch. `result` is the first matching case's `id`, or
+`"else"`. Stable ids (not positions) mean deleting a case never misroutes an edge.
+Two operations differ only in how a case is written:
+- `switch` — simple `{id, left, operator, right}` compare (`==`, `!=`, `>`,
+  `contains`, …). A compare error counts as no match, so one bad case can't fail
+  the run.
+- `switch_expression` — advanced `{id, expression}`, a full template expression
+  read for truthiness (already rendered by the registry, so
+  `{{ ...score > 80 }}` arrives as `"True"`).
+
+Edges from a condition node carry a `source_handle` naming the branch; the
+frontend save payload threads it through, and `PreparePlaybookMessage` puts it on
+the additive `TaskMessage.edges []EdgeRef{source, destination, source_handle}`
+field. The executor's `conditionResult` normalizes the source node's output to a
+selector string (string as-is; a bool would map to `"true"`/`"false"`) and follows
+an edge only when its `source_handle` matches. Directional editor handles
+(`source-*`/`target-*`) and nil handles always follow, so ordinary nodes are never
+gated. A node whose dependencies all completed without a single followed incoming
+edge is **skipped** (new `task_status` enum value `skipped`), and the skip
+propagates down its subtree. A join runs if at least one incoming edge was
+followed.
+
+The editor (`ConditionNode` + `ConnectorOperation`'s `BranchRouter`) exposes a
+single output handle (`CONDITION_OUTPUT_HANDLE = "output"`); the user draws edges
+to destination nodes, then picks each branch's destination from a dropdown, which
+stamps the branch handle onto that edge. Unrouted/released edges keep the `output`
+handle — non-directional and never a branch id, so the executor skips them rather
+than always running them.
 
 ### How the sandbox runs code (localexec)
 
