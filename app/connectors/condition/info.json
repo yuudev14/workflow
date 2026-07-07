@@ -7,44 +7,42 @@
   },
   "operations": [
     {
-      "operation": "evaluate",
-      "title": "Evaluate condition",
-      "description": "Compares two values and branches the playbook: edges from the true handle run when the comparison holds, edges from the false handle when it does not.",
-      "annotation": "evaluate",
+      "operation": "switch",
+      "title": "Switch",
+      "description": "Route to the first case whose simple condition matches (==, !=, >, contains, ...), or to else when none match. Pick each case's destination node in the editor.",
+      "annotation": "switch",
       "enabled": true,
       "parameters": [
         {
-          "title": "Left value",
-          "name": "left",
-          "description": "Left operand. Supports templates, e.g. {{ var.steps[\"node name\"].status }}",
+          "title": "Conditions",
+          "name": "cases",
+          "description": "Ordered left/operator/right conditions, each routed to a destination. The first that matches wins; if none match the else branch runs.",
           "required": true,
           "editable": true,
           "visible": true,
-          "type": "text",
-          "tooltip": "Left operand (templates allowed)",
+          "type": "conditions",
+          "tooltip": "left / operator / right per case; falls through to else",
           "placeholder": "{{ var.steps[\"my task\"].status }}"
-        },
+        }
+      ]
+    },
+    {
+      "operation": "switch_expression",
+      "title": "Switch (advanced expression)",
+      "description": "Route to the first case whose template expression is truthy, or to else when none match. Write full gonja/jinja expressions per case. Pick each case's destination node in the editor.",
+      "annotation": "switch_expression",
+      "enabled": true,
+      "parameters": [
         {
-          "title": "Operator",
-          "name": "operator",
-          "description": "One of: ==, !=, >, <, >=, <=, contains, not_contains",
+          "title": "Cases",
+          "name": "cases",
+          "description": "Ordered case expressions, each routed to a destination. The first truthy one wins; if none are truthy the else branch runs. Each expression is a template, e.g. {{ var.steps[\"scan\"].score > 90 }}.",
           "required": true,
           "editable": true,
           "visible": true,
-          "type": "text",
-          "tooltip": "==, !=, >, <, >=, <=, contains, not_contains",
-          "placeholder": "=="
-        },
-        {
-          "title": "Right value",
-          "name": "right",
-          "description": "Right operand. Supports templates.",
-          "required": true,
-          "editable": true,
-          "visible": true,
-          "type": "text",
-          "tooltip": "Right operand (templates allowed)",
-          "placeholder": "200"
+          "type": "cases",
+          "tooltip": "template expression per case; falls through to else",
+          "placeholder": "{{ var.steps[\"scan\"].score > 90 }}"
         }
       ]
     }

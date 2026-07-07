@@ -31,7 +31,11 @@ import {
   Playbook,
   PlaybookDataToUpdate,
 } from "@/services/playbooks/playbooks.schema";
-import { FLOW_SELECT_TRIGGER_ID, FLOW_START_ID } from "@/settings/reactFlowIds";
+import {
+  CONDITION_CONNECTOR_ID,
+  FLOW_SELECT_TRIGGER_ID,
+  FLOW_START_ID,
+} from "@/settings/reactFlowIds";
 import { ConnectorInfo } from "@/services/connectors/connectors.schema";
 import ConnectorService from "@/services/connectors/connectors";
 import PlaybookService from "@/services/playbooks/playbooks";
@@ -200,8 +204,12 @@ const PlaybookOperationProvider: React.FC<{
           x: task.x,
           y: task.y,
         },
-        // type: task.name === FLOW_START_ID ? "startNode" : "playbookNodes",
-        type: task.name === FLOW_START_ID ? "startNode" : "playbookNodes",
+        type:
+          task.name === FLOW_START_ID
+            ? "startNode"
+            : task.connector_id === CONDITION_CONNECTOR_ID
+            ? "conditionNode"
+            : "playbookNodes",
         draggable: true,
       };
 
