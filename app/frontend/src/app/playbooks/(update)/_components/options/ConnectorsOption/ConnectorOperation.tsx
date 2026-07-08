@@ -5,7 +5,6 @@ import {
 } from "@/services/connectors/connectors.schema";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-import { Separator } from "@/components/ui/separator";
 import {
   Select,
   SelectContent,
@@ -14,6 +13,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -35,6 +35,8 @@ import {
 
 import CodeMirror from '@uiw/react-codemirror';
 import { python } from '@codemirror/lang-python';
+import { useTheme } from "next-themes";
+import { connectorGlyph, Glyph } from "@/components/soar";
 
 const taskFormSchema = z.object({
   name: z.string().min(2, {
@@ -145,29 +147,34 @@ const CasesEditor: React.FC<{
   };
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-2.5">
       {cases.map((c, i) => (
-        <div className="flex flex-col gap-1" key={c.id}>
+        <div className="flex flex-col gap-2 rounded-md border border-line bg-paper-sunken/40 p-2.5" key={c.id}>
+          <div className="flex items-center justify-between">
+            <span className="font-mono text-[11px] font-semibold text-ink-faint">
+              {i === 0 ? "IF" : "ELSE IF"}
+            </span>
+            <button
+              type="button"
+              onClick={() => remove(i)}
+              className="text-[11px] font-semibold text-ink-faint hover:text-rose-text">
+              Remove
+            </button>
+          </div>
           <Input
             placeholder={placeholder}
             value={c.expression ?? ""}
             onChange={(e) => update(i, e.target.value)}
           />
-          <div className="flex items-center gap-2">
-            <BranchRouter handleId={c.id} label={i === 0 ? "if →" : "else if →"} />
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              onClick={() => remove(i)}>
-              Remove
-            </Button>
-          </div>
+          <BranchRouter handleId={c.id} label="→ then" />
         </div>
       ))}
-      <BranchRouter handleId="else" label="else →" />
+      <div className="flex flex-col gap-2 rounded-md border border-dashed border-line-strong p-2.5">
+        <span className="font-mono text-[11px] font-semibold text-ink-faint">ELSE</span>
+        <BranchRouter handleId="else" label="→ then" />
+      </div>
       <Button type="button" variant="outline" size="sm" onClick={add}>
-        Add case
+        + Add case
       </Button>
     </div>
   );
@@ -267,6 +274,8 @@ const ConnectorOperation: React.FC<{ connector: ConnectorInfo }> = ({
   const { currentNode, setNodes, closeSidebar } = useContext(
     PlaybookOperationContext
   );
+  const { resolvedTheme } = useTheme();
+  const glyph = connectorGlyph(connector.name);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [cachedParameter, setCachedParameter] = useState<Record<string, any>>(
     {}
@@ -347,221 +356,225 @@ const ConnectorOperation: React.FC<{ connector: ConnectorInfo }> = ({
     <Form {...taskForm}>
       <form
         onSubmit={taskForm.handleSubmit(onSubmit)}
-        className="flex flex-col flex-1">
-        <div className="flex flex-col flex-1 h-full gap-3 p-3">
-          <FormField
-            control={taskForm.control}
-            name="name"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Step Name</FormLabel>
-                <FormControl>
-                  <Input placeholder="task name" {...field} />
-                </FormControl>
-                <FormDescription />
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          <Separator className="bg-secondary" />
-
-          <FormField
-            control={taskForm.control}
-            name="description"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Description</FormLabel>
-                <FormControl>
-                  <Textarea cols={5} placeholder="description" {...field} />
-                </FormControl>
-                <FormDescription />
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          <div className="py-7">
-            <p>connector information</p>
+        className="flex flex-1 flex-col">
+        <div className="flex items-center gap-3 border-b border-line px-4 py-3.5">
+          <Glyph icon={glyph.icon} tone={glyph.tone} size="md" />
+          <div className="min-w-0">
+            <div className="truncate text-[15px] font-semibold capitalize">{connector.name}</div>
+            <div className="text-[12.5px] text-ink-faint">Configure this step</div>
           </div>
-          <Separator className="bg-secondary" />
-          <div className="flex flex-col gap-3 flex-1">
-            {connector.configs && (
+        </div>
+
+        <Tabs defaultValue="setup" className="flex flex-1 flex-col overflow-hidden">
+          <div className="px-4 pt-3">
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="setup">Setup</TabsTrigger>
+              <TabsTrigger value="parameters">
+                Parameters
+                {currentOperation?.parameters?.length ? (
+                  <span className="ml-1.5 rounded-full bg-signal-soft px-1.5 text-[10px] font-bold text-signal-text">
+                    {currentOperation.parameters.length}
+                  </span>
+                ) : null}
+              </TabsTrigger>
+            </TabsList>
+          </div>
+
+          <TabsContent value="setup" className="flex-1 overflow-auto">
+            <div className="flex flex-col gap-4 p-4">
               <FormField
                 control={taskForm.control}
-                name="config"
+                name="name"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Configuration</FormLabel>
-                    <Select
-                      value={field.value ?? ""}
-                      onValueChange={field.onChange}>
+                    <FormLabel className="text-[12px] font-semibold uppercase tracking-wide text-ink-soft">
+                      Step name
+                    </FormLabel>
+                    <FormControl>
+                      <Input placeholder="e.g. VirusTotal Lookup" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={taskForm.control}
+                name="description"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-[12px] font-semibold uppercase tracking-wide text-ink-soft">
+                      Description
+                    </FormLabel>
+                    <FormControl>
+                      <Textarea rows={2} placeholder="What this step does…" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              {connector.configs && (
+                <FormField
+                  control={taskForm.control}
+                  name="config"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-[12px] font-semibold uppercase tracking-wide text-ink-soft">
+                        Configuration
+                      </FormLabel>
+                      <Select value={field.value ?? ""} onValueChange={field.onChange}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select a saved configuration" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent className="bg-popover">
+                          {connector.configs?.map((_config) => (
+                            <SelectItem value={_config} key={`connector-config-${_config}`}>
+                              {_config}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
+
+              <FormField
+                control={taskForm.control}
+                name="operation"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-[12px] font-semibold uppercase tracking-wide text-ink-soft">
+                      Operation
+                    </FormLabel>
+                    <Select value={field.value ?? ""} onValueChange={field.onChange}>
                       <FormControl>
                         <SelectTrigger>
-                          <SelectValue placeholder="select configuration" />
+                          <SelectValue placeholder="Select an operation" />
                         </SelectTrigger>
                       </FormControl>
-                      <SelectContent className="bg-background">
-                        {connector.configs?.map((_config) => (
+                      <SelectContent className="bg-popover">
+                        {connector.operations.map((operation) => (
                           <SelectItem
-                            value={_config}
-                            key={`connector-config-${_config}`}>
-                            {_config}
+                            value={operation.annotation}
+                            key={`connector-operation-${operation.title}`}>
+                            {operation.title}
                           </SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
-                    <FormDescription />
+                    <FormDescription className="text-[11.5px] text-ink-faint">
+                      {currentOperation?.description}
+                    </FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}
               />
-            )}
+            </div>
+          </TabsContent>
 
-            <Separator className="bg-secondary" />
-
-            <FormField
-              control={taskForm.control}
-              name="operation"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Operation</FormLabel>
-                  <Select
-                    value={field.value ?? ""}
-                    onValueChange={field.onChange}>
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="select operation" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent className="bg-background">
-                      {connector.operations.map((operation) => (
-                        <SelectItem
-                          value={operation.annotation}
-                          key={`connector-operation-${operation.title}`}>
-                          {operation.title}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <FormDescription />
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <Separator className="bg-secondary" />
-
-            {currentOperation && currentOperation.parameters && (
-              <FormField
-                control={taskForm.control}
-                name="parameters"
-                render={({ field }) => (
-                  <FormItem className="flex-1 flex flex-col">
-                    <FormLabel>Parameters</FormLabel>
-                    {currentOperation.parameters.map((param) => (
-                      <div
-                        className="flex flex-col gap-2 flex-1"
-                        key={`connector-operation-${param.name}`}>
-                        <Label className="font-normal">{param.title}</Label>
-                        {param.type === "text" && (
-                          <Input
-                            placeholder={param.placeholder}
-                            value={field.value?.[param.name] ?? ""}
-                            onChange={(e) => {
-                              field.onChange({
-                                ...(field.value ? field.value : {}),
-                                [param.name]: e.target.value,
-                              });
-                            }}
-                          />
-                        )}
-                        {param.type === "cases" && (
-                          <CasesEditor
-                            placeholder={param.placeholder}
-                            value={field.value?.[param.name]}
-                            onChange={(cases) => {
-                              field.onChange({
-                                ...(field.value ? field.value : {}),
-                                [param.name]: cases,
-                              });
-                            }}
-                          />
-                        )}
-                        {param.type === "conditions" && (
-                          <ConditionsEditor
-                            placeholder={param.placeholder}
-                            value={field.value?.[param.name]}
-                            onChange={(conditions) => {
-                              field.onChange({
-                                ...(field.value ? field.value : {}),
-                                [param.name]: conditions,
-                              });
-                            }}
-                          />
-                        )}
-                        {param.type === "code" && (
-                          <div className="flex-1 flex-col">
-                            {/* <Editor
-                              height="300px"
-                              language="python"
-                              theme="vs-dark"
-                              // value={field.value?.[param.name] ?? ""}
-                              onChange={(val) => {
-                                console.log(val + "yuuu");
-                                // field.onChange({
-                                //   ...(field.value ? field.value : {}),
-                                //   [param.name]: val,
-                                // })
-                              }}
-                              options={{
-                                automaticLayout: true,
-                                fontSize: 14,
-
-                                // Fix space/enter issue:
-                                tabSize: 2,
-                                insertSpaces: true,
-                                detectIndentation: false,
-                                cursorWidth: 2,
-                                scrollBeyondLastLine: false,
-                                // Ensure normal typing behavior
-                                acceptSuggestionOnEnter: "on",
-                                acceptSuggestionOnCommitCharacter: true,
-                                quickSuggestions: false,
-                              }}
-                            /> */}
-                            <CodeMirror 
-                              height="200px"
-                              extensions={[python()]}
-                              theme={"dark"}
+          <TabsContent value="parameters" className="flex-1 overflow-auto">
+            <div className="flex flex-col gap-4 p-4">
+              {!operationName ? (
+                <div className="rounded-md border border-dashed border-line-strong px-4 py-8 text-center text-[13px] text-ink-faint">
+                  Pick an operation in <span className="font-semibold text-ink-soft">Setup</span> to
+                  configure its parameters.
+                </div>
+              ) : !currentOperation?.parameters?.length ? (
+                <div className="rounded-md border border-dashed border-line-strong px-4 py-8 text-center text-[13px] text-ink-faint">
+                  This operation takes no parameters.
+                </div>
+              ) : (
+                <FormField
+                  control={taskForm.control}
+                  name="parameters"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-1 flex-col gap-4">
+                      {currentOperation.parameters.map((param) => (
+                        <div className="flex flex-col gap-1.5" key={`connector-operation-${param.name}`}>
+                          <Label className="text-[12px] font-semibold text-foreground">
+                            {param.title}
+                            {param.required && <span className="ml-1 text-rose-text">*</span>}
+                          </Label>
+                          {param.description && (
+                            <p className="text-[11.5px] text-ink-faint">{param.description}</p>
+                          )}
+                          {param.type === "text" && (
+                            <Input
+                              placeholder={param.placeholder}
                               value={field.value?.[param.name] ?? ""}
-                              onChange={(val) => {
+                              onChange={(e) =>
                                 field.onChange({
                                   ...(field.value ? field.value : {}),
-                                  [param.name]: val,
+                                  [param.name]: e.target.value,
                                 })
-                              }}
+                              }
                             />
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                    <FormDescription />
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            )}
-          </div>
-        </div>
-        <footer className="p-3 mt-auto border border-t border-border">
-          <div className="flex justify-between gap-2">
-            <Button type="button">Close</Button>
-            <Button>Save</Button>
+                          )}
+                          {param.type === "cases" && (
+                            <CasesEditor
+                              placeholder={param.placeholder}
+                              value={field.value?.[param.name]}
+                              onChange={(cases) =>
+                                field.onChange({
+                                  ...(field.value ? field.value : {}),
+                                  [param.name]: cases,
+                                })
+                              }
+                            />
+                          )}
+                          {param.type === "conditions" && (
+                            <ConditionsEditor
+                              placeholder={param.placeholder}
+                              value={field.value?.[param.name]}
+                              onChange={(conditions) =>
+                                field.onChange({
+                                  ...(field.value ? field.value : {}),
+                                  [param.name]: conditions,
+                                })
+                              }
+                            />
+                          )}
+                          {param.type === "code" && (
+                            <div className="overflow-hidden rounded-md border border-line-strong">
+                              <CodeMirror
+                                height="220px"
+                                extensions={[python()]}
+                                theme={resolvedTheme === "dark" ? "dark" : "light"}
+                                value={field.value?.[param.name] ?? ""}
+                                onChange={(val) =>
+                                  field.onChange({
+                                    ...(field.value ? field.value : {}),
+                                    [param.name]: val,
+                                  })
+                                }
+                              />
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
+            </div>
+          </TabsContent>
+        </Tabs>
+
+        <footer className="mt-auto border-t border-line bg-card p-3">
+          <div className="flex justify-end gap-2">
+            <Button type="button" variant="outline" onClick={closeSidebar}>
+              Close
+            </Button>
+            <Button type="submit">Save step</Button>
           </div>
         </footer>
       </form>
-      
     </Form>
   );
 };

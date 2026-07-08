@@ -117,7 +117,7 @@ export const PlaybookOperationContext = createContext<PlaybookOperationType>({
   isNewNode: false,
   setIsNewNode: () => {},
   closeSidebar: () => {},
-  onNodesDelete: (node: Node<PlaybookTaskNode>[]) => {},
+  onNodesDelete: (_node: Node<PlaybookTaskNode>[]) => {},
 });
 
 const INITIAL_START_NODE_VALUE: Node<PlaybookTaskNode> = {

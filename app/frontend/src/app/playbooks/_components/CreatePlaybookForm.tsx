@@ -59,7 +59,7 @@ const CreatePlaybookForm = () => {
         title: "succesfully added a workflow",
         description: "redirecting you to the playground",
       })
-      router.push(`/playbooks/update/${data.id}`)
+      router.push(`/playbooks/${data.id}`)
       queryClient.removeQueries({
         "queryKey": ['workflow-lists']
       })
