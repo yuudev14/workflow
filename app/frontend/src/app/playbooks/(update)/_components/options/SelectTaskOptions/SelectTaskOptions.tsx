@@ -3,7 +3,6 @@ import React from 'react'
 
 import OptionButton from '@/components/buttons/OptionButton'
 import { Label } from '@/components/ui/label'
-import { Separator } from '@/components/ui/separator'
 import {
   Tooltip,
   TooltipContent,
@@ -21,21 +20,20 @@ const SelectTaskOptions: React.FC<{
   setTaskOperation: React.Dispatch<React.SetStateAction<TaskOperationType>>
 }> = ({ setTaskOperation }) => {
   return (
-    <div className='flex flex-col gap-3 h-full pt-5'>
-      <div className='px-3 flex justify-between items-center'>
-        <Label className="uppercase text-lg">
-          Select Task Operation
-        </Label>
+    <div className='flex h-full flex-col'>
+      <div className='border-b border-line px-4 py-3.5'>
+        <div className="text-[15px] font-semibold">Add a step</div>
+        <div className="text-[12.5px] text-ink-faint">Choose what this step does</div>
       </div>
 
-      <div className='flex-1 overflow-auto px-3 pb-5 flex flex-col gap-2'>
+      <div className='flex flex-1 flex-col gap-4 overflow-auto p-4'>
         {TASK_OPERATIONS.map(operation => (
-          <div key={`select-task-operation-${operation.label}`}>
-            <Label className="text-base">
+          <div key={`select-task-operation-${operation.label}`} className="flex flex-col gap-2">
+            <Label className="text-[12px] font-semibold uppercase tracking-wide text-ink-faint">
               {operation.label}
             </Label>
 
-            <div className="flex flex-col gap-3">
+            <div className="flex flex-col gap-2">
               {operation.options.map(option => (
                 <OptionButton
                   key={`select-task-option-${option.label}`}

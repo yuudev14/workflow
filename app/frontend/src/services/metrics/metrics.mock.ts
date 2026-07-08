@@ -1,0 +1,115 @@
+import { KpiMetric } from "./metrics.schema";
+
+export const PLAYBOOK_KPIS: KpiMetric[] = [
+  {
+    key: "active",
+    label: "Active playbooks",
+    value: "18",
+    delta: "+2",
+    deltaDirection: "up",
+    spark: [0.4, 0.55, 0.35, 0.7, 0.6, 0.8, 0.9],
+  },
+  {
+    key: "runs_today",
+    label: "Runs today",
+    value: "342",
+    delta: "+18%",
+    deltaDirection: "up",
+    spark: [0.3, 0.45, 0.5, 0.4, 0.65, 0.75, 0.95],
+  },
+  {
+    key: "success_rate",
+    label: "Success rate",
+    value: "97.4%",
+    delta: "+0.6",
+    deltaDirection: "up",
+    sparkTone: "moss",
+    spark: [0.8, 0.82, 0.78, 0.85, 0.88, 0.9, 0.94],
+  },
+  {
+    key: "failed",
+    label: "Failed runs",
+    value: "9",
+    delta: "−4",
+    deltaDirection: "down",
+    deltaNegative: true,
+    sparkTone: "rose",
+    spark: [0.6, 0.5, 0.65, 0.4, 0.3, 0.25, 0.2],
+  },
+];
+
+export const ALERT_KPIS: KpiMetric[] = [
+  {
+    key: "open",
+    label: "Open alerts",
+    value: "47",
+    delta: "−6",
+    deltaDirection: "down",
+    spark: [0.7, 0.6, 0.65, 0.5, 0.45, 0.4, 0.35],
+  },
+  {
+    key: "critical",
+    label: "Critical",
+    value: "5",
+    delta: "+2",
+    deltaDirection: "up",
+    deltaNegative: true,
+    sparkTone: "rose",
+    spark: [0.2, 0.25, 0.2, 0.4, 0.35, 0.55, 0.8],
+  },
+  {
+    key: "mttt",
+    label: "Median time to triage",
+    value: "3m",
+    delta: "−1m",
+    deltaDirection: "down",
+    spark: [0.6, 0.55, 0.5, 0.45, 0.38, 0.3, 0.22],
+  },
+  {
+    key: "auto_resolved",
+    label: "Auto-resolved by playbooks",
+    value: "68%",
+    delta: "+5",
+    deltaDirection: "up",
+    sparkTone: "moss",
+    spark: [0.4, 0.45, 0.5, 0.58, 0.62, 0.66, 0.72],
+  },
+];
+
+export const INCIDENT_KPIS: KpiMetric[] = [
+  {
+    key: "open",
+    label: "Open incidents",
+    value: "6",
+    delta: "−1",
+    deltaDirection: "down",
+    spark: [0.55, 0.6, 0.5, 0.45, 0.4, 0.35, 0.3],
+  },
+  {
+    key: "mttr",
+    label: "Avg. resolution time",
+    value: "2h 14m",
+    delta: "−22m",
+    deltaDirection: "down",
+    spark: [0.7, 0.65, 0.6, 0.55, 0.5, 0.45, 0.38],
+  },
+  {
+    key: "opened",
+    label: "Opened this week",
+    value: "11",
+    delta: "+3",
+    deltaDirection: "up",
+    deltaNegative: true,
+    spark: [0.3, 0.35, 0.45, 0.4, 0.55, 0.6, 0.75],
+  },
+  {
+    key: "sla",
+    label: "SLA breached",
+    value: "1",
+    delta: "+1",
+    deltaDirection: "up",
+    deltaNegative: true,
+    sparkTone: "rose",
+    spark: [0.1, 0.1, 0.15, 0.1, 0.2, 0.15, 0.6],
+  },
+];

@@ -8,12 +8,13 @@ import {
   useUpdateNodeInternals,
 } from "@xyflow/react";
 import { GitBranch } from "lucide-react";
-import { Avatar, AvatarFallback } from "../../ui/avatar";
 import { Tasks } from "@/services/playbooks/playbooks.schema";
 import {
   CONDITION_OUTPUT_HANDLE,
   FLOW_SELECT_TRIGGER_ID,
 } from "@/settings/reactFlowIds";
+import { Glyph } from "@/components/soar";
+import { cn } from "@/lib/utils";
 import DeleteNodeButton from "./DeleteNodeButton";
 
 // Routing is chosen in the node's form, which sets each outgoing edge's
@@ -44,16 +45,17 @@ const ConditionNode: React.FC<NodeProps<Node<Tasks>>> = (props) => {
   }, [branchKey, props.id, updateNodeInternals]);
 
   return (
-    <div className="p-3 group rounded-xl">
-      <div className="flex items-center w-full gap-3">
-        <Avatar className="size-10">
-          <AvatarFallback>
-            <GitBranch className="size-6 text-primary" />
-          </AvatarFallback>
-        </Avatar>
-        <div className="flex flex-col items-start mr-11">
-          <p className="text-lg font-medium">Condition</p>
-          <p className="text-sm text-muted-foreground">{props.data.name}</p>
+    <div
+      className={cn(
+        "group relative w-[202px] rounded-md border-[1.5px] border-line-strong bg-card px-3 py-2.5 shadow-md",
+        props.selected && "outline outline-2 outline-offset-2 outline-signal-dot"
+      )}
+    >
+      <div className="flex items-center gap-2.5">
+        <Glyph icon={GitBranch} tone="amber" />
+        <div className="min-w-0">
+          <div className="truncate text-[13.5px] font-semibold leading-tight">Condition</div>
+          <div className="truncate text-[12px] text-ink-faint">{props.data.name}</div>
         </div>
       </div>
 
