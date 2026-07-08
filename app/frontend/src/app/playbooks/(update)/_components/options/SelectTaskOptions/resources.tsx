@@ -27,7 +27,7 @@ export const TASK_OPERATIONS: readonly TaskOperationGroup[] = [
   },
   {
     label: "Evaluate",
-    iconClass: 'bg-quaternary text-quaternary-foreground',
+    iconClass: 'bg-amber-soft text-amber-text',
     options: [
       {
         label: "Decision",

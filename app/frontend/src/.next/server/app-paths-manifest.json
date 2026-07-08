@@ -1,0 +1,16 @@
+{
+  "/_not-found/page": "app/_not-found/page.js",
+  "/alerts/[alertId]/page": "app/alerts/[alertId]/page.js",
+  "/alerts/dashboard/page": "app/alerts/dashboard/page.js",
+  "/alerts/page": "app/alerts/page.js",
+  "/incidents/[incidentId]/page": "app/incidents/[incidentId]/page.js",
+  "/incidents/dashboard/page": "app/incidents/dashboard/page.js",
+  "/incidents/page": "app/incidents/page.js",
+  "/page": "app/page.js",
+  "/playbooks/(update)/[playbookId]/page": "app/playbooks/(update)/[playbookId]/page.js",
+  "/connectors/page": "app/connectors/page.js",
+  "/playbooks/(update)/[playbookId]/history/[playbookHistoryId]/page": "app/playbooks/(update)/[playbookId]/history/[playbookHistoryId]/page.js",
+  "/playbooks/(view)/executions/page": "app/playbooks/(view)/executions/page.js",
+  "/playbooks/(update)/[playbookId]/history/page": "app/playbooks/(update)/[playbookId]/history/page.js",
+  "/playbooks/(view)/page": "app/playbooks/(view)/page.js"
+}

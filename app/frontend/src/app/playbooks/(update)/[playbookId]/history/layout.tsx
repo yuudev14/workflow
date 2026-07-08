@@ -6,8 +6,9 @@ import PlaybookService from "@/services/playbooks/playbooks";
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { MoveLeft } from "lucide-react";
-import { TaskStatus } from "@/services/playbooks/playbooks.schema";
+import { ArrowLeft } from "lucide-react";
+import { StatusPill } from "@/components/soar";
+import { cn } from "@/lib/utils";
 
 const Layout: React.FC<
   { params: Promise<{ playbookId: string }> } & Readonly<{
@@ -18,62 +19,70 @@ const Layout: React.FC<
   const pathname = usePathname();
 
   const historyId = useMemo(() => {
-    const taskHistoryIdMatch = pathname.match(/history\/([a-fA-F0-9-]{36})/);
-    return taskHistoryIdMatch ? taskHistoryIdMatch[1] : null;
+    const match = pathname.match(/history\/([a-fA-F0-9-]{36})/);
+    return match ? match[1] : null;
   }, [pathname]);
 
-  const worflowHistoryQuery = useQuery({
+  const historyQuery = useQuery({
     queryKey: [`workflow-history-${playbookId}`],
-    queryFn: async () => {
-      return await PlaybookService.getPlaybooksHistoryByPlaybookId(playbookId);
-    },
+    queryFn: () => PlaybookService.getPlaybooksHistoryByPlaybookId(playbookId),
     staleTime: 0,
     gcTime: 0,
   });
 
-  const borderStatusIndicator = (status: TaskStatus) => {
-    if (status === "in_progress") return "border-l-yellow-300";
-    if (status === "success") return "border-l-green-300";
-    if (status === "failed") return "border-l-red-300";
-  };
+  const stalk = (status: string) =>
+    status === "in_progress"
+      ? "bg-amber-dot"
+      : status === "success"
+      ? "bg-moss-dot"
+      : "bg-rose-dot";
 
-  if (worflowHistoryQuery.isLoading) {
-    return <></>;
-  }
   return (
     <div className="flex h-[calc(100vh-4rem)]">
-      <div className="w-[350px] bg-muted h-full p-4 overflow-auto">
+      <div className="w-[350px] shrink-0 overflow-auto border-r border-line bg-paper-sunken p-4">
         <Link
           href={`/playbooks/${playbookId}`}
-          className="flex items-center gap-1 text-xs underline">
-          <MoveLeft size={12} /> back
+          className="inline-flex items-center gap-1.5 text-xs font-semibold text-ink-soft hover:text-foreground"
+        >
+          <ArrowLeft size={13} /> Back to editor
         </Link>
-        <h2 className="mt-2">Executions</h2>
-        <ul className="mt-5">
-          {worflowHistoryQuery.data?.entries.map((history) => (
-            <li
-              key={`history-${history.id}`}
-              className={`flex flex-col border-l-5 ${borderStatusIndicator(
-                history.status
-              )} cursor-pointer ${
-                history.id === historyId ? "bg-accent" : ""
-              }`}>
-              <Link
-                href={`/playbooks/${playbookId}/history/${history.id}`}
-                className="p-2 pl-4 cursor-pointer">
-                <p>{readableDate(history.triggered_at)}</p>
-                <span className="text-sm text-muted-foreground">
-                  {history.status}
-                </span>
-              </Link>
-            </li>
-          ))}
-        </ul>
-      </div>
-      <>
+        <h2 className="mt-3">Run history</h2>
+        <p className="mt-1 text-[13px] text-ink-faint">
+          {historyQuery.data?.entries.length ?? 0} runs
+        </p>
 
-      {children}
-      </>
+        <div className="mt-4 flex flex-col gap-1.5">
+          {historyQuery.isLoading &&
+            Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="h-14 animate-pulse rounded-md bg-card" />
+            ))}
+          {historyQuery.data?.entries.map((history) => {
+            const active = history.id === historyId;
+            const ok = history.status === "success";
+            return (
+              <Link
+                key={history.id}
+                href={`/playbooks/${playbookId}/history/${history.id}`}
+                className={cn(
+                  "flex items-center gap-2.5 rounded-md border px-3 py-2.5 transition-colors",
+                  active
+                    ? "border-signal-dot/30 bg-signal-soft"
+                    : "border-line bg-card hover:bg-paper-sunken"
+                )}
+              >
+                <span className={cn("size-2.5 shrink-0 rounded-full", stalk(history.status))} />
+                <div className="min-w-0 flex-1">
+                  <div className="truncate text-[13px] font-semibold">
+                    {readableDate(history.triggered_at, "MMM D, HH:mm:ss")}
+                  </div>
+                </div>
+                <StatusPill variant={ok ? "success" : "failed"} noDot />
+              </Link>
+            );
+          })}
+        </div>
+      </div>
+      <div className="flex flex-1 overflow-hidden">{children}</div>
     </div>
   );
 };

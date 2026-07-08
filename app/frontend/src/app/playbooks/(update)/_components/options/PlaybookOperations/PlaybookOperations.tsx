@@ -39,8 +39,11 @@ const PlaybookOperations: React.FC = () => {
 
   return (
 
-    <div className='absolute flex flex-col max-w-[500px] w-full bg-background border-r border-r-border h-[calc(100vh-64px)] top-0 left-0 z-50'>
-      <button className="absolute top-5 right-5" onClick={cancelHandler}>
+    <div className='absolute left-0 top-0 z-50 flex h-[calc(100vh-64px)] w-full max-w-[460px] flex-col border-r border-line bg-card shadow-[12px_0_30px_rgba(20,22,26,0.08)]'>
+      <button
+        className="absolute right-4 top-4 z-10 flex size-7 items-center justify-center rounded-sm text-ink-soft hover:bg-paper-sunken hover:text-foreground"
+        onClick={cancelHandler}
+      >
         <X size={16} />
       </button>
       {!hasTriggerStep && currentNode?.id == FLOW_SELECT_TRIGGER_ID ? (

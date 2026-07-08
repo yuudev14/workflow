@@ -49,17 +49,6 @@ const ReactFlowPlayground = <T extends Record<string, any>>({
       : "system";
   }, [theme]);
 
-  function resolveBgColor(mode: "dark" | "light" | "system" | undefined) {
-    if (mode === "dark") return "black";
-    if (mode === "light") return "white";
-    if (mode === "system") {
-      return window.matchMedia("(prefers-color-scheme: dark)").matches
-        ? "black"
-        : "white";
-    }
-    return "white";
-  }
-
   return (
     <div className="w-full h-full">
       <ReactFlow
@@ -70,7 +59,7 @@ const ReactFlowPlayground = <T extends Record<string, any>>({
         zoomOnDoubleClick={false}
         {...flowProps}>
         <MiniMap />
-        <Background bgColor={resolveBgColor(reactFlowTheme)} />
+        <Background bgColor="var(--paper-sunken)" color="var(--line-strong)" gap={22} />
         <Controls />
       </ReactFlow>
     </div>

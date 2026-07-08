@@ -11,7 +11,7 @@ rebuild-playbook-service:
 start-dev:
 		docker compose -f ./docker/dev.docker-compose.yml up -d && \
 		cd ./app/frontend && \
-		npm run dev
+		npm run dev -- --hostname 0.0.0.0
 
 lint:
 		cd ./app/frontend && \

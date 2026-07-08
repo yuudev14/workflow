@@ -19,7 +19,7 @@ import PlaybookOperationProvider, {
 import PlaybookOperations from "../_components/options/PlaybookOperations/PlaybookOperations";
 import usePlaybookTrigger from "@/hooks/usePlaybookTrigger";
 import { FLOW_START_ID } from "@/settings/reactFlowIds";
-import { History, Play, Workflow as PlaybookIcon } from "lucide-react";
+import { Check, History, Workflow as PlaybookIcon, Zap } from "lucide-react";
 import Link from "next/link";
 import {
   Tooltip,
@@ -174,17 +174,21 @@ const PlaybookPlayground: React.FC<{ playbookId: string }> = ({
       </div> */}
       {openOperationSidebar && <PlaybookOperations />}
 
-      <div className="flex items-center justify-between h-16 px-5 py-3">
+      <div className="flex h-16 items-center justify-between border-b border-line px-5 py-3">
         <div>
-          <h2 className="text-xl font-medium">{workflowData.name}</h2>
-          <p className="text-xs text-muted-foreground">
-            {workflowData.description}
-          </p>
+          <h2 className="text-lg font-semibold">{workflowData.name}</h2>
+          <p className="text-xs text-ink-faint">{workflowData.description}</p>
         </div>
         <div className="flex gap-2">
-          <Button onClick={triggerPlaybookHandler}>Trigger</Button>
-          <Button>Delete</Button>
-          <Button onClick={savePlaybookHandler}>Save</Button>
+          <Button variant="ghost" onClick={triggerPlaybookHandler}>
+            <Zap /> Trigger
+          </Button>
+          <Button variant="outline" className="text-rose-text">
+            Delete
+          </Button>
+          <Button onClick={savePlaybookHandler}>
+            <Check /> Save
+          </Button>
         </div>
       </div>
       <div className="h-[calc(100vh-8rem)] relative">
