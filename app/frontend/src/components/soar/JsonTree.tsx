@@ -59,7 +59,7 @@ export function JsonTree({
   return (
     <div
       className={cn(
-        "rounded-sm bg-paper-sunken p-2.5 font-mono text-[12.5px] leading-[1.7]",
+        "overflow-x-auto rounded-md border border-line bg-paper-sunken p-3.5 font-mono text-[13px] leading-[1.75]",
         className
       )}
     >

@@ -1,5 +1,6 @@
 import React from 'react'
 
+import { Plus } from 'lucide-react'
 import { Button } from "@/components/ui/button";
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
@@ -56,8 +57,9 @@ const CreatePlaybookForm = () => {
     },
     onSuccess: (data) => {
       toast({
-        title: "succesfully added a workflow",
-        description: "redirecting you to the playground",
+        variant: "success",
+        title: "Playbook created",
+        description: "Taking you to the editor…",
       })
       router.push(`/playbooks/${data.id}`)
       queryClient.removeQueries({
@@ -66,7 +68,8 @@ const CreatePlaybookForm = () => {
     },
     onError(error) {
       toast({
-        title: "Error when adding a new workflow",
+        variant: "destructive",
+        title: "Couldn't create the playbook",
         description: error.message,
       })
     },
@@ -77,7 +80,9 @@ const CreatePlaybookForm = () => {
   }
   return (
     <Dialog>
-      <DialogTrigger className='px-4 bg-primary text-primary-foreground min-h-10'>Create Playbook</DialogTrigger>
+      <DialogTrigger className="inline-flex items-center gap-2 rounded-sm bg-primary px-3.5 py-2 text-[13.5px] font-semibold text-primary-foreground hover:brightness-110">
+        <Plus className="size-4" /> Create playbook
+      </DialogTrigger>
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Add a new workflow</DialogTitle>

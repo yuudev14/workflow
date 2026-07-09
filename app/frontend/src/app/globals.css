@@ -47,8 +47,11 @@
 
   --radius: 0.625rem;
 
-  /* shadcn semantic tokens → palette */
-  --background: var(--paper);
+  /* shadcn semantic tokens → palette.
+     Light mode: the main workspace is white (paper-raised) and the nav rail is
+     a faint gray (paper); dark mode overrides these below to keep a near-black
+     workspace under a raised rail. */
+  --background: var(--paper-raised);
   --foreground: var(--ink);
   --card: var(--paper-raised);
   --card-foreground: var(--ink);
@@ -74,7 +77,7 @@
   --chart-4: var(--rose-dot);
   --chart-5: var(--slate-dot);
 
-  --sidebar: var(--paper-raised);
+  --sidebar: var(--paper);
   --sidebar-foreground: var(--ink);
   --sidebar-primary: var(--signal-dot);
   --sidebar-primary-foreground: var(--signal-on);
@@ -116,6 +119,11 @@
   --shadow-lg: 0 24px 56px rgba(0, 0, 0, 0.55);
 
   --destructive-foreground: #ffffff;
+
+  /* keep dark's near-black workspace under a raised rail (the light-mode
+     mapping above would otherwise invert these). */
+  --background: var(--paper);
+  --sidebar: var(--paper-raised);
 }
 
 @theme inline {
