@@ -45,6 +45,7 @@ export type TaskOperationType =
   | "connector"
   | "utility"
   | "code"
+  | "code_js"
   | "decision"
   | "wait"
   | "approval"
@@ -153,12 +154,15 @@ const PlaybookOperationProvider: React.FC<{
     },
     onSuccess: (_data) => {
       toast({
-        title: "succesfully updated the workflow",
+        variant: "success",
+        title: "Playbook saved",
+        description: "Your changes have been saved.",
       });
     },
     onError(error) {
       toast({
-        title: "Error when updating a new workflow",
+        variant: "destructive",
+        title: "Couldn't save the playbook",
         description: error.message,
       });
     },
@@ -183,7 +187,8 @@ const PlaybookOperationProvider: React.FC<{
   useEffect(() => {
     if (workflowQuery.status == "error") {
       toast({
-        title: "error fetching worfklow",
+        variant: "destructive",
+        title: "Couldn't load the playbook",
         description: workflowQuery.error.message,
       });
     }
@@ -291,13 +296,17 @@ const PlaybookOperationProvider: React.FC<{
 
         setNodes((nds) => nds.concat(newNode));
         setCurrentNode(newNode);
-        console.log(connectionState);
 
         setEdges((eds) =>
           eds.concat({
             id,
             source: connectionState.fromNode!.id,
+            // keep the handle the user actually dragged from — without this the
+            // edge falls back to the node's first source handle (source-top),
+            // so every new-step wire wrongly exits the top of the source node.
+            sourceHandle: connectionState.fromHandle?.id ?? undefined,
             target: id,
+            targetHandle: "target-left",
           })
         );
 

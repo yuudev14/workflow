@@ -39,7 +39,7 @@ const Layout: React.FC<
 
   return (
     <div className="flex h-[calc(100vh-4rem)]">
-      <div className="w-[350px] shrink-0 overflow-auto border-r border-line bg-paper-sunken p-4">
+      <div className="w-[350px] shrink-0 overflow-auto border-r border-line bg-card p-4">
         <Link
           href={`/playbooks/${playbookId}`}
           className="inline-flex items-center gap-1.5 text-xs font-semibold text-ink-soft hover:text-foreground"
@@ -54,7 +54,7 @@ const Layout: React.FC<
         <div className="mt-4 flex flex-col gap-1.5">
           {historyQuery.isLoading &&
             Array.from({ length: 4 }).map((_, i) => (
-              <div key={i} className="h-14 animate-pulse rounded-md bg-card" />
+              <div key={i} className="h-14 animate-pulse rounded-md bg-paper-sunken" />
             ))}
           {historyQuery.data?.entries.map((history) => {
             const active = history.id === historyId;
@@ -67,7 +67,7 @@ const Layout: React.FC<
                   "flex items-center gap-2.5 rounded-md border px-3 py-2.5 transition-colors",
                   active
                     ? "border-signal-dot/30 bg-signal-soft"
-                    : "border-line bg-card hover:bg-paper-sunken"
+                    : "border-line bg-card shadow-sm hover:bg-paper-sunken"
                 )}
               >
                 <span className={cn("size-2.5 shrink-0 rounded-full", stalk(history.status))} />

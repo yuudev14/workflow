@@ -21,35 +21,21 @@ import usePlaybookTrigger from "@/hooks/usePlaybookTrigger";
 import { FLOW_START_ID } from "@/settings/reactFlowIds";
 import { Check, History, Workflow as PlaybookIcon, Zap } from "lucide-react";
 import Link from "next/link";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
 
+// Canvas nav: a segmented Editor / Runs toggle pinned to the top-left of the
+// canvas. Replaces the two stacked bordered buttons that used to float mid-left.
 const RouterButton: React.FC<{ playbookId: string }> = ({ playbookId }) => {
   return (
-    <div className="absolute flex flex-col top-1/5 z-1">
-      <Tooltip>
-        <TooltipTrigger className="border-2 border-b-0 border-l-0 cursor-pointer border-border bg-background">
-          <Link
-            href={"/playbooks/" + playbookId}
-            className="flex items-center justify-center p-5 ">
-            <PlaybookIcon />
-          </Link>
-        </TooltipTrigger>
-        <TooltipContent side="right">Editor</TooltipContent>
-      </Tooltip>
-      <Tooltip>
-        <TooltipTrigger className="border-2 border-l-0 cursor-pointer border-border bg-background">
-          <Link
-            href={"/playbooks/" + playbookId + "/history"}
-            className="flex items-center justify-center p-5 ">
-            <History />
-          </Link>
-        </TooltipTrigger>
-        <TooltipContent side="right">Execution</TooltipContent>
-      </Tooltip>
+    <div className="absolute left-4 top-4 z-10 inline-flex items-center gap-1 rounded-md border border-line bg-card p-1 shadow-md">
+      <span className="inline-flex items-center gap-1.5 rounded-sm bg-signal-soft px-3 py-1.5 text-[12.5px] font-semibold text-signal-text">
+        <PlaybookIcon className="size-3.5" /> Editor
+      </span>
+      <Link
+        href={"/playbooks/" + playbookId + "/history"}
+        className="inline-flex items-center gap-1.5 rounded-sm px-3 py-1.5 text-[12.5px] font-semibold text-ink-soft transition-colors hover:bg-paper-sunken hover:text-ink"
+      >
+        <History className="size-3.5" /> Runs
+      </Link>
     </div>
   );
 };

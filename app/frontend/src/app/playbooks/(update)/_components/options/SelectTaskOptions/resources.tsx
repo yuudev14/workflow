@@ -1,4 +1,4 @@
-import { Cable, CircleCheckBig, Code, Network, PencilLineIcon, Timer, Wrench } from 'lucide-react'
+import { CircleCheckBig, Code, GitBranch, LayoutGrid, PencilLineIcon, Timer, Wrench } from 'lucide-react'
 import { TaskOperationGroup } from './schema'
 
 export const TASK_OPERATIONS: readonly TaskOperationGroup[] = [
@@ -6,50 +6,70 @@ export const TASK_OPERATIONS: readonly TaskOperationGroup[] = [
     label: "Execute",
     options: [
       {
-        label: "Connector",
-        tooltip: <p>Add to library</p>,
-        Icon: Cable,
+        label: "Connectors",
+        description: "Slack, Jira, VirusTotal and every other installed third-party connector",
+        tone: "signal",
+        Icon: LayoutGrid,
         operation: "connector"
       },
       {
-        label: "Utility",
-        tooltip: <p>Add to library</p>,
-        Icon: Wrench,
-        operation: "utility"
-      },
-      {
-        label: "Code",
-        tooltip: <p>Add to library</p>,
+        label: "Code snippet",
+        description: "A quick custom transform between steps — no connector to install",
+        tone: "moss",
+        badge: "python",
+        badgeTone: "signal",
         Icon: Code,
         operation: "code"
+      },
+      {
+        label: "Code snippet",
+        description: "Same, in JavaScript. Plain JS only — TypeScript syntax won't run here",
+        tone: "amber",
+        badge: "node",
+        badgeTone: "moss",
+        Icon: Code,
+        operation: "code_js"
+      },
+      {
+        label: "Utilities",
+        description: "HTTP Request and other in-worker builtins — no sandbox subprocess",
+        tone: "slate",
+        badge: "in-worker",
+        badgeTone: "slate",
+        Icon: Wrench,
+        operation: "utility"
       },
     ]
   },
   {
     label: "Evaluate",
-    iconClass: 'bg-amber-soft text-amber-text',
     options: [
       {
-        label: "Decision",
-        tooltip: <p>Add to library</p>,
-        Icon: Network,
+        label: "Condition",
+        description: "If / else if / else — branch the playbook on a compare or expression",
+        tone: "rose",
+        Icon: GitBranch,
         operation: "decision"
       },
       {
         label: "Wait",
-        tooltip: <p>Add to library</p>,
+        description: "Pause for a fixed duration, or until a condition becomes true",
+        tone: "amber",
+        badge: "new",
         Icon: Timer,
         operation: "wait"
       },
       {
         label: "Approval",
-        tooltip: <p>Add to library</p>,
+        description: "Hold the run until an analyst approves or rejects it",
+        tone: "moss",
         Icon: CircleCheckBig,
         operation: "approval"
       },
       {
         label: "Input Prompt",
-        tooltip: <p>Add to library</p>,
+        description: "Collect a value from an operator before continuing",
+        tone: "signal",
         Icon: PencilLineIcon,
         operation: "input_prompt"
       },
