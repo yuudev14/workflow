@@ -56,8 +56,12 @@ process.stdin.on("end", async () => {
       `${code}\n;return typeof result === "undefined" ? undefined : result;`
     );
     const result: unknown = await fn(params, variables.steps);
+    // Exit once stdout has flushed. Without this, any snippet that leaves the
+    // event loop alive (a timer, an open socket, a fetch keep-alive pool) would
+    // keep the process running until the node timeout SIGKILLs it.
     writeResult(
-      JSON.stringify({ code_output: result === undefined ? null : result })
+      JSON.stringify({ code_output: result === undefined ? null : result }),
+      () => process.exit(0)
     );
   } catch (err) {
     console.error(err instanceof Error && err.stack ? err.stack : String(err));
