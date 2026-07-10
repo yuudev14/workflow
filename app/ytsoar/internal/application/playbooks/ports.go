@@ -14,7 +14,6 @@ type PlaybookRepository interface {
 	GetPlaybookHistoryById(ctx context.Context, playbookHistoryId uuid.UUID) (*domain.PlaybookHistoryResponse, error)
 	GetPlaybookHistory(ctx context.Context, offset int, limit int, filter PlaybookHistoryFilter) ([]domain.PlaybookHistoryResponse, error)
 	GetPlaybookHistoryCount(ctx context.Context, filter PlaybookHistoryFilter) (int, error)
-	GetPlaybookTriggers(ctx context.Context) ([]domain.PlaybookTriggers, error)
 	GetPlaybooksCount(ctx context.Context, filter PlaybookFilter) (int, error)
 	GetPlaybookById(ctx context.Context, id string) (*domain.Playbooks, error)
 

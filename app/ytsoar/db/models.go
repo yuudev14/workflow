@@ -99,6 +99,52 @@ func (ns NullTaskStatus) Value() (driver.Value, error) {
 	return string(ns.TaskStatus), nil
 }
 
+type TriggerType string
+
+const (
+	TriggerTypeManual     TriggerType = "manual"
+	TriggerTypeWebhook    TriggerType = "webhook"
+	TriggerTypeReferenced TriggerType = "referenced"
+	TriggerTypeOnCreate   TriggerType = "on_create"
+	TriggerTypeOnUpdate   TriggerType = "on_update"
+	TriggerTypeOnDelete   TriggerType = "on_delete"
+)
+
+func (e *TriggerType) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = TriggerType(s)
+	case string:
+		*e = TriggerType(s)
+	default:
+		return fmt.Errorf("unsupported scan type for TriggerType: %T", src)
+	}
+	return nil
+}
+
+type NullTriggerType struct {
+	TriggerType TriggerType `json:"trigger_type"`
+	Valid       bool        `json:"valid"` // Valid is true if TriggerType is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullTriggerType) Scan(value interface{}) error {
+	if value == nil {
+		ns.TriggerType, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.TriggerType.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullTriggerType) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.TriggerType), nil
+}
+
 type Connector struct {
 	ID         string             `json:"id"`
 	Name       string             `json:"name"`
@@ -121,12 +167,13 @@ type Edge struct {
 }
 
 type Playbook struct {
-	ID          pgtype.UUID      `json:"id"`
-	Name        pgtype.Text      `json:"name"`
-	Description pgtype.Text      `json:"description"`
-	TriggerType pgtype.UUID      `json:"trigger_type"`
-	CreatedAt   pgtype.Timestamp `json:"created_at"`
-	UpdatedAt   pgtype.Timestamp `json:"updated_at"`
+	ID                pgtype.UUID      `json:"id"`
+	Name              pgtype.Text      `json:"name"`
+	Description       pgtype.Text      `json:"description"`
+	TriggerType       NullTriggerType  `json:"trigger_type"`
+	TriggerParameters []byte           `json:"trigger_parameters"`
+	CreatedAt         pgtype.Timestamp `json:"created_at"`
+	UpdatedAt         pgtype.Timestamp `json:"updated_at"`
 }
 
 type PlaybookHistory struct {
@@ -137,12 +184,6 @@ type PlaybookHistory struct {
 	Result      []byte           `json:"result"`
 	TriggeredAt pgtype.Timestamp `json:"triggered_at"`
 	Edges       []byte           `json:"edges"`
-}
-
-type PlaybookTrigger struct {
-	ID          pgtype.UUID `json:"id"`
-	Name        pgtype.Text `json:"name"`
-	Description pgtype.Text `json:"description"`
 }
 
 type Scheduler struct {

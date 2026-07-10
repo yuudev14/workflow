@@ -134,19 +134,6 @@ func (w *PlaybookHandler) GetPlaybookHistory(c *gin.Context) {
 
 }
 
-func (w *PlaybookHandler) GetPlaybookTriggerTypes(c *gin.Context) {
-	response := rest.Response{C: c}
-	workflowTriggers, workflowErr := w.PlaybookService.GetPlaybookTriggers(c.Request.Context())
-
-	if workflowErr != nil {
-		w.logger.Error(workflowErr)
-		response.ResponseError(http.StatusInternalServerError, workflowErr.Error())
-		return
-	}
-
-	response.ResponseSuccess(workflowTriggers)
-}
-
 func (w *PlaybookHandler) GetPlaybookById(c *gin.Context) {
 	response := rest.Response{C: c}
 	workflowId := c.Param("playbook_id")

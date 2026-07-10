@@ -1,43 +1,94 @@
 import React, { useContext } from 'react'
 
-import { useQuery } from '@tanstack/react-query'
-import { ChevronRight, MousePointerClick, ToggleRight, Webhook, type LucideIcon } from 'lucide-react'
-import PlaybookService from '@/services/playbooks/playbooks'
-import { PlaybookTriggerType } from '@/services/playbooks/playbooks.schema'
+import {
+  ChevronRight,
+  Link2,
+  MousePointerClick,
+  PenLine,
+  Plus,
+  Trash2,
+  Webhook,
+  type LucideIcon,
+} from 'lucide-react'
 import { FLOW_SELECT_TRIGGER_ID, FLOW_START_ID } from '@/settings/reactFlowIds'
+import {
+  TRIGGER_MANUAL,
+  TRIGGER_ON_CREATE,
+  TRIGGER_ON_DELETE,
+  TRIGGER_ON_UPDATE,
+  TRIGGER_REFERENCED,
+  TRIGGER_WEBHOOK,
+  isModuleEventTrigger,
+} from '@/settings/triggers'
 import { Glyph, type GlyphTone } from '@/components/soar'
 import { PlaybookOperationContext } from '../../../_providers/PlaybookOperationProvider'
 
-// per-trigger presentation. Unknown backend triggers fall back to a neutral look.
-const TRIGGER_META: Record<string, { icon: LucideIcon; tone: GlyphTone; description: string }> = {
-  manual: {
+// static trigger catalog for the picker — ids must match the backend enum
+// (see settings/triggers.ts). Module-event triggers open the config sidebar
+// so the module can be chosen right away.
+const TRIGGERS: {
+  id: string
+  name: string
+  icon: LucideIcon
+  tone: GlyphTone
+  description: string
+  badge?: string
+}[] = [
+  {
+    id: TRIGGER_MANUAL,
+    name: 'Manual',
     icon: MousePointerClick,
     tone: 'slate',
     description: 'Run on demand from the Playbooks list or the API — no automatic trigger',
   },
-  webhook: {
+  {
+    id: TRIGGER_WEBHOOK,
+    name: 'Webhook',
     icon: Webhook,
     tone: 'signal',
     description: "Fire when an external system calls this playbook's unique URL",
   },
-}
-
-// Module-event trigger — fires off an Alert/Incident event. Phase 1 client-only
-// option (backend wiring is Phase 2); configured in PlaybookTriggerParameters.
-const MODULE_EVENT_ID = 'module_event'
+  {
+    id: TRIGGER_REFERENCED,
+    name: 'Referenced',
+    icon: Link2,
+    tone: 'slate',
+    description: 'Run only when another playbook references this one as a sub-playbook',
+  },
+  {
+    id: TRIGGER_ON_CREATE,
+    name: 'On create',
+    icon: Plus,
+    tone: 'moss',
+    badge: 'new',
+    description: 'Fire automatically when a record in the chosen module is created',
+  },
+  {
+    id: TRIGGER_ON_UPDATE,
+    name: 'On update',
+    icon: PenLine,
+    tone: 'amber',
+    badge: 'new',
+    description: 'Fire automatically when a record in the chosen module is updated',
+  },
+  {
+    id: TRIGGER_ON_DELETE,
+    name: 'On delete',
+    icon: Trash2,
+    tone: 'rose',
+    badge: 'new',
+    description: 'Fire automatically when a record in the chosen module is deleted',
+  },
+]
 
 const SelectPlaybookTriggerOption = () => {
   const { setPlaybookData, setOpenOperationSidebar, setNodes, setCurrentNode } =
     useContext(PlaybookOperationContext)
 
-  const triggerTypesQuery = useQuery({
-    queryKey: ['workflow-trigger-type-lists'],
-    queryFn: async () => PlaybookService.getPlaybookTriggerTypes(),
-  })
-
-  // create the start node for the chosen trigger. For module events we keep the
-  // sidebar open on the start node so its module/event can be configured.
-  const applyTrigger = (triggerId: string, label: string, openConfig: boolean) => {
+  // create the start node for the chosen trigger. Module-event triggers keep the
+  // sidebar open on the start node so their module can be configured.
+  const applyTrigger = (triggerId: string, label: string) => {
+    const openConfig = isModuleEventTrigger(triggerId)
     setPlaybookData((workflow) => ({ ...workflow, trigger_type: triggerId }))
     const startNode = {
       id: FLOW_START_ID,
@@ -71,7 +122,7 @@ const SelectPlaybookTriggerOption = () => {
       className="flex items-start gap-3 rounded-md border border-line bg-card p-3 text-left transition-colors hover:border-line-strong hover:shadow-sm">
       <Glyph icon={icon} tone={tone} size="lg" />
       <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-1.5 text-[13px] font-semibold capitalize text-ink">
+        <div className="flex items-center gap-1.5 text-[13px] font-semibold text-ink">
           {name}
           {badge && (
             <span className="rounded-[5px] bg-rose-soft px-1.5 py-px text-[10px] font-bold uppercase tracking-wide text-rose-text">
@@ -93,32 +144,17 @@ const SelectPlaybookTriggerOption = () => {
       </div>
 
       <div className="flex flex-1 flex-col gap-2.5 overflow-auto p-4">
-        {triggerTypesQuery.data?.map((trigger: PlaybookTriggerType) => {
-          const meta = TRIGGER_META[trigger.name] ?? {
-            icon: MousePointerClick,
-            tone: 'slate' as GlyphTone,
-            description: trigger.description ?? 'Start this playbook.',
-          }
-          return (
-            <Tile
-              key={`trigger-type-${trigger.id}`}
-              icon={meta.icon}
-              tone={meta.tone}
-              name={trigger.name}
-              description={meta.description}
-              onClick={() => applyTrigger(trigger.id, trigger.name, false)}
-            />
-          )
-        })}
-
-        <Tile
-          icon={ToggleRight}
-          tone="rose"
-          name="Module event"
-          badge="new"
-          description="Fire automatically when an Alert or Incident is created or updated"
-          onClick={() => applyTrigger(MODULE_EVENT_ID, 'Module event', true)}
-        />
+        {TRIGGERS.map((trigger) => (
+          <Tile
+            key={`trigger-type-${trigger.id}`}
+            icon={trigger.icon}
+            tone={trigger.tone}
+            name={trigger.name}
+            description={trigger.description}
+            badge={trigger.badge}
+            onClick={() => applyTrigger(trigger.id, trigger.name)}
+          />
+        ))}
       </div>
     </div>
   )

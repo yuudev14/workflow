@@ -3,6 +3,7 @@ export interface Playbook {
   name: string;
   description?: string | null;
   trigger_type?: string | null;
+  trigger_parameters?: Record<string, unknown> | null;
   created_at: string;
   updated_at: string;
   tasks?: Tasks[] | null;
@@ -71,14 +72,8 @@ export interface Edges {
   destination_handle: string | null;
 }
 
-export interface PlaybookTriggerType {
-  id: string;
-  name: string;
-  description?: string | null;
-}
-
 export type PlaybookDataToUpdate = Partial<
-  Pick<Playbook, "name" | "description" | "trigger_type">
+  Pick<Playbook, "name" | "description" | "trigger_type" | "trigger_parameters">
 >;
 
 export type CreatePlaybookPayload = Partial<
@@ -91,7 +86,7 @@ export type UpdateHandlesPayload = Record<
 >;
 
 export type UpdatePlaybookPayload = {
-  task: Pick<Playbook, "name" | "trigger_type" | "description">;
+  task: Pick<Playbook, "name" | "trigger_type" | "trigger_parameters" | "description">;
   nodes: Tasks[];
   edges: Record<string, string[]>;
   handles: UpdateHandlesPayload;

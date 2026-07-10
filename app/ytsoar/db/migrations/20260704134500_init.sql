@@ -30,6 +30,21 @@ EXCEPTION
 END $$;
 -- +goose StatementEnd
 
+-- +goose StatementBegin
+DO $$ BEGIN
+    CREATE TYPE trigger_type AS ENUM (
+        'manual',
+        'webhook',
+        'referenced',
+        'on_create',
+        'on_update',
+        'on_delete'
+    );
+EXCEPTION
+    WHEN duplicate_object THEN NULL;
+END $$;
+-- +goose StatementEnd
+
 CREATE TABLE IF NOT EXISTS users (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     username TEXT NOT NULL UNIQUE,
@@ -39,19 +54,12 @@ CREATE TABLE IF NOT EXISTS users (
     last_name TEXT
 );
 
-CREATE TABLE IF NOT EXISTS playbook_triggers (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4 (),
-    name VARCHAR(50),
-    description TEXT
-);
-
-INSERT INTO playbook_triggers (name) VALUES ('manual'), ('webhook');
-
 CREATE TABLE IF NOT EXISTS playbooks (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4 (),
     name VARCHAR(200),
     description TEXT,
-    trigger_type UUID REFERENCES playbook_triggers (id) NULL,
+    trigger_type trigger_type NULL,
+    trigger_parameters JSONB NULL,
     created_at TIMESTAMP NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMP NOT NULL DEFAULT NOW()
 );
@@ -130,7 +138,7 @@ DROP TABLE IF EXISTS tasks;
 DROP TABLE IF EXISTS playbook_history;
 DROP TABLE IF EXISTS schedulers;
 DROP TABLE IF EXISTS playbooks;
-DROP TABLE IF EXISTS playbook_triggers;
 DROP TABLE IF EXISTS users;
+DROP TYPE IF EXISTS trigger_type;
 DROP TYPE IF EXISTS task_status;
 DROP TYPE IF EXISTS playbook_status;

@@ -13,25 +13,32 @@ import (
 )
 
 const createPlaybook = `-- name: CreatePlaybook :one
-INSERT INTO playbooks (name, description, trigger_type)
-VALUES ($1, $2, $3)
-RETURNING id, name, description, trigger_type, created_at, updated_at
+INSERT INTO playbooks (name, description, trigger_type, trigger_parameters)
+VALUES ($1, $2, $3, $4)
+RETURNING id, name, description, trigger_type, trigger_parameters, created_at, updated_at
 `
 
 type CreatePlaybookParams struct {
-	Name        pgtype.Text `json:"name"`
-	Description pgtype.Text `json:"description"`
-	TriggerType pgtype.UUID `json:"trigger_type"`
+	Name              pgtype.Text     `json:"name"`
+	Description       pgtype.Text     `json:"description"`
+	TriggerType       NullTriggerType `json:"trigger_type"`
+	TriggerParameters []byte          `json:"trigger_parameters"`
 }
 
 func (q *Queries) CreatePlaybook(ctx context.Context, arg CreatePlaybookParams) (Playbook, error) {
-	row := q.db.QueryRow(ctx, createPlaybook, arg.Name, arg.Description, arg.TriggerType)
+	row := q.db.QueryRow(ctx, createPlaybook,
+		arg.Name,
+		arg.Description,
+		arg.TriggerType,
+		arg.TriggerParameters,
+	)
 	var i Playbook
 	err := row.Scan(
 		&i.ID,
 		&i.Name,
 		&i.Description,
 		&i.TriggerType,
+		&i.TriggerParameters,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -65,7 +72,7 @@ func (q *Queries) CreatePlaybookHistory(ctx context.Context, arg CreatePlaybookH
 }
 
 const getPlaybookById = `-- name: GetPlaybookById :one
-SELECT id, name, description, trigger_type, created_at, updated_at FROM playbooks WHERE id = $1
+SELECT id, name, description, trigger_type, trigger_parameters, created_at, updated_at FROM playbooks WHERE id = $1
 `
 
 func (q *Queries) GetPlaybookById(ctx context.Context, id pgtype.UUID) (Playbook, error) {
@@ -76,6 +83,7 @@ func (q *Queries) GetPlaybookById(ctx context.Context, id pgtype.UUID) (Playbook
 		&i.Name,
 		&i.Description,
 		&i.TriggerType,
+		&i.TriggerParameters,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -84,7 +92,7 @@ func (q *Queries) GetPlaybookById(ctx context.Context, id pgtype.UUID) (Playbook
 
 const getPlaybookGraphById = `-- name: GetPlaybookGraphById :one
 SELECT
-    playbooks.id, playbooks.name, playbooks.description, playbooks.trigger_type, playbooks.created_at, playbooks.updated_at,
+    playbooks.id, playbooks.name, playbooks.description, playbooks.trigger_type, playbooks.trigger_parameters, playbooks.created_at, playbooks.updated_at,
     (SELECT JSON_AGG(tasks.*)
         FROM tasks
         WHERE tasks.playbook_id = playbooks.id) AS tasks,
@@ -95,14 +103,15 @@ FROM playbooks WHERE playbooks.id = $1
 `
 
 type GetPlaybookGraphByIdRow struct {
-	ID          pgtype.UUID      `json:"id"`
-	Name        pgtype.Text      `json:"name"`
-	Description pgtype.Text      `json:"description"`
-	TriggerType pgtype.UUID      `json:"trigger_type"`
-	CreatedAt   pgtype.Timestamp `json:"created_at"`
-	UpdatedAt   pgtype.Timestamp `json:"updated_at"`
-	Tasks       []byte           `json:"tasks"`
-	Edges       []byte           `json:"edges"`
+	ID                pgtype.UUID      `json:"id"`
+	Name              pgtype.Text      `json:"name"`
+	Description       pgtype.Text      `json:"description"`
+	TriggerType       NullTriggerType  `json:"trigger_type"`
+	TriggerParameters []byte           `json:"trigger_parameters"`
+	CreatedAt         pgtype.Timestamp `json:"created_at"`
+	UpdatedAt         pgtype.Timestamp `json:"updated_at"`
+	Tasks             []byte           `json:"tasks"`
+	Edges             []byte           `json:"edges"`
 }
 
 func (q *Queries) GetPlaybookGraphById(ctx context.Context, id pgtype.UUID) (GetPlaybookGraphByIdRow, error) {
@@ -113,6 +122,7 @@ func (q *Queries) GetPlaybookGraphById(ctx context.Context, id pgtype.UUID) (Get
 		&i.Name,
 		&i.Description,
 		&i.TriggerType,
+		&i.TriggerParameters,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.Tasks,
@@ -155,30 +165,6 @@ func (q *Queries) GetPlaybookHistoryById(ctx context.Context, id pgtype.UUID) (G
 	return i, err
 }
 
-const getPlaybookTriggers = `-- name: GetPlaybookTriggers :many
-SELECT id, name, description FROM playbook_triggers
-`
-
-func (q *Queries) GetPlaybookTriggers(ctx context.Context) ([]PlaybookTrigger, error) {
-	rows, err := q.db.Query(ctx, getPlaybookTriggers)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []PlaybookTrigger
-	for rows.Next() {
-		var i PlaybookTrigger
-		if err := rows.Scan(&i.ID, &i.Name, &i.Description); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
 const updatePlaybook = `-- name: UpdatePlaybook :one
 UPDATE playbooks
 SET
@@ -194,19 +180,25 @@ SET
         WHEN $5::boolean THEN $6
         ELSE trigger_type
     END,
+    trigger_parameters = CASE
+        WHEN $7::boolean THEN $8
+        ELSE trigger_parameters
+    END,
     updated_at = NOW()
-WHERE id = $7
-RETURNING id, name, description, trigger_type, created_at, updated_at
+WHERE id = $9
+RETURNING id, name, description, trigger_type, trigger_parameters, created_at, updated_at
 `
 
 type UpdatePlaybookParams struct {
-	NameSet        bool        `json:"name_set"`
-	Name           pgtype.Text `json:"name"`
-	DescriptionSet bool        `json:"description_set"`
-	Description    pgtype.Text `json:"description"`
-	TriggerTypeSet bool        `json:"trigger_type_set"`
-	TriggerType    pgtype.UUID `json:"trigger_type"`
-	ID             pgtype.UUID `json:"id"`
+	NameSet              bool            `json:"name_set"`
+	Name                 pgtype.Text     `json:"name"`
+	DescriptionSet       bool            `json:"description_set"`
+	Description          pgtype.Text     `json:"description"`
+	TriggerTypeSet       bool            `json:"trigger_type_set"`
+	TriggerType          NullTriggerType `json:"trigger_type"`
+	TriggerParametersSet bool            `json:"trigger_parameters_set"`
+	TriggerParameters    []byte          `json:"trigger_parameters"`
+	ID                   pgtype.UUID     `json:"id"`
 }
 
 func (q *Queries) UpdatePlaybook(ctx context.Context, arg UpdatePlaybookParams) (Playbook, error) {
@@ -217,6 +209,8 @@ func (q *Queries) UpdatePlaybook(ctx context.Context, arg UpdatePlaybookParams) 
 		arg.Description,
 		arg.TriggerTypeSet,
 		arg.TriggerType,
+		arg.TriggerParametersSet,
+		arg.TriggerParameters,
 		arg.ID,
 	)
 	var i Playbook
@@ -225,6 +219,7 @@ func (q *Queries) UpdatePlaybook(ctx context.Context, arg UpdatePlaybookParams) 
 		&i.Name,
 		&i.Description,
 		&i.TriggerType,
+		&i.TriggerParameters,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
