@@ -66,7 +66,22 @@ const Page: React.FC<{ params: Promise<{ playbookHistoryId: string }> }> = ({
 
   const edges = useMemo(() => {
     if (taskHistoryQuery.data == undefined) return [];
-    return taskHistoryQuery.data.edges.map(setMappedEdges);
+    const { tasks, edges } = taskHistoryQuery.data;
+    const statusOf = (id: string) =>
+      tasks.find((t) => t.task_id === id)?.status;
+    return edges.map((edge) => {
+      // green when the edge was actually followed to a successful step — both
+      // endpoints ran (status "success", i.e. not skipped and not failed).
+      const followed =
+        statusOf(edge.source_id) === "success" &&
+        statusOf(edge.destination_id) === "success";
+      return {
+        ...setMappedEdges(edge),
+        style: followed
+          ? { stroke: "var(--moss-dot)", strokeWidth: 2 }
+          : undefined,
+      };
+    });
   }, [taskHistoryQuery.data]);
 
   const failed = currentNode?.status === "failed";
