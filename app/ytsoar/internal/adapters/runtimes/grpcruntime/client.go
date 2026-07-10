@@ -18,6 +18,7 @@ import (
 // deadlines come from the request context.
 type Client struct {
 	logger logger.Logger
+	conn   *grpc.ClientConn
 	client pb.ConnectorRuntimeClient
 }
 
@@ -28,8 +29,14 @@ func New(log logger.Logger, addr string) (*Client, error) {
 	}
 	return &Client{
 		logger: log,
+		conn:   conn,
 		client: pb.NewConnectorRuntimeClient(conn),
 	}, nil
+}
+
+// Close tears down the underlying connection; call it on worker shutdown.
+func (c *Client) Close() error {
+	return c.conn.Close()
 }
 
 func (c *Client) Execute(ctx context.Context, req execution.ExecutionRequest) (json.RawMessage, error) {

@@ -32,13 +32,13 @@ def main():
     result_out = sys.stdout
     sys.stdout = sys.stderr
 
-    local_vars = {}
-    exec(
-        compile(code, "user_code", "exec"),
-        {"params": params, "steps": variables["steps"]},
-        local_vars,
-    )
-    print(json.dumps({"code_output": local_vars.get("result")}, default=str), file=result_out)
+    # One namespace for globals AND locals: with separate dicts, module-level
+    # names bind into locals but function bodies resolve against globals, so any
+    # helper/recursive function or class referencing a top-level name raises
+    # NameError. A single dict makes user code behave like a normal module.
+    namespace = {"params": params, "steps": variables["steps"]}
+    exec(compile(code, "user_code", "exec"), namespace)
+    print(json.dumps({"code_output": namespace.get("result")}, default=str), file=result_out)
 
 
 main()

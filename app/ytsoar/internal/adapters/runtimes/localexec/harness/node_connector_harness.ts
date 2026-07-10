@@ -46,7 +46,13 @@ process.stdin.on("end", async () => {
       params,
       payload.operation
     );
-    writeResult(JSON.stringify(result === undefined ? null : result));
+    // Exit once stdout has flushed. Without this, a connector that leaves the
+    // event loop alive (an open socket, a fetch keep-alive pool) would keep the
+    // process running until the node timeout SIGKILLs it.
+    writeResult(
+      JSON.stringify(result === undefined ? null : result),
+      () => process.exit(0)
+    );
   } catch (err) {
     console.error(err instanceof Error && err.stack ? err.stack : String(err));
     process.exit(1);

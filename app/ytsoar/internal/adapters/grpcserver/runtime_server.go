@@ -59,7 +59,14 @@ func (s *RuntimeServer) ExecuteOperation(ctx context.Context, req *runtimepb.Exe
 	if req.TimeoutMs > 0 {
 		timeout = time.Duration(req.TimeoutMs) * time.Millisecond
 	}
-	historyID, _ := uuid.Parse(req.PlaybookHistoryId)
+	var historyID uuid.UUID
+	if req.PlaybookHistoryId != "" {
+		parsed, err := uuid.Parse(req.PlaybookHistoryId)
+		if err != nil {
+			return &runtimepb.ExecuteOperationResponse{Error: "invalid playbook_history_id: " + err.Error()}, nil
+		}
+		historyID = parsed
+	}
 
 	runtime, err := s.resolver.Resolve(task)
 	if err != nil {
