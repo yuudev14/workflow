@@ -131,22 +131,14 @@ const BranchRouter: React.FC<{
 
 const CaseCard: React.FC<{
   keyword: string;
-  name?: string;
-  onNameChange: (name: string) => void;
   onRemove: () => void;
   children: React.ReactNode;
   route: React.ReactNode;
-}> = ({ keyword, name, onNameChange, onRemove, children, route }) => (
+}> = ({ keyword, onRemove, children, route }) => (
   <div className="flex flex-col gap-2 rounded-md border border-line bg-paper p-2.5">
     <div className="flex items-center gap-2">
       <GripVertical className="size-3.5 shrink-0 cursor-grab text-ink-faint" />
-      <span className="shrink-0 text-[11px] font-bold text-ink">{keyword}</span>
-      <input
-        value={name ?? ""}
-        onChange={(e) => onNameChange(e.target.value)}
-        placeholder="name this branch"
-        className="min-w-0 flex-1 rounded-sm border border-transparent bg-transparent px-1.5 py-0.5 text-[11.5px] font-semibold text-ink outline-none placeholder:font-normal placeholder:text-ink-faint hover:border-line-strong focus:border-signal-dot focus:bg-paper-sunken"
-      />
+      <span className="min-w-[46px] text-[11px] font-bold text-ink">{keyword}</span>
       <button
         type="button"
         onClick={onRemove}
@@ -189,8 +181,7 @@ const ElseCard: React.FC<{ children: React.ReactNode }> = ({ children }) => (
 );
 
 // One switch branch: a truthy expression plus a stable id naming its edge handle.
-// `name` is the human label shown on the branch edge (id stays the wire handle).
-type Case = { id: string; expression: string; name?: string };
+type Case = { id: string; expression: string };
 
 // Editor for the "switch_expression" operation: an ordered list of if / else-if
 // expressions, each routed to its own destination, plus a trailing else. Cases
@@ -205,8 +196,6 @@ const CasesEditor: React.FC<{
 
   const update = (index: number, expression: string) =>
     onChange(cases.map((c, i) => (i === index ? { ...c, expression } : c)));
-  const rename = (index: number, name: string) =>
-    onChange(cases.map((c, i) => (i === index ? { ...c, name } : c)));
   const add = () => onChange([...cases, { id: newCaseId(), expression: "" }]);
   const remove = (index: number) => {
     const removed = cases[index];
@@ -228,8 +217,6 @@ const CasesEditor: React.FC<{
         <CaseCard
           key={c.id}
           keyword={i === 0 ? "If" : "Else if"}
-          name={c.name}
-          onNameChange={(name) => rename(i, name)}
           onRemove={() => remove(i)}
           route={
             <BranchRouter
@@ -254,14 +241,7 @@ const CasesEditor: React.FC<{
 };
 
 // One simple condition: left/operator/right plus a stable id naming its handle.
-// `name` is the human label shown on the branch edge.
-type Condition = {
-  id: string;
-  left: string;
-  operator: string;
-  right: string;
-  name?: string;
-};
+type Condition = { id: string; left: string; operator: string; right: string };
 
 const OPERATORS = ["==", "!=", ">", "<", ">=", "<=", "contains", "not_contains"];
 
@@ -304,8 +284,6 @@ const ConditionsEditor: React.FC<{
         <CaseCard
           key={c.id}
           keyword={i === 0 ? "If" : "Else if"}
-          name={c.name}
-          onNameChange={(name) => update(i, { name })}
           onRemove={() => remove(i)}
           route={
             <BranchRouter

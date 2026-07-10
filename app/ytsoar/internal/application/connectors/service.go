@@ -124,6 +124,11 @@ func (s *ConnectorServiceImpl) UploadConnector(ctx context.Context, zipBytes []b
 }
 
 func (s *ConnectorServiceImpl) DeleteConnector(ctx context.Context, connectorID string) error {
+	// reservedIDs guard deletes too: removing a builtin's info.json dir would
+	// strip it from the editor even though its implementation is compiled in.
+	if reservedIDs[connectorID] {
+		return fmt.Errorf("%w: connector id %q is reserved", ErrInvalidConnector, connectorID)
+	}
 	if _, err := s.store.Get(ctx, connectorID); err != nil {
 		return err
 	}

@@ -12,8 +12,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	mock_edges "github.com/yuudev14/ytsoar/internal/application/edges/mocks"
 	"github.com/yuudev14/ytsoar/internal/application/playbooks"
-	mock_workflow_application "github.com/yuudev14/ytsoar/internal/application/playbooks/mocks"
-	mock_workflows "github.com/yuudev14/ytsoar/internal/application/playbooks/mocks"
+	mock_playbook_application "github.com/yuudev14/ytsoar/internal/application/playbooks/mocks"
+	mock_playbooks "github.com/yuudev14/ytsoar/internal/application/playbooks/mocks"
 	"github.com/yuudev14/ytsoar/internal/application/tasks"
 	mock_tasks "github.com/yuudev14/ytsoar/internal/application/tasks/mocks"
 	"github.com/yuudev14/ytsoar/internal/domain"
@@ -23,10 +23,10 @@ import (
 )
 
 type setupMockServices struct {
-	PlaybookService            *mock_workflows.MockPlaybookService
+	PlaybookService            *mock_playbooks.MockPlaybookService
 	TaskService                *mock_tasks.MockTaskService
 	EdgeService                *mock_edges.MockEdgeService
-	PlaybookApplicationService *mock_workflow_application.MockPlaybookApplicationService
+	PlaybookApplicationService *mock_playbook_application.MockPlaybookApplicationService
 }
 
 func setupController(t *testing.T) (
@@ -38,10 +38,10 @@ func setupController(t *testing.T) (
 
 	ctrl := gomock.NewController(t)
 
-	mockPlaybookService := mock_workflows.NewMockPlaybookService(ctrl)
+	mockPlaybookService := mock_playbooks.NewMockPlaybookService(ctrl)
 	mockTaskService := mock_tasks.NewMockTaskService(ctrl)
 	mockEdgeService := mock_edges.NewMockEdgeService(ctrl)
-	mockPlaybookAppService := mock_workflow_application.NewMockPlaybookApplicationService(ctrl)
+	mockPlaybookAppService := mock_playbook_application.NewMockPlaybookApplicationService(ctrl)
 
 	gin.SetMode(gin.TestMode)
 
@@ -197,16 +197,19 @@ func TestControllerGetPlaybookGraphByIdError(t *testing.T) {
 
 	tests := []struct {
 		error_         string
+		err            error
 		expectedStatus int
 		expectedReturn *domain.PlaybookGraph
 	}{
 		{
-			error_:         "workflow is not found",
+			error_:         "playbook is not found",
+			err:            playbooks.ErrPlaybookNotFound,
 			expectedStatus: http.StatusNotFound,
 			expectedReturn: nil,
 		},
 		{
 			error_:         "internal server error",
+			err:            fmt.Errorf("internal server error"),
 			expectedStatus: http.StatusInternalServerError,
 			expectedReturn: &domain.PlaybookGraph{},
 		},
@@ -234,7 +237,7 @@ func TestControllerGetPlaybookGraphByIdError(t *testing.T) {
 			mockServices.PlaybookService.
 				EXPECT().
 				GetPlaybookGraphById(gomock.Any(), uuid.String()).
-				Return(tt.expectedReturn, fmt.Errorf("%s", tt.error_))
+				Return(tt.expectedReturn, tt.err)
 
 			controller.GetPlaybookGraphById(c)
 
@@ -366,7 +369,7 @@ func TestControllerGetTaskHistoryByPlaybookHistoryIdSuccess(t *testing.T) {
 func TestControllerCreatePlaybookSuccess(t *testing.T) {
 	controller, mockService, c, recorder := setupController(t)
 
-	body := `{"name":"test workflow"}`
+	body := `{"name":"test playbook"}`
 
 	req := httptest.NewRequest(
 		http.MethodPost,
@@ -393,7 +396,7 @@ func TestControllerUpdatePlaybookSuccess(t *testing.T) {
 
 	id := uuid.New().String()
 
-	body := `{"name":"updated workflow"}`
+	body := `{"name":"updated playbook"}`
 
 	req := httptest.NewRequest(
 		http.MethodPut,
@@ -528,7 +531,7 @@ func TestControllerUpdatePlaybookStatus(t *testing.T) {
 			controller, mockService, c, recorder := setupController(t)
 			body := `{"status":"` + tt.status + `"}`
 
-			req := httptest.NewRequest(http.MethodPatch, "/workflow/status", strings.NewReader(body))
+			req := httptest.NewRequest(http.MethodPatch, "/playbook/status", strings.NewReader(body))
 
 			c.Request = req
 			c.Params = []gin.Param{

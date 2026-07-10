@@ -11,7 +11,6 @@ import type { AlertStatus, Severity } from "@/services/alerts/alerts.schema";
 import {
   FilterChips,
   InitialsAvatar,
-  JsonTree,
   StatusMenu,
 } from "@/components/soar";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -129,15 +128,6 @@ export default function Page() {
                   {selected.assignee ?? "Unassigned"}
                 </div>
               </div>
-
-              {selected.payload && (
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-[12px] font-semibold uppercase tracking-wide text-ink-soft">
-                    Payload
-                  </label>
-                  <JsonTree data={selected.payload} />
-                </div>
-              )}
 
               <div className="mt-1 flex gap-2">
                 <button
