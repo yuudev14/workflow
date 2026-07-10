@@ -153,6 +153,13 @@ up via `queriesFromContext`).
 
 ## Gotchas (do not rediscover these)
 
+- Trigger types are a **static enum** (`manual`, `webhook`, `referenced`,
+  `on_create`, `on_update`, `on_delete`) — there is NO `playbook_triggers`
+  table and no `/triggers` endpoint. The list exists in three places that must
+  stay in sync: the `trigger_type` pg enum (init migration + `db/enums.sql`),
+  `domain.TriggerType` constants, and the frontend's `settings/triggers.ts`.
+  `playbooks.trigger_parameters` (jsonb) carries the `on_*` options as an
+  opaque blob (e.g. `{module: "alert"}`).
 - gin query params: uuid fields must bind as `*string` +
   `binding:"omitempty,uuid"`. `uuid.UUID` is `[16]byte` and gin's binder
   fails on it.

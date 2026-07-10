@@ -336,40 +336,6 @@ func TestControllerGetPlaybooksHistoryInvalidQuery(t *testing.T) {
 	}
 }
 
-func TestControllerGetPlaybookTriggerTypesSuccess(t *testing.T) {
-	controller, mockServices, c, recorder := setupController(t)
-
-	req := httptest.NewRequest(http.MethodGet, "/playbooks/v1/triggers", nil)
-	c.Request = req
-
-	expected := []domain.PlaybookTriggers{}
-
-	mockServices.PlaybookService.
-		EXPECT().
-		GetPlaybookTriggers(gomock.Any()).
-		Return(expected, nil)
-
-	controller.GetPlaybookTriggerTypes(c)
-
-	assert.Equal(t, http.StatusOK, recorder.Code)
-}
-
-func TestControllerGetPlaybookTriggerTypesError(t *testing.T) {
-	controller, mockServices, c, recorder := setupController(t)
-
-	req := httptest.NewRequest(http.MethodGet, "/playbooks/v1/triggers", nil)
-	c.Request = req
-
-	mockServices.PlaybookService.
-		EXPECT().
-		GetPlaybookTriggers(gomock.Any()).
-		Return(nil, fmt.Errorf("error"))
-
-	controller.GetPlaybookTriggerTypes(c)
-
-	assert.Equal(t, http.StatusInternalServerError, recorder.Code)
-}
-
 func TestControllerGetTaskHistoryByPlaybookHistoryIdSuccess(t *testing.T) {
 	controller, mockServices, c, recorder := setupController(t)
 

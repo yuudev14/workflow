@@ -23,7 +23,6 @@ type Querier interface {
 	GetPlaybookById(ctx context.Context, id pgtype.UUID) (Playbook, error)
 	GetPlaybookGraphById(ctx context.Context, id pgtype.UUID) (GetPlaybookGraphByIdRow, error)
 	GetPlaybookHistoryById(ctx context.Context, id pgtype.UUID) (GetPlaybookHistoryByIdRow, error)
-	GetPlaybookTriggers(ctx context.Context) ([]PlaybookTrigger, error)
 	GetTaskHistoryByPlaybookHistoryId(ctx context.Context, playbookHistoryID pgtype.UUID) ([]TaskHistory, error)
 	GetTasksByPlaybookId(ctx context.Context, playbookID pgtype.UUID) ([]Task, error)
 	UpdatePlaybook(ctx context.Context, arg UpdatePlaybookParams) (Playbook, error)

@@ -107,6 +107,7 @@ const PlaybookPlayground: React.FC<{ playbookId: string }> = ({
     data.task = {
       name: workflowData.name,
       trigger_type: workflowData.trigger_type,
+      trigger_parameters: workflowData.trigger_parameters,
     };
 
     data.nodes = nodes.map((_node) => ({

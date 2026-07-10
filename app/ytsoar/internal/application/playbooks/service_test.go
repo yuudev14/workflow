@@ -233,31 +233,30 @@ func TestServiceGetPlaybookHistoryCountSuccess(t *testing.T) {
 	assert.Equal(t, 5, count)
 }
 
-func TestServiceGetPlaybookTriggersSuccess(t *testing.T) {
+func TestServiceUpdatePlaybookValidatesTriggerType(t *testing.T) {
 	service, mockRepo := setupService(t)
+	id := uuid.NewString()
 
-	returnedTriggers := []domain.PlaybookTriggers{
-		{
-			ID:   uuid.New(),
-			Name: "Trigger 1",
-		},
-		{
-			ID:   uuid.New(),
-			Name: "Trigger 2",
-		},
+	// unknown trigger type never reaches the repository
+	bad := "not_a_trigger"
+	_, err := service.UpdatePlaybook(context.Background(), id, playbooks.UpdatePlaybookData{
+		TriggerType: types.Nullable[string]{Value: &bad, Set: true},
+	})
+	assert.ErrorContains(t, err, "unknown trigger type")
+
+	// valid trigger type passes through
+	good := string(domain.TriggerTypeWebhook)
+	data := playbooks.UpdatePlaybookData{
+		TriggerType: types.Nullable[string]{Value: &good, Set: true},
 	}
-
 	mockRepo.
 		EXPECT().
-		GetPlaybookTriggers(gomock.Any()).
-		Return(returnedTriggers, nil)
+		UpdatePlaybook(gomock.Any(), id, data).
+		Return(&domain.Playbooks{TriggerType: &good}, nil)
 
-	triggers, err := service.GetPlaybookTriggers(context.Background())
+	updated, err := service.UpdatePlaybook(context.Background(), id, data)
 	assert.NoError(t, err)
-	assert.Len(t, triggers, 2)
-	assert.Equal(t, "Trigger 1", triggers[0].Name)
-	assert.Equal(t, "Trigger 2", triggers[1].Name)
-
+	assert.Equal(t, &good, updated.TriggerType)
 }
 
 func TestServiceGetPlaybooksCountSuccess(t *testing.T) {

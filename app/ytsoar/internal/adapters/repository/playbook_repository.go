@@ -36,12 +36,13 @@ func (w *PlaybookRepositoryImpl) queriesFromContext(ctx context.Context) db.Quer
 
 func toDomainPlaybook(row db.Playbook) domain.Playbooks {
 	return domain.Playbooks{
-		ID:          fromPgUUID(row.ID),
-		Name:        fromPgTextString(row.Name),
-		Description: fromPgText(row.Description),
-		TriggerType: fromPgUUIDPtr(row.TriggerType),
-		CreatedAt:   row.CreatedAt.Time,
-		UpdatedAt:   row.UpdatedAt.Time,
+		ID:                fromPgUUID(row.ID),
+		Name:              fromPgTextString(row.Name),
+		Description:       fromPgText(row.Description),
+		TriggerType:       fromNullTriggerType(row.TriggerType),
+		TriggerParameters: row.TriggerParameters,
+		CreatedAt:         row.CreatedAt.Time,
+		UpdatedAt:         row.UpdatedAt.Time,
 	}
 }
 
@@ -149,24 +150,6 @@ func (w *PlaybookRepositoryImpl) GetPlaybookHistoryById(ctx context.Context, pla
 	}, nil
 }
 
-// GetPlaybookTriggers implements playbooks.PlaybookRepository.
-func (w *PlaybookRepositoryImpl) GetPlaybookTriggers(ctx context.Context) ([]domain.PlaybookTriggers, error) {
-	rows, err := w.queriesFromContext(ctx).GetPlaybookTriggers(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	triggers := make([]domain.PlaybookTriggers, 0, len(rows))
-	for _, row := range rows {
-		triggers = append(triggers, domain.PlaybookTriggers{
-			ID:          fromPgUUID(row.ID),
-			Name:        fromPgTextString(row.Name),
-			Description: fromPgText(row.Description),
-		})
-	}
-	return triggers, nil
-}
-
 // GetPlaybookById implements playbooks.PlaybookRepository.
 func (w *PlaybookRepositoryImpl) GetPlaybookById(ctx context.Context, id string) (*domain.Playbooks, error) {
 	pgID, err := toPgUUIDFromString(id)
@@ -211,23 +194,25 @@ func (w *PlaybookRepositoryImpl) GetPlaybookGraphById(ctx context.Context, id st
 		edges = &raw
 	}
 	return &domain.PlaybookGraph{
-		ID:          fromPgUUID(row.ID),
-		Name:        fromPgTextString(row.Name),
-		Description: fromPgText(row.Description),
-		TriggerType: uuidPtrToStringPtr(fromPgUUIDPtr(row.TriggerType)),
-		CreatedAt:   row.CreatedAt.Time,
-		UpdatedAt:   row.UpdatedAt.Time,
-		Tasks:       tasks,
-		Edges:       edges,
+		ID:                fromPgUUID(row.ID),
+		Name:              fromPgTextString(row.Name),
+		Description:       fromPgText(row.Description),
+		TriggerType:       fromNullTriggerType(row.TriggerType),
+		TriggerParameters: row.TriggerParameters,
+		CreatedAt:         row.CreatedAt.Time,
+		UpdatedAt:         row.UpdatedAt.Time,
+		Tasks:             tasks,
+		Edges:             edges,
 	}, nil
 }
 
 // CreatePlaybook implements playbooks.PlaybookRepository.
 func (w *PlaybookRepositoryImpl) CreatePlaybook(ctx context.Context, playbook playbooks.PlaybookPayload) (*domain.Playbooks, error) {
 	row, err := w.queriesFromContext(ctx).CreatePlaybook(ctx, db.CreatePlaybookParams{
-		Name:        toPgTextFromString(playbook.Name),
-		Description: toPgText(playbook.Description),
-		TriggerType: toPgUUIDPtr(playbook.TriggerType),
+		Name:              toPgTextFromString(playbook.Name),
+		Description:       toPgText(playbook.Description),
+		TriggerType:       toNullTriggerTypePtr(playbook.TriggerType),
+		TriggerParameters: playbook.TriggerParameters,
 	})
 	if err != nil {
 		return nil, err
@@ -244,14 +229,20 @@ func (w *PlaybookRepositoryImpl) UpdatePlaybook(ctx context.Context, id string, 
 		return nil, err
 	}
 
+	var triggerParams []byte
+	if playbook.TriggerParameters.Set && playbook.TriggerParameters.Value != nil {
+		triggerParams = *playbook.TriggerParameters.Value
+	}
 	row, err := w.queriesFromContext(ctx).UpdatePlaybook(ctx, db.UpdatePlaybookParams{
-		NameSet:        playbook.Name.Set,
-		Name:           toPgTextFromNullable(playbook.Name),
-		DescriptionSet: playbook.Description.Set,
-		Description:    toPgTextFromNullable(playbook.Description),
-		TriggerTypeSet: playbook.TriggerType.Set,
-		TriggerType:    toPgUUIDFromNullable(playbook.TriggerType),
-		ID:             pgID,
+		NameSet:              playbook.Name.Set,
+		Name:                 toPgTextFromNullable(playbook.Name),
+		DescriptionSet:       playbook.Description.Set,
+		Description:          toPgTextFromNullable(playbook.Description),
+		TriggerTypeSet:       playbook.TriggerType.Set,
+		TriggerType:          toNullTriggerTypeFromNullable(playbook.TriggerType),
+		TriggerParametersSet: playbook.TriggerParameters.Set,
+		TriggerParameters:    triggerParams,
+		ID:                   pgID,
 	})
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {

@@ -13,3 +13,12 @@ CREATE TYPE task_status AS ENUM (
     'failed',
     'skipped'
 );
+
+CREATE TYPE trigger_type AS ENUM (
+    'manual',
+    'webhook',
+    'referenced',
+    'on_create',
+    'on_update',
+    'on_delete'
+);
