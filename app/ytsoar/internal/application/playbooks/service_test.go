@@ -9,7 +9,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/yuudev14/ytsoar/internal/application/playbooks"
-	mock_workflows "github.com/yuudev14/ytsoar/internal/application/playbooks/mocks"
+	mock_playbooks "github.com/yuudev14/ytsoar/internal/application/playbooks/mocks"
 	"github.com/yuudev14/ytsoar/internal/domain"
 	"github.com/yuudev14/ytsoar/internal/logger"
 	"github.com/yuudev14/ytsoar/internal/types"
@@ -22,10 +22,10 @@ func TestMain(m *testing.M) {
 	os.Exit(m.Run())
 }
 
-func setupService(t *testing.T) (playbooks.PlaybookService, *mock_workflows.MockPlaybookRepository) {
+func setupService(t *testing.T) (playbooks.PlaybookService, *mock_playbooks.MockPlaybookRepository) {
 	ctrl := gomock.NewController(t)
 
-	mockRepo := mock_workflows.NewMockPlaybookRepository(ctrl)
+	mockRepo := mock_playbooks.NewMockPlaybookRepository(ctrl)
 	service := playbooks.NewPlaybookService(logger.NewNop(), mockRepo)
 
 	t.Cleanup(ctrl.Finish)
@@ -56,13 +56,13 @@ func TestServiceGetPlaybooksDataSuccess(t *testing.T) {
 		GetPlaybooksCount(gomock.Any(), playbooks.PlaybookFilter{}).
 		Return(2, nil)
 
-	workflowsData, err := service.GetPlaybooksData(context.Background(), 0, 10, playbooks.PlaybookFilter{})
+	playbooksData, err := service.GetPlaybooksData(context.Background(), 0, 10, playbooks.PlaybookFilter{})
 
 	assert.NoError(t, err)
-	assert.Len(t, workflowsData.Entries, 2)
-	assert.Equal(t, "Playbook 1", workflowsData.Entries[0].Name)
-	assert.Equal(t, "Playbook 2", workflowsData.Entries[1].Name)
-	assert.Equal(t, 2, workflowsData.Total)
+	assert.Len(t, playbooksData.Entries, 2)
+	assert.Equal(t, "Playbook 1", playbooksData.Entries[0].Name)
+	assert.Equal(t, "Playbook 2", playbooksData.Entries[1].Name)
+	assert.Equal(t, 2, playbooksData.Total)
 }
 
 func TestServiceGetPlaybooksDataFail(t *testing.T) {
@@ -73,8 +73,8 @@ func TestServiceGetPlaybooksDataFail(t *testing.T) {
 		getPlaybooksError      error
 		getPlaybooksCountError error
 	}{
-		{name: "get workflows data error", getPlaybooksError: fmt.Errorf("error occurred"), getPlaybooksCountError: nil},
-		{name: "get workflows count error", getPlaybooksError: nil, getPlaybooksCountError: fmt.Errorf("error occurred")},
+		{name: "get playbooks data error", getPlaybooksError: fmt.Errorf("error occurred"), getPlaybooksCountError: nil},
+		{name: "get playbooks count error", getPlaybooksError: nil, getPlaybooksCountError: fmt.Errorf("error occurred")},
 	}
 
 	for _, tt := range tests {
@@ -91,10 +91,10 @@ func TestServiceGetPlaybooksDataFail(t *testing.T) {
 					Return(0, tt.getPlaybooksCountError)
 			}
 
-			workflowsData, err := service.GetPlaybooksData(context.Background(), 0, 10, playbooks.PlaybookFilter{})
+			playbooksData, err := service.GetPlaybooksData(context.Background(), 0, 10, playbooks.PlaybookFilter{})
 			assert.Error(t, err)
-			assert.Empty(t, workflowsData.Entries)
-			assert.Equal(t, 0, workflowsData.Total)
+			assert.Empty(t, playbooksData.Entries)
+			assert.Equal(t, 0, playbooksData.Total)
 		})
 	}
 }
@@ -113,9 +113,9 @@ func TestServiceGetPlaybookByIdSuccess(t *testing.T) {
 		GetPlaybookById(gomock.Any(), uuidString.String()).
 		Return(returnedPlaybook, nil)
 
-	workflow, err := service.GetPlaybookById(context.Background(), uuidString.String())
+	playbook, err := service.GetPlaybookById(context.Background(), uuidString.String())
 	assert.NoError(t, err)
-	assert.Equal(t, "My Playbook", workflow.Name)
+	assert.Equal(t, "My Playbook", playbook.Name)
 }
 
 func TestServiceGetPlaybookByIdFail(t *testing.T) {
@@ -127,7 +127,7 @@ func TestServiceGetPlaybookByIdFail(t *testing.T) {
 		error_ error
 	}{
 		{name: "Playbook not found", error_: nil},
-		{name: "error occured when fetching workflow", error_: fmt.Errorf("error occurd")},
+		{name: "error occured when fetching playbook", error_: fmt.Errorf("error occurd")},
 	}
 
 	for _, tt := range tests {
@@ -138,9 +138,9 @@ func TestServiceGetPlaybookByIdFail(t *testing.T) {
 				GetPlaybookById(gomock.Any(), uuidString.String()).
 				Return(nil, tt.error_)
 
-			workflow, err := service.GetPlaybookById(context.Background(), uuidString.String())
+			playbook, err := service.GetPlaybookById(context.Background(), uuidString.String())
 			assert.Error(t, err)
-			assert.Nil(t, workflow)
+			assert.Nil(t, playbook)
 		})
 	}
 }
@@ -164,11 +164,11 @@ func TestServiceGetPlaybooksSuccess(t *testing.T) {
 		GetPlaybooks(gomock.Any(), 0, 10, playbooks.PlaybookFilter{}).
 		Return(returnedPlaybooks, nil)
 
-	workflowsList, err := service.GetPlaybooks(context.Background(), 0, 10, playbooks.PlaybookFilter{})
+	playbooksList, err := service.GetPlaybooks(context.Background(), 0, 10, playbooks.PlaybookFilter{})
 	assert.NoError(t, err)
-	assert.Len(t, workflowsList, 2)
-	assert.Equal(t, "Playbook 1", workflowsList[0].Name)
-	assert.Equal(t, "Playbook 2", workflowsList[1].Name)
+	assert.Len(t, playbooksList, 2)
+	assert.Equal(t, "Playbook 1", playbooksList[0].Name)
+	assert.Equal(t, "Playbook 2", playbooksList[1].Name)
 
 }
 
@@ -215,9 +215,9 @@ func TestServiceGetPlaybookHistoryByIdSuccess(t *testing.T) {
 		GetPlaybookHistoryById(gomock.Any(), uuidString).
 		Return(returnedPlaybook, nil)
 
-	workflow, err := service.GetPlaybookHistoryById(context.Background(), uuidString)
+	playbook, err := service.GetPlaybookHistoryById(context.Background(), uuidString)
 	assert.NoError(t, err)
-	assert.Equal(t, "complete", workflow.Status)
+	assert.Equal(t, "complete", playbook.Status)
 }
 
 func TestServiceGetPlaybookHistoryCountSuccess(t *testing.T) {
@@ -275,19 +275,19 @@ func TestServiceGetPlaybooksCountSuccess(t *testing.T) {
 func TestServiceCreatePlaybookHistorySuccess(t *testing.T) {
 	service, mockRepo := setupService(t)
 
-	workflowID := uuid.New()
+	playbookID := uuid.New()
 	returnedHistory := &domain.PlaybookHistory{
 		ID:         uuid.New(),
-		PlaybookID: workflowID,
+		PlaybookID: playbookID,
 		Status:     "created",
 	}
 
 	mockRepo.
 		EXPECT().
-		CreatePlaybookHistory(gomock.Any(), workflowID.String(), []domain.ResponseEdges{}).
+		CreatePlaybookHistory(gomock.Any(), playbookID.String(), []domain.ResponseEdges{}).
 		Return(returnedHistory, nil)
 
-	history, err := service.CreatePlaybookHistory(context.Background(), workflowID.String(), []domain.ResponseEdges{})
+	history, err := service.CreatePlaybookHistory(context.Background(), playbookID.String(), []domain.ResponseEdges{})
 	assert.NoError(t, err)
 	assert.Equal(t, "created", history.Status)
 }
@@ -306,9 +306,9 @@ func TestServiceGetPlaybookGraphByIdSuccess(t *testing.T) {
 		GetPlaybookGraphById(gomock.Any(), uuidString.String()).
 		Return(returnedPlaybook, nil)
 
-	workflow, err := service.GetPlaybookGraphById(context.Background(), uuidString.String())
+	playbook, err := service.GetPlaybookGraphById(context.Background(), uuidString.String())
 	assert.NoError(t, err)
-	assert.Equal(t, "My Playbook", workflow.Name)
+	assert.Equal(t, "My Playbook", playbook.Name)
 }
 
 func TestServiceGetPlaybookGraphByIdFail(t *testing.T) {
@@ -320,7 +320,7 @@ func TestServiceGetPlaybookGraphByIdFail(t *testing.T) {
 		error_ error
 	}{
 		{name: "Playbook not found", error_: nil},
-		{name: "error occured when fetching workflow", error_: fmt.Errorf("error occurd")},
+		{name: "error occured when fetching playbook", error_: fmt.Errorf("error occurd")},
 	}
 
 	for _, tt := range tests {
@@ -331,9 +331,9 @@ func TestServiceGetPlaybookGraphByIdFail(t *testing.T) {
 				GetPlaybookGraphById(gomock.Any(), uuidString.String()).
 				Return(nil, tt.error_)
 
-			workflow, err := service.GetPlaybookGraphById(context.Background(), uuidString.String())
+			playbook, err := service.GetPlaybookGraphById(context.Background(), uuidString.String())
 			assert.Error(t, err)
-			assert.Nil(t, workflow)
+			assert.Nil(t, playbook)
 		})
 	}
 }
@@ -363,22 +363,22 @@ func TestServiceCreatePlaybookSuccess(t *testing.T) {
 func TestServiceUpdatePlaybookSuccess(t *testing.T) {
 	service, mockRepo := setupService(t)
 
-	workflowID := uuid.New()
+	playbookID := uuid.New()
 	updateData := playbooks.UpdatePlaybookData{
 		Name: types.Nullable[string]{Set: true, Value: utils.StrPtr("Updated Playbook")},
 	}
 
 	returnedPlaybook := &domain.Playbooks{
-		ID:   workflowID,
+		ID:   playbookID,
 		Name: "Updated Playbook",
 	}
 
 	mockRepo.
 		EXPECT().
-		UpdatePlaybook(gomock.Any(), workflowID.String(), updateData).
+		UpdatePlaybook(gomock.Any(), playbookID.String(), updateData).
 		Return(returnedPlaybook, nil)
 
-	updatedPlaybook, err := service.UpdatePlaybook(context.Background(), workflowID.String(), updateData)
+	updatedPlaybook, err := service.UpdatePlaybook(context.Background(), playbookID.String(), updateData)
 	assert.NoError(t, err)
 	assert.Equal(t, "Updated Playbook", updatedPlaybook.Name)
 }
@@ -386,27 +386,27 @@ func TestServiceUpdatePlaybookSuccess(t *testing.T) {
 func TestServiceUpdatePlaybookHistoryStatusSuccess(t *testing.T) {
 	service, mockRepo := setupService(t)
 
-	workflowHistoryID := uuid.New()
+	playbookHistoryID := uuid.New()
 	newStatus := "completed"
 
 	returnedHistory := &domain.PlaybookHistory{
-		ID:     workflowHistoryID,
+		ID:     playbookHistoryID,
 		Status: newStatus,
 	}
 
 	mockRepo.
 		EXPECT().
-		UpdatePlaybookHistoryStatus(gomock.Any(), workflowHistoryID.String(), newStatus).
+		UpdatePlaybookHistoryStatus(gomock.Any(), playbookHistoryID.String(), newStatus).
 		Return(returnedHistory, nil)
 
-	updatedHistory, err := service.UpdatePlaybookHistoryStatus(context.Background(), workflowHistoryID.String(), newStatus)
+	updatedHistory, err := service.UpdatePlaybookHistoryStatus(context.Background(), playbookHistoryID.String(), newStatus)
 	assert.NoError(t, err)
 	assert.Equal(t, newStatus, updatedHistory.Status)
 }
 
 func TestServiceUpdatePlaybookHistoryStatusFail(t *testing.T) {
 	service, mockRepo := setupService(t)
-	workflowHistoryID := uuid.New()
+	playbookHistoryID := uuid.New()
 	newStatus := "completed"
 
 	tests := []struct {
@@ -414,7 +414,7 @@ func TestServiceUpdatePlaybookHistoryStatusFail(t *testing.T) {
 		error_ error
 	}{
 		{name: "Playbook not found", error_: nil},
-		{name: "error occured when fetching workflow", error_: fmt.Errorf("error occurd")},
+		{name: "error occured when fetching playbook", error_: fmt.Errorf("error occurd")},
 	}
 
 	for _, tt := range tests {
@@ -422,12 +422,12 @@ func TestServiceUpdatePlaybookHistoryStatusFail(t *testing.T) {
 			// Expectation
 			mockRepo.
 				EXPECT().
-				UpdatePlaybookHistoryStatus(gomock.Any(), workflowHistoryID.String(), newStatus).
+				UpdatePlaybookHistoryStatus(gomock.Any(), playbookHistoryID.String(), newStatus).
 				Return(nil, tt.error_)
 
-			workflow, err := service.UpdatePlaybookHistoryStatus(context.Background(), workflowHistoryID.String(), newStatus)
+			playbook, err := service.UpdatePlaybookHistoryStatus(context.Background(), playbookHistoryID.String(), newStatus)
 			assert.Error(t, err)
-			assert.Nil(t, workflow)
+			assert.Nil(t, playbook)
 		})
 	}
 }
@@ -435,29 +435,29 @@ func TestServiceUpdatePlaybookHistoryStatusFail(t *testing.T) {
 func TestServiceUpdatePlaybookHistorySuccess(t *testing.T) {
 	service, mockRepo := setupService(t)
 
-	workflowHistoryID := uuid.New()
+	playbookHistoryID := uuid.New()
 	updateData := playbooks.UpdatePlaybookHistoryData{
 		Status: types.Nullable[string]{Set: true, Value: utils.StrPtr("completed")},
 	}
 
 	returnedHistory := &domain.PlaybookHistory{
-		ID:     workflowHistoryID,
+		ID:     playbookHistoryID,
 		Status: "completed",
 	}
 
 	mockRepo.
 		EXPECT().
-		UpdatePlaybookHistory(gomock.Any(), workflowHistoryID.String(), updateData).
+		UpdatePlaybookHistory(gomock.Any(), playbookHistoryID.String(), updateData).
 		Return(returnedHistory, nil)
 
-	updatedHistory, err := service.UpdatePlaybookHistory(context.Background(), workflowHistoryID.String(), updateData)
+	updatedHistory, err := service.UpdatePlaybookHistory(context.Background(), playbookHistoryID.String(), updateData)
 	assert.NoError(t, err)
 	assert.Equal(t, "completed", updatedHistory.Status)
 }
 
 func TestServiceUpdatePlaybookHistoryFail(t *testing.T) {
 	service, mockRepo := setupService(t)
-	workflowHistoryID := uuid.New()
+	playbookHistoryID := uuid.New()
 	updateData := playbooks.UpdatePlaybookHistoryData{
 		Status: types.Nullable[string]{Set: true, Value: utils.StrPtr("completed")},
 	}
@@ -467,7 +467,7 @@ func TestServiceUpdatePlaybookHistoryFail(t *testing.T) {
 		error_ error
 	}{
 		{name: "Playbook not found", error_: nil},
-		{name: "error occured when fetching workflow", error_: fmt.Errorf("error occurd")},
+		{name: "error occured when fetching playbook", error_: fmt.Errorf("error occurd")},
 	}
 
 	for _, tt := range tests {
@@ -475,12 +475,12 @@ func TestServiceUpdatePlaybookHistoryFail(t *testing.T) {
 			// Expectation
 			mockRepo.
 				EXPECT().
-				UpdatePlaybookHistory(gomock.Any(), workflowHistoryID.String(), updateData).
+				UpdatePlaybookHistory(gomock.Any(), playbookHistoryID.String(), updateData).
 				Return(nil, tt.error_)
 
-			workflow, err := service.UpdatePlaybookHistory(context.Background(), workflowHistoryID.String(), updateData)
+			playbook, err := service.UpdatePlaybookHistory(context.Background(), playbookHistoryID.String(), updateData)
 			assert.Error(t, err)
-			assert.Nil(t, workflow)
+			assert.Nil(t, playbook)
 		})
 	}
 }
@@ -526,8 +526,8 @@ func TestServiceGetPlaybooksHistoryDataFail(t *testing.T) {
 		getPlaybooksError      error
 		getPlaybooksCountError error
 	}{
-		{name: "get workflows data error", getPlaybooksError: fmt.Errorf("error occurred"), getPlaybooksCountError: nil},
-		{name: "get workflows count error", getPlaybooksError: nil, getPlaybooksCountError: fmt.Errorf("error occurred")},
+		{name: "get playbooks data error", getPlaybooksError: fmt.Errorf("error occurred"), getPlaybooksCountError: nil},
+		{name: "get playbooks count error", getPlaybooksError: nil, getPlaybooksCountError: fmt.Errorf("error occurred")},
 	}
 
 	for _, tt := range tests {
@@ -544,10 +544,10 @@ func TestServiceGetPlaybooksHistoryDataFail(t *testing.T) {
 					Return(0, tt.getPlaybooksCountError)
 			}
 
-			workflowsData, err := service.GetPlaybooksHistoryData(context.Background(), 0, 10, playbooks.PlaybookHistoryFilter{})
+			playbooksData, err := service.GetPlaybooksHistoryData(context.Background(), 0, 10, playbooks.PlaybookHistoryFilter{})
 			assert.Error(t, err)
-			assert.Empty(t, workflowsData.Entries)
-			assert.Equal(t, 0, workflowsData.Total)
+			assert.Empty(t, playbooksData.Entries)
+			assert.Equal(t, 0, playbooksData.Total)
 		})
 	}
 }

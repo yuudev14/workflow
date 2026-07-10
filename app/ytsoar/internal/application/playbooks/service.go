@@ -2,6 +2,7 @@ package playbooks
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/google/uuid"
@@ -9,6 +10,10 @@ import (
 	"github.com/yuudev14/ytsoar/internal/logger"
 	"github.com/yuudev14/ytsoar/internal/types"
 )
+
+// ErrPlaybookNotFound lets handlers map a missing playbook to 404 with
+// errors.Is instead of matching error strings.
+var ErrPlaybookNotFound = errors.New("playbook is not found")
 
 //go:generate mockgen -destination=mocks/service_mock.go -package=mocks . PlaybookService
 type PlaybookService interface {
@@ -114,7 +119,7 @@ func (w *PlaybookServiceImpl) GetPlaybookById(ctx context.Context, id string) (*
 	}
 
 	if playbook == nil {
-		return nil, fmt.Errorf("playbook is not found")
+		return nil, ErrPlaybookNotFound
 	}
 	return playbook, nil
 }
@@ -128,7 +133,7 @@ func (w *PlaybookServiceImpl) GetPlaybookGraphById(ctx context.Context, id strin
 	}
 
 	if playbook == nil {
-		return nil, fmt.Errorf("playbook is not found")
+		return nil, ErrPlaybookNotFound
 	}
 	return playbook, nil
 }

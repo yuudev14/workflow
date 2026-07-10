@@ -22,9 +22,17 @@ function isBranchHandle(handle?: string | null) {
   );
 }
 
-// The handle is a stable case id (a uuid). Resolve it to the branch's human
-// label from the source node's cases so the edge reads "high severity" / "If"
-// instead of the raw id. The id stays the wire handle; this is display only.
+// The handle is a stable case id (a uuid). Resolve it to the case's condition
+// text from the source node so the edge reads `score > 80` instead of the raw
+// id. The id stays the wire handle; this is display only.
+type CaseLike = {
+  id?: string;
+  expression?: string;
+  left?: string;
+  operator?: string;
+  right?: string;
+};
+
 function branchLabel(node: Node | undefined, handle?: string | null): string {
   if (!handle) return "";
   if (handle === "else") return "Else";
@@ -32,12 +40,18 @@ function branchLabel(node: Node | undefined, handle?: string | null): string {
   for (const val of Object.values(params)) {
     if (!Array.isArray(val)) continue;
     const idx = val.findIndex(
-      (c) => c && typeof c === "object" && (c as { id?: string }).id === handle
+      (c) => c && typeof c === "object" && (c as CaseLike).id === handle
     );
-    if (idx >= 0) {
-      const name = (val[idx] as { name?: string }).name?.trim();
-      return name || (idx === 0 ? "If" : `Else if ${idx}`);
-    }
+    if (idx < 0) continue;
+    const c = val[idx] as CaseLike;
+    // switch_expression: a single template expression
+    if (c.expression?.trim()) return c.expression.trim();
+    // switch: left / operator / right
+    const parts = [c.left, c.operator, c.right]
+      .map((p) => (p ?? "").toString().trim())
+      .filter(Boolean);
+    if (parts.length) return parts.join(" ");
+    return idx === 0 ? "If" : `Else if ${idx}`;
   }
   return handle;
 }
@@ -83,16 +97,17 @@ export default function RemovableEdge({
             transform: `translate(-50%, -50%) translate(${sourceX}px,${sourceY}px)`,
           }}
         />
-        {branch && (
+        {branch && label && (
           <div
-            className="nodrag nopan absolute -translate-x-1/2 -translate-y-1/2 rounded-full border border-signal-dot bg-card px-2 py-0.5 text-[11px] font-semibold text-signal-text"
+            className="nodrag nopan group absolute z-10 -translate-x-1/2 -translate-y-1/2 whitespace-nowrap rounded-full border border-signal-dot bg-card px-2 py-0.5 font-mono text-[11px] font-semibold text-signal-text shadow-sm hover:z-20"
             style={{
-              transform: `translate(-50%, -50%) translate(${(sourceX + labelX) / 2}px,${
-                (sourceY + labelY) / 2
-              }px)`,
+              transform: `translate(-50%, -50%) translate(${labelX}px,${labelY - 18}px)`,
             }}
+            title={label}
           >
-            {label}
+            <span className="block max-w-[140px] truncate transition-[max-width] duration-150 group-hover:max-w-[460px]">
+              {label}
+            </span>
           </div>
         )}
         <div

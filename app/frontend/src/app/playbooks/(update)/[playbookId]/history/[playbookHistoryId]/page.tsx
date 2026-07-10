@@ -11,7 +11,7 @@ import { FLOW_START_ID } from "@/settings/reactFlowIds";
 import { RefreshCw, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { JsonTree, KVList, StatusPill, type PillVariant } from "@/components/soar";
-import usePlaybookStatus from "@/hooks/usePlaybookStatus";
+import { usePlaybookStatusConnection } from "@/components/provider/playbook-status-provider";
 
 const STATUS_PILL: Record<string, PillVariant> = {
   success: "success",
@@ -56,8 +56,9 @@ const Page: React.FC<{ params: Promise<{ playbookHistoryId: string }> }> = ({
     },
   });
 
-  // live status: merges task_status rows into the query above as the run executes.
-  const { connected } = usePlaybookStatus(playbookHistoryId);
+  // live status: the app-wide socket merges task_status rows into the query
+  // above as the run executes; this just reflects the connection for the pill.
+  const { connected } = usePlaybookStatusConnection();
 
   const setMappedNodes = (task: TaskHistory) => {
     const data: Node<PlaybookTaskHistoryNode> = {

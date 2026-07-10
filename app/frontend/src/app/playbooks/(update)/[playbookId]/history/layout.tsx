@@ -7,8 +7,15 @@ import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
-import { StatusPill } from "@/components/soar";
+import { StatusPill, type PillVariant } from "@/components/soar";
 import { cn } from "@/lib/utils";
+
+const STATUS_PILL: Record<string, PillVariant> = {
+  success: "success",
+  failed: "failed",
+  in_progress: "running",
+  skipped: "skipped",
+};
 
 const Layout: React.FC<
   { params: Promise<{ playbookId: string }> } & Readonly<{
@@ -58,7 +65,6 @@ const Layout: React.FC<
             ))}
           {historyQuery.data?.entries.map((history) => {
             const active = history.id === historyId;
-            const ok = history.status === "success";
             return (
               <Link
                 key={history.id}
@@ -76,7 +82,7 @@ const Layout: React.FC<
                     {readableDate(history.triggered_at, "MMM D, HH:mm:ss")}
                   </div>
                 </div>
-                <StatusPill variant={ok ? "success" : "failed"} noDot />
+                <StatusPill variant={STATUS_PILL[history.status] ?? "neutral"} noDot />
               </Link>
             );
           })}

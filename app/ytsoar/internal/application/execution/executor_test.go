@@ -74,7 +74,11 @@ func newExecutorFixture(t *testing.T, maxParallel int) *executorFixture {
 
 	f.taskService.EXPECT().
 		UpdateTaskHistory(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
-		DoAndReturn(func(_ context.Context, _ string, _ string, data tasks.UpdateTaskHistoryData) (*domain.TaskHistory, error) {
+		DoAndReturn(func(ctx context.Context, _ string, _ string, data tasks.UpdateTaskHistoryData) (*domain.TaskHistory, error) {
+			// behave like a real DB: a cancelled ctx fails the write
+			if err := ctx.Err(); err != nil {
+				return nil, err
+			}
 			f.mu.Lock()
 			defer f.mu.Unlock()
 			if data.Status.Value != nil {
@@ -85,7 +89,10 @@ func newExecutorFixture(t *testing.T, maxParallel int) *executorFixture {
 
 	f.playbookService.EXPECT().
 		UpdatePlaybookHistory(gomock.Any(), gomock.Any(), gomock.Any()).
-		DoAndReturn(func(_ context.Context, _ string, data playbooks.UpdatePlaybookHistoryData) (*domain.PlaybookHistory, error) {
+		DoAndReturn(func(ctx context.Context, _ string, data playbooks.UpdatePlaybookHistoryData) (*domain.PlaybookHistory, error) {
+			if err := ctx.Err(); err != nil {
+				return nil, err
+			}
 			f.mu.Lock()
 			defer f.mu.Unlock()
 			if data.Status.Value != nil {
@@ -187,7 +194,8 @@ func TestExecutorDiamondOrderingAndStepsThreading(t *testing.T) {
 	assert.Contains(t, stepsSeenByD, "A")
 	assert.Contains(t, stepsSeenByD, "B")
 	assert.Contains(t, stepsSeenByD, "C")
-	assert.Equal(t, []string{"in_progress", "success"}, f.taskStatuses["start"])
+	// start is a no-op: one success write, no in_progress round-trip
+	assert.Equal(t, []string{"success"}, f.taskStatuses["start"])
 	assert.Equal(t, []string{"in_progress", "success"}, f.taskStatuses["D"])
 }
 
@@ -260,6 +268,35 @@ func TestExecutorFailFast(t *testing.T) {
 	assert.Empty(t, f.taskStatuses["C"])
 }
 
+// A fail-fast cancel must not strand the other in-flight nodes at in_progress:
+// their failed status is persisted with a cancellation-detached context.
+func TestExecutorPersistsFailureStatusOfCancelledNodes(t *testing.T) {
+	graph := map[string][]string{
+		"start": {"A", "B"},
+		"A":     {},
+		"B":     {},
+	}
+	f := newExecutorFixture(t, 4)
+
+	f.runtime.EXPECT().
+		Execute(gomock.Any(), gomock.Any()).
+		DoAndReturn(func(ctx context.Context, req execution.ExecutionRequest) (json.RawMessage, error) {
+			if req.Task.Name == "A" {
+				return nil, errors.New("boom")
+			}
+			// B: block until A's failure cancels the run
+			<-ctx.Done()
+			return nil, ctx.Err()
+		}).Times(2)
+
+	err := f.run(t, graph, tasksFor(graph))
+
+	assert.ErrorContains(t, err, "boom")
+	assert.Equal(t, "failed", f.playbookFinal)
+	assert.Equal(t, []string{"in_progress", "failed"}, f.taskStatuses["A"])
+	assert.Equal(t, []string{"in_progress", "failed"}, f.taskStatuses["B"])
+}
+
 func TestExecutorStartNodeIsNoOpSuccess(t *testing.T) {
 	graph := map[string][]string{"start": {}}
 	f := newExecutorFixture(t, 1)
@@ -269,7 +306,7 @@ func TestExecutorStartNodeIsNoOpSuccess(t *testing.T) {
 
 	assert.NoError(t, err)
 	assert.Equal(t, "success", f.playbookFinal)
-	assert.Equal(t, []string{"in_progress", "success"}, f.taskStatuses["start"])
+	assert.Equal(t, []string{"success"}, f.taskStatuses["start"])
 }
 
 func TestExecutorMissingTaskFails(t *testing.T) {

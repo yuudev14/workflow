@@ -47,5 +47,5 @@ type UpdatePlaybookTasksPayload struct {
 	Task    *UpdatePlaybookData                      `json:"task"`
 	Nodes   []tasks.TaskPayload                      `json:"nodes"`
 	Edges   map[string][]string                      `json:"edges"`
-	Handles *map[string]map[string]domain.EdgeHandle `json:"handles"`
+	Handles map[string]map[string]domain.EdgeHandle `json:"handles"`
 }
