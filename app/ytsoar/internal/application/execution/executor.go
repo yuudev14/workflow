@@ -51,6 +51,11 @@ func NewExecutor(
 	if maxParallel < 1 {
 		maxParallel = 1
 	}
+	// A zero/negative timeout makes context.WithTimeout fire immediately, so
+	// every node would time out before it runs; fall back to a sane default.
+	if nodeTimeout <= 0 {
+		nodeTimeout = 5 * time.Minute
+	}
 	return &Executor{
 		logger:          log,
 		taskService:     taskService,
