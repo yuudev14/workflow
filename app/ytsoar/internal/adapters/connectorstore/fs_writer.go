@@ -90,6 +90,15 @@ func writeArchiveFile(file *zip.File, dest string) error {
 		return err
 	}
 	defer out.Close()
-	_, err = io.Copy(out, reader)
-	return err
+	// The size caps upstream trust the zip's declared UncompressedSize64; hold
+	// the stream to it so a lying header can't expand past the checked budget.
+	declared := int64(file.UncompressedSize64)
+	written, err := io.Copy(out, io.LimitReader(reader, declared+1))
+	if err != nil {
+		return err
+	}
+	if written > declared {
+		return fmt.Errorf("archive entry %q is larger than its declared size", file.Name)
+	}
+	return nil
 }

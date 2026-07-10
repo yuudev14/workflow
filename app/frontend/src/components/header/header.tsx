@@ -14,6 +14,7 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
+import ExecutionsModal from "@/components/executions/ExecutionsModal";
 
 // Human labels for the known top-level segments; anything else (an id) is
 // shown truncated as-is.
@@ -71,6 +72,9 @@ const Header = () => {
             ))}
           </BreadcrumbList>
         </Breadcrumb>
+      </div>
+      <div className="ml-auto px-4">
+        <ExecutionsModal />
       </div>
     </header>
   );

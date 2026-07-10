@@ -9,6 +9,11 @@ import (
 	"time"
 )
 
+// maxResponseBytes caps how much of a response body is read — the body lands
+// in the task-history result column, so an unbounded read would balloon both
+// worker memory and the row.
+const maxResponseBytes = 10 << 20
+
 // HTTPRequestConnector is the Go builtin http client — result shape matches
 // http_request_js: {"status": <code>, "body": <json-or-text>}.
 type HTTPRequestConnector struct {
@@ -52,9 +57,12 @@ func (c *HTTPRequestConnector) getRequest(ctx context.Context, configs map[strin
 		return nil, err
 	}
 	defer resp.Body.Close()
-	raw, err := io.ReadAll(resp.Body)
+	raw, err := io.ReadAll(io.LimitReader(resp.Body, maxResponseBytes+1))
 	if err != nil {
 		return nil, err
+	}
+	if len(raw) > maxResponseBytes {
+		return nil, fmt.Errorf("response body exceeds %d bytes", maxResponseBytes)
 	}
 
 	var body any

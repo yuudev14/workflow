@@ -152,12 +152,12 @@ func (e *Executor) processNode(ctx context.Context, msg domain.TaskMessage, node
 		return nil, fmt.Errorf("operation (%s) does not exist in task_information", node)
 	}
 
-	if err := e.setTaskStatus(ctx, msg, task, StatusInProgress, nil, nil); err != nil {
-		return nil, err
-	}
-
 	if node == startNode {
 		return nil, e.setTaskStatus(ctx, msg, task, StatusSuccess, nil, nil)
+	}
+
+	if err := e.setTaskStatus(ctx, msg, task, StatusInProgress, nil, nil); err != nil {
+		return nil, err
 	}
 
 	if task.ConnectorID == nil {
@@ -224,6 +224,10 @@ func (e *Executor) setTaskStatus(
 	result any,
 	execErr error,
 ) error {
+	// Detach from cancellation: after a fail-fast cancel() the draining nodes
+	// still have to persist their failed status, or they'd sit at in_progress
+	// forever (same reason finishPlaybook receives the parent ctx).
+	ctx = context.WithoutCancel(ctx)
 	var errStr *string
 	if execErr != nil {
 		s := execErr.Error()

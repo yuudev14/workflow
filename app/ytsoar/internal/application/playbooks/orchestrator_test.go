@@ -13,7 +13,7 @@ import (
 	mock_contracts "github.com/yuudev14/ytsoar/internal/application/contracts/mocks"
 	mock_edges "github.com/yuudev14/ytsoar/internal/application/edges/mocks"
 	"github.com/yuudev14/ytsoar/internal/application/playbooks"
-	mock_workflows "github.com/yuudev14/ytsoar/internal/application/playbooks/mocks"
+	mock_playbooks "github.com/yuudev14/ytsoar/internal/application/playbooks/mocks"
 	"github.com/yuudev14/ytsoar/internal/application/tasks"
 	mock_tasks "github.com/yuudev14/ytsoar/internal/application/tasks/mocks"
 	"github.com/yuudev14/ytsoar/internal/domain"
@@ -24,7 +24,7 @@ import (
 type testEnv struct {
 	service *playbooks.PlaybookApplicationServiceImpl
 
-	mockPlaybook    *mock_workflows.MockPlaybookService
+	mockPlaybook    *mock_playbooks.MockPlaybookService
 	mockTask        *mock_tasks.MockTaskService
 	mockEdge        *mock_edges.MockEdgeService
 	mockTaskSub     *mock_contracts.MockTaskPublisher
@@ -35,7 +35,7 @@ func setupTest(t *testing.T) *testEnv {
 
 	ctrl := gomock.NewController(t)
 
-	mockPlaybook := mock_workflows.NewMockPlaybookService(ctrl)
+	mockPlaybook := mock_playbooks.NewMockPlaybookService(ctrl)
 	mockTask := mock_tasks.NewMockTaskService(ctrl)
 	mockEdge := mock_edges.NewMockEdgeService(ctrl)
 	mockTaskPubSub := mock_contracts.NewMockTaskPublisher(ctrl)
@@ -122,16 +122,16 @@ func TestDeleteEdges(t *testing.T) {
 	tests := []struct {
 		name      string
 		payload   map[string][]string
-		mockSetup func(testEnv *testEnv, workflowId string)
+		mockSetup func(testEnv *testEnv, playbookId string)
 		withError bool
 	}{
 		{
 			name:    "delete all edges",
 			payload: map[string][]string{},
-			mockSetup: func(testEnv *testEnv, workflowId string) {
+			mockSetup: func(testEnv *testEnv, playbookId string) {
 				testEnv.mockEdge.
 					EXPECT().
-					DeleteAllPlaybookEdges(gomock.Any(), workflowId).
+					DeleteAllPlaybookEdges(gomock.Any(), playbookId).
 					Return(nil)
 			},
 			withError: false,
@@ -142,10 +142,10 @@ func TestDeleteEdges(t *testing.T) {
 				"start": {"task1"},
 				"task2": {"task5"},
 			},
-			mockSetup: func(testEnv *testEnv, workflowId string) {
+			mockSetup: func(testEnv *testEnv, playbookId string) {
 				testEnv.mockEdge.
 					EXPECT().
-					GetEdgesByPlaybookId(gomock.Any(), workflowId).
+					GetEdgesByPlaybookId(gomock.Any(), playbookId).
 					Return([]domain.ResponseEdges{}, nil)
 			},
 			withError: false,
@@ -156,10 +156,10 @@ func TestDeleteEdges(t *testing.T) {
 				"start": {"task1"},
 				"task2": {"task5"},
 			},
-			mockSetup: func(testEnv *testEnv, workflowId string) {
+			mockSetup: func(testEnv *testEnv, playbookId string) {
 				testEnv.mockEdge.
 					EXPECT().
-					GetEdgesByPlaybookId(gomock.Any(), workflowId).
+					GetEdgesByPlaybookId(gomock.Any(), playbookId).
 					Return([]domain.ResponseEdges{
 						{
 							ID:                  uuid.New(),
@@ -186,10 +186,10 @@ func TestDeleteEdges(t *testing.T) {
 				"start": {"task1"},
 				"task2": {"task5"},
 			},
-			mockSetup: func(testEnv *testEnv, workflowId string) {
+			mockSetup: func(testEnv *testEnv, playbookId string) {
 				testEnv.mockEdge.
 					EXPECT().
-					GetEdgesByPlaybookId(gomock.Any(), workflowId).
+					GetEdgesByPlaybookId(gomock.Any(), playbookId).
 					Return([]domain.ResponseEdges{}, fmt.Errorf("error occured"))
 
 				// testEnv.mockEdge.
@@ -206,13 +206,13 @@ func TestDeleteEdges(t *testing.T) {
 
 			env := setupTest(t)
 
-			workflowID := uuid.New()
+			playbookID := uuid.New()
 
-			tt.mockSetup(env, workflowID.String())
+			tt.mockSetup(env, playbookID.String())
 
 			err := env.service.DeleteEdges(
 				context.Background(),
-				workflowID,
+				playbookID,
 				tt.payload,
 			)
 
@@ -232,7 +232,7 @@ func TestUpsertTasks(t *testing.T) {
 
 	env := setupTest(t)
 
-	workflowID := uuid.New()
+	playbookID := uuid.New()
 
 	nodes := []tasks.TaskPayload{
 		{
@@ -248,10 +248,10 @@ func TestUpsertTasks(t *testing.T) {
 
 	env.mockTask.
 		EXPECT().
-		UpsertTasks(gomock.Any(), workflowID, gomock.Any()).
+		UpsertTasks(gomock.Any(), playbookID, gomock.Any()).
 		Return(expected, nil)
 
-	result, err := env.service.UpsertTasks(context.Background(), workflowID, nodes)
+	result, err := env.service.UpsertTasks(context.Background(), playbookID, nodes)
 
 	if err != nil {
 		t.Fatalf("unexpected error")
@@ -266,7 +266,7 @@ func TestInsertEdges(t *testing.T) {
 
 	env := setupTest(t)
 
-	workflowID := uuid.New()
+	playbookID := uuid.New()
 
 	taskID1 := uuid.New()
 	taskID2 := uuid.New()
@@ -285,7 +285,7 @@ func TestInsertEdges(t *testing.T) {
 		InsertEdges(gomock.Any(), gomock.Any()).
 		Return([]domain.Edges{}, nil)
 
-	handles := &map[string]map[string]domain.EdgeHandle{
+	handles := map[string]map[string]domain.EdgeHandle{
 		"start": {
 			"start": {
 				SourceHandle:      utils.StrPtr("start"),
@@ -300,7 +300,7 @@ func TestInsertEdges(t *testing.T) {
 
 	err := env.service.InsertEdges(
 		context.Background(),
-		workflowID,
+		playbookID,
 		edgesPayload,
 		tasksList,
 		handles,
@@ -316,17 +316,17 @@ func TestDeleteTasks(t *testing.T) {
 	tests := []struct {
 		name      string
 		payload   []tasks.TaskPayload
-		mockSetup func(testEnv *testEnv, workflowId string)
+		mockSetup func(testEnv *testEnv, playbookId string)
 		withError bool
 	}{
 
 		{
 			name:    "delete successfully",
 			payload: []tasks.TaskPayload{},
-			mockSetup: func(testEnv *testEnv, workflowId string) {
+			mockSetup: func(testEnv *testEnv, playbookId string) {
 				testEnv.mockTask.
 					EXPECT().
-					GetTasksByPlaybookId(gomock.Any(), workflowId).
+					GetTasksByPlaybookId(gomock.Any(), playbookId).
 					Return([]domain.Tasks{
 						{
 							ID:   uuid.New(),
@@ -348,10 +348,10 @@ func TestDeleteTasks(t *testing.T) {
 					Name: "task1",
 				},
 			},
-			mockSetup: func(testEnv *testEnv, workflowId string) {
+			mockSetup: func(testEnv *testEnv, playbookId string) {
 				testEnv.mockTask.
 					EXPECT().
-					GetTasksByPlaybookId(gomock.Any(), workflowId).
+					GetTasksByPlaybookId(gomock.Any(), playbookId).
 					Return([]domain.Tasks{
 						{
 							ID:   uuid.New(),
@@ -368,10 +368,10 @@ func TestDeleteTasks(t *testing.T) {
 					Name: "task1",
 				},
 			},
-			mockSetup: func(testEnv *testEnv, workflowId string) {
+			mockSetup: func(testEnv *testEnv, playbookId string) {
 				testEnv.mockTask.
 					EXPECT().
-					GetTasksByPlaybookId(gomock.Any(), workflowId).
+					GetTasksByPlaybookId(gomock.Any(), playbookId).
 					Return([]domain.Tasks{}, fmt.Errorf("error occured"))
 			},
 			withError: true,
@@ -382,11 +382,11 @@ func TestDeleteTasks(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			env := setupTest(t)
 
-			workflowID := uuid.New()
+			playbookID := uuid.New()
 
-			tt.mockSetup(env, workflowID.String())
+			tt.mockSetup(env, playbookID.String())
 
-			err := env.service.DeleteTasks(context.Background(), workflowID, tt.payload)
+			err := env.service.DeleteTasks(context.Background(), playbookID, tt.payload)
 
 			if tt.withError {
 				assert.Error(t, err)
@@ -402,32 +402,32 @@ func TestDeleteTasks(t *testing.T) {
 func TestUpdatePlaybookTasks(t *testing.T) {
 	tests := []struct {
 		name      string
-		mockSetup func(env *testEnv, workflowID uuid.UUID, payload playbooks.UpdatePlaybookTasksPayload)
+		mockSetup func(env *testEnv, playbookID uuid.UUID, payload playbooks.UpdatePlaybookTasksPayload)
 		withError bool
 	}{
 		{
 			name:      "no error",
 			withError: false,
-			mockSetup: func(env *testEnv, workflowID uuid.UUID, payload playbooks.UpdatePlaybookTasksPayload) {
+			mockSetup: func(env *testEnv, playbookID uuid.UUID, payload playbooks.UpdatePlaybookTasksPayload) {
 
 				env.mockPlaybook.
 					EXPECT().
-					UpdatePlaybook(gomock.Any(), workflowID.String(), *payload.Task).
+					UpdatePlaybook(gomock.Any(), playbookID.String(), *payload.Task).
 					Return(&domain.Playbooks{}, nil)
 
 				env.mockEdge.
 					EXPECT().
-					GetEdgesByPlaybookId(gomock.Any(), workflowID.String()).
+					GetEdgesByPlaybookId(gomock.Any(), playbookID.String()).
 					Return([]domain.ResponseEdges{}, nil)
 
 				env.mockTask.
 					EXPECT().
-					UpsertTasks(gomock.Any(), workflowID, gomock.Any()).
+					UpsertTasks(gomock.Any(), playbookID, gomock.Any()).
 					Return([]domain.Tasks{}, nil)
 
 				env.mockTask.
 					EXPECT().
-					GetTasksByPlaybookId(gomock.Any(), workflowID.String()).
+					GetTasksByPlaybookId(gomock.Any(), playbookID.String()).
 					Return([]domain.Tasks{
 						{
 							ID:   uuid.New(),
@@ -444,26 +444,26 @@ func TestUpdatePlaybookTasks(t *testing.T) {
 		{
 			name:      "error in the finale",
 			withError: true,
-			mockSetup: func(env *testEnv, workflowID uuid.UUID, payload playbooks.UpdatePlaybookTasksPayload) {
+			mockSetup: func(env *testEnv, playbookID uuid.UUID, payload playbooks.UpdatePlaybookTasksPayload) {
 
 				env.mockPlaybook.
 					EXPECT().
-					UpdatePlaybook(gomock.Any(), workflowID.String(), *payload.Task).
+					UpdatePlaybook(gomock.Any(), playbookID.String(), *payload.Task).
 					Return(&domain.Playbooks{}, nil)
 
 				env.mockEdge.
 					EXPECT().
-					GetEdgesByPlaybookId(gomock.Any(), workflowID.String()).
+					GetEdgesByPlaybookId(gomock.Any(), playbookID.String()).
 					Return([]domain.ResponseEdges{}, nil)
 
 				env.mockTask.
 					EXPECT().
-					UpsertTasks(gomock.Any(), workflowID, gomock.Any()).
+					UpsertTasks(gomock.Any(), playbookID, gomock.Any()).
 					Return([]domain.Tasks{}, nil)
 
 				env.mockTask.
 					EXPECT().
-					GetTasksByPlaybookId(gomock.Any(), workflowID.String()).
+					GetTasksByPlaybookId(gomock.Any(), playbookID.String()).
 					Return([]domain.Tasks{
 						{
 							ID:   uuid.New(),
@@ -478,50 +478,50 @@ func TestUpdatePlaybookTasks(t *testing.T) {
 			},
 		},
 		{
-			name:      "error in update workflow",
+			name:      "error in update playbook",
 			withError: true,
-			mockSetup: func(env *testEnv, workflowID uuid.UUID, payload playbooks.UpdatePlaybookTasksPayload) {
+			mockSetup: func(env *testEnv, playbookID uuid.UUID, payload playbooks.UpdatePlaybookTasksPayload) {
 
 				env.mockPlaybook.
 					EXPECT().
-					UpdatePlaybook(gomock.Any(), workflowID.String(), *payload.Task).
+					UpdatePlaybook(gomock.Any(), playbookID.String(), *payload.Task).
 					Return(nil, fmt.Errorf("error occured"))
 			},
 		},
 		{
 			name:      "error in GetEdgesByPlaybookId",
 			withError: true,
-			mockSetup: func(env *testEnv, workflowID uuid.UUID, payload playbooks.UpdatePlaybookTasksPayload) {
+			mockSetup: func(env *testEnv, playbookID uuid.UUID, payload playbooks.UpdatePlaybookTasksPayload) {
 
 				env.mockPlaybook.
 					EXPECT().
-					UpdatePlaybook(gomock.Any(), workflowID.String(), *payload.Task).
+					UpdatePlaybook(gomock.Any(), playbookID.String(), *payload.Task).
 					Return(&domain.Playbooks{}, nil)
 
 				env.mockEdge.
 					EXPECT().
-					GetEdgesByPlaybookId(gomock.Any(), workflowID.String()).
+					GetEdgesByPlaybookId(gomock.Any(), playbookID.String()).
 					Return([]domain.ResponseEdges{}, fmt.Errorf("error occured"))
 			},
 		},
 		{
 			name:      "no error in UpsertTasks",
 			withError: true,
-			mockSetup: func(env *testEnv, workflowID uuid.UUID, payload playbooks.UpdatePlaybookTasksPayload) {
+			mockSetup: func(env *testEnv, playbookID uuid.UUID, payload playbooks.UpdatePlaybookTasksPayload) {
 
 				env.mockPlaybook.
 					EXPECT().
-					UpdatePlaybook(gomock.Any(), workflowID.String(), *payload.Task).
+					UpdatePlaybook(gomock.Any(), playbookID.String(), *payload.Task).
 					Return(&domain.Playbooks{}, nil)
 
 				env.mockEdge.
 					EXPECT().
-					GetEdgesByPlaybookId(gomock.Any(), workflowID.String()).
+					GetEdgesByPlaybookId(gomock.Any(), playbookID.String()).
 					Return([]domain.ResponseEdges{}, nil)
 
 				env.mockTask.
 					EXPECT().
-					UpsertTasks(gomock.Any(), workflowID, gomock.Any()).
+					UpsertTasks(gomock.Any(), playbookID, gomock.Any()).
 					Return([]domain.Tasks{}, fmt.Errorf("error occured"))
 
 			},
@@ -529,26 +529,26 @@ func TestUpdatePlaybookTasks(t *testing.T) {
 		{
 			name:      "error in GetTasksByPlaybookId",
 			withError: true,
-			mockSetup: func(env *testEnv, workflowID uuid.UUID, payload playbooks.UpdatePlaybookTasksPayload) {
+			mockSetup: func(env *testEnv, playbookID uuid.UUID, payload playbooks.UpdatePlaybookTasksPayload) {
 
 				env.mockPlaybook.
 					EXPECT().
-					UpdatePlaybook(gomock.Any(), workflowID.String(), *payload.Task).
+					UpdatePlaybook(gomock.Any(), playbookID.String(), *payload.Task).
 					Return(&domain.Playbooks{}, nil)
 
 				env.mockEdge.
 					EXPECT().
-					GetEdgesByPlaybookId(gomock.Any(), workflowID.String()).
+					GetEdgesByPlaybookId(gomock.Any(), playbookID.String()).
 					Return([]domain.ResponseEdges{}, nil)
 
 				env.mockTask.
 					EXPECT().
-					UpsertTasks(gomock.Any(), workflowID, gomock.Any()).
+					UpsertTasks(gomock.Any(), playbookID, gomock.Any()).
 					Return([]domain.Tasks{}, nil)
 
 				env.mockTask.
 					EXPECT().
-					GetTasksByPlaybookId(gomock.Any(), workflowID.String()).
+					GetTasksByPlaybookId(gomock.Any(), playbookID.String()).
 					Return([]domain.Tasks{
 						{
 							ID:   uuid.New(),
@@ -586,14 +586,14 @@ func TestUpdatePlaybookTasks(t *testing.T) {
 
 			env := setupTest(t)
 
-			workflowID := uuid.New()
+			playbookID := uuid.New()
 
 			tt.mockSetup(
 				env,
-				workflowID,
+				playbookID,
 				payload,
 			)
-			_, err := env.service.UpdatePlaybookTasks(context.Background(), workflowID.String(), payload)
+			_, err := env.service.UpdatePlaybookTasks(context.Background(), playbookID.String(), payload)
 			if tt.withError {
 				assert.Error(t, err)
 			} else {
@@ -629,80 +629,80 @@ func TestTriggerPlaybook(t *testing.T) {
 
 	tests := []struct {
 		name      string
-		mockSetup func(env *testEnv, workflowID string)
+		mockSetup func(env *testEnv, playbookID string)
 		withError bool
 	}{
 		{
-			name:      "workflow error",
+			name:      "playbook error",
 			withError: true,
-			mockSetup: func(env *testEnv, workflowID string) {
+			mockSetup: func(env *testEnv, playbookID string) {
 
 				env.mockPlaybook.
 					EXPECT().
-					GetPlaybookById(gomock.Any(), workflowID).
-					Return(nil, fmt.Errorf("workflow error"))
+					GetPlaybookById(gomock.Any(), playbookID).
+					Return(nil, fmt.Errorf("playbook error"))
 			},
 		},
 		{
 			name:      "task error",
 			withError: true,
-			mockSetup: func(env *testEnv, workflowID string) {
+			mockSetup: func(env *testEnv, playbookID string) {
 
 				env.mockPlaybook.
 					EXPECT().
-					GetPlaybookById(gomock.Any(), workflowID).
+					GetPlaybookById(gomock.Any(), playbookID).
 					Return(&domain.Playbooks{}, nil)
 
 				env.mockTask.
 					EXPECT().
-					GetTasksByPlaybookId(gomock.Any(), workflowID).
+					GetTasksByPlaybookId(gomock.Any(), playbookID).
 					Return(nil, fmt.Errorf("task error"))
 			},
 		},
 		{
 			name:      "edge error",
 			withError: true,
-			mockSetup: func(env *testEnv, workflowID string) {
+			mockSetup: func(env *testEnv, playbookID string) {
 
 				env.mockPlaybook.
 					EXPECT().
-					GetPlaybookById(gomock.Any(), workflowID).
+					GetPlaybookById(gomock.Any(), playbookID).
 					Return(&domain.Playbooks{}, nil)
 
 				env.mockTask.
 					EXPECT().
-					GetTasksByPlaybookId(gomock.Any(), workflowID).
+					GetTasksByPlaybookId(gomock.Any(), playbookID).
 					Return([]domain.Tasks{}, nil)
 
 				env.mockEdge.
 					EXPECT().
-					GetEdgesByPlaybookId(gomock.Any(), workflowID).
+					GetEdgesByPlaybookId(gomock.Any(), playbookID).
 					Return(nil, fmt.Errorf("edge error"))
 			},
 		},
 		{
-			name:      "create workflow history error",
+			name:      "create playbook history error",
 			withError: true,
-			mockSetup: func(env *testEnv, workflowID string) {
+			mockSetup: func(env *testEnv, playbookID string) {
 
 				env.mockPlaybook.
 					EXPECT().
-					GetPlaybookById(gomock.Any(), workflowID).
+					GetPlaybookById(gomock.Any(), playbookID).
 					Return(&domain.Playbooks{}, nil)
 
 				env.mockTask.
 					EXPECT().
-					GetTasksByPlaybookId(gomock.Any(), workflowID).
+					GetTasksByPlaybookId(gomock.Any(), playbookID).
 					Return([]domain.Tasks{}, nil)
 
 				env.mockEdge.
 					EXPECT().
-					GetEdgesByPlaybookId(gomock.Any(), workflowID).
+					GetEdgesByPlaybookId(gomock.Any(), playbookID).
 					Return([]domain.ResponseEdges{}, nil)
 
 				env.mockPlaybook.
 					EXPECT().
-					CreatePlaybookHistory(gomock.Any(), workflowID, gomock.Any()).
+					CreatePlaybookHistory(gomock.Any(), playbookID, gomock.Any()).
 					Return(nil, fmt.Errorf("history error"))
 
 			},
@@ -710,28 +710,28 @@ func TestTriggerPlaybook(t *testing.T) {
 		{
 			name:      "create task history error",
 			withError: true,
-			mockSetup: func(env *testEnv, workflowID string) {
+			mockSetup: func(env *testEnv, playbookID string) {
 
 				env.mockPlaybook.
 					EXPECT().
-					GetPlaybookById(gomock.Any(), workflowID).
+					GetPlaybookById(gomock.Any(), playbookID).
 					Return(&domain.Playbooks{}, nil)
 
 				env.mockTask.
 					EXPECT().
-					GetTasksByPlaybookId(gomock.Any(), workflowID).
+					GetTasksByPlaybookId(gomock.Any(), playbookID).
 					Return([]domain.Tasks{}, nil)
 
 				env.mockEdge.
 					EXPECT().
-					GetEdgesByPlaybookId(gomock.Any(), workflowID).
+					GetEdgesByPlaybookId(gomock.Any(), playbookID).
 					Return([]domain.ResponseEdges{}, nil)
 
 				historyID := uuid.New()
 
 				env.mockPlaybook.
 					EXPECT().
-					CreatePlaybookHistory(gomock.Any(), workflowID, gomock.Any()).
+					CreatePlaybookHistory(gomock.Any(), playbookID, gomock.Any()).
 					Return(&domain.PlaybookHistory{ID: historyID}, nil)
 
 				env.mockTask.
@@ -743,30 +743,30 @@ func TestTriggerPlaybook(t *testing.T) {
 		{
 			name:      "mq error",
 			withError: true,
-			mockSetup: func(env *testEnv, workflowID string) {
+			mockSetup: func(env *testEnv, playbookID string) {
 
 				env.mockPlaybook.
 					EXPECT().
-					GetPlaybookById(gomock.Any(), workflowID).
+					GetPlaybookById(gomock.Any(), playbookID).
 					Return(&domain.Playbooks{}, nil)
 
 				env.mockTask.
 					EXPECT().
-					GetTasksByPlaybookId(gomock.Any(), workflowID).
+					GetTasksByPlaybookId(gomock.Any(), playbookID).
 					Return([]domain.Tasks{
 						{ID: uuid.New(), Name: "task1"},
 					}, nil)
 
 				env.mockEdge.
 					EXPECT().
-					GetEdgesByPlaybookId(gomock.Any(), workflowID).
+					GetEdgesByPlaybookId(gomock.Any(), playbookID).
 					Return([]domain.ResponseEdges{}, nil)
 
 				historyID := uuid.New()
 
 				env.mockPlaybook.
 					EXPECT().
-					CreatePlaybookHistory(gomock.Any(), workflowID, gomock.Any()).
+					CreatePlaybookHistory(gomock.Any(), playbookID, gomock.Any()).
 					Return(&domain.PlaybookHistory{ID: historyID}, nil)
 
 				env.mockTask.
@@ -783,30 +783,30 @@ func TestTriggerPlaybook(t *testing.T) {
 		{
 			name:      "success",
 			withError: false,
-			mockSetup: func(env *testEnv, workflowID string) {
+			mockSetup: func(env *testEnv, playbookID string) {
 
 				env.mockPlaybook.
 					EXPECT().
-					GetPlaybookById(gomock.Any(), workflowID).
+					GetPlaybookById(gomock.Any(), playbookID).
 					Return(&domain.Playbooks{}, nil)
 
 				env.mockTask.
 					EXPECT().
-					GetTasksByPlaybookId(gomock.Any(), workflowID).
+					GetTasksByPlaybookId(gomock.Any(), playbookID).
 					Return([]domain.Tasks{
 						{ID: uuid.New(), Name: "task1"},
 					}, nil)
 
 				env.mockEdge.
 					EXPECT().
-					GetEdgesByPlaybookId(gomock.Any(), workflowID).
+					GetEdgesByPlaybookId(gomock.Any(), playbookID).
 					Return([]domain.ResponseEdges{}, nil)
 
 				historyID := uuid.New()
 
 				env.mockPlaybook.
 					EXPECT().
-					CreatePlaybookHistory(gomock.Any(), workflowID, gomock.Any()).
+					CreatePlaybookHistory(gomock.Any(), playbookID, gomock.Any()).
 					Return(&domain.PlaybookHistory{ID: historyID}, nil)
 
 				env.mockTask.
@@ -828,11 +828,11 @@ func TestTriggerPlaybook(t *testing.T) {
 
 			env := setupTest(t)
 
-			workflowID := uuid.New().String()
+			playbookID := uuid.New().String()
 
-			tt.mockSetup(env, workflowID)
+			tt.mockSetup(env, playbookID)
 
-			_, err := env.service.TriggerPlaybook(context.Background(), workflowID)
+			_, err := env.service.TriggerPlaybook(context.Background(), playbookID)
 
 			if tt.withError {
 				assert.Error(t, err)

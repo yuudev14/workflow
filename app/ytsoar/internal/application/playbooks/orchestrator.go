@@ -20,7 +20,7 @@ type PlaybookApplicationService interface {
 	TriggerPlaybook(ctx context.Context, playbookId string) (*domain.TaskMessage, error)
 	PreparePlaybookMessage(tasks []domain.Tasks, edges []domain.ResponseEdges) (map[string]domain.Tasks, map[string][]string, []domain.EdgeRef)
 	UpsertTasks(ctx context.Context, playbookUUID uuid.UUID, nodes []tasks.TaskPayload) ([]domain.Tasks, error)
-	InsertEdges(ctx context.Context, playbookUUID uuid.UUID, edges map[string][]string, tasks []domain.Tasks, handles *map[string]map[string]domain.EdgeHandle) error
+	InsertEdges(ctx context.Context, playbookUUID uuid.UUID, edges map[string][]string, tasks []domain.Tasks, handles map[string]map[string]domain.EdgeHandle) error
 	DeleteTasks(ctx context.Context, playbookUUID uuid.UUID, nodes []tasks.TaskPayload) error
 	DeleteEdges(ctx context.Context, playbookUUID uuid.UUID, edges map[string][]string) error
 	UpdatePlaybookTasks(ctx context.Context, playbookId string, body UpdatePlaybookTasksPayload) (*domain.PlaybookGraph, error)
@@ -64,16 +64,17 @@ func (w *PlaybookApplicationServiceImpl) UpsertTasks(
 	// node to update
 	var nodeToUpsert []domain.Tasks
 	for _, node := range nodes {
+		var parameters json.RawMessage
+		if node.Parameters != nil {
+			b, err := json.Marshal(node.Parameters)
+			if err != nil {
+				return nil, fmt.Errorf("could not encode parameters for task %q: %w", node.Name, err)
+			}
+			parameters = b
+		}
 		nodeToUpsert = append(nodeToUpsert, domain.Tasks{
-			Name: node.Name,
-			Parameters: func() json.RawMessage {
-				if node.Parameters != nil {
-					b, _ := json.Marshal(node.Parameters)
-					return b
-				}
-				return nil
-			}(),
-
+			Name:          node.Name,
+			Parameters:    parameters,
 			Description:   node.Description,
 			Config:        node.Config.Value,
 			ConnectorName: node.ConnectorName,
@@ -97,7 +98,7 @@ func (w *PlaybookApplicationServiceImpl) InsertEdges(
 	playbookUUID uuid.UUID,
 	edges_ map[string][]string,
 	tasks []domain.Tasks,
-	handles *map[string]map[string]domain.EdgeHandle,
+	handles map[string]map[string]domain.EdgeHandle,
 ) error {
 	// node to update
 	var edgeToInsert []domain.Edges
@@ -125,19 +126,13 @@ func (w *PlaybookApplicationServiceImpl) InsertEdges(
 				}
 
 				// handle for frontend reference
-				if handles != nil {
-					handleMap := *handles
-					if handleSourceKey, handleSourceKeyOk := handleMap[key]; handleSourceKeyOk {
-						if handleDestKey, handleDestKeyOk := handleSourceKey[val]; handleDestKeyOk {
-							if handleDestKey.SourceHandle != nil {
-								edge.SourceHandle = sql.NullString{String: *handleDestKey.SourceHandle, Valid: true}
-							}
-							if handleDestKey.DestinationHandle != nil {
-								edge.DestinationHandle = sql.NullString{String: *handleDestKey.DestinationHandle, Valid: true}
-							}
-						}
+				if edgeHandle, ok := handles[key][val]; ok {
+					if edgeHandle.SourceHandle != nil {
+						edge.SourceHandle = sql.NullString{String: *edgeHandle.SourceHandle, Valid: true}
 					}
-
+					if edgeHandle.DestinationHandle != nil {
+						edge.DestinationHandle = sql.NullString{String: *edgeHandle.DestinationHandle, Valid: true}
+					}
 				}
 				edgeToInsert = append(edgeToInsert, edge)
 			} else {
@@ -347,9 +342,6 @@ func (w *PlaybookApplicationServiceImpl) TriggerPlaybook(ctx context.Context, pl
 		}
 		playbookHistory = history
 
-		w.StatusBroadcaster.Broadcast(playbookHistory)
-
-		// Log the ID to verify it's correct
 		w.Logger.Infof("Created playbook history with ID: %v", playbookHistory.ID)
 		_, createTaskHistoryErr := w.TaskService.CreateTaskHistory(ctx, playbookHistory.ID.String(), taskData, GetGraphUUIDS(edges))
 		return createTaskHistoryErr
@@ -357,6 +349,10 @@ func (w *PlaybookApplicationServiceImpl) TriggerPlaybook(ctx context.Context, pl
 	if txErr != nil {
 		return nil, txErr
 	}
+
+	// broadcast only after the tx commits — a rollback must not leak a
+	// phantom history to WS clients, and a slow client must not hold the tx open
+	w.StatusBroadcaster.Broadcast(playbookHistory)
 
 	body := domain.TaskMessage{
 		Graph:             graph,

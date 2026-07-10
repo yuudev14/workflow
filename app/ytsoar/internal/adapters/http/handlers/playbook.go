@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 
@@ -59,13 +60,13 @@ func (w *PlaybookHandler) GetPlaybooks(c *gin.Context) {
 	}
 
 	w.logger.Debugw(
-		"get workflows",
+		"get playbooks",
 		"offset", query.Offset,
 		"limit", query.Limit,
 		"filter", filter,
 	)
 
-	workflows, err := w.PlaybookService.GetPlaybooksData(c.Request.Context(),
+	playbooksData, err := w.PlaybookService.GetPlaybooksData(c.Request.Context(),
 		query.Offset,
 		query.Limit,
 		filter,
@@ -75,28 +76,27 @@ func (w *PlaybookHandler) GetPlaybooks(c *gin.Context) {
 		return
 	}
 
-	response.ResponseSuccess(workflows)
+	response.ResponseSuccess(playbooksData)
 }
 
 func (w *PlaybookHandler) GetPlaybookGraphById(c *gin.Context) {
 	response := rest.Response{C: c}
-	workflowId := c.Param("playbook_id")
+	playbookId := c.Param("playbook_id")
 
-	workflow, workflowErr := w.PlaybookService.GetPlaybookGraphById(c.Request.Context(), workflowId)
+	playbook, playbookErr := w.PlaybookService.GetPlaybookGraphById(c.Request.Context(), playbookId)
 
-	if workflowErr != nil {
-		w.logger.Error(workflowErr)
-		errMsg := workflowErr.Error()
+	if playbookErr != nil {
+		w.logger.Error(playbookErr)
 
-		if errMsg == "workflow is not found" {
-			response.ResponseError(http.StatusNotFound, errMsg)
+		if errors.Is(playbookErr, playbooks.ErrPlaybookNotFound) {
+			response.ResponseError(http.StatusNotFound, playbookErr.Error())
 		} else {
-			response.ResponseError(http.StatusInternalServerError, errMsg)
+			response.ResponseError(http.StatusInternalServerError, playbookErr.Error())
 		}
 		return
 	}
 
-	response.ResponseSuccess(workflow)
+	response.ResponseSuccess(playbook)
 }
 
 func (w *PlaybookHandler) GetPlaybookHistory(c *gin.Context) {
@@ -122,7 +122,6 @@ func (w *PlaybookHandler) GetPlaybookHistory(c *gin.Context) {
 	w.logger.Debugf("queries: %v", query)
 	w.logger.Debugf("filter: %v", filter)
 
-	w.logger.Debug("getting worflows")
 	histories, historiesErr := w.PlaybookService.GetPlaybooksHistoryData(c.Request.Context(), query.Offset, query.Limit, filter)
 
 	if historiesErr != nil {
@@ -134,51 +133,33 @@ func (w *PlaybookHandler) GetPlaybookHistory(c *gin.Context) {
 
 }
 
-func (w *PlaybookHandler) GetPlaybookById(c *gin.Context) {
-	response := rest.Response{C: c}
-	workflowId := c.Param("playbook_id")
-
-	_, workflowErr := w.PlaybookService.GetPlaybookById(c.Request.Context(), workflowId)
-
-	if workflowErr != nil {
-		w.logger.Error(workflowErr)
-		response.ResponseError(http.StatusInternalServerError, workflowErr.Error())
-		return
-	}
-
-	newTasks, newTaskErr := w.TaskService.GetTasksByPlaybookId(c.Request.Context(), workflowId)
-	if newTaskErr != nil {
-		w.logger.Errorf("error: ", newTaskErr)
-		response.ResponseError(http.StatusBadRequest, newTaskErr.Error())
-		return
-	}
-
-	response.ResponseSuccess(gin.H{
-		"tasks": newTasks,
-	})
-}
-
 func (w *PlaybookHandler) GetTaskHistoryByPlaybookHistoryId(c *gin.Context) {
 	response := rest.Response{C: c}
 	var taskHistoryFilter tasks.TaskHistoryFilter
-	workflowHistoryId := c.Param("playbook_history_id")
-	workflowHistoryUUID, uuidErr := uuid.Parse(workflowHistoryId)
+	playbookHistoryId := c.Param("playbook_history_id")
+	playbookHistoryUUID, uuidErr := uuid.Parse(playbookHistoryId)
 	if uuidErr != nil {
 		response.ResponseError(http.StatusNotFound, uuidErr)
+		return
 	}
 
-	workflowHistory, workflowHistoryErr := w.PlaybookService.GetPlaybookHistoryById(c.Request.Context(), workflowHistoryUUID)
+	if ok, code, err := rest.BindQueryAndValidate(c, &taskHistoryFilter); !ok {
+		w.logger.Error(err)
+		response.ResponseError(code, err)
+		return
+	}
 
-	if workflowHistoryErr != nil {
-		w.logger.Error(workflowHistoryErr)
-		response.ResponseError(http.StatusNotFound, workflowHistoryErr)
+	playbookHistory, playbookHistoryErr := w.PlaybookService.GetPlaybookHistoryById(c.Request.Context(), playbookHistoryUUID)
+
+	if playbookHistoryErr != nil {
+		w.logger.Error(playbookHistoryErr)
+		response.ResponseError(http.StatusNotFound, playbookHistoryErr)
 		return
 	}
 
 	w.logger.Debugf("filter: %v", taskHistoryFilter)
 
-	w.logger.Debug("getting worflows")
-	tasksHistory, err := w.TaskService.GetTaskHistoryByPlaybookHistoryId(c.Request.Context(), workflowHistoryId, taskHistoryFilter)
+	tasksHistory, err := w.TaskService.GetTaskHistoryByPlaybookHistoryId(c.Request.Context(), playbookHistoryId, taskHistoryFilter)
 
 	if err != nil {
 		response.ResponseError(http.StatusBadRequest, err.Error())
@@ -187,7 +168,7 @@ func (w *PlaybookHandler) GetTaskHistoryByPlaybookHistoryId(c *gin.Context) {
 
 	response.ResponseSuccess(gin.H{
 		"tasks": tasksHistory,
-		"edges": workflowHistory.Edges,
+		"edges": playbookHistory.Edges,
 	})
 }
 
@@ -198,88 +179,90 @@ func (w *PlaybookHandler) CreatePlaybook(c *gin.Context) {
 	check, code, validErr := rest.BindFormAndValidate(c, &body)
 
 	if !check {
-		w.logger.Errorf(fmt.Sprintf("%v", validErr))
+		w.logger.Errorf("%v", validErr)
 		response.ResponseError(code, validErr)
 		return
 	}
 
-	workflow, err := w.PlaybookService.CreatePlaybook(c.Request.Context(), body)
-
-	w.logger.Debug("added workflow...")
+	playbook, err := w.PlaybookService.CreatePlaybook(c.Request.Context(), body)
 
 	if err != nil {
 		response.ResponseError(http.StatusBadRequest, err.Error())
 		return
 	}
 
-	response.ResponseSuccess(workflow)
+	w.logger.Debug("created playbook")
+	response.ResponseSuccess(playbook)
 
 }
 
 func (w *PlaybookHandler) UpdatePlaybook(c *gin.Context) {
 	var body playbooks.UpdatePlaybookData
 	response := rest.Response{C: c}
-	workflowId := c.Param("playbook_id")
+	playbookId := c.Param("playbook_id")
 
 	check, code, validErr := rest.BindFormAndValidate(c, &body)
 
 	if !check {
-		w.logger.Errorf(fmt.Sprintf("%v", validErr))
+		w.logger.Errorf("%v", validErr)
 		response.ResponseError(code, validErr)
 		return
 	}
 
-	workflow, err := w.PlaybookService.UpdatePlaybook(c.Request.Context(), workflowId, body)
-
-	w.logger.Debug("added workflow...")
+	playbook, err := w.PlaybookService.UpdatePlaybook(c.Request.Context(), playbookId, body)
 
 	if err != nil {
 		response.ResponseError(http.StatusBadRequest, err.Error())
 		return
 	}
 
-	response.ResponseSuccess(workflow)
+	w.logger.Debug("updated playbook")
+	response.ResponseSuccess(playbook)
 
 }
 
 func (w *PlaybookHandler) UpdatePlaybookTasks(c *gin.Context) {
 	var body playbooks.UpdatePlaybookTasksPayload
 	response := rest.Response{C: c}
-	workflowId := c.Param("playbook_id")
+	playbookId := c.Param("playbook_id")
 	check, code, validErr := rest.BindFormAndValidate(c, &body)
 
 	if !check {
-		w.logger.Errorf(fmt.Sprintf("%v", validErr))
+		w.logger.Errorf("%v", validErr)
 		response.ResponseError(code, validErr)
 		return
 	}
 
-	workflow, workflowErr := w.PlaybookApplicationService.UpdatePlaybookTasks(c.Request.Context(), workflowId, body)
+	playbook, playbookErr := w.PlaybookApplicationService.UpdatePlaybookTasks(c.Request.Context(), playbookId, body)
 
-	if workflowErr != nil {
-		w.logger.Error(workflowErr)
-		response.ResponseError(http.StatusInternalServerError, workflowErr.Error())
+	if playbookErr != nil {
+		w.logger.Error(playbookErr)
+		response.ResponseError(http.StatusInternalServerError, playbookErr.Error())
 		return
 	}
 
-	response.ResponseSuccess(workflow)
+	response.ResponseSuccess(playbook)
 }
 
 func (w *PlaybookHandler) GetTasksByPlaybookId(c *gin.Context) {
 	response := rest.Response{C: c}
-	workflowId := c.Param("playbook_id")
+	playbookId := c.Param("playbook_id")
 
-	_, workflowErr := w.PlaybookService.GetPlaybookById(c.Request.Context(), workflowId)
+	_, playbookErr := w.PlaybookService.GetPlaybookById(c.Request.Context(), playbookId)
 
-	if workflowErr != nil {
-		w.logger.Error(workflowErr)
-		response.ResponseError(http.StatusInternalServerError, workflowErr.Error())
+	if playbookErr != nil {
+		w.logger.Error(playbookErr)
+		if errors.Is(playbookErr, playbooks.ErrPlaybookNotFound) {
+			response.ResponseError(http.StatusNotFound, playbookErr.Error())
+		} else {
+			response.ResponseError(http.StatusInternalServerError, playbookErr.Error())
+		}
 		return
 	}
 
-	newTasks, newTaskErr := w.TaskService.GetTasksByPlaybookId(c.Request.Context(), workflowId)
+	newTasks, newTaskErr := w.TaskService.GetTasksByPlaybookId(c.Request.Context(), playbookId)
 	if newTaskErr != nil {
-		w.logger.Errorf("error: ", newTaskErr)
+		w.logger.Errorf("error: %v", newTaskErr)
 		response.ResponseError(http.StatusBadRequest, newTaskErr.Error())
 		return
 	}
@@ -291,10 +274,10 @@ func (w *PlaybookHandler) GetTasksByPlaybookId(c *gin.Context) {
 
 func (w *PlaybookHandler) Trigger(c *gin.Context) {
 	response := rest.Response{C: c}
-	workflowId := c.Param("playbook_id")
-	data, triggerErr := w.PlaybookApplicationService.TriggerPlaybook(c.Request.Context(), workflowId)
+	playbookId := c.Param("playbook_id")
+	data, triggerErr := w.PlaybookApplicationService.TriggerPlaybook(c.Request.Context(), playbookId)
 	if triggerErr != nil {
-		w.logger.Errorf("error when sending the message to queue", triggerErr)
+		w.logger.Errorf("error when sending the message to queue: %v", triggerErr)
 		response.ResponseError(http.StatusBadGateway, triggerErr.Error())
 		return
 	}
@@ -302,6 +285,7 @@ func (w *PlaybookHandler) Trigger(c *gin.Context) {
 	response.Response(http.StatusAccepted, data)
 }
 
+// "skipped" is deliberately absent: only the executor sets it, never a client.
 func validateTaskStateChangePayload(body tasks.UpdatePlaybookTaskHistoryStatus) error {
 	status := []string{
 		"pending",
@@ -337,14 +321,14 @@ func validatePlaybookStateChangePayload(body tasks.UpdatePlaybookTaskHistoryStat
 
 func (w *PlaybookHandler) UpdateTaskStatus(c *gin.Context) {
 	response := rest.Response{C: c}
-	workflowHistoryId := c.Param("playbook_history_id")
+	playbookHistoryId := c.Param("playbook_history_id")
 	taskId := c.Param("task_id")
 	var body tasks.UpdatePlaybookTaskHistoryStatus
 
 	check, code, validErr := rest.BindFormAndValidate(c, &body)
 
 	if !check {
-		w.logger.Errorf(fmt.Sprintf("%v", validErr))
+		w.logger.Errorf("%v", validErr)
 		response.ResponseError(code, validErr)
 		return
 	}
@@ -352,15 +336,15 @@ func (w *PlaybookHandler) UpdateTaskStatus(c *gin.Context) {
 	payloadErr := validateTaskStateChangePayload(body)
 
 	if payloadErr != nil {
-		w.logger.Errorf(fmt.Sprintf("%v", payloadErr))
+		w.logger.Errorf("%v", payloadErr)
 		response.ResponseError(http.StatusBadRequest, payloadErr.Error())
 		return
 	}
 
-	task, updateTaskErr := w.TaskService.UpdateTaskStatus(c.Request.Context(), workflowHistoryId, taskId, body.Status)
+	task, updateTaskErr := w.TaskService.UpdateTaskStatus(c.Request.Context(), playbookHistoryId, taskId, body.Status)
 
 	if updateTaskErr != nil {
-		w.logger.Errorf(fmt.Sprintf("%v", updateTaskErr))
+		w.logger.Errorf("%v", updateTaskErr)
 		response.ResponseError(http.StatusBadRequest, updateTaskErr.Error())
 		return
 	}
@@ -370,13 +354,13 @@ func (w *PlaybookHandler) UpdateTaskStatus(c *gin.Context) {
 
 func (w *PlaybookHandler) UpdatePlaybookStatus(c *gin.Context) {
 	response := rest.Response{C: c}
-	workflowHistoryId := c.Param("playbook_history_id")
+	playbookHistoryId := c.Param("playbook_history_id")
 	var body tasks.UpdatePlaybookTaskHistoryStatus
 
 	check, code, validErr := rest.BindFormAndValidate(c, &body)
 
 	if !check {
-		w.logger.Errorf(fmt.Sprintf("%v", validErr))
+		w.logger.Errorf("%v", validErr)
 		response.ResponseError(code, validErr)
 		return
 	}
@@ -384,18 +368,18 @@ func (w *PlaybookHandler) UpdatePlaybookStatus(c *gin.Context) {
 	payloadErr := validatePlaybookStateChangePayload(body)
 
 	if payloadErr != nil {
-		w.logger.Errorf(fmt.Sprintf("%v", payloadErr))
+		w.logger.Errorf("%v", payloadErr)
 		response.ResponseError(http.StatusBadRequest, payloadErr.Error())
 		return
 	}
 
-	workflow, updatePlaybookErr := w.PlaybookService.UpdatePlaybookHistoryStatus(c.Request.Context(), workflowHistoryId, body.Status)
+	playbook, updatePlaybookErr := w.PlaybookService.UpdatePlaybookHistoryStatus(c.Request.Context(), playbookHistoryId, body.Status)
 
 	if updatePlaybookErr != nil {
-		w.logger.Errorf(fmt.Sprintf("%v", updatePlaybookErr))
+		w.logger.Errorf("%v", updatePlaybookErr)
 		response.ResponseError(http.StatusBadRequest, updatePlaybookErr.Error())
 		return
 	}
 
-	response.Response(http.StatusAccepted, workflow)
+	response.Response(http.StatusAccepted, playbook)
 }

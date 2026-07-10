@@ -3,7 +3,9 @@ package connectorstore_test
 import (
 	"archive/zip"
 	"bytes"
+	"compress/flate"
 	"context"
+	"hash/crc32"
 	"os"
 	"path/filepath"
 	"testing"
@@ -71,6 +73,42 @@ func TestFSWriterRemove(t *testing.T) {
 
 	assert.NoDirExists(t, filepath.Join(dir, "my_conn"))
 	assert.Error(t, writer.Remove(context.Background(), "../escape"))
+}
+
+// The size caps upstream trust the zip's declared UncompressedSize64, so
+// extraction must reject an entry whose stream expands past what it declared.
+func TestFSWriterRejectsLyingUncompressedSize(t *testing.T) {
+	payload := bytes.Repeat([]byte("A"), 1<<20) // 1 MiB that deflates tiny
+	var deflated bytes.Buffer
+	fw, err := flate.NewWriter(&deflated, flate.DefaultCompression)
+	require.NoError(t, err)
+	_, err = fw.Write(payload)
+	require.NoError(t, err)
+	require.NoError(t, fw.Close())
+
+	var buf bytes.Buffer
+	zw := zip.NewWriter(&buf)
+	w, err := zw.CreateRaw(&zip.FileHeader{
+		Name:               "my_conn/connector.py",
+		Method:             zip.Deflate,
+		CRC32:              crc32.ChecksumIEEE(payload),
+		CompressedSize64:   uint64(deflated.Len()),
+		UncompressedSize64: 10, // lies about the 1 MiB it expands to
+	})
+	require.NoError(t, err)
+	_, err = w.Write(deflated.Bytes())
+	require.NoError(t, err)
+	require.NoError(t, zw.Close())
+
+	archive, err := zip.NewReader(bytes.NewReader(buf.Bytes()), int64(buf.Len()))
+	require.NoError(t, err)
+
+	dir := t.TempDir()
+	writer := connectorstore.NewFSWriter(logger.NewNop(), dir)
+	err = writer.Extract(context.Background(), "my_conn", archive, "my_conn/")
+
+	assert.Error(t, err)
+	assert.NoDirExists(t, filepath.Join(dir, "my_conn"))
 }
 
 func TestFSWriterRejectsUnsafeID(t *testing.T) {

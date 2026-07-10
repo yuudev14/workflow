@@ -27,7 +27,9 @@ show-logs:
 # run the stack with the Go services under headless delve (VS Code: F5 attach,
 # see .vscode/launch.json). Return to normal with make rebuild-containers / up.
 start-debug:
-		docker compose -f ./docker/dev.docker-compose.yml -f ./docker/debug.docker-compose.yml up -d
+		docker compose -f ./docker/dev.docker-compose.yml -f ./docker/debug.docker-compose.yml up -d && \
+		cd ./app/frontend && \
+		npm run dev -- --hostname 0.0.0.0
 
 # Install per-connector dependencies declared as <id>/requirements.txt (python,
 # vendored into <id>/deps) or <id>/package.json (node, into <id>/node_modules).

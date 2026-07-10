@@ -84,7 +84,10 @@ func (r *Registry) Execute(ctx context.Context, req execution.ExecutionRequest) 
 	if err != nil {
 		return nil, err
 	}
-	renderedParams, _ := rendered.(map[string]any)
+	renderedParams, ok := rendered.(map[string]any)
+	if !ok {
+		return nil, fmt.Errorf("templated parameters for %s are not an object (got %T)", req.Task.Name, rendered)
+	}
 
 	config, err := r.loadConfig(*req.Task.ConnectorID, req.Task.Config)
 	if err != nil {

@@ -172,6 +172,17 @@ func TestDeleteConnector(t *testing.T) {
 	assert.NoError(t, svc.DeleteConnector(context.Background(), "my_conn"))
 }
 
+// Reserved ids (builtins, code snippets, core) guard deletes as well as
+// uploads: removing their tree dir would strip them from the editor.
+func TestDeleteConnectorRejectsReservedIDs(t *testing.T) {
+	svc, _ := newService(t) // no store/writer/repo expectations: nothing may be touched
+
+	for _, id := range []string{"core", "code_snippet", "code_snippet_js", "condition", "http_request"} {
+		err := svc.DeleteConnector(context.Background(), id)
+		assert.ErrorIs(t, err, connectors.ErrInvalidConnector, id)
+	}
+}
+
 func TestDeleteConnectorNotFound(t *testing.T) {
 	svc, m := newService(t)
 	m.store.EXPECT().Get(gomock.Any(), "ghost").

@@ -73,7 +73,7 @@ func (mr *MockPlaybookApplicationServiceMockRecorder) DeleteTasks(ctx, playbookU
 }
 
 // InsertEdges mocks base method.
-func (m *MockPlaybookApplicationService) InsertEdges(ctx context.Context, playbookUUID uuid.UUID, edges map[string][]string, arg3 []domain.Tasks, handles *map[string]map[string]domain.EdgeHandle) error {
+func (m *MockPlaybookApplicationService) InsertEdges(ctx context.Context, playbookUUID uuid.UUID, edges map[string][]string, arg3 []domain.Tasks, handles map[string]map[string]domain.EdgeHandle) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "InsertEdges", ctx, playbookUUID, edges, arg3, handles)
 	ret0, _ := ret[0].(error)
