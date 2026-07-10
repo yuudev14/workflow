@@ -120,10 +120,9 @@
 
   --destructive-foreground: #ffffff;
 
-  /* keep dark's near-black workspace under a raised rail (the light-mode
-     mapping above would otherwise invert these). */
-  --background: var(--paper);
-  --sidebar: var(--paper-raised);
+  /* dark mode inherits :root's mapping — main workspace is the raised surface
+     (paper-raised) and the nav rail is the darker paper, so the rail reads
+     darker than the canvas, matching the artifact. */
 }
 
 @theme inline {

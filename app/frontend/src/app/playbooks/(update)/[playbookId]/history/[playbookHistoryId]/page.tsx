@@ -43,11 +43,18 @@ const Page: React.FC<{ params: Promise<{ playbookHistoryId: string }> }> = ({
     return data;
   };
 
+  // Condition edges carry a branch handle (a case id, "else" or "output") that
+  // doesn't exist on history nodes — React Flow would silently drop those edges.
+  // This view is read-only, so anchor them to the bottom handle instead.
   const setMappedEdges = (edge: Edges) => ({
     id: edge.id,
     source: edge.source_id,
     target: edge.destination_id,
-    sourceHandle: edge.source_handle || "source-top",
+    sourceHandle: edge.source_handle?.startsWith("source-")
+      ? edge.source_handle
+      : edge.source_handle
+        ? "source-bottom"
+        : "source-top",
     targetHandle: edge.destination_handle || "target-top",
     type: "edgeHistory",
   });
