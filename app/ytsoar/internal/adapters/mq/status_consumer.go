@@ -77,7 +77,9 @@ func (c *StatusConsumer) Start(ctx context.Context) error {
 				c.logger.Errorw("undecodable status event", "error", err)
 				continue
 			}
-			c.hub.Broadcast(event.Data)
+			// forward the whole envelope so clients can route by event type
+			// (task_status vs playbook_status); Data is raw JSON, re-emitted as-is.
+			c.hub.Broadcast(map[string]any{"event": event.Event, "data": event.Data})
 		}
 	}
 }
