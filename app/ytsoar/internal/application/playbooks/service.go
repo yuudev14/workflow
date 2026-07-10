@@ -17,7 +17,6 @@ type PlaybookService interface {
 	GetPlaybookHistoryById(ctx context.Context, playbookHistoryId uuid.UUID) (*domain.PlaybookHistoryResponse, error)
 	GetPlaybookHistory(ctx context.Context, offset int, limit int, filter PlaybookHistoryFilter) ([]domain.PlaybookHistoryResponse, error)
 	GetPlaybookHistoryCount(ctx context.Context, filter PlaybookHistoryFilter) (int, error)
-	GetPlaybookTriggers(ctx context.Context) ([]domain.PlaybookTriggers, error)
 	GetPlaybooksCount(ctx context.Context, filter PlaybookFilter) (int, error)
 	GetPlaybookById(ctx context.Context, id string) (*domain.Playbooks, error)
 	GetPlaybooksHistoryData(ctx context.Context, offset int, limit int, filter PlaybookHistoryFilter) (types.Entries[domain.PlaybookHistoryResponse], error)
@@ -96,11 +95,6 @@ func (w *PlaybookServiceImpl) GetPlaybookHistoryCount(ctx context.Context, filte
 	return w.PlaybookRepository.GetPlaybookHistoryCount(ctx, filter)
 }
 
-// GetPlaybookTriggers implements PlaybookService.
-func (w *PlaybookServiceImpl) GetPlaybookTriggers(ctx context.Context) ([]domain.PlaybookTriggers, error) {
-	return w.PlaybookRepository.GetPlaybookTriggers(ctx)
-}
-
 // GetPlaybooksCount implements PlaybookService.
 func (w *PlaybookServiceImpl) GetPlaybooksCount(ctx context.Context, filter PlaybookFilter) (int, error) {
 	return w.PlaybookRepository.GetPlaybooksCount(ctx, filter)
@@ -146,6 +140,9 @@ func (w *PlaybookServiceImpl) CreatePlaybook(ctx context.Context, playbook Playb
 
 // UpdatePlaybook implements PlaybookService.
 func (w *PlaybookServiceImpl) UpdatePlaybook(ctx context.Context, id string, playbook UpdatePlaybookData) (*domain.Playbooks, error) {
+	if playbook.TriggerType.Set && playbook.TriggerType.Value != nil && !domain.IsValidTriggerType(*playbook.TriggerType.Value) {
+		return nil, fmt.Errorf("unknown trigger type: %s", *playbook.TriggerType.Value)
+	}
 	return w.PlaybookRepository.UpdatePlaybook(ctx, id, playbook)
 }
 

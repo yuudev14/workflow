@@ -149,21 +149,6 @@ func (mr *MockPlaybookServiceMockRecorder) GetPlaybookHistoryCount(ctx, filter a
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetPlaybookHistoryCount", reflect.TypeOf((*MockPlaybookService)(nil).GetPlaybookHistoryCount), ctx, filter)
 }
 
-// GetPlaybookTriggers mocks base method.
-func (m *MockPlaybookService) GetPlaybookTriggers(ctx context.Context) ([]domain.PlaybookTriggers, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetPlaybookTriggers", ctx)
-	ret0, _ := ret[0].([]domain.PlaybookTriggers)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// GetPlaybookTriggers indicates an expected call of GetPlaybookTriggers.
-func (mr *MockPlaybookServiceMockRecorder) GetPlaybookTriggers(ctx any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetPlaybookTriggers", reflect.TypeOf((*MockPlaybookService)(nil).GetPlaybookTriggers), ctx)
-}
-
 // GetPlaybooks mocks base method.
 func (m *MockPlaybookService) GetPlaybooks(ctx context.Context, offset, limit int, filter playbooks.PlaybookFilter) ([]domain.Playbooks, error) {
 	m.ctrl.T.Helper()

@@ -1,6 +1,6 @@
 import React, { useContext, useState } from 'react'
 
-import { AlertTriangle, Bell, Check, MousePointerClick, Webhook } from 'lucide-react'
+import { AlertTriangle, Bell, Check, Link2, MousePointerClick, Webhook } from 'lucide-react'
 import {
   Select,
   SelectContent,
@@ -9,11 +9,14 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Button } from '@/components/ui/button'
-import { cn } from '@/lib/utils'
+import {
+  TRIGGER_ON_CREATE,
+  TRIGGER_ON_DELETE,
+  isModuleEventTrigger,
+} from '@/settings/triggers'
 import { PlaybookOperationContext } from '../../../_providers/PlaybookOperationProvider'
 
 type Module = 'alert' | 'incident'
-type Event = 'created' | 'updated'
 
 const FieldLabel: React.FC<{ children: React.ReactNode }> = ({ children }) => (
   <label className="text-[11px] font-semibold uppercase tracking-wide text-ink-soft">
@@ -21,42 +24,59 @@ const FieldLabel: React.FC<{ children: React.ReactNode }> = ({ children }) => (
   </label>
 )
 
+// summary copy for the triggers with nothing to configure
+const SIMPLE_TRIGGERS: Record<string, { title: string; icon: React.ReactNode; text: string }> = {
+  manual: {
+    title: 'Manual trigger',
+    icon: <MousePointerClick />,
+    text: 'This playbook runs on demand from the Playbooks list or the API. There are no trigger parameters to configure.',
+  },
+  webhook: {
+    title: 'Webhook trigger',
+    icon: <Webhook />,
+    text: "This playbook fires when an external system calls its unique webhook URL. There are no parameters to configure here.",
+  },
+  referenced: {
+    title: 'Referenced trigger',
+    icon: <Link2 />,
+    text: 'This playbook only runs when another playbook references it. There are no parameters to configure here.',
+  },
+}
+
 const PlaybookTriggerParameters = () => {
-  const { currentNode, setNodes, closeSidebar, workflowData } = useContext(
+  const { currentNode, setNodes, setPlaybookData, closeSidebar, workflowData } = useContext(
     PlaybookOperationContext
   )
 
-  const isModuleEvent = workflowData.trigger_type === 'module_event'
+  const triggerType = workflowData.trigger_type
+  const isModuleEvent = isModuleEventTrigger(triggerType)
 
-  const [module, setModule] = useState<Module>(
-    (currentNode?.data?.trigger_module as Module) ?? 'alert'
-  )
-  const [event, setEvent] = useState<Event>(
-    (currentNode?.data?.trigger_event as Event) ?? 'created'
-  )
+  // the event itself is carried by the trigger type; only the module is a parameter
+  const savedModule = (workflowData.trigger_parameters as { module?: Module } | null | undefined)
+    ?.module
+  const [module, setModule] = useState<Module>(savedModule ?? 'alert')
 
-  // Non-module triggers (manual / webhook) have nothing to configure — show a
-  // short summary instead of an empty panel.
+  const eventLabel =
+    triggerType === TRIGGER_ON_CREATE
+      ? 'created'
+      : triggerType === TRIGGER_ON_DELETE
+        ? 'deleted'
+        : 'updated'
+
   if (!isModuleEvent) {
-    const manual = workflowData.trigger_type !== 'webhook'
+    const summary = SIMPLE_TRIGGERS[triggerType ?? ''] ?? SIMPLE_TRIGGERS.manual
     return (
       <div className="flex h-full flex-col">
         <div className="border-b border-line px-4 py-3.5">
-          <div className="text-[15px] font-semibold capitalize">
-            {manual ? 'Manual' : 'Webhook'} trigger
-          </div>
+          <div className="text-[15px] font-semibold">{summary.title}</div>
           <div className="text-[12.5px] text-ink-faint">How this playbook starts</div>
         </div>
         <div className="flex flex-1 flex-col gap-3 p-4">
           <div className="flex items-start gap-3 rounded-md border border-line bg-card p-3">
             <span className="flex size-9 shrink-0 items-center justify-center rounded-[10px] bg-slate-soft text-slate-text [&_svg]:size-4">
-              {manual ? <MousePointerClick /> : <Webhook />}
+              {summary.icon}
             </span>
-            <p className="text-[12.5px] leading-snug text-ink-soft">
-              {manual
-                ? 'This playbook runs on demand from the Playbooks list or the API. There are no trigger parameters to configure.'
-                : "This playbook fires when an external system calls its unique webhook URL. There are no parameters to configure here."}
-            </p>
+            <p className="text-[12.5px] leading-snug text-ink-soft">{summary.text}</p>
           </div>
         </div>
       </div>
@@ -64,6 +84,8 @@ const PlaybookTriggerParameters = () => {
   }
 
   const save = () => {
+    // the module rides along with the playbook in trigger_parameters
+    setPlaybookData((data) => ({ ...data, trigger_parameters: { module } }))
     setNodes((nodes) =>
       nodes.map((node) =>
         node.id === currentNode?.id
@@ -71,9 +93,7 @@ const PlaybookTriggerParameters = () => {
               ...node,
               data: {
                 ...node.data,
-                trigger_module: module,
-                trigger_event: event,
-                label: `${module} · ${event}`,
+                label: `${module} · ${eventLabel}`,
               },
             }
           : node
@@ -92,7 +112,7 @@ const PlaybookTriggerParameters = () => {
           </span>
         </div>
         <div className="text-[12.5px] text-ink-faint">
-          Run this playbook off an Alert or Incident event
+          Run this playbook when a record is {eventLabel}
         </div>
       </div>
 
@@ -120,28 +140,10 @@ const PlaybookTriggerParameters = () => {
           </Select>
         </div>
 
-        <div className="flex flex-col gap-1.5">
-          <FieldLabel>Event</FieldLabel>
-          <div className="flex w-full gap-1 rounded-sm border border-line bg-paper-sunken p-1">
-            {(['created', 'updated'] as Event[]).map((e) => (
-              <button
-                key={e}
-                type="button"
-                onClick={() => setEvent(e)}
-                className={cn(
-                  'flex-1 rounded-[6px] px-3 py-1.5 text-center text-[12px] font-semibold capitalize transition-colors',
-                  event === e ? 'bg-card text-ink shadow-sm' : 'text-ink-soft hover:text-ink'
-                )}>
-                On {e === 'created' ? 'create' : 'update'}
-              </button>
-            ))}
-          </div>
-        </div>
-
         <p className="rounded-md border border-dashed border-line-strong bg-paper-sunken px-3 py-2.5 text-[11.5px] leading-snug text-ink-faint">
           This playbook will run every time an{' '}
           <span className="font-semibold capitalize text-ink-soft">{module}</span> is{' '}
-          <span className="font-semibold text-ink-soft">{event}</span>.
+          <span className="font-semibold text-ink-soft">{eventLabel}</span>.
         </p>
       </div>
 

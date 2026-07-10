@@ -1,9 +1,6 @@
 -- name: GetPlaybookById :one
 SELECT * FROM playbooks WHERE id = $1;
 
--- name: GetPlaybookTriggers :many
-SELECT * FROM playbook_triggers;
-
 -- name: GetPlaybookGraphById :one
 SELECT
     playbooks.*,
@@ -16,8 +13,8 @@ SELECT
 FROM playbooks WHERE playbooks.id = $1;
 
 -- name: CreatePlaybook :one
-INSERT INTO playbooks (name, description, trigger_type)
-VALUES ($1, $2, $3)
+INSERT INTO playbooks (name, description, trigger_type, trigger_parameters)
+VALUES ($1, $2, $3, $4)
 RETURNING *;
 
 -- name: UpdatePlaybook :one
@@ -34,6 +31,10 @@ SET
     trigger_type = CASE
         WHEN sqlc.arg('trigger_type_set')::boolean THEN sqlc.narg('trigger_type')
         ELSE trigger_type
+    END,
+    trigger_parameters = CASE
+        WHEN sqlc.arg('trigger_parameters_set')::boolean THEN sqlc.narg('trigger_parameters')
+        ELSE trigger_parameters
     END,
     updated_at = NOW()
 WHERE id = sqlc.arg('id')

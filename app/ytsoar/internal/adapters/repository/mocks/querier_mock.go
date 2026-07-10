@@ -220,21 +220,6 @@ func (mr *MockQuerierTxMockRecorder) GetPlaybookHistoryById(ctx, id any) *gomock
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetPlaybookHistoryById", reflect.TypeOf((*MockQuerierTx)(nil).GetPlaybookHistoryById), ctx, id)
 }
 
-// GetPlaybookTriggers mocks base method.
-func (m *MockQuerierTx) GetPlaybookTriggers(ctx context.Context) ([]db.PlaybookTrigger, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetPlaybookTriggers", ctx)
-	ret0, _ := ret[0].([]db.PlaybookTrigger)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// GetPlaybookTriggers indicates an expected call of GetPlaybookTriggers.
-func (mr *MockQuerierTxMockRecorder) GetPlaybookTriggers(ctx any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetPlaybookTriggers", reflect.TypeOf((*MockQuerierTx)(nil).GetPlaybookTriggers), ctx)
-}
-
 // GetTaskHistoryByPlaybookHistoryId mocks base method.
 func (m *MockQuerierTx) GetTaskHistoryByPlaybookHistoryId(ctx context.Context, playbookHistoryID pgtype.UUID) ([]db.TaskHistory, error) {
 	m.ctrl.T.Helper()

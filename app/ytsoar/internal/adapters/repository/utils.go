@@ -70,26 +70,11 @@ func toPgUUIDFromString(id string) (pgtype.UUID, error) {
 	return toPgUUID(parsed), nil
 }
 
-func toPgUUIDPtr(id *uuid.UUID) pgtype.UUID {
-	if id == nil {
-		return pgtype.UUID{}
-	}
-	return toPgUUID(*id)
-}
-
 func fromPgUUID(id pgtype.UUID) uuid.UUID {
 	if !id.Valid {
 		return uuid.Nil
 	}
 	return uuid.UUID(id.Bytes)
-}
-
-func fromPgUUIDPtr(id pgtype.UUID) *uuid.UUID {
-	if !id.Valid {
-		return nil
-	}
-	u := uuid.UUID(id.Bytes)
-	return &u
 }
 
 func toPgText(s *string) pgtype.Text {
@@ -133,21 +118,6 @@ func toPgFloat8(f float32) pgtype.Float8 {
 	return pgtype.Float8{Float64: float64(f), Valid: true}
 }
 
-func toPgUUIDFromNullable(n types.Nullable[uuid.UUID]) pgtype.UUID {
-	if !n.Set || n.Value == nil {
-		return pgtype.UUID{}
-	}
-	return toPgUUID(*n.Value)
-}
-
-func uuidPtrToStringPtr(id *uuid.UUID) *string {
-	if id == nil {
-		return nil
-	}
-	s := id.String()
-	return &s
-}
-
 func toNullPlaybookStatus(n types.Nullable[string]) db.NullPlaybookStatus {
 	if !n.Set || n.Value == nil {
 		return db.NullPlaybookStatus{}
@@ -160,4 +130,26 @@ func toNullTaskStatus(n types.Nullable[string]) db.NullTaskStatus {
 		return db.NullTaskStatus{}
 	}
 	return db.NullTaskStatus{TaskStatus: db.TaskStatus(*n.Value), Valid: true}
+}
+
+func toNullTriggerTypePtr(s *string) db.NullTriggerType {
+	if s == nil {
+		return db.NullTriggerType{}
+	}
+	return db.NullTriggerType{TriggerType: db.TriggerType(*s), Valid: true}
+}
+
+func toNullTriggerTypeFromNullable(n types.Nullable[string]) db.NullTriggerType {
+	if !n.Set || n.Value == nil {
+		return db.NullTriggerType{}
+	}
+	return db.NullTriggerType{TriggerType: db.TriggerType(*n.Value), Valid: true}
+}
+
+func fromNullTriggerType(nt db.NullTriggerType) *string {
+	if !nt.Valid {
+		return nil
+	}
+	s := string(nt.TriggerType)
+	return &s
 }

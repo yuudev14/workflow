@@ -245,6 +245,7 @@ const PlaybookOperationProvider: React.FC<{
         name: workflowQuery.data.name,
         description: workflowQuery.data.description,
         trigger_type: workflowQuery.data.trigger_type,
+        trigger_parameters: workflowQuery.data.trigger_parameters,
       });
   }, [workflowQuery.isFetched]);
 
@@ -264,7 +265,7 @@ const PlaybookOperationProvider: React.FC<{
   const onNodesDelete = useCallback((node: Node<PlaybookTaskNode>[]) => {
     console.log(node);
     if (node.find((_node) => _node.data.name == FLOW_START_ID)) {
-      setPlaybookData((data) => ({ ...data, trigger_type: null }));
+      setPlaybookData((data) => ({ ...data, trigger_type: null, trigger_parameters: null }));
       setNodes((_nodes) => _nodes.concat(INITIAL_START_NODE_VALUE));
       setCurrentNode(INITIAL_START_NODE_VALUE);
       setOpenOperationSidebar(true);
