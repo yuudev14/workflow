@@ -81,6 +81,12 @@ func (e *Executor) Run(ctx context.Context, msg domain.TaskMessage) error {
 		return e.finishPlaybook(ctx, msg, StatusFailed, nil, fmt.Errorf("graph contains a cycle"))
 	}
 
+	// An empty graph means nothing would run; succeeding would hide a broken
+	// producer (the message builder seeds even edgeless tasks into the graph).
+	if len(msg.Graph) == 0 {
+		return e.finishPlaybook(ctx, msg, StatusFailed, nil, fmt.Errorf("playbook message has no graph nodes"))
+	}
+
 	indegree, children := buildIndegree(msg.Graph)
 	handles := buildEdgeHandles(msg.Edges)
 	// followedCount counts, per node, how many completed incoming edges chose
@@ -342,6 +348,12 @@ func edgeFollowed(handles map[edgeKey][]*string, node string, child string, outp
 // conditionResult pulls the branch selector out of a node's output. A condition
 // returns {"result": ...} — a bool for true/false, or a case id / "else" for a
 // switch — which becomes the handle string an edge must match to be followed.
+//
+// Detection is intentionally shape-based rather than tied to the condition
+// builtin's connector id, so any connector (or code snippet) returning
+// {"result": ...} can act as a condition. Ordinary nodes are safe from
+// accidental gating because their edges only ever carry directional
+// ("source-*"/"target-*") or nil handles, which always follow.
 func conditionResult(output any) (string, bool) {
 	outMap, ok := output.(map[string]any)
 	if !ok {

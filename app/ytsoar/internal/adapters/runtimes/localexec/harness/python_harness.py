@@ -5,7 +5,23 @@
 # Templating parity: connectors/core/connector.py evaluate_params renders
 # every string with jinja2 as Template(value).render(var=variables).
 import json
+import os
 import sys
+
+
+def apply_memory_limit():
+    # Cap the address space (node gets --max-old-space-size; python has no
+    # flag, so the harness applies RLIMIT_AS itself) so a runaway snippet
+    # cannot OOM the whole sandbox. Best-effort: never break the run.
+    try:
+        mb = int(os.environ.get("YTSOAR_MEM_LIMIT_MB", "0"))
+        if mb > 0:
+            import resource
+
+            limit = mb * 1024 * 1024
+            resource.setrlimit(resource.RLIMIT_AS, (limit, limit))
+    except Exception:
+        pass
 
 
 def render(value, variables):
@@ -22,6 +38,7 @@ def render(value, variables):
 
 
 def main():
+    apply_memory_limit()
     payload = json.load(sys.stdin)
     variables = {"steps": payload.get("steps") or {}}
     params = render(payload.get("params") or {}, variables)

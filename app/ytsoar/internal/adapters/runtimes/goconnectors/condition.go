@@ -3,6 +3,7 @@ package goconnectors
 import (
 	"context"
 	"fmt"
+	"regexp"
 	"strconv"
 	"strings"
 )
@@ -26,9 +27,17 @@ func NewConditionConnector() *ConditionConnector {
 func (c *ConditionConnector) Execute(ctx context.Context, configs map[string]any, params map[string]any, operation string) (any, error) {
 	switch operation {
 	case "switch":
-		return map[string]any{"result": evaluateSwitchSimple(params["cases"])}, nil
+		result, err := evaluateSwitchSimple(params["cases"])
+		if err != nil {
+			return nil, err
+		}
+		return map[string]any{"result": result}, nil
 	case "switch_expression":
-		return map[string]any{"result": evaluateSwitch(params["cases"])}, nil
+		result, err := evaluateSwitch(params["cases"])
+		if err != nil {
+			return nil, err
+		}
+		return map[string]any{"result": result}, nil
 	default:
 		return nil, fmt.Errorf("operation (%s) does not exist in ConditionConnector", operation)
 	}
@@ -37,51 +46,66 @@ func (c *ConditionConnector) Execute(ctx context.Context, configs map[string]any
 // evaluateSwitchSimple walks the ordered cases (each {id, left, operator, right})
 // and returns the id of the first whose compare holds, or "else". A compare error
 // (e.g. ">" on non-numeric) counts as no match, so one bad case never fails the run.
-func evaluateSwitchSimple(rawCases any) string {
+func evaluateSwitchSimple(rawCases any) (string, error) {
 	cases, ok := rawCases.([]any)
 	if !ok {
-		return "else"
+		return "else", nil
 	}
-	for i, raw := range cases {
+	if err := validateCaseIDs(cases); err != nil {
+		return "", err
+	}
+	for _, raw := range cases {
 		c, ok := raw.(map[string]any)
 		if !ok {
 			continue
 		}
 		operator, _ := c["operator"].(string)
 		if match, err := compare(c["left"], operator, c["right"]); err == nil && match {
-			return caseID(c, i)
+			id, _ := c["id"].(string)
+			return id, nil
 		}
 	}
-	return "else"
+	return "else", nil
 }
 
 // evaluateSwitch walks the ordered cases (each {id, expression}, expression
 // already rendered by the registry) and returns the id of the first truthy one,
 // or "else".
-func evaluateSwitch(rawCases any) string {
+func evaluateSwitch(rawCases any) (string, error) {
 	cases, ok := rawCases.([]any)
 	if !ok {
-		return "else"
+		return "else", nil
 	}
-	for i, raw := range cases {
+	if err := validateCaseIDs(cases); err != nil {
+		return "", err
+	}
+	for _, raw := range cases {
 		c, ok := raw.(map[string]any)
 		if !ok {
 			continue
 		}
 		if truthy(c["expression"]) {
-			return caseID(c, i)
+			id, _ := c["id"].(string)
+			return id, nil
 		}
 	}
-	return "else"
+	return "else", nil
 }
 
-// caseID is the branch handle for a case: its stable "id", or a positional
-// "case-<i>" fallback when none was set.
-func caseID(c map[string]any, i int) string {
-	if id, ok := c["id"].(string); ok && id != "" {
-		return id
+// validateCaseIDs requires every case to carry a stable id. A positional
+// fallback would silently misroute edges when cases are reordered or deleted,
+// so a missing id fails the node loudly instead.
+func validateCaseIDs(cases []any) error {
+	for i, raw := range cases {
+		c, ok := raw.(map[string]any)
+		if !ok {
+			continue
+		}
+		if id, ok := c["id"].(string); !ok || id == "" {
+			return fmt.Errorf("case %d has no id", i)
+		}
 	}
-	return fmt.Sprintf("case-%d", i)
+	return nil
 }
 
 // truthy reads a rendered template value as true or false. Templates come back as
@@ -98,8 +122,13 @@ func truthy(value any) bool {
 	case int:
 		return v != 0
 	case string:
-		switch strings.TrimSpace(strings.ToLower(v)) {
-		case "", "false", "0", "0.0", "none", "nil", "null", "no", "off", "[]", "{}":
+		s := strings.TrimSpace(strings.ToLower(v))
+		switch s {
+		case "", "false", "none", "nil", "null", "no", "off", "[]", "{}":
+			return false
+		}
+		// catch every rendered zero form ("0", "0.0", "0.00", "-0") numerically
+		if n, err := strconv.ParseFloat(s, 64); err == nil && n == 0 {
 			return false
 		}
 		return true
@@ -108,23 +137,32 @@ func truthy(value any) bool {
 	}
 }
 
+// canonicalNumber matches plainly-formatted numbers ("5", "-3.25") — no
+// leading zeros, no exponent. Equality coerces to numbers only for these, so
+// "5" == "5.0" holds but id-like values ("0123", "1e3") compare as strings
+// and never collide numerically.
+var canonicalNumber = regexp.MustCompile(`^-?(0|[1-9][0-9]*)(\.[0-9]+)?$`)
+
 // compare works on templated values, which arrive as strings: ordering
-// operators need both sides numeric; equality falls back to numeric
-// comparison when both sides parse, so "5" == "5.0" holds.
+// operators need both sides numeric; equality compares numerically only when
+// both sides are canonical numbers, otherwise as strings.
 func compare(left any, operator string, right any) (bool, error) {
 	l, r := asString(left), asString(right)
 	lNum, lOk := asNumber(left)
 	rNum, rOk := asNumber(right)
 	numeric := lOk && rOk
+	eqNumeric := numeric &&
+		canonicalNumber.MatchString(strings.TrimSpace(l)) &&
+		canonicalNumber.MatchString(strings.TrimSpace(r))
 
 	switch operator {
 	case "==":
-		if numeric {
+		if eqNumeric {
 			return lNum == rNum, nil
 		}
 		return l == r, nil
 	case "!=":
-		if numeric {
+		if eqNumeric {
 			return lNum != rNum, nil
 		}
 		return l != r, nil

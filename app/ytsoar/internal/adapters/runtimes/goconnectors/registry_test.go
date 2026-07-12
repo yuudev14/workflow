@@ -150,10 +150,10 @@ func TestConditionConnectorSwitchSimple(t *testing.T) {
 		{"none match falls to else", []any{
 			map[string]any{"id": "a", "left": "1", "operator": "==", "right": "2"},
 		}, "else"},
-		{"missing id falls back to positional", []any{
-			map[string]any{"left": "1", "operator": "==", "right": "2"},
-			map[string]any{"left": "1", "operator": "==", "right": "1"},
-		}, "case-1"},
+		{"id-like values compare as strings", []any{
+			map[string]any{"id": "a", "left": "0123", "operator": "==", "right": "123"},
+			map[string]any{"id": "b", "left": "0123", "operator": "!=", "right": "123"},
+		}, "b"},
 		{"empty cases", []any{}, "else"},
 		{"missing cases", nil, "else"},
 	}
@@ -173,10 +173,27 @@ func TestConditionConnectorUnknownOperation(t *testing.T) {
 	assert.ErrorContains(t, err, "bogus")
 }
 
+// A case without a stable id would silently misroute edges (positional ids
+// shift when cases are reordered or deleted), so both operations reject it.
+func TestConditionConnectorMissingCaseID(t *testing.T) {
+	conn := goconnectors.NewConditionConnector()
+
+	_, err := conn.Execute(context.Background(), nil, map[string]any{"cases": []any{
+		map[string]any{"left": "1", "operator": "==", "right": "1"},
+	}}, "switch")
+	assert.ErrorContains(t, err, "case 0 has no id")
+
+	_, err = conn.Execute(context.Background(), nil, map[string]any{"cases": []any{
+		map[string]any{"id": "a", "expression": "False"},
+		map[string]any{"expression": "True"},
+	}}, "switch_expression")
+	assert.ErrorContains(t, err, "case 1 has no id")
+}
+
 // TestConditionConnectorSwitchExpression covers the advanced switch: each case is
 // a template expression the registry already rendered to "True"/"False"/etc. The
-// first truthy case's stable id wins (positional fallback with no id), else
-// "else". It also exercises truthy() coercion of rendered values.
+// first truthy case's stable id wins, else "else". It also exercises truthy()
+// coercion of rendered values.
 func TestConditionConnectorSwitchExpression(t *testing.T) {
 	conn := goconnectors.NewConditionConnector()
 	cases := []struct {
@@ -201,10 +218,10 @@ func TestConditionConnectorSwitchExpression(t *testing.T) {
 			map[string]any{"id": "b", "expression": "None"},
 			map[string]any{"id": "c", "expression": "malicious"},
 		}, "c"},
-		{"missing id falls back to positional", []any{
-			map[string]any{"expression": "False"},
-			map[string]any{"expression": "True"},
-		}, "case-1"},
+		{"formatted zero is falsy", []any{
+			map[string]any{"id": "a", "expression": "0.00"},
+			map[string]any{"id": "b", "expression": "1"},
+		}, "b"},
 		{"empty cases", []any{}, "else"},
 		{"missing cases", nil, "else"},
 	}

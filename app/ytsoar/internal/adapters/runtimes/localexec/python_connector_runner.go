@@ -21,11 +21,12 @@ var pythonConnectorHarness string
 // "connectors" because the harness imports `connectors.<id>.connector`, so
 // the tree's parent goes on sys.path. It implements execution.NodeRuntime.
 type PythonConnectorRunner struct {
-	logger logger.Logger
-	root   string
+	logger        logger.Logger
+	root          string
+	memoryLimitMB int
 }
 
-func NewPythonConnectorRunner(log logger.Logger, treeDir string) (*PythonConnectorRunner, error) {
+func NewPythonConnectorRunner(log logger.Logger, treeDir string, memoryLimitMB int) (*PythonConnectorRunner, error) {
 	absTree, err := filepath.Abs(treeDir)
 	if err != nil {
 		return nil, err
@@ -34,9 +35,13 @@ func NewPythonConnectorRunner(log logger.Logger, treeDir string) (*PythonConnect
 		return nil, fmt.Errorf(
 			"connectors tree %s must be a directory named 'connectors' (python imports connectors.<id>.connector)", absTree)
 	}
+	if memoryLimitMB <= 0 {
+		memoryLimitMB = defaultPythonMemoryLimitMB
+	}
 	return &PythonConnectorRunner{
-		logger: log,
-		root:   filepath.Dir(absTree),
+		logger:        log,
+		root:          filepath.Dir(absTree),
+		memoryLimitMB: memoryLimitMB,
 	}, nil
 }
 
@@ -67,7 +72,7 @@ func (r *PythonConnectorRunner) Execute(ctx context.Context, req execution.Execu
 
 	r.logger.Debugw("running python connector",
 		"connector", *req.Task.ConnectorID, "operation", req.Task.Operation)
-	out, err := runSubprocess(ctx, req.Timeout, payload, scrubbedEnv(),
+	out, err := runSubprocess(ctx, req.Timeout, payload, scrubbedEnv(pythonMemLimitEnv(r.memoryLimitMB)...),
 		"python3", "-I", "-c", pythonConnectorHarness)
 	if err != nil {
 		return nil, err

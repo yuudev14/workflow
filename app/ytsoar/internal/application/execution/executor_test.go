@@ -536,10 +536,10 @@ func TestStaticResolverRouting(t *testing.T) {
 	defaultRuntime := execmocks.NewMockNodeRuntime(ctrl)
 	special := execmocks.NewMockNodeRuntime(ctrl)
 	resolver := execution.NewStaticResolver(defaultRuntime, map[string]execution.NodeRuntime{
-		"code_snippet": special,
+		"code_snippet_py": special,
 	})
 
-	mapped, err := resolver.Resolve(sampleTaskWithConnector("code_snippet"))
+	mapped, err := resolver.Resolve(sampleTaskWithConnector("code_snippet_py"))
 	assert.NoError(t, err)
 	assert.Same(t, special, mapped)
 

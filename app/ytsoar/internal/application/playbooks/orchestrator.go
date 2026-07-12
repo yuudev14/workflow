@@ -399,8 +399,23 @@ func (w *PlaybookApplicationServiceImpl) PreparePlaybookMessage(tasksData []doma
 		if edge.SourceHandle.Valid {
 			handle := edge.SourceHandle.String
 			ref.SourceHandle = &handle
+		} else if source, ok := tasksMap[edge.SourceTaskName]; ok &&
+			source.ConnectorID != nil && *source.ConnectorID == domain.ConditionConnectorID {
+			// A nil handle always follows in the executor, which would defeat
+			// branch gating on a condition edge; stamp the editor's unrouted
+			// "output" handle instead (never a followed branch).
+			handle := domain.ConditionOutputHandle
+			ref.SourceHandle = &handle
 		}
 		edgeRefs = append(edgeRefs, ref)
+	}
+
+	// The graph so far only has nodes that touch an edge; seed the rest so
+	// single-node and disconnected tasks still run.
+	for name := range tasksMap {
+		if _, ok := graph[name]; !ok {
+			graph[name] = []string{}
+		}
 	}
 
 	return tasksMap, graph, edgeRefs
