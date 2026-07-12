@@ -68,7 +68,7 @@ func codeRequest(t *testing.T, code string, extraParams map[string]any, steps ma
 	}
 	raw, err := json.Marshal(params)
 	require.NoError(t, err)
-	connectorID := "code_snippet"
+	connectorID := "code_snippet_py"
 	return execution.ExecutionRequest{
 		Task: domain.Tasks{
 			ID:          uuid.New(),
@@ -92,7 +92,7 @@ func codeOutput(t *testing.T, raw json.RawMessage) any {
 
 func TestPythonRunnerReturnsResult(t *testing.T) {
 	requirePython(t)
-	runner := localexec.NewPythonRunner(logger.NewNop())
+	runner := localexec.NewPythonRunner(logger.NewNop(), 1)
 
 	raw, err := runner.Execute(context.Background(),
 		codeRequest(t, "result = params['x'] + len(steps)", map[string]any{"x": 41},
@@ -104,7 +104,7 @@ func TestPythonRunnerReturnsResult(t *testing.T) {
 
 func TestPythonRunnerTemplating(t *testing.T) {
 	requireJinja2(t)
-	runner := localexec.NewPythonRunner(logger.NewNop())
+	runner := localexec.NewPythonRunner(logger.NewNop(), 1)
 
 	raw, err := runner.Execute(context.Background(),
 		codeRequest(t, `result = params["greeting"]`,
@@ -117,7 +117,7 @@ func TestPythonRunnerTemplating(t *testing.T) {
 
 func TestPythonRunnerErrorIncludesTraceback(t *testing.T) {
 	requirePython(t)
-	runner := localexec.NewPythonRunner(logger.NewNop())
+	runner := localexec.NewPythonRunner(logger.NewNop(), 1)
 
 	_, err := runner.Execute(context.Background(),
 		codeRequest(t, "raise Exception('boom')", nil, nil, 10*time.Second))
@@ -127,7 +127,7 @@ func TestPythonRunnerErrorIncludesTraceback(t *testing.T) {
 
 func TestPythonRunnerTimeoutKillsProcess(t *testing.T) {
 	requirePython(t)
-	runner := localexec.NewPythonRunner(logger.NewNop())
+	runner := localexec.NewPythonRunner(logger.NewNop(), 1)
 
 	start := time.Now()
 	_, err := runner.Execute(context.Background(),
@@ -140,7 +140,7 @@ func TestPythonRunnerTimeoutKillsProcess(t *testing.T) {
 func TestPythonRunnerEnvIsScrubbed(t *testing.T) {
 	requirePython(t)
 	t.Setenv("DB_PASSWORD", "supersecret")
-	runner := localexec.NewPythonRunner(logger.NewNop())
+	runner := localexec.NewPythonRunner(logger.NewNop(), 1)
 
 	raw, err := runner.Execute(context.Background(),
 		codeRequest(t, "import os\nresult = os.environ.get('DB_PASSWORD', 'scrubbed')",
@@ -151,7 +151,7 @@ func TestPythonRunnerEnvIsScrubbed(t *testing.T) {
 }
 
 func TestPythonRunnerRequiresCode(t *testing.T) {
-	runner := localexec.NewPythonRunner(logger.NewNop())
+	runner := localexec.NewPythonRunner(logger.NewNop(), 1)
 	req := codeRequest(t, "", nil, nil, time.Second)
 
 	_, err := runner.Execute(context.Background(), req)
@@ -161,7 +161,7 @@ func TestPythonRunnerRequiresCode(t *testing.T) {
 
 func TestNodeRunnerReturnsResult(t *testing.T) {
 	requireTypeScriptNode(t)
-	runner := localexec.NewNodeRunner(logger.NewNop())
+	runner := localexec.NewNodeRunner(logger.NewNop(), 1)
 
 	raw, err := runner.Execute(context.Background(),
 		codeRequest(t, "const result = await Promise.resolve(params.x * 2);",
@@ -173,7 +173,7 @@ func TestNodeRunnerReturnsResult(t *testing.T) {
 
 func TestNodeRunnerTemplating(t *testing.T) {
 	requireNunjucks(t)
-	runner := localexec.NewNodeRunner(logger.NewNop())
+	runner := localexec.NewNodeRunner(logger.NewNop(), 1)
 
 	raw, err := runner.Execute(context.Background(),
 		codeRequest(t, "const result = params.greeting;",
@@ -186,7 +186,7 @@ func TestNodeRunnerTemplating(t *testing.T) {
 
 func TestNodeRunnerErrorIsCaptured(t *testing.T) {
 	requireTypeScriptNode(t)
-	runner := localexec.NewNodeRunner(logger.NewNop())
+	runner := localexec.NewNodeRunner(logger.NewNop(), 1)
 
 	_, err := runner.Execute(context.Background(),
 		codeRequest(t, "throw new Error('boom');", nil, nil, 10*time.Second))
@@ -196,7 +196,7 @@ func TestNodeRunnerErrorIsCaptured(t *testing.T) {
 
 func TestNodeRunnerTimeoutKillsProcess(t *testing.T) {
 	requireTypeScriptNode(t)
-	runner := localexec.NewNodeRunner(logger.NewNop())
+	runner := localexec.NewNodeRunner(logger.NewNop(), 1)
 
 	start := time.Now()
 	_, err := runner.Execute(context.Background(),
@@ -292,7 +292,7 @@ func TestNodeConnectorRunnerExecutesOperation(t *testing.T) {
 	dir := t.TempDir()
 	writeNodeConnector(t, dir)
 
-	runner, err := localexec.NewNodeConnectorRunner(logger.NewNop(), dir)
+	runner, err := localexec.NewNodeConnectorRunner(logger.NewNop(), dir, 1)
 	require.NoError(t, err)
 
 	connectorID := "echo_js"
@@ -324,7 +324,7 @@ func TestNodeConnectorRunnerExecutesTypeScriptConnector(t *testing.T) {
 	writeCore(t, dir)
 	writeTSConnector(t, dir)
 
-	runner, err := localexec.NewNodeConnectorRunner(logger.NewNop(), dir)
+	runner, err := localexec.NewNodeConnectorRunner(logger.NewNop(), dir, 1)
 	require.NoError(t, err)
 
 	connectorID := "echo_ts"
@@ -379,7 +379,7 @@ module.exports = { DepConnector };`
 	require.NoError(t, os.WriteFile(filepath.Join(connectorDir, "info.json"),
 		[]byte(`{"id":"dep_js","name":"Dep JS","runtime":"node"}`), 0o644))
 
-	runner, err := localexec.NewNodeConnectorRunner(logger.NewNop(), dir)
+	runner, err := localexec.NewNodeConnectorRunner(logger.NewNop(), dir, 1)
 	require.NoError(t, err)
 
 	connectorID := "dep_js"
@@ -406,7 +406,7 @@ func TestNodeConnectorRunnerUnknownOperation(t *testing.T) {
 	dir := t.TempDir()
 	writeNodeConnector(t, dir)
 
-	runner, err := localexec.NewNodeConnectorRunner(logger.NewNop(), dir)
+	runner, err := localexec.NewNodeConnectorRunner(logger.NewNop(), dir, 1)
 	require.NoError(t, err)
 
 	connectorID := "echo_js"

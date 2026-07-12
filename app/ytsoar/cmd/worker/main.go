@@ -6,7 +6,6 @@ import (
 	"log"
 	"os/signal"
 	"syscall"
-	"time"
 
 	"github.com/yuudev14/ytsoar/db"
 	"github.com/yuudev14/ytsoar/internal/adapters/mq"
@@ -19,11 +18,6 @@ import (
 	"github.com/yuudev14/ytsoar/internal/application/tasks"
 	"github.com/yuudev14/ytsoar/internal/config"
 	"github.com/yuudev14/ytsoar/internal/logger"
-)
-
-const (
-	maxParallelNodes = 4
-	nodeTimeout      = 5 * time.Minute
 )
 
 func main() {
@@ -81,11 +75,11 @@ func main() {
 		playbookService,
 		resolver,
 		statusPublisher,
-		maxParallelNodes,
-		nodeTimeout,
+		cfg.MaxParallelNodes,
+		cfg.NodeTimeout,
 	)
 
-	consumer, err := mq.NewTaskConsumer(appLogger, mqConn, cfg.PlaybookQueueName, executor)
+	consumer, err := mq.NewTaskConsumer(appLogger, mqConn, cfg.PlaybookQueueName, executor, cfg.PlaybookPrefetch)
 	if err != nil {
 		log.Fatalf("failed to setup task consumer: %v", err)
 	}

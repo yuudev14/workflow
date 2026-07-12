@@ -71,7 +71,7 @@ func TestPythonConnectorRunnerExecutesOperation(t *testing.T) {
 	requirePython(t)
 	root := fakeConnectorsTree(t)
 
-	runner, err := localexec.NewPythonConnectorRunner(logger.NewNop(), filepath.Join(root, "connectors"))
+	runner, err := localexec.NewPythonConnectorRunner(logger.NewNop(), filepath.Join(root, "connectors"), 1)
 	require.NoError(t, err)
 
 	connectorID := "echo_py"
@@ -120,7 +120,7 @@ class DepConnector(Connector):
         return {"dep": fakelib.VALUE}
 `)
 
-	runner, err := localexec.NewPythonConnectorRunner(logger.NewNop(), filepath.Join(root, "connectors"))
+	runner, err := localexec.NewPythonConnectorRunner(logger.NewNop(), filepath.Join(root, "connectors"), 1)
 	require.NoError(t, err)
 
 	connectorID := "dep_py"
@@ -146,7 +146,7 @@ func TestPythonConnectorRunnerUnknownConnector(t *testing.T) {
 	requirePython(t)
 	root := fakeConnectorsTree(t)
 
-	runner, err := localexec.NewPythonConnectorRunner(logger.NewNop(), filepath.Join(root, "connectors"))
+	runner, err := localexec.NewPythonConnectorRunner(logger.NewNop(), filepath.Join(root, "connectors"), 1)
 	require.NoError(t, err)
 
 	connectorID := "ghost"
@@ -168,7 +168,7 @@ func TestPythonConnectorRunnerUnknownConnector(t *testing.T) {
 func TestPythonConnectorRunnerRequiresConnectorID(t *testing.T) {
 	tree := filepath.Join(t.TempDir(), "connectors")
 	require.NoError(t, os.MkdirAll(tree, 0o755))
-	runner, err := localexec.NewPythonConnectorRunner(logger.NewNop(), tree)
+	runner, err := localexec.NewPythonConnectorRunner(logger.NewNop(), tree, 1)
 	require.NoError(t, err)
 
 	_, err = runner.Execute(context.Background(), execution.ExecutionRequest{
@@ -180,7 +180,7 @@ func TestPythonConnectorRunnerRequiresConnectorID(t *testing.T) {
 }
 
 func TestPythonConnectorRunnerRejectsMisnamedTree(t *testing.T) {
-	_, err := localexec.NewPythonConnectorRunner(logger.NewNop(), t.TempDir())
+	_, err := localexec.NewPythonConnectorRunner(logger.NewNop(), t.TempDir(), 1)
 
 	assert.ErrorContains(t, err, "must be a directory named 'connectors'")
 }

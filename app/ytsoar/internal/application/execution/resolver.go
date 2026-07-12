@@ -6,6 +6,15 @@ import (
 	"github.com/yuudev14/ytsoar/internal/domain"
 )
 
+// RuntimeResolverFunc adapts a function to the RuntimeResolver port, for
+// resolvers that must decide per request (e.g. the sandbox re-checking the
+// connectors tree so uploads take effect without a restart).
+type RuntimeResolverFunc func(task domain.Tasks) (NodeRuntime, error)
+
+func (f RuntimeResolverFunc) Resolve(task domain.Tasks) (NodeRuntime, error) {
+	return f(task)
+}
+
 // StaticResolver routes tasks by connector id; connectors without an explicit
 // mapping fall through to the default runtime.
 type StaticResolver struct {

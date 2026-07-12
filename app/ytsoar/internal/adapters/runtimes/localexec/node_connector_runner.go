@@ -32,15 +32,18 @@ type NodeConnectorRunner struct {
 	memoryLimitMB int
 }
 
-func NewNodeConnectorRunner(log logger.Logger, dir string) (*NodeConnectorRunner, error) {
+func NewNodeConnectorRunner(log logger.Logger, dir string, memoryLimitMB int) (*NodeConnectorRunner, error) {
 	absDir, err := filepath.Abs(dir)
 	if err != nil {
 		return nil, err
 	}
+	if memoryLimitMB <= 0 {
+		memoryLimitMB = defaultNodeMemoryLimitMB
+	}
 	return &NodeConnectorRunner{
 		logger:        log,
 		dir:           absDir,
-		memoryLimitMB: defaultNodeMemoryLimitMB,
+		memoryLimitMB: memoryLimitMB,
 	}, nil
 }
 
@@ -96,9 +99,30 @@ func (r *NodeConnectorRunner) loadConfig(connectorID string, configName *string)
 	return config, nil
 }
 
-// ListNodeConnectors returns the connector ids in the unified tree whose
-// info.json declares "runtime": "node" and that ship a connector.ts or
-// connector.js — the composition root maps each of them to this runner.
+// IsNodeConnector reports whether the connector's info.json declares
+// "runtime": "node" and it ships a connector.ts or connector.js. Checked per
+// request so connectors uploaded after boot route correctly without a restart.
+func IsNodeConnector(dir, id string) bool {
+	raw, err := os.ReadFile(filepath.Join(dir, id, "info.json"))
+	if err != nil {
+		return false
+	}
+	var info struct {
+		Runtime string `json:"runtime"`
+	}
+	if err := json.Unmarshal(raw, &info); err != nil || info.Runtime != "node" {
+		return false
+	}
+	for _, impl := range nodeConnectorEntries {
+		if _, err := os.Stat(filepath.Join(dir, id, impl)); err == nil {
+			return true
+		}
+	}
+	return false
+}
+
+// ListNodeConnectors returns the connector ids in the unified tree that
+// IsNodeConnector accepts.
 func ListNodeConnectors(dir string) ([]string, error) {
 	entries, err := os.ReadDir(dir)
 	if err != nil {
@@ -106,24 +130,8 @@ func ListNodeConnectors(dir string) ([]string, error) {
 	}
 	var ids []string
 	for _, entry := range entries {
-		if !entry.IsDir() {
-			continue
-		}
-		raw, err := os.ReadFile(filepath.Join(dir, entry.Name(), "info.json"))
-		if err != nil {
-			continue
-		}
-		var info struct {
-			Runtime string `json:"runtime"`
-		}
-		if err := json.Unmarshal(raw, &info); err != nil || info.Runtime != "node" {
-			continue
-		}
-		for _, impl := range nodeConnectorEntries {
-			if _, err := os.Stat(filepath.Join(dir, entry.Name(), impl)); err == nil {
-				ids = append(ids, entry.Name())
-				break
-			}
+		if entry.IsDir() && IsNodeConnector(dir, entry.Name()) {
+			ids = append(ids, entry.Name())
 		}
 	}
 	return ids, nil

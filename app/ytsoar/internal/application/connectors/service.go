@@ -34,7 +34,7 @@ const (
 // reject it instead of confusing anyone.
 var reservedIDs = map[string]bool{
 	"core":            true,
-	"code_snippet":    true,
+	"code_snippet_py": true,
 	"code_snippet_js": true,
 	"condition":       true,
 	"http_request":    true,

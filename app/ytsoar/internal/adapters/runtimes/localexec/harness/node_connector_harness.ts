@@ -27,12 +27,13 @@ process.stdin.on("end", async () => {
     const payload: ConnectorPayload = JSON.parse(Buffer.concat(chunks).toString());
     const core = require(path.join(payload.connectors_dir, "core", "connector.ts"));
 
-    // stdout is the JSON result channel: reroute connector console output to
-    // stderr so it cannot corrupt it.
+    // stdout is the JSON result channel: swap in a console bound entirely to
+    // stderr so no console method (log, dir, table, group, ...) can corrupt it.
     const writeResult = process.stdout.write.bind(process.stdout);
-    for (const level of ["log", "info", "warn", "debug"] as const) {
-      console[level] = (...args: unknown[]) => console.error(...args);
-    }
+    globalThis.console = new (require("node:console").Console)(
+      process.stderr,
+      process.stderr
+    );
 
     const connector = core.getClassContainer(
       payload.connectors_dir,
