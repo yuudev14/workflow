@@ -111,7 +111,7 @@ validates it, installs its dependencies, and records an audit row;
 Params support templating against earlier node outputs:
 `{{ var.steps["node name"] }}`.
 
-Two built-in code nodes run raw snippets: `code_snippet` (Python, set
+Two built-in code nodes run raw snippets: `code_snippet_py` (Python, set
 `result = ...`) and `code_snippet_js` (JavaScript, `const result = ...`,
 `await` works). They need no files besides info.json — the sandbox itself
 implements them. Snippets are Python/JavaScript only — TypeScript syntax

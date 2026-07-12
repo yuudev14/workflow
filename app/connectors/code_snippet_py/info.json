@@ -1,6 +1,6 @@
 {
   "name": "Code Snippet",
-  "id": "code_snippet",
+  "id": "code_snippet_py",
   "operations": [
     {
       "operation": "python_code",

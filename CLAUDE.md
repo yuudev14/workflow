@@ -91,7 +91,7 @@ only erasable TS syntax (no enums/namespaces/parameter properties —
 `erasableSyntaxOnly` in the tsconfigs enforces this in the editor).
 
 Sandbox routing (`cmd/sandbox`):
-- `code_snippet` → python code harness, `code_snippet_js` → node code harness.
+- `code_snippet_py` → python code harness, `code_snippet_js` → node code harness.
   These are "virtual connectors": only info.json exists in the tree; the
   harness IS the implementation. Snippet code itself is python/JS only — TS in
   a snippet won't strip (it runs through `new AsyncFunction`).
