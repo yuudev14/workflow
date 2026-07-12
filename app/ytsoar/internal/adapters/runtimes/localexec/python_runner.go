@@ -13,14 +13,18 @@ import (
 //go:embed harness/python_harness.py
 var pythonHarness string
 
-// PythonRunner executes code_snippet nodes in a fresh `python3 -I` child.
+// PythonRunner executes code_snippet_py nodes in a fresh `python3 -I` child.
 // It implements execution.NodeRuntime.
 type PythonRunner struct {
-	logger logger.Logger
+	logger        logger.Logger
+	memoryLimitMB int
 }
 
-func NewPythonRunner(log logger.Logger) *PythonRunner {
-	return &PythonRunner{logger: log}
+func NewPythonRunner(log logger.Logger, memoryLimitMB int) *PythonRunner {
+	if memoryLimitMB <= 0 {
+		memoryLimitMB = defaultPythonMemoryLimitMB
+	}
+	return &PythonRunner{logger: log, memoryLimitMB: memoryLimitMB}
 }
 
 func (r *PythonRunner) Execute(ctx context.Context, req execution.ExecutionRequest) (json.RawMessage, error) {
@@ -41,7 +45,7 @@ func (r *PythonRunner) Execute(ctx context.Context, req execution.ExecutionReque
 	}
 
 	r.logger.Debugw("running python code node", "task", req.Task.Name)
-	out, err := runSubprocess(ctx, req.Timeout, payload, scrubbedEnv(),
+	out, err := runSubprocess(ctx, req.Timeout, payload, scrubbedEnv(pythonMemLimitEnv(r.memoryLimitMB)...),
 		"python3", "-I", "-c", pythonHarness)
 	if err != nil {
 		return nil, err

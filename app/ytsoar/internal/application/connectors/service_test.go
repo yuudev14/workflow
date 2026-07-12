@@ -177,7 +177,7 @@ func TestDeleteConnector(t *testing.T) {
 func TestDeleteConnectorRejectsReservedIDs(t *testing.T) {
 	svc, _ := newService(t) // no store/writer/repo expectations: nothing may be touched
 
-	for _, id := range []string{"core", "code_snippet", "code_snippet_js", "condition", "http_request"} {
+	for _, id := range []string{"core", "code_snippet_py", "code_snippet_js", "condition", "http_request"} {
 		err := svc.DeleteConnector(context.Background(), id)
 		assert.ErrorIs(t, err, connectors.ErrInvalidConnector, id)
 	}

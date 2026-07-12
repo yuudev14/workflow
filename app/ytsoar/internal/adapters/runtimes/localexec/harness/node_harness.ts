@@ -42,12 +42,13 @@ process.stdin.on("end", async () => {
     const params = render(payload.params || {}, variables) as Record<string, unknown>;
     const code = typeof params.code === "string" ? params.code : "";
 
-    // stdout is the JSON result channel: reroute user console output to
-    // stderr so it cannot corrupt it.
+    // stdout is the JSON result channel: swap in a console bound entirely to
+    // stderr so no console method (log, dir, table, group, ...) can corrupt it.
     const writeResult = process.stdout.write.bind(process.stdout);
-    for (const level of ["log", "info", "warn", "debug"] as const) {
-      console[level] = (...args: unknown[]) => console.error(...args);
-    }
+    globalThis.console = new (require("node:console").Console)(
+      process.stderr,
+      process.stderr
+    );
 
     const AsyncFunction = Object.getPrototypeOf(async function () {}).constructor;
     const fn = new AsyncFunction(

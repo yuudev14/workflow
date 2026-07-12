@@ -12,7 +12,23 @@ import os
 import sys
 
 
+def apply_memory_limit():
+    # Cap the address space (node gets --max-old-space-size; python has no
+    # flag, so the harness applies RLIMIT_AS itself) so a runaway connector
+    # cannot OOM the whole sandbox. Best-effort: never break the run.
+    try:
+        mb = int(os.environ.get("YTSOAR_MEM_LIMIT_MB", "0"))
+        if mb > 0:
+            import resource
+
+            limit = mb * 1024 * 1024
+            resource.setrlimit(resource.RLIMIT_AS, (limit, limit))
+    except Exception:
+        pass
+
+
 def main():
+    apply_memory_limit()
     payload = json.load(sys.stdin)
     root = payload["connectors_root"]
     os.chdir(root)

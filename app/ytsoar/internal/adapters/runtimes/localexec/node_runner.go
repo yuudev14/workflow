@@ -22,10 +22,13 @@ type NodeRunner struct {
 	memoryLimitMB int
 }
 
-func NewNodeRunner(log logger.Logger) *NodeRunner {
+func NewNodeRunner(log logger.Logger, memoryLimitMB int) *NodeRunner {
+	if memoryLimitMB <= 0 {
+		memoryLimitMB = defaultNodeMemoryLimitMB
+	}
 	return &NodeRunner{
 		logger:        log,
-		memoryLimitMB: defaultNodeMemoryLimitMB,
+		memoryLimitMB: memoryLimitMB,
 	}
 }
 
