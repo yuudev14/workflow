@@ -14,6 +14,7 @@ import (
 
 	"github.com/yuudev14/ytsoar/internal/adapters/runtimes/localexec"
 	"github.com/yuudev14/ytsoar/internal/application/execution"
+	"github.com/yuudev14/ytsoar/internal/config"
 	"github.com/yuudev14/ytsoar/internal/domain"
 	"github.com/yuudev14/ytsoar/internal/logger"
 )
@@ -71,7 +72,7 @@ func TestPythonConnectorRunnerExecutesOperation(t *testing.T) {
 	requirePython(t)
 	root := fakeConnectorsTree(t)
 
-	runner, err := localexec.NewPythonConnectorRunner(logger.NewNop(), filepath.Join(root, "connectors"), 1)
+	runner, err := localexec.NewPythonConnectorRunner(logger.NewNop(), filepath.Join(root, "connectors"), config.DefaultPythonMemoryLimitMB)
 	require.NoError(t, err)
 
 	connectorID := "echo_py"
@@ -120,7 +121,7 @@ class DepConnector(Connector):
         return {"dep": fakelib.VALUE}
 `)
 
-	runner, err := localexec.NewPythonConnectorRunner(logger.NewNop(), filepath.Join(root, "connectors"), 1)
+	runner, err := localexec.NewPythonConnectorRunner(logger.NewNop(), filepath.Join(root, "connectors"), config.DefaultPythonMemoryLimitMB)
 	require.NoError(t, err)
 
 	connectorID := "dep_py"
@@ -146,7 +147,7 @@ func TestPythonConnectorRunnerUnknownConnector(t *testing.T) {
 	requirePython(t)
 	root := fakeConnectorsTree(t)
 
-	runner, err := localexec.NewPythonConnectorRunner(logger.NewNop(), filepath.Join(root, "connectors"), 1)
+	runner, err := localexec.NewPythonConnectorRunner(logger.NewNop(), filepath.Join(root, "connectors"), config.DefaultPythonMemoryLimitMB)
 	require.NoError(t, err)
 
 	connectorID := "ghost"
