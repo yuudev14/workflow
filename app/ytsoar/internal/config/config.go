@@ -9,6 +9,11 @@ import (
 	"github.com/joho/godotenv"
 )
 
+const (
+	DefaultNodeMemoryLimitMB   = 256
+	DefaultPythonMemoryLimitMB = 512
+)
+
 type Config struct {
 	DBUrl             string
 	LoggerMode        string
@@ -75,8 +80,8 @@ func LoadFrom(dest string) Config {
 		PlaybookPrefetch: getEnvIntOr("PLAYBOOK_PREFETCH", 1),
 		NodeTimeout:      time.Duration(getEnvIntOr("NODE_TIMEOUT_SECONDS", 300)) * time.Second,
 
-		NodeMemoryLimitMB:   getEnvIntOr("NODE_MEMORY_LIMIT_MB", 256),
-		PythonMemoryLimitMB: getEnvIntOr("PYTHON_MEMORY_LIMIT_MB", 512),
+		NodeMemoryLimitMB:   getEnvIntOr("NODE_MEMORY_LIMIT_MB", DefaultNodeMemoryLimitMB),
+		PythonMemoryLimitMB: getEnvIntOr("PYTHON_MEMORY_LIMIT_MB", DefaultPythonMemoryLimitMB),
 	}
 }
 
