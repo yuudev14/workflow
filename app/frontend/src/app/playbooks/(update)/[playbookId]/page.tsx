@@ -21,6 +21,7 @@ import usePlaybookTrigger from "@/hooks/usePlaybookTrigger";
 import { FLOW_START_ID } from "@/settings/reactFlowIds";
 import { Check, History, Workflow as PlaybookIcon, Zap } from "lucide-react";
 import Link from "next/link";
+import PlaybookHistoryModal from "@/components/executions/PlaybookHistoryModal";
 
 // Canvas nav: a segmented Editor / Runs toggle pinned to the top-left of the
 // canvas. Replaces the two stacked bordered buttons that used to float mid-left.
@@ -167,6 +168,10 @@ const PlaybookPlayground: React.FC<{ playbookId: string }> = ({
           <p className="text-xs text-ink-faint">{workflowData.description}</p>
         </div>
         <div className="flex gap-2">
+          <PlaybookHistoryModal
+            playbookId={playbookId}
+            playbookName={workflowData.name}
+          />
           <Button variant="ghost" onClick={triggerPlaybookHandler}>
             <Zap /> Trigger
           </Button>
