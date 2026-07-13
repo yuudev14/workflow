@@ -339,7 +339,7 @@ const ConnectorOperation: React.FC<{ connector: ConnectorInfo }> = ({
     {}
   );
 
-  // "code_snippet" / "code_snippet_js" / "condition" are single-purpose virtual
+  // "code_snippet_py" / "code_snippet_js" / "condition" are single-purpose virtual
   // connectors — no saved configs, and the operation is implied rather than
   // picked from a list, so their forms skip the config/operation selectors.
   const isCondition = connector.id === CONDITION_CONNECTOR_ID;
