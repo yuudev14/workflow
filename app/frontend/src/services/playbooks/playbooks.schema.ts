@@ -24,12 +24,12 @@ export interface PlaybookHistory {
   edges: Edges[]
 }
 
-export type PlaybookHistoryFilter = Partial<
-  Omit<PlaybookHistory, "playbook_data" | "triggered_at"> & {
-    triggered_at_start: Date;
-    triggered_at_end: Date;
-  }
->;
+// Mirrors the API's actual history query params (PlaybookHistoryFilter in the Go
+// backend): only playbook name (matched ILIKE) and playbook_id are honored.
+export type PlaybookHistoryFilter = {
+  name?: string;
+  playbook_id?: string;
+};
 
 export type Tasks = {
   id: string;

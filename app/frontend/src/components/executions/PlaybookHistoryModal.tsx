@@ -2,7 +2,7 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { History, Search } from "lucide-react";
+import { History } from "lucide-react";
 
 import {
   Dialog,
@@ -11,6 +11,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
 import { EmptyState, StatusPill, type PillVariant } from "@/components/soar";
 import PlaybookService from "@/services/playbooks/playbooks";
 import { cn, readableDate } from "@/lib/utils";
@@ -40,33 +41,21 @@ const FILTERS: { label: string; value?: string }[] = [
   { label: "Running", value: "in_progress" },
 ];
 
-// Global executions across every playbook, in a split modal: left rail lists all
-// runs (with filters), right pane replays the selected run's flow — same detail
-// view as the /history route, but selection stays in the modal. The app-wide
-// status socket invalidates ["playbooks-history-all"] on playbook_status, so an
-// open list flips to finished live.
-const ExecutionsModal: React.FC = () => {
+// Run history for a single playbook, in a modal. Mirrors the /history route's
+// split view (left rail list + right flow replay), but selection stays in the
+// modal — no navigation. Shares the route's query key so an open Runs view and
+// this modal read the same cache.
+const PlaybookHistoryModal: React.FC<{
+  playbookId: string;
+  playbookName?: string;
+}> = ({ playbookId, playbookName }) => {
   const [open, setOpen] = useState(false);
   const [selected, setSelected] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<string | undefined>();
-  const [nameSearch, setNameSearch] = useState("");
-  const [debouncedName, setDebouncedName] = useState("");
-
-  // Debounce the name box so we hit the API's `name` (ILIKE) filter at rest,
-  // not on every keystroke.
-  useEffect(() => {
-    const t = setTimeout(() => setDebouncedName(nameSearch.trim()), 300);
-    return () => clearTimeout(t);
-  }, [nameSearch]);
 
   const query = useQuery({
-    queryKey: ["playbooks-history-all", debouncedName],
-    queryFn: () =>
-      PlaybookService.getPlaybooksHistory(
-        0,
-        50,
-        debouncedName ? { name: debouncedName } : {}
-      ),
+    queryKey: [`workflow-history-${playbookId}`],
+    queryFn: () => PlaybookService.getPlaybooksHistoryByPlaybookId(playbookId),
     enabled: open,
     staleTime: 0,
     gcTime: 0,
@@ -89,29 +78,20 @@ const ExecutionsModal: React.FC = () => {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <button className="inline-flex items-center gap-1.5 rounded-sm border border-line px-2.5 py-1.5 text-[12.5px] font-semibold text-ink-soft hover:bg-paper-sunken">
-          <History className="size-3.5" /> Executions
-        </button>
+        <Button variant="ghost">
+          <History /> History
+        </Button>
       </DialogTrigger>
-      <DialogContent className="flex h-[80vh] max-w-[calc(100%-2rem)] flex-col gap-0 overflow-hidden p-0 sm:max-w-[2000px]">
+      <DialogContent className="flex h-[80vh] max-w-[calc(100%-2rem)] flex-col gap-0 overflow-hidden p-0 sm:max-w-6xl">
         <DialogHeader className="border-b border-line px-5 py-3">
-          <DialogTitle>Executions</DialogTitle>
+          <DialogTitle className="truncate">
+            {playbookName ? `${playbookName} · Run history` : "Run history"}
+          </DialogTitle>
         </DialogHeader>
 
         <div className="flex min-h-0 flex-1">
           {/* left rail: filters + run list */}
-          <div className="flex w-[340px] shrink-0 flex-col border-r border-line bg-card">
-            <div className="border-b border-line p-3">
-              <div className="relative">
-                <Search className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-ink-faint" />
-                <input
-                  value={nameSearch}
-                  onChange={(e) => setNameSearch(e.target.value)}
-                  placeholder="Search by playbook name…"
-                  className="w-full rounded-sm border border-line bg-paper-sunken py-1.5 pl-8 pr-2.5 text-[12.5px] text-ink placeholder:text-ink-faint focus:border-signal-dot/40 focus:outline-none"
-                />
-              </div>
-            </div>
+          <div className="flex w-[320px] shrink-0 flex-col border-r border-line bg-card">
             <div className="flex flex-wrap gap-1 border-b border-line p-3">
               {FILTERS.map((f) => {
                 const active = statusFilter === f.value;
@@ -149,16 +129,8 @@ const ExecutionsModal: React.FC = () => {
               ) : filtered.length === 0 ? (
                 <EmptyState
                   icon={History}
-                  title={
-                    debouncedName || statusFilter
-                      ? "No matching runs"
-                      : "No executions yet"
-                  }
-                  description={
-                    debouncedName || statusFilter
-                      ? "Try a different name or status filter."
-                      : "Trigger a playbook to see its runs here."
-                  }
+                  title="No runs"
+                  description="No runs match this filter."
                   className="py-10"
                 />
               ) : (
@@ -185,9 +157,6 @@ const ExecutionsModal: React.FC = () => {
                         />
                         <div className="min-w-0 flex-1">
                           <div className="truncate text-[13px] font-semibold">
-                            {h.playbook_data?.name ?? h.playbook_id}
-                          </div>
-                          <div className="truncate text-[11.5px] text-ink-faint">
                             {readableDate(h.triggered_at, "MMM D, HH:mm:ss")}
                           </div>
                         </div>
@@ -223,4 +192,4 @@ const ExecutionsModal: React.FC = () => {
   );
 };
 
-export default ExecutionsModal;
+export default PlaybookHistoryModal;
