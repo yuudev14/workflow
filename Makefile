@@ -13,6 +13,10 @@ start-dev:
 		cd ./app/frontend && \
 		npm run dev -- --hostname 0.0.0.0
 
+start-frontend:
+		cd ./app/frontend && \
+		npm run dev -- --hostname 0.0.0.0
+
 lint:
 		cd ./app/frontend && \
 		npm run lint
