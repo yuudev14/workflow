@@ -154,7 +154,7 @@ Start the stack with the debug override — it rebuilds each Go binary without
 optimizations and runs it under a headless [Delve](https://github.com/go-delve/delve):
 
 ```bash
-docker compose -f docker/dev.docker-compose.yml -f docker/debug.docker-compose.yml up
+docker compose -f docker/dev.docker-compose.yml -f docker/debug.docker-compose.yml up -d
 ```
 
 Then hit F5 in VS Code with one of the `Attach to …` configs in
