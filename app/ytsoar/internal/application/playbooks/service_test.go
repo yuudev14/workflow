@@ -13,7 +13,6 @@ import (
 	"github.com/yuudev14/ytsoar/internal/domain"
 	"github.com/yuudev14/ytsoar/internal/logger"
 	"github.com/yuudev14/ytsoar/internal/types"
-	"github.com/yuudev14/ytsoar/internal/utils"
 	"go.uber.org/mock/gomock"
 )
 
@@ -365,7 +364,7 @@ func TestServiceUpdatePlaybookSuccess(t *testing.T) {
 
 	playbookID := uuid.New()
 	updateData := playbooks.UpdatePlaybookData{
-		Name: types.Nullable[string]{Set: true, Value: utils.StrPtr("Updated Playbook")},
+		Name: types.Nullable[string]{Set: true, Value: new("Updated Playbook")},
 	}
 
 	returnedPlaybook := &domain.Playbooks{
@@ -437,7 +436,7 @@ func TestServiceUpdatePlaybookHistorySuccess(t *testing.T) {
 
 	playbookHistoryID := uuid.New()
 	updateData := playbooks.UpdatePlaybookHistoryData{
-		Status: types.Nullable[string]{Set: true, Value: utils.StrPtr("completed")},
+		Status: types.Nullable[string]{Set: true, Value: new("completed")},
 	}
 
 	returnedHistory := &domain.PlaybookHistory{
@@ -459,7 +458,7 @@ func TestServiceUpdatePlaybookHistoryFail(t *testing.T) {
 	service, mockRepo := setupService(t)
 	playbookHistoryID := uuid.New()
 	updateData := playbooks.UpdatePlaybookHistoryData{
-		Status: types.Nullable[string]{Set: true, Value: utils.StrPtr("completed")},
+		Status: types.Nullable[string]{Set: true, Value: new("completed")},
 	}
 
 	tests := []struct {

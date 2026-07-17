@@ -1,6 +1,6 @@
 module github.com/yuudev14/ytsoar
 
-go 1.25.0
+go 1.26.5
 
 require (
 	github.com/gin-contrib/cors v1.7.2

@@ -18,7 +18,6 @@ import (
 	mock_tasks "github.com/yuudev14/ytsoar/internal/application/tasks/mocks"
 	"github.com/yuudev14/ytsoar/internal/domain"
 	"github.com/yuudev14/ytsoar/internal/logger"
-	"github.com/yuudev14/ytsoar/internal/utils"
 )
 
 type testEnv struct {
@@ -288,12 +287,12 @@ func TestInsertEdges(t *testing.T) {
 	handles := map[string]map[string]domain.EdgeHandle{
 		"start": {
 			"start": {
-				SourceHandle:      utils.StrPtr("start"),
-				DestinationHandle: utils.StrPtr("start"),
+				SourceHandle:      new("start"),
+				DestinationHandle: new("start"),
 			},
 			"task1": {
-				SourceHandle:      utils.StrPtr("task1"),
-				DestinationHandle: utils.StrPtr("task1"),
+				SourceHandle:      new("task1"),
+				DestinationHandle: new("task1"),
 			},
 		},
 	}

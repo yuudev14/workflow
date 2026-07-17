@@ -69,11 +69,9 @@ func (c *TaskConsumer) Start(ctx context.Context) error {
 			if !ok {
 				return errors.New("mq channel closed")
 			}
-			wg.Add(1)
-			go func() {
-				defer wg.Done()
+			wg.Go(func() {
 				c.handle(ctx, delivery)
-			}()
+			})
 		}
 	}
 }

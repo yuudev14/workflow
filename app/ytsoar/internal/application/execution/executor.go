@@ -12,6 +12,7 @@ import (
 	"github.com/yuudev14/ytsoar/internal/domain"
 	"github.com/yuudev14/ytsoar/internal/logger"
 	"github.com/yuudev14/ytsoar/internal/types"
+	"github.com/yuudev14/ytsoar/internal/utils"
 )
 
 const (
@@ -77,6 +78,7 @@ type nodeResult struct {
 func (e *Executor) Run(ctx context.Context, msg domain.TaskMessage) error {
 	// domain.IsAcyclicGraph returns true when a cycle EXISTS and mutates its
 	// input, so it gets a copy.
+	utils.DebugJSON(e.logger, "TaskMessage", msg, " ")
 	if domain.IsAcyclicGraph(copyGraph(msg.Graph)) {
 		return e.finishPlaybook(ctx, msg, StatusFailed, nil, fmt.Errorf("graph contains a cycle"))
 	}
@@ -309,7 +311,7 @@ type edgeKey struct {
 }
 
 // buildEdgeHandles indexes the wire edges' source_handles per (source,
-// destination) pair — two nodes can be linked by several edges (e.g. a
+// destination) pair — two nodes can be linked by several edges ( a
 // condition's true AND false handle both pointing at the same join node).
 func buildEdgeHandles(edges []domain.EdgeRef) map[edgeKey][]*string {
 	handles := map[edgeKey][]*string{}
