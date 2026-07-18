@@ -1,0 +1,50 @@
+{
+  "name": "Condition",
+  "id": "condition",
+  "runtime": "go",
+  "configuration": {
+    "fields": []
+  },
+  "operations": [
+    {
+      "operation": "switch",
+      "title": "Switch",
+      "description": "Route to the first case whose simple condition matches (==, !=, >, contains, ...), or to else when none match. Pick each case's destination node in the editor.",
+      "annotation": "switch",
+      "enabled": true,
+      "parameters": [
+        {
+          "title": "Conditions",
+          "name": "cases",
+          "description": "Ordered left/operator/right conditions, each routed to a destination. The first that matches wins; if none match the else branch runs.",
+          "required": true,
+          "editable": true,
+          "visible": true,
+          "type": "conditions",
+          "tooltip": "left / operator / right per case; falls through to else",
+          "placeholder": "{{ var.steps[\"my task\"].status }}"
+        }
+      ]
+    },
+    {
+      "operation": "switch_expression",
+      "title": "Switch (advanced expression)",
+      "description": "Route to the first case whose template expression is truthy, or to else when none match. Write full gonja/jinja expressions per case. Pick each case's destination node in the editor.",
+      "annotation": "switch_expression",
+      "enabled": true,
+      "parameters": [
+        {
+          "title": "Cases",
+          "name": "cases",
+          "description": "Ordered case expressions, each routed to a destination. The first truthy one wins; if none are truthy the else branch runs. Each expression is a template, e.g. {{ var.steps[\"scan\"].score > 90 }}.",
+          "required": true,
+          "editable": true,
+          "visible": true,
+          "type": "cases",
+          "tooltip": "template expression per case; falls through to else",
+          "placeholder": "{{ var.steps[\"scan\"].score > 90 }}"
+        }
+      ]
+    }
+  ]
+}

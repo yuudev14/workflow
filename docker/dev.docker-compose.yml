@@ -39,62 +39,19 @@ services:
       - ytsoar
     volumes:
       - postgres_data:/var/lib/postgresql/data
-  ytsoar_worker:
+  ytsoar_api:
     build:
-      context: ../app/connectors-service
-      dockerfile: Dockerfile.worker
-    image: ytsoar/worker:latest
-    container_name: ytsoar_worker
-    volumes:
-      - ../app/connectors-service:/app
-    environment:
-      - CELERY_BROKER=pyamqp://guest:guest@ytsoar_rabbitmq:5672
-      - CELERY_BACKEND=db+postgresql://postgres:password@ytsoar_postgres:5432/ytsoar?sslmode=disable
-      - MQ_URL=amqp://guest:guest@ytsoar_rabbitmq:5672
-      - grpc_workflow_host=ytsoar_api:50051
-    networks:
-      - ytsoar
-    depends_on:
-      ytsoar_postgres:
-        condition: service_healthy
-      ytsoar_rabbitmq:
-        condition: service_healthy
-  ytsoar_connectors:
-    build:
-      context: ../app/connectors-service
+      context: ../app/ytsoar
       dockerfile: Dockerfile.dev
-    image: ytsoar/connectors:latest
-    container_name: ytsoar_connectors
-    ports:
-      - "8000:8000"
-    expose:
-      - "50052"
-    volumes:
-      - ../app/connectors-service:/app
-    environment:
-      - CELERY_BROKER=pyamqp://guest:guest@ytsoar_rabbitmq:5672
-      - CELERY_BACKEND=db+postgresql://postgres:password@ytsoar_postgres:5432/ytsoar?sslmode=disable
-      - MQ_URL=amqp://guest:guest@ytsoar_rabbitmq:5672
-      - use_celery=true
-      - grpc_workflow_host=ytsoar_api:50051
-      - connector_runtime_port=50052
-    networks:
-      - ytsoar
-    depends_on:
-      ytsoar_postgres:
-        condition: service_healthy
-      ytsoar_rabbitmq:
-        condition: service_healthy
-  ytsoar_playbook_service:
-    build:
-      context: ../app/playbook_service
-      dockerfile: Dockerfile.dev
-    image: ytsoar/playbook-service:latest
+    image: ytsoar/backend:latest
     container_name: ytsoar_api
     ports:
       - "8080:8080"
     volumes:
-      - ../app/playbook_service:/app
+      - ../app/ytsoar:/app
+      # unified connectors tree: the API is its only writer (metadata now,
+      # uploads later)
+      - ../app/connectors:/opt/ytsoar/connectors
     environment:
       - DB_USER=postgres
       - DB_PASSWORD=password
@@ -107,10 +64,8 @@ services:
       - MQ_PORT=5672
       - AIR_POLL=true
       - AIR_WATCH_TMOUT=500ms
-      # EXECUTOR=python|go picks which executor consumes triggered playbooks
-      - EXECUTOR=${EXECUTOR:-python}
-      - GO_PLAYBOOK_QUEUE=playbook_go
       - STATUS_EXCHANGE=playbook.status
+      - CONNECTORS_DIR=/opt/ytsoar/connectors
     networks:
       - ytsoar
     depends_on:
@@ -120,9 +75,9 @@ services:
         condition: service_healthy
   ytsoar_playbook_worker:
     build:
-      context: ../app/playbook_service
+      context: ../app/ytsoar
       dockerfile: Dockerfile.dev
-    image: ytsoar/playbook-service:latest
+    image: ytsoar/backend:latest
     container_name: ytsoar_playbook_worker
     entrypoint:
       [
@@ -133,8 +88,11 @@ services:
         "tmp/worker",
       ]
     restart: unless-stopped
+    mem_limit: 1g
     volumes:
-      - ../app/playbook_service:/app
+      - ../app/ytsoar:/app
+      # read-only: go builtin connectors load their TOML configs from here
+      - ../app/connectors:/opt/ytsoar/connectors:ro
     environment:
       - DB_USER=postgres
       - DB_PASSWORD=password
@@ -146,9 +104,9 @@ services:
       - MQ_HOST=ytsoar_rabbitmq
       - MQ_PORT=5672
       - AIR_POLL=true
-      - GO_PLAYBOOK_QUEUE=playbook_go
       - STATUS_EXCHANGE=playbook.status
-      - CONNECTOR_RUNTIME_ADDR=ytsoar_connectors:50052
+      - SANDBOX_ADDR=ytsoar_sandbox:50052
+      - CONNECTORS_DIR=/opt/ytsoar/connectors
     networks:
       - ytsoar
     depends_on:
@@ -156,9 +114,40 @@ services:
         condition: service_healthy
       ytsoar_rabbitmq:
         condition: service_healthy
-      # migrations run in the API entrypoint; restart covers the race in dev
-      ytsoar_playbook_service:
+      ytsoar_sandbox:
         condition: service_started
+      # migrations run in the API entrypoint; restart covers the race in dev
+      ytsoar_api:
+        condition: service_started
+  ytsoar_sandbox:
+    build:
+      context: ../app/ytsoar
+      dockerfile: Dockerfile.dev
+    image: ytsoar/backend:latest
+    container_name: ytsoar_sandbox
+    entrypoint:
+      [
+        "air",
+        "--build.cmd",
+        "go build -o ./tmp/sandbox ./cmd/sandbox",
+        "--build.bin",
+        "tmp/sandbox",
+      ]
+    restart: unless-stopped
+    mem_limit: 1g
+    expose:
+      - "50052"
+    volumes:
+      - ../app/ytsoar:/app
+      # unified connectors tree, read-only: the sandbox only executes from it
+      - ../app/connectors:/opt/ytsoar/connectors:ro
+    # deliberately NO DB_*/MQ_* env: the sandbox holds zero credentials
+    environment:
+      - AIR_POLL=true
+      - SANDBOX_LISTEN_ADDR=:50052
+      - CONNECTORS_DIR=/opt/ytsoar/connectors
+    networks:
+      - ytsoar
   ytsoar_nginx:
     build: ../app/nginx
     container_name: ytsoar_nginx
@@ -168,8 +157,7 @@ services:
       - ../app/nginx/nginx.conf:/etc/nginx/nginx.conf
     restart: unless-stopped
     depends_on:
-      - ytsoar_connectors
-      - ytsoar_playbook_service
+      - ytsoar_api
     networks:
       - ytsoar
 volumes:
