@@ -12,6 +12,7 @@ class Settings(BaseSettings):
     playbook_queue: str = "playbook"
     workflow_processor_queue: str = "workflow_processor"
     use_celery: bool = False
+    connector_runtime_port: int = 50052
 
     model_config = SettingsConfigDict(env_file=".env")
 

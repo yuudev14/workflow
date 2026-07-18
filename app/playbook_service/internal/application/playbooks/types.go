@@ -7,6 +7,9 @@ import (
 	"github.com/yuudev14/ytsoar/internal/types"
 )
 
+// NOTE: uuid fields bind as *string here on purpose. gin's query binder has no
+// TextUnmarshaler support and treats uuid.UUID ([16]byte) as an array, which
+// fails; the `uuid` validator rule still rejects malformed values.
 type PlaybookFilter struct {
 	Name       *string `form:"name" binding:"omitempty"`
 	PlaybookID *string `form:"playbook_id" binding:"omitempty,uuid"`
