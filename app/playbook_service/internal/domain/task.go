@@ -1,0 +1,49 @@
+package domain
+
+import (
+	"encoding/json"
+	"time"
+
+	"github.com/google/uuid"
+)
+
+type Position struct {
+}
+
+type Tasks struct {
+	ID            uuid.UUID       `db:"id" json:"id"`
+	PlaybookID    string          `db:"playbook_id" json:"playbook_id"`
+	Status        string          `db:"status" json:"status"`
+	Name          string          `db:"name" json:"name"`
+	Config        *string         `db:"config" json:"config"`
+	ConnectorName *string         `db:"connector_name" json:"connector_name"`
+	ConnectorID   *string         `db:"connector_id" json:"connector_id"`
+	Operation     string          `db:"operation" json:"operation"`
+	Description   string          `db:"description" json:"description"`
+	Parameters    json.RawMessage `db:"parameters" json:"parameters"`
+	CreatedAt     time.Time       `db:"created_at" json:"created_at"`
+	UpdatedAt     time.Time       `db:"updated_at" json:"updated_at"`
+	Position      Position        `db:"position" json:"position"`
+	X             float32         `db:"x" json:"x"`
+	Y             float32         `db:"y" json:"y"`
+}
+
+type TaskHistory struct {
+	ID                uuid.UUID        `db:"id" json:"id"`
+	PlaybookHistoryID uuid.UUID        `db:"playbook_history_id" json:"playbook_history_id"`
+	TaskID            uuid.UUID        `db:"task_id" json:"task_id"`
+	Status            string           `db:"status" json:"status"`
+	Error             *string          `db:"error" json:"error"`
+	Result            *json.RawMessage `db:"result" json:"result"`
+	TriggeredAt       time.Time        `db:"triggered_at" json:"triggered_at"`
+	Name              string           `db:"name" json:"name"`
+	Config            *string          `db:"config" json:"config"`
+	ConnectorName     *string          `db:"connector_name" json:"connector_name"`
+	ConnectorID       *string          `db:"connector_id" json:"connector_id"`
+	Operation         string           `db:"operation" json:"operation"`
+	Description       string           `db:"description" json:"description"`
+	Parameters        json.RawMessage  `db:"parameters" json:"parameters"`
+	X                 float32          `db:"x" json:"x"`
+	Y                 float32          `db:"y" json:"y"`
+	DestinationIDs    []uuid.UUID      `db:"destination_ids" json:"destination_ids"`
+}
