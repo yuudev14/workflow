@@ -14,7 +14,7 @@ export default class ConnectorService {
   public static getConnectors = async (
   ): Promise<ConnectorInfo[]> => {
     const res = await apiClient.get(
-      this.BASE_URL + "/api/connectors",
+      this.BASE_URL + "/api/connectors/v1",
     );
     return res.data;
   };
