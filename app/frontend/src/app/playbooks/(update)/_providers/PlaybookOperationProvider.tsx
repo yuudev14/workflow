@@ -31,7 +31,11 @@ import {
   Playbook,
   PlaybookDataToUpdate,
 } from "@/services/playbooks/playbooks.schema";
-import { FLOW_SELECT_TRIGGER_ID, FLOW_START_ID } from "@/settings/reactFlowIds";
+import {
+  CONDITION_CONNECTOR_ID,
+  FLOW_SELECT_TRIGGER_ID,
+  FLOW_START_ID,
+} from "@/settings/reactFlowIds";
 import { ConnectorInfo } from "@/services/connectors/connectors.schema";
 import ConnectorService from "@/services/connectors/connectors";
 import PlaybookService from "@/services/playbooks/playbooks";
@@ -41,6 +45,7 @@ export type TaskOperationType =
   | "connector"
   | "utility"
   | "code"
+  | "code_js"
   | "decision"
   | "wait"
   | "approval"
@@ -113,7 +118,7 @@ export const PlaybookOperationContext = createContext<PlaybookOperationType>({
   isNewNode: false,
   setIsNewNode: () => {},
   closeSidebar: () => {},
-  onNodesDelete: (node: Node<PlaybookTaskNode>[]) => {},
+  onNodesDelete: (_node: Node<PlaybookTaskNode>[]) => {},
 });
 
 const INITIAL_START_NODE_VALUE: Node<PlaybookTaskNode> = {
@@ -149,12 +154,15 @@ const PlaybookOperationProvider: React.FC<{
     },
     onSuccess: (_data) => {
       toast({
-        title: "succesfully updated the workflow",
+        variant: "success",
+        title: "Playbook saved",
+        description: "Your changes have been saved.",
       });
     },
     onError(error) {
       toast({
-        title: "Error when updating a new workflow",
+        variant: "destructive",
+        title: "Couldn't save the playbook",
         description: error.message,
       });
     },
@@ -179,7 +187,8 @@ const PlaybookOperationProvider: React.FC<{
   useEffect(() => {
     if (workflowQuery.status == "error") {
       toast({
-        title: "error fetching worfklow",
+        variant: "destructive",
+        title: "Couldn't load the playbook",
         description: workflowQuery.error.message,
       });
     }
@@ -200,8 +209,12 @@ const PlaybookOperationProvider: React.FC<{
           x: task.x,
           y: task.y,
         },
-        // type: task.name === FLOW_START_ID ? "startNode" : "playbookNodes",
-        type: task.name === FLOW_START_ID ? "startNode" : "playbookNodes",
+        type:
+          task.name === FLOW_START_ID
+            ? "startNode"
+            : task.connector_id === CONDITION_CONNECTOR_ID
+            ? "conditionNode"
+            : "playbookNodes",
         draggable: true,
       };
 
@@ -232,6 +245,7 @@ const PlaybookOperationProvider: React.FC<{
         name: workflowQuery.data.name,
         description: workflowQuery.data.description,
         trigger_type: workflowQuery.data.trigger_type,
+        trigger_parameters: workflowQuery.data.trigger_parameters,
       });
   }, [workflowQuery.isFetched]);
 
@@ -251,7 +265,7 @@ const PlaybookOperationProvider: React.FC<{
   const onNodesDelete = useCallback((node: Node<PlaybookTaskNode>[]) => {
     console.log(node);
     if (node.find((_node) => _node.data.name == FLOW_START_ID)) {
-      setPlaybookData((data) => ({ ...data, trigger_type: null }));
+      setPlaybookData((data) => ({ ...data, trigger_type: null, trigger_parameters: null }));
       setNodes((_nodes) => _nodes.concat(INITIAL_START_NODE_VALUE));
       setCurrentNode(INITIAL_START_NODE_VALUE);
       setOpenOperationSidebar(true);
@@ -283,13 +297,17 @@ const PlaybookOperationProvider: React.FC<{
 
         setNodes((nds) => nds.concat(newNode));
         setCurrentNode(newNode);
-        console.log(connectionState);
 
         setEdges((eds) =>
           eds.concat({
             id,
             source: connectionState.fromNode!.id,
+            // keep the handle the user actually dragged from — without this the
+            // edge falls back to the node's first source handle (source-top),
+            // so every new-step wire wrongly exits the top of the source node.
+            sourceHandle: connectionState.fromHandle?.id ?? undefined,
             target: id,
+            targetHandle: "target-left",
           })
         );
 

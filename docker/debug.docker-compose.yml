@@ -1,0 +1,57 @@
+# Debug override: run the Go services under a headless Delve so VS Code can
+# attach with breakpoints (see .vscode/launch.json). Normal runs are untouched;
+# opt in with:
+#
+#   docker compose -f docker/dev.docker-compose.yml -f docker/debug.docker-compose.yml up
+#
+# Binaries are built with -gcflags 'all=-N -l' (no optimizations/inlining) so
+# breakpoints and variables are reliable. Every air hot-reload restarts dlv —
+# re-attach with F5 after a rebuild.
+services:
+  ytsoar_api:
+    # the normal image entrypoint is /entrypoint.sh (make migrate && exec air),
+    # so the override must keep the migration step
+    entrypoint:
+      - sh
+      - -c
+      - >-
+        make migrate && exec air
+        --build.cmd "go build -gcflags 'all=-N -l' -o ./tmp/api ./cmd/api"
+        --build.bin tmp/api
+        --build.full_bin "dlv exec ./tmp/api --headless --listen=:2345 --api-version=2 --accept-multiclient --continue"
+    ports:
+      - "2345:2345"
+    cap_add:
+      - SYS_PTRACE
+    security_opt:
+      - seccomp:unconfined
+  ytsoar_playbook_worker:
+    entrypoint:
+      - sh
+      - -c
+      - >-
+        exec air
+        --build.cmd "go build -gcflags 'all=-N -l' -o ./tmp/worker ./cmd/worker"
+        --build.bin tmp/worker
+        --build.full_bin "dlv exec ./tmp/worker --headless --listen=:2345 --api-version=2 --accept-multiclient --continue"
+    ports:
+      - "2346:2345"
+    cap_add:
+      - SYS_PTRACE
+    security_opt:
+      - seccomp:unconfined
+  ytsoar_sandbox:
+    entrypoint:
+      - sh
+      - -c
+      - >-
+        exec air
+        --build.cmd "go build -gcflags 'all=-N -l' -o ./tmp/sandbox ./cmd/sandbox"
+        --build.bin tmp/sandbox
+        --build.full_bin "dlv exec ./tmp/sandbox --headless --listen=:2345 --api-version=2 --accept-multiclient --continue"
+    ports:
+      - "2347:2345"
+    cap_add:
+      - SYS_PTRACE
+    security_opt:
+      - seccomp:unconfined

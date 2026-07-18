@@ -106,3 +106,42 @@
   width: max-content;
   min-width: 150px;
 }
+/* --- interface refresh: let custom node cards own their chrome --- */
+.react-flow__node {
+  border: none;
+  background: transparent;
+  box-shadow: none;
+  padding: 0;
+  border-radius: 0;
+  display: block;
+  text-align: left;
+  color: inherit;
+}
+.react-flow__node.selectable:focus,
+.react-flow__node.selectable:focus-visible,
+.react-flow__node.selectable.selected {
+  box-shadow: none;
+  border-color: transparent;
+}
+.react-flow__node.selectable:hover,
+.react-flow__node.draggable:hover {
+  border-color: transparent;
+}
+.react-flow__handle {
+  width: 8px;
+  height: 8px;
+  background-color: var(--paper-raised);
+  border: 1.5px solid var(--line-strong);
+}
+.react-flow__handle.connectionindicator:hover {
+  background-color: var(--signal-dot);
+  border-color: var(--signal-dot);
+}
+.react-flow__controls button {
+  background: var(--paper-raised);
+  border-bottom: 1px solid var(--line);
+  color: var(--ink-soft);
+}
+.react-flow__controls button:hover {
+  background: var(--paper-sunken);
+}

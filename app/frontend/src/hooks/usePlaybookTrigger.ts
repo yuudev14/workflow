@@ -9,12 +9,14 @@ const usePlaybookTrigger = ({ playbookId }: { playbookId: string }) => {
     },
     onSuccess: () => {
       toast({
-        title: "succesfully triggered the workflow",
+        variant: "success",
+        title: "Playbook triggered",
       });
     },
     onError(error) {
       toast({
-        title: "Error when triggering the workflow",
+        variant: "destructive",
+        title: "Couldn't trigger the playbook",
         description: error.message,
       });
     },

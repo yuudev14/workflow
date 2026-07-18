@@ -1,0 +1,27 @@
+{
+  "name": "Code Snippet JS",
+  "id": "code_snippet_js",
+  "runtime": "node",
+  "operations": [
+    {
+      "operation": "javascript_code",
+      "title": "JavaScript Code",
+      "description": "",
+      "annotation": "javascript_code",
+      "enabled": true,
+      "parameters": [
+        {
+          "title": "Code",
+          "description": "",
+          "required": true,
+          "editable": true,
+          "visible": true,
+          "type": "code",
+          "tooltip": "",
+          "name": "code",
+          "placeholder": "put your code here"
+        }
+      ]
+    }
+  ]
+}
