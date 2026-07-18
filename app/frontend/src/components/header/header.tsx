@@ -5,7 +5,7 @@ import { SidebarTrigger } from "@/components/ui/sidebar"
 import { Separator } from "@/components/ui/separator";
 import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from "@/components/ui/breadcrumb";
 import { Button } from '../ui/button';
-import { Workflow } from 'lucide-react';
+import { Workflow as PlaybookIcon } from 'lucide-react';
 
 
 const Header = () => {
@@ -18,7 +18,7 @@ const Header = () => {
           <BreadcrumbList>
             <BreadcrumbItem className="hidden md:block">
               <BreadcrumbLink href="#">
-                Workflow
+                Playbook
               </BreadcrumbLink>
             </BreadcrumbItem>
             <BreadcrumbSeparator className="hidden md:block" />
@@ -31,7 +31,7 @@ const Header = () => {
       </div>
       <div className='flex items-center gap-2 px-4 ml-auto'>
         <Button variant="outline" size="icon">
-          <Workflow />
+          <PlaybookIcon />
         </Button>
       </div>
     </header>

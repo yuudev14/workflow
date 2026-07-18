@@ -4,7 +4,7 @@ import {
 } from "@xyflow/react";
 import { Play } from "lucide-react";
 import { Avatar, AvatarFallback } from "../../ui/avatar";
-import { Tasks } from "@/services/worfklows/workflows.schema";
+import { Tasks } from "@/services/playbooks/playbooks.schema";
 import { FLOW_SELECT_TRIGGER_ID } from "@/settings/reactFlowIds";
 import RenderHandles from "./RenderHandles";
 import DeleteNodeButton from "./DeleteNodeButton";

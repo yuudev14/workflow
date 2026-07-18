@@ -1,5 +1,5 @@
 const BASE_URL = {
-  WORKFLOW_SERVICE_API: (process.env.NEXT_PUBLIC_WORKFLOW_SERVICE_API || "/workflow-api"),
+  PLAYBOOK_SERVICE_API: (process.env.NEXT_PUBLIC_PLAYBOOK_SERVICE_API || "/playbook-api"),
   CONNECTORS_SERVICE_API: (process.env.NEXT_PUBLIC_CONNECTORS_SERVICE_API || "/connector-api"),
 }
 

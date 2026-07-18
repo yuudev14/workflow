@@ -1,0 +1,74 @@
+import React, { useCallback, useContext } from 'react'
+
+import OptionButton from '@/components/buttons/OptionButton'
+import { Label } from '@/components/ui/label'
+import { Separator } from '@/components/ui/separator'
+import { MousePointerClick, Webhook } from 'lucide-react'
+import { useQuery } from '@tanstack/react-query'
+import PlaybookService from '@/services/playbooks/playbooks'
+import { PlaybookTriggerType } from '@/services/playbooks/playbooks.schema'
+import { FLOW_SELECT_TRIGGER_ID, FLOW_START_ID } from '@/settings/reactFlowIds'
+import { PlaybookOperationContext } from '../../../_providers/PlaybookOperationProvider'
+
+const SelectPlaybookTriggerOption = () => {
+
+  const { setPlaybookData, setOpenOperationSidebar, setNodes } = useContext(PlaybookOperationContext)
+  const triggerTypesQuery = useQuery({
+    queryKey: ['workflow-trigger-type-lists'],
+    queryFn: async () => {
+      return await PlaybookService.getPlaybookTriggerTypes()
+    }
+  })
+
+  const renderIcon = useCallback((triggerName: string) => {
+    switch (triggerName) {
+      case "manual":
+        return MousePointerClick
+      case "webhook":
+        return Webhook
+      default:
+        return MousePointerClick // for now
+    }
+  }, [])
+
+  const selectTriggerType = (trigger: PlaybookTriggerType) => {
+    setPlaybookData(workflow => ({ ...workflow, trigger_type: trigger.id }))
+    setNodes(nodes => {
+      return nodes.filter(_node => _node.id !== FLOW_SELECT_TRIGGER_ID).concat({
+        id: FLOW_START_ID,
+        data: {
+          name: FLOW_START_ID,
+          label: "manual"
+        },
+        position: { x: 100, y: 100 },
+        type: "startNode",
+        draggable: true,
+        
+      })
+    })
+    setOpenOperationSidebar(false)
+  }
+
+  return (
+    <div className='flex flex-col gap-3 px-3 py-5'>
+      <Label className="text-lg uppercase">
+        Choose a trigger
+      </Label>
+      <Separator />
+
+      <div className="flex flex-col gap-3">
+        {triggerTypesQuery.data && triggerTypesQuery.data?.map(trigger => (
+          <OptionButton Icon={renderIcon(trigger.name)} key={`trigger-type-${trigger.id}`} onClick={() => selectTriggerType(trigger)}>
+            <div>
+              <Label className='text-base uppercase'>{trigger.name}</Label>
+              <p>Small description about manual</p>
+            </div>
+
+          </OptionButton>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+export default SelectPlaybookTriggerOption
