@@ -60,10 +60,10 @@ func (c *Client) Execute(ctx context.Context, req execution.ExecutionRequest) (j
 		TimeoutMs:         uint32(req.Timeout.Milliseconds()),
 	})
 	if err != nil {
-		return nil, err // transport error
+		return nil, err
 	}
 	if resp.Error != "" {
-		return nil, errors.New(resp.Error) // connector error, includes the Python traceback
+		return nil, errors.New(resp.Error)
 	}
 	return json.RawMessage(resp.ResultJson), nil
 }
