@@ -1,0 +1,37 @@
+FROM golang:1.25-alpine
+
+RUN apk add --no-cache git curl make
+
+# sandbox runtimes (dev image is shared by api/worker/sandbox; only the
+# sandbox uses these): python3 + connector deps for python connectors and
+# code_snippet, node + nunjucks for js/ts connectors and code_snippet_js.
+# nodejs-current (24.x), NOT nodejs (22.x): the node harnesses and .ts
+# connectors rely on native TypeScript type stripping (Node >= 23.6).
+RUN apk add --no-cache python3 py3-pip py3-jinja2 py3-requests nodejs-current npm \
+    && pip install --break-system-packages --no-cache-dir colorlog pydantic-settings \
+    && mkdir -p /opt/ytsoar/harness \
+    && npm install --prefix /opt/ytsoar/harness nunjucks@3
+ENV NODE_PATH=/opt/ytsoar/harness/node_modules
+
+
+WORKDIR /app
+
+COPY go.mod go.sum ./
+RUN go mod download
+
+RUN go install github.com/air-verse/air@latest
+RUN go install github.com/pressly/goose/v3/cmd/goose@latest
+# debugger for docker/debug.docker-compose.yml (unused in normal runs)
+RUN go install github.com/go-delve/delve/cmd/dlv@latest
+
+COPY . .
+
+EXPOSE 8080
+
+ENV GIN_MODE=debug
+ENV AIR_POLL=true
+
+COPY entrypoint.sh /entrypoint.sh
+
+RUN chmod +x /entrypoint.sh
+ENTRYPOINT ["/entrypoint.sh"]

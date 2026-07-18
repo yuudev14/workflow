@@ -3,13 +3,10 @@ import {
   BaseEdge,
   EdgeLabelRenderer,
   getBezierPath,
-  useReactFlow,
   type EdgeProps,
 } from "@xyflow/react";
-import { X } from "lucide-react";
 
 export default function EdgeHistory({
-  id,
   sourceX,
   sourceY,
   targetX,
@@ -33,22 +30,11 @@ export default function EdgeHistory({
       <BaseEdge path={edgePath} markerEnd={markerEnd} style={style} />
       <EdgeLabelRenderer>
         <div
-          className="absolute w-4 h-4 rounded-full nodrag nopan bg-accent "
+          className="nodrag nopan absolute h-4 w-4 rounded-full bg-accent"
           style={{
             transform: `translate(-50%, -50%) translate(${sourceX}px,${sourceY}px)`,
           }}
         />
-        {/* <div
-          className="absolute origin-center pointer-events-auto nodrag nopan"
-          style={{
-            transform: `translate(-50%, -50%) translate(${labelX}px,${labelY}px)`,
-          }}>
-          <button
-            className="flex justify-center items-center w-[30px] h-[30px] border-[5px] text-[var(--xy-edge-label-color-default)] cursor-pointer rounded-full text-[12px] pt-0"
-            onClick={onEdgeClick}>
-            <X size={12} />
-          </button>
-        </div> */}
       </EdgeLabelRenderer>
     </>
   );

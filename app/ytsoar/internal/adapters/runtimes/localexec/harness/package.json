@@ -1,0 +1,10 @@
+{
+  "name": "ytsoar-localexec-harness",
+  "private": true,
+  "type": "commonjs",
+  "description": "Editor/type support only — the harnesses are embedded via go:embed and run through Node's native type stripping; nothing here is needed at runtime.",
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "typescript": "^5.8.0"
+  }
+}
