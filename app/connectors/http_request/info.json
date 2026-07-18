@@ -1,0 +1,30 @@
+{
+  "name": "HTTP Request",
+  "id": "http_request",
+  "runtime": "go",
+  "configuration": {
+    "fields": []
+  },
+  "operations": [
+    {
+      "operation": "get_request",
+      "title": "GET request",
+      "description": "Sends an HTTP GET request and returns {status, body}.",
+      "annotation": "get_request",
+      "enabled": true,
+      "parameters": [
+        {
+          "title": "URL",
+          "name": "url",
+          "description": "The URL to request. Supports templates.",
+          "required": true,
+          "editable": true,
+          "visible": true,
+          "type": "text",
+          "tooltip": "URL to GET",
+          "placeholder": "https://api.example.com/items"
+        }
+      ]
+    }
+  ]
+}

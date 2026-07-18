@@ -1,70 +1,71 @@
-"use client"
+"use client";
 
-import * as React from "react"
-import {
-  SquareTerminal,
-} from "lucide-react"
+import * as React from "react";
+import { AlertTriangle, Bell, LayoutDashboard, Layers, LayoutGrid } from "lucide-react";
+import Link from "next/link";
 
-import { NavMain } from "@/components/sidebar/nav-main"
-import { NavUser } from "@/components/sidebar/nav-user"
+import { NavMain, type NavSection } from "@/components/sidebar/nav-main";
+import { NavUser } from "@/components/sidebar/nav-user";
 import {
   Sidebar,
   SidebarContent,
   SidebarFooter,
   SidebarHeader,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
   SidebarRail,
-} from "@/components/ui/sidebar"
-import ModeToggle from "./toggle-dark-theme"
-import Link from "next/link"
+} from "@/components/ui/sidebar";
+import ModeToggle from "./toggle-dark-theme";
 
-const navData = {
-  user: {
-    name: "shadcn",
-    email: "m@example.com",
-    avatar: "",
+const sections: NavSection[] = [
+  {
+    label: "Platform",
+    items: [
+      { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
+      { title: "Playbooks", url: "/playbooks", icon: Layers },
+      { title: "Connectors", url: "/connectors", icon: LayoutGrid },
+    ],
   },
-  navMain: [
-    {
-      title: "Playbooks",
-      url: "#",
-      icon: SquareTerminal,
-      isActive: true,
-      items: [
-        {
-          title: "Playbooks",
-          url: "/playbooks",
-        },
-        {
-          title: "Scheduler",
-          url: "#",
-        },
-        {
-          title: "Connectors",
-          url: "#",
-        },
-      ],
-    },
-  ],
+  {
+    label: "Monitor",
+    items: [
+      { title: "Alerts", url: "/alerts", icon: Bell },
+      { title: "Incidents", url: "/incidents", icon: AlertTriangle },
+    ],
+  },
+];
 
-}
+const user = { name: "takakiiiyuuu", email: "takakiiiyuuu@gmail.com", avatar: "" };
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   return (
     <Sidebar collapsible="icon" {...props}>
       <SidebarHeader>
-        <Link href={"/"}>
-          YTSoar
-        </Link>
-
+        <SidebarMenu>
+          <SidebarMenuItem>
+            <SidebarMenuButton asChild size="lg" tooltip="YTSoar">
+              <Link href="/playbooks">
+                <span className="flex aspect-square size-8 items-center justify-center rounded-md bg-foreground text-[14px] font-bold text-background">
+                  Y
+                </span>
+                <div className="grid flex-1 text-left leading-tight">
+                  <span className="truncate text-[16px] font-semibold">YTSoar</span>
+                  <span className="truncate text-[12px] text-ink-faint">SOAR platform</span>
+                </div>
+              </Link>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        </SidebarMenu>
       </SidebarHeader>
       <SidebarContent>
-        <NavMain items={navData.navMain} />
+        <NavMain sections={sections} />
       </SidebarContent>
       <SidebarFooter>
         <ModeToggle />
-        <NavUser user={navData.user} />
+        <NavUser user={user} />
       </SidebarFooter>
       <SidebarRail />
     </Sidebar>
-  )
+  );
 }

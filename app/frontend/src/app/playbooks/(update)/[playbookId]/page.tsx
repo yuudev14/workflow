@@ -19,37 +19,24 @@ import PlaybookOperationProvider, {
 import PlaybookOperations from "../_components/options/PlaybookOperations/PlaybookOperations";
 import usePlaybookTrigger from "@/hooks/usePlaybookTrigger";
 import { FLOW_START_ID } from "@/settings/reactFlowIds";
-import { History, Play, Workflow as PlaybookIcon } from "lucide-react";
+import { Check, History, Workflow as PlaybookIcon, Zap } from "lucide-react";
 import Link from "next/link";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
+import PlaybookHistoryModal from "@/components/executions/PlaybookHistoryModal";
 
+// Canvas nav: a segmented Editor / Runs toggle pinned to the top-left of the
+// canvas. Replaces the two stacked bordered buttons that used to float mid-left.
 const RouterButton: React.FC<{ playbookId: string }> = ({ playbookId }) => {
   return (
-    <div className="absolute flex flex-col top-1/5 z-1">
-      <Tooltip>
-        <TooltipTrigger className="border-2 border-b-0 border-l-0 cursor-pointer border-border bg-background">
-          <Link
-            href={"/playbooks/" + playbookId}
-            className="flex items-center justify-center p-5 ">
-            <PlaybookIcon />
-          </Link>
-        </TooltipTrigger>
-        <TooltipContent side="right">Editor</TooltipContent>
-      </Tooltip>
-      <Tooltip>
-        <TooltipTrigger className="border-2 border-l-0 cursor-pointer border-border bg-background">
-          <Link
-            href={"/playbooks/" + playbookId + "/history"}
-            className="flex items-center justify-center p-5 ">
-            <History />
-          </Link>
-        </TooltipTrigger>
-        <TooltipContent side="right">Execution</TooltipContent>
-      </Tooltip>
+    <div className="absolute left-4 top-4 z-10 inline-flex items-center gap-1 rounded-md border border-line bg-card p-1 shadow-md">
+      <span className="inline-flex items-center gap-1.5 rounded-sm bg-signal-soft px-3 py-1.5 text-[12.5px] font-semibold text-signal-text">
+        <PlaybookIcon className="size-3.5" /> Editor
+      </span>
+      <Link
+        href={"/playbooks/" + playbookId + "/history"}
+        className="inline-flex items-center gap-1.5 rounded-sm px-3 py-1.5 text-[12.5px] font-semibold text-ink-soft transition-colors hover:bg-paper-sunken hover:text-ink"
+      >
+        <History className="size-3.5" /> Runs
+      </Link>
     </div>
   );
 };
@@ -121,6 +108,7 @@ const PlaybookPlayground: React.FC<{ playbookId: string }> = ({
     data.task = {
       name: workflowData.name,
       trigger_type: workflowData.trigger_type,
+      trigger_parameters: workflowData.trigger_parameters,
     };
 
     data.nodes = nodes.map((_node) => ({
@@ -174,17 +162,25 @@ const PlaybookPlayground: React.FC<{ playbookId: string }> = ({
       </div> */}
       {openOperationSidebar && <PlaybookOperations />}
 
-      <div className="flex items-center justify-between h-16 px-5 py-3">
+      <div className="flex h-16 items-center justify-between border-b border-line px-5 py-3">
         <div>
-          <h2 className="text-xl font-medium">{workflowData.name}</h2>
-          <p className="text-xs text-muted-foreground">
-            {workflowData.description}
-          </p>
+          <h2 className="text-lg font-semibold">{workflowData.name}</h2>
+          <p className="text-xs text-ink-faint">{workflowData.description}</p>
         </div>
         <div className="flex gap-2">
-          <Button onClick={triggerPlaybookHandler}>Trigger</Button>
-          <Button>Delete</Button>
-          <Button onClick={savePlaybookHandler}>Save</Button>
+          <PlaybookHistoryModal
+            playbookId={playbookId}
+            playbookName={workflowData.name}
+          />
+          <Button variant="ghost" onClick={triggerPlaybookHandler}>
+            <Zap /> Trigger
+          </Button>
+          <Button variant="outline" className="text-rose-text">
+            Delete
+          </Button>
+          <Button onClick={savePlaybookHandler}>
+            <Check /> Save
+          </Button>
         </div>
       </div>
       <div className="h-[calc(100vh-8rem)] relative">

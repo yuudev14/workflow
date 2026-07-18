@@ -9,7 +9,6 @@ import {
   PlaybookFilterPayload,
   PlaybookHistory,
   PlaybookHistoryFilter,
-  PlaybookTriggerType,
 } from "./playbooks.schema";
 import apiClient from "../common/client";
 
@@ -83,21 +82,6 @@ export default class PlaybookService {
     edges: Edges[];
   }> => {
     const res = await apiClient.get(`${this.BASE_URL}/history/${worfklowHistoryId}/tasks`);
-    return res.data;
-  };
-
-  /**
-   * get workflow trigger types
-   * @returns an entry response ex:
-   * {
-   *  "entries": [],
-   *  "total": 0
-   * }
-   */
-  public static getPlaybookTriggerTypes = async (): Promise<
-    PlaybookTriggerType[]
-  > => {
-    const res = await apiClient.get(this.BASE_URL + "/triggers");
     return res.data;
   };
 
