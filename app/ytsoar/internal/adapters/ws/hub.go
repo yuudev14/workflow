@@ -2,6 +2,7 @@ package ws
 
 import (
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -16,12 +17,28 @@ const (
 	sendBuffer   = 64
 )
 
-var upgrader = websocket.Upgrader{
-	ReadBufferSize:  1024,
-	WriteBufferSize: 1024,
-	// TODO: restrict origins once auth lands — the endpoint is open today, but
-	// this default must not survive into an authenticated deployment.
-	CheckOrigin: func(r *http.Request) bool { return true },
+// newUpgrader restricts which pages may open a socket. CORS does not apply to
+// WebSockets, so without this check any site could open an authenticated
+// connection using the visitor's cookie.
+func newUpgrader(allowedOrigins []string) websocket.Upgrader {
+	return websocket.Upgrader{
+		ReadBufferSize:  1024,
+		WriteBufferSize: 1024,
+		CheckOrigin: func(r *http.Request) bool {
+			origin := r.Header.Get("Origin")
+			// Non-browser clients (curl, the CLI) send no Origin at all;
+			// they still have to pass the auth middleware.
+			if origin == "" {
+				return true
+			}
+			for _, allowed := range allowedOrigins {
+				if strings.EqualFold(origin, allowed) {
+					return true
+				}
+			}
+			return false
+		},
+	}
 }
 
 // client pairs a connection with its buffered send queue; a dedicated
@@ -52,14 +69,16 @@ type Hub struct {
 	broadcast  chan any
 	register   chan *client
 	unregister chan *client
+	upgrader   websocket.Upgrader
 }
 
-func NewHub() *Hub {
+func NewHub(allowedOrigins []string) *Hub {
 	return &Hub{
 		clients:    make(map[*client]bool),
 		broadcast:  make(chan any),
 		register:   make(chan *client),
 		unregister: make(chan *client),
+		upgrader:   newUpgrader(allowedOrigins),
 	}
 }
 
@@ -97,7 +116,7 @@ func (h *Hub) Broadcast(data any) {
 // client disconnects. Incoming messages are read and discarded so pings and
 // close frames are processed.
 func (h *Hub) ServeWS(c *gin.Context) {
-	conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
+	conn, err := h.upgrader.Upgrade(c.Writer, c.Request, nil)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return

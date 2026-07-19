@@ -6,10 +6,54 @@ package db
 
 import (
 	"database/sql/driver"
+	"encoding/json"
 	"fmt"
 
 	"github.com/jackc/pgx/v5/pgtype"
 )
+
+type AuthProviderType string
+
+const (
+	AuthProviderTypeLocal AuthProviderType = "local"
+	AuthProviderTypeOidc  AuthProviderType = "oidc"
+	AuthProviderTypeLdap  AuthProviderType = "ldap"
+)
+
+func (e *AuthProviderType) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = AuthProviderType(s)
+	case string:
+		*e = AuthProviderType(s)
+	default:
+		return fmt.Errorf("unsupported scan type for AuthProviderType: %T", src)
+	}
+	return nil
+}
+
+type NullAuthProviderType struct {
+	AuthProviderType AuthProviderType `json:"auth_provider_type"`
+	Valid            bool             `json:"valid"` // Valid is true if AuthProviderType is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullAuthProviderType) Scan(value interface{}) error {
+	if value == nil {
+		ns.AuthProviderType, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.AuthProviderType.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullAuthProviderType) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.AuthProviderType), nil
+}
 
 type PlaybookStatus string
 
@@ -145,6 +189,26 @@ func (ns NullTriggerType) Value() (driver.Value, error) {
 	return string(ns.TriggerType), nil
 }
 
+type AuditLog struct {
+	ID        pgtype.UUID      `json:"id"`
+	ActorID   pgtype.UUID      `json:"actor_id"`
+	Module    string           `json:"module"`
+	Action    string           `json:"action"`
+	EntityID  pgtype.Text      `json:"entity_id"`
+	Detail    []byte           `json:"detail"`
+	CreatedAt pgtype.Timestamp `json:"created_at"`
+}
+
+type AuthProvider struct {
+	ID        pgtype.UUID      `json:"id"`
+	Type      AuthProviderType `json:"type"`
+	Name      string           `json:"name"`
+	Config    json.RawMessage  `json:"config"`
+	Enabled   bool             `json:"enabled"`
+	CreatedAt pgtype.Timestamp `json:"created_at"`
+	UpdatedAt pgtype.Timestamp `json:"updated_at"`
+}
+
 type Connector struct {
 	ID         string             `json:"id"`
 	Name       string             `json:"name"`
@@ -184,6 +248,30 @@ type PlaybookHistory struct {
 	Result      []byte           `json:"result"`
 	TriggeredAt pgtype.Timestamp `json:"triggered_at"`
 	Edges       []byte           `json:"edges"`
+}
+
+type RefreshToken struct {
+	ID        pgtype.UUID      `json:"id"`
+	UserID    pgtype.UUID      `json:"user_id"`
+	TokenHash string           `json:"token_hash"`
+	ExpiresAt pgtype.Timestamp `json:"expires_at"`
+	RevokedAt pgtype.Timestamp `json:"revoked_at"`
+	CreatedAt pgtype.Timestamp `json:"created_at"`
+}
+
+type Role struct {
+	ID          pgtype.UUID      `json:"id"`
+	Name        string           `json:"name"`
+	Description pgtype.Text      `json:"description"`
+	IsBuiltin   bool             `json:"is_builtin"`
+	CreatedAt   pgtype.Timestamp `json:"created_at"`
+	UpdatedAt   pgtype.Timestamp `json:"updated_at"`
+}
+
+type RolePermission struct {
+	RoleID pgtype.UUID `json:"role_id"`
+	Module string      `json:"module"`
+	Action string      `json:"action"`
 }
 
 type Scheduler struct {
@@ -230,11 +318,35 @@ type TaskHistory struct {
 	TriggeredAt       pgtype.Timestamp `json:"triggered_at"`
 }
 
+type Team struct {
+	ID          pgtype.UUID      `json:"id"`
+	Name        string           `json:"name"`
+	Description pgtype.Text      `json:"description"`
+	CreatedAt   pgtype.Timestamp `json:"created_at"`
+	UpdatedAt   pgtype.Timestamp `json:"updated_at"`
+}
+
+type TeamMember struct {
+	TeamID pgtype.UUID `json:"team_id"`
+	UserID pgtype.UUID `json:"user_id"`
+}
+
 type User struct {
-	ID        pgtype.UUID `json:"id"`
-	Username  string      `json:"username"`
-	Email     string      `json:"email"`
-	Password  string      `json:"password"`
-	FirstName pgtype.Text `json:"first_name"`
-	LastName  pgtype.Text `json:"last_name"`
+	ID           pgtype.UUID      `json:"id"`
+	Username     string           `json:"username"`
+	Email        string           `json:"email"`
+	PasswordHash pgtype.Text      `json:"password_hash"`
+	FirstName    pgtype.Text      `json:"first_name"`
+	LastName     pgtype.Text      `json:"last_name"`
+	AuthProvider AuthProviderType `json:"auth_provider"`
+	ExternalID   pgtype.Text      `json:"external_id"`
+	IsActive     bool             `json:"is_active"`
+	LastLoginAt  pgtype.Timestamp `json:"last_login_at"`
+	CreatedAt    pgtype.Timestamp `json:"created_at"`
+	UpdatedAt    pgtype.Timestamp `json:"updated_at"`
+}
+
+type UserRole struct {
+	UserID pgtype.UUID `json:"user_id"`
+	RoleID pgtype.UUID `json:"role_id"`
 }

@@ -22,3 +22,9 @@ CREATE TYPE trigger_type AS ENUM (
     'on_update',
     'on_delete'
 );
+
+CREATE TYPE auth_provider_type AS ENUM (
+    'local',
+    'oidc',
+    'ldap'
+);

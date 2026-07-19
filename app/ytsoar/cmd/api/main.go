@@ -10,9 +10,12 @@ import (
 	"github.com/yuudev14/ytsoar/internal/adapters/depsinstall"
 	api "github.com/yuudev14/ytsoar/internal/adapters/http"
 	"github.com/yuudev14/ytsoar/internal/adapters/http/handlers"
+	"github.com/yuudev14/ytsoar/internal/adapters/http/middleware"
 	"github.com/yuudev14/ytsoar/internal/adapters/mq"
 	"github.com/yuudev14/ytsoar/internal/adapters/repository"
+	"github.com/yuudev14/ytsoar/internal/adapters/security"
 	"github.com/yuudev14/ytsoar/internal/adapters/ws"
+	"github.com/yuudev14/ytsoar/internal/application/auth"
 	"github.com/yuudev14/ytsoar/internal/application/connectors"
 	"github.com/yuudev14/ytsoar/internal/application/edges"
 	"github.com/yuudev14/ytsoar/internal/application/playbooks"
@@ -41,7 +44,7 @@ func main() {
 	queries := db.New(pool)
 	txManager := repository.NewPgxTxManager(pool)
 
-	hub := ws.NewHub()
+	hub := ws.NewHub(cfg.CORSOrigins)
 	go hub.Run()
 
 	mqConn, err := mq.Connect(cfg.MQUrl)
@@ -65,10 +68,35 @@ func main() {
 	playbookRepository := repository.NewPlaybookRepository(appLogger, queries, pool)
 	taskRepository := repository.NewTaskRepositoryImpl(appLogger, queries, pool)
 	edgeRepository := repository.NewEdgeRepositoryImpl(appLogger, queries, pool)
+	userRepository := repository.NewUserRepositoryImpl(appLogger, queries, pool)
+	roleRepository := repository.NewRoleRepositoryImpl(appLogger, queries, pool)
+	refreshTokenRepository := repository.NewRefreshTokenRepositoryImpl(appLogger, queries, pool)
+	auditRepository := repository.NewAuditLogRepositoryImpl(appLogger, queries, pool)
+
+	argonHasher := security.NewArgon2Hasher()
+
+	authConfig := auth.AuthConfig{
+		JWTSecret:       cfg.JWTSecret,
+		AccessTokenTTL:  cfg.AccessTokenTTL,
+		RefreshTokenTTL: cfg.RefreshTokenTTL,
+		AdminUsername:   cfg.AdminUsername,
+		AdminEmail:      cfg.AdminEmail,
+		AdminPassword:   cfg.AdminPassword,
+	}
 
 	playbookService := playbooks.NewPlaybookService(appLogger, playbookRepository)
 	taskService := tasks.NewTaskServiceImpl(taskRepository)
 	edgeService := edges.NewEdgeServiceImpl(edgeRepository)
+	authService := auth.NewService(
+		appLogger,
+		userRepository,
+		roleRepository,
+		refreshTokenRepository,
+		auditRepository,
+		argonHasher,
+		txManager,
+		authConfig,
+	)
 
 	orchestrator := playbooks.NewPlaybookApplicationService(
 		appLogger,
@@ -88,6 +116,14 @@ func main() {
 		orchestrator,
 	)
 
+	cookieWriter := middleware.NewCookieWriter(cfg.CookieSecure)
+
+	authHandler := handlers.NewAuthHandler(
+		appLogger,
+		authService,
+		cookieWriter,
+	)
+
 	connectorStore := connectorstore.NewFSStore(appLogger, cfg.ConnectorsDir)
 	connectorWriter := connectorstore.NewFSWriter(appLogger, cfg.ConnectorsDir)
 	connectorRepository := repository.NewConnectorRepositoryImpl(appLogger, queries, pool)
@@ -96,7 +132,19 @@ func main() {
 		connectorWriter, connectorRepository, connectorInstaller)
 	connectorHandler := handlers.NewConnectorHandler(appLogger, connectorService)
 
-	app := api.NewRouter(playbookHandler, connectorHandler, hub)
+	routerConfig := api.RouterConfig{
+		CORSOrigins: cfg.CORSOrigins,
+	}
+
+	app := api.NewRouter(
+		routerConfig,
+		playbookHandler,
+		connectorHandler,
+		authHandler,
+		hub,
+		middleware.Auth(appLogger, authService),
+		middleware.AuthFromRefreshCookie(appLogger, authService),
+	)
 	if err := app.Run(cfg.HTTPAddr); err != nil {
 		log.Fatalf("http server: %v", err)
 	}

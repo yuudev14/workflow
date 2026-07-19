@@ -11,25 +11,53 @@ import (
 )
 
 type Querier interface {
+	CountUsersWithRole(ctx context.Context, name string) (int64, error)
 	CreatePlaybook(ctx context.Context, arg CreatePlaybookParams) (Playbook, error)
 	CreatePlaybookHistory(ctx context.Context, arg CreatePlaybookHistoryParams) (PlaybookHistory, error)
+	CreateRole(ctx context.Context, arg CreateRoleParams) (Role, error)
 	CreateTaskHistory(ctx context.Context, arg CreateTaskHistoryParams) (TaskHistory, error)
+	CreateUser(ctx context.Context, arg CreateUserParams) (User, error)
 	DeleteAllPlaybookEdges(ctx context.Context, playbookID pgtype.UUID) error
 	DeleteConnectorRecord(ctx context.Context, id string) (int64, error)
 	DeleteEdges(ctx context.Context, ids []pgtype.UUID) error
+	DeleteExpiredRefreshTokens(ctx context.Context) error
+	DeleteRole(ctx context.Context, id pgtype.UUID) (int64, error)
+	DeleteRolePermissions(ctx context.Context, roleID pgtype.UUID) error
 	DeleteTasks(ctx context.Context, ids []pgtype.UUID) error
+	DeleteUserRoles(ctx context.Context, userID pgtype.UUID) error
 	GetConnectorRecord(ctx context.Context, id string) (Connector, error)
 	GetEdgesByPlaybookId(ctx context.Context, playbookID pgtype.UUID) ([]GetEdgesByPlaybookIdRow, error)
 	GetPlaybookById(ctx context.Context, id pgtype.UUID) (Playbook, error)
 	GetPlaybookGraphById(ctx context.Context, id pgtype.UUID) (GetPlaybookGraphByIdRow, error)
 	GetPlaybookHistoryById(ctx context.Context, id pgtype.UUID) (GetPlaybookHistoryByIdRow, error)
+	GetRefreshTokenByHash(ctx context.Context, tokenHash string) (RefreshToken, error)
+	GetRoleById(ctx context.Context, id pgtype.UUID) (Role, error)
+	GetRoleByName(ctx context.Context, name string) (Role, error)
 	GetTaskHistoryByPlaybookHistoryId(ctx context.Context, playbookHistoryID pgtype.UUID) ([]TaskHistory, error)
 	GetTasksByPlaybookId(ctx context.Context, playbookID pgtype.UUID) ([]Task, error)
+	GetUserByEmail(ctx context.Context, email string) (User, error)
+	GetUserByExternalId(ctx context.Context, arg GetUserByExternalIdParams) (User, error)
+	GetUserById(ctx context.Context, id pgtype.UUID) (User, error)
+	GetUserByUsername(ctx context.Context, username string) (User, error)
+	InsertAuditLog(ctx context.Context, arg InsertAuditLogParams) (AuditLog, error)
+	InsertRefreshToken(ctx context.Context, arg InsertRefreshTokenParams) (RefreshToken, error)
+	InsertRolePermission(ctx context.Context, arg InsertRolePermissionParams) error
+	InsertUserRole(ctx context.Context, arg InsertUserRoleParams) error
+	ListPermissionsForUser(ctx context.Context, id pgtype.UUID) ([]ListPermissionsForUserRow, error)
+	ListRolePermissions(ctx context.Context, roleID pgtype.UUID) ([]ListRolePermissionsRow, error)
+	ListRoles(ctx context.Context) ([]Role, error)
+	ListRolesForUser(ctx context.Context, userID pgtype.UUID) ([]Role, error)
+	RevokeAllRefreshTokensForUser(ctx context.Context, userID pgtype.UUID) error
+	RevokeRefreshToken(ctx context.Context, tokenHash string) (int64, error)
+	SetUserPassword(ctx context.Context, arg SetUserPasswordParams) error
+	TouchUserLastLogin(ctx context.Context, id pgtype.UUID) error
 	UpdatePlaybook(ctx context.Context, arg UpdatePlaybookParams) (Playbook, error)
 	UpdatePlaybookHistory(ctx context.Context, arg UpdatePlaybookHistoryParams) (PlaybookHistory, error)
 	UpdatePlaybookHistoryStatus(ctx context.Context, arg UpdatePlaybookHistoryStatusParams) (PlaybookHistory, error)
+	UpdateRole(ctx context.Context, arg UpdateRoleParams) (Role, error)
 	UpdateTaskHistory(ctx context.Context, arg UpdateTaskHistoryParams) (TaskHistory, error)
 	UpdateTaskStatus(ctx context.Context, arg UpdateTaskStatusParams) (TaskHistory, error)
+	UpdateUser(ctx context.Context, arg UpdateUserParams) (User, error)
 	UpsertConnector(ctx context.Context, arg UpsertConnectorParams) (Connector, error)
 	UpsertEdge(ctx context.Context, arg UpsertEdgeParams) (Edge, error)
 	UpsertTask(ctx context.Context, arg UpsertTaskParams) (Task, error)
