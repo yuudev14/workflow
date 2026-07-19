@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"database/sql"
+	"time"
 
 	sq "github.com/Masterminds/squirrel"
 	"github.com/google/uuid"
@@ -112,6 +113,13 @@ func toNullString(t pgtype.Text) sql.NullString {
 
 func toPgTextFromNullString(n sql.NullString) pgtype.Text {
 	return pgtype.Text{String: n.String, Valid: n.Valid}
+}
+
+func fromPgTimestampPtr(t pgtype.Timestamp) *time.Time {
+	if !t.Valid {
+		return nil
+	}
+	return &t.Time
 }
 
 func toPgFloat8(f float32) pgtype.Float8 {
