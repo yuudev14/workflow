@@ -1,7 +1,17 @@
 "use client";
 
 import * as React from "react";
-import { AlertTriangle, Bell, LayoutDashboard, Layers, LayoutGrid } from "lucide-react";
+import {
+  AlertTriangle,
+  Bell,
+  LayoutDashboard,
+  Layers,
+  LayoutGrid,
+  ScrollText,
+  ShieldCheck,
+  Users,
+  UsersRound,
+} from "lucide-react";
 import Link from "next/link";
 
 import { NavMain, type NavSection } from "@/components/sidebar/nav-main";
@@ -19,6 +29,8 @@ import {
 import ModeToggle from "./toggle-dark-theme";
 import { useAuth } from "@/components/provider/auth-provider";
 
+const SETTINGS_READ = { module: "settings", action: "read" };
+
 const sections: NavSection[] = [
   {
     label: "Platform",
@@ -33,6 +45,15 @@ const sections: NavSection[] = [
     items: [
       { title: "Alerts", url: "/alerts", icon: Bell },
       { title: "Incidents", url: "/incidents", icon: AlertTriangle },
+    ],
+  },
+  {
+    label: "Admin",
+    items: [
+      { title: "Users", url: "/settings/users", icon: Users, permission: SETTINGS_READ },
+      { title: "Roles", url: "/settings/roles", icon: ShieldCheck, permission: SETTINGS_READ },
+      { title: "Teams", url: "/settings/teams", icon: UsersRound, permission: SETTINGS_READ },
+      { title: "Audit", url: "/settings/audit", icon: ScrollText, permission: SETTINGS_READ },
     ],
   },
 ];
