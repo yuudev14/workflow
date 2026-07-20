@@ -11,11 +11,14 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
+import { useAuth } from "@/components/provider/auth-provider";
 
 export interface NavItem {
   title: string;
   url: string;
   icon: LucideIcon;
+  /** Hide the item unless the user holds this grant. */
+  permission?: { module: string; action: string };
 }
 
 export interface NavSection {
@@ -30,9 +33,20 @@ function isActive(pathname: string, url: string) {
 
 export function NavMain({ sections }: { sections: NavSection[] }) {
   const pathname = usePathname();
+  const { hasPermission } = useAuth();
+
+  const visible = sections
+    .map((section) => ({
+      ...section,
+      items: section.items.filter(
+        (item) => !item.permission || hasPermission(item.permission.module, item.permission.action),
+      ),
+    }))
+    .filter((section) => section.items.length > 0);
+
   return (
     <>
-      {sections.map((section) => (
+      {visible.map((section) => (
         <SidebarGroup key={section.label}>
           <SidebarGroupLabel>{section.label}</SidebarGroupLabel>
           <SidebarMenu>

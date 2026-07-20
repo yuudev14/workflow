@@ -26,6 +26,11 @@ const LABELS: Record<string, string> = {
   executions: "Executions",
   history: "History",
   dashboard: "Dashboard",
+  settings: "Settings",
+  users: "Users",
+  roles: "Roles",
+  teams: "Teams",
+  audit: "Audit",
 };
 
 function label(seg: string) {
