@@ -24,6 +24,7 @@ func NewRouter(
 	playbookHandler *handlers.PlaybookHandler,
 	connectorHandler *handlers.ConnectorHandler,
 	authHandler *handlers.AuthHandler,
+	adminHandler *handlers.AdminHandler,
 	hub *ws.Hub,
 	authMW gin.HandlerFunc,
 	wsAuthMW gin.HandlerFunc,
@@ -53,6 +54,7 @@ func NewRouter(
 
 	playbookHandler.RegisterRoutes(protected, requirePermission)
 	connectorHandler.RegisterRoutes(protected, requirePermission)
+	adminHandler.RegisterRoutes(protected, requirePermission)
 
 	app.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 

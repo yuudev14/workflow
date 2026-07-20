@@ -36,6 +36,7 @@ type Service struct {
 	users     UserRepository
 	roles     RoleRepository
 	tokens    RefreshTokenRepository
+	teams     TeamRepository
 	audit     AuditLogRepository
 	hasher    PasswordHasher
 	txManager contracts.TxManager
@@ -50,6 +51,7 @@ func NewService(
 	users UserRepository,
 	roles RoleRepository,
 	tokens RefreshTokenRepository,
+	teams TeamRepository,
 	audit AuditLogRepository,
 	hasher PasswordHasher,
 	txManager contracts.TxManager,
@@ -60,6 +62,7 @@ func NewService(
 		users:     users,
 		roles:     roles,
 		tokens:    tokens,
+		teams:     teams,
 		audit:     audit,
 		hasher:    hasher,
 		txManager: txManager,
@@ -218,7 +221,7 @@ func (s *Service) Logout(ctx context.Context, refreshToken string) error {
 func (s *Service) Me(ctx context.Context, userID uuid.UUID) (Me, error) {
 	user, err := s.users.GetByID(ctx, userID)
 	if err != nil {
-		return Me{}, ErrUserNotFound
+		return Me{}, err
 	}
 
 	roles, err := s.roles.ListForUser(ctx, userID)

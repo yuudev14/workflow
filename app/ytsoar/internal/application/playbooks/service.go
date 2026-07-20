@@ -2,18 +2,18 @@ package playbooks
 
 import (
 	"context"
-	"errors"
 	"fmt"
 
 	"github.com/google/uuid"
 	"github.com/yuudev14/ytsoar/internal/domain"
+	"github.com/yuudev14/ytsoar/internal/domain/apperr"
 	"github.com/yuudev14/ytsoar/internal/logger"
 	"github.com/yuudev14/ytsoar/internal/types"
 )
 
 // ErrPlaybookNotFound lets handlers map a missing playbook to 404 with
 // errors.Is instead of matching error strings.
-var ErrPlaybookNotFound = errors.New("playbook is not found")
+var ErrPlaybookNotFound = apperr.New(apperr.NotFound, "playbook is not found")
 
 //go:generate mockgen -destination=mocks/service_mock.go -package=mocks . PlaybookService
 type PlaybookService interface {

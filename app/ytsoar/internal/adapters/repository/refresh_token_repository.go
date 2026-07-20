@@ -48,7 +48,7 @@ func (r *RefreshTokenRepositoryImpl) Insert(
 func (r *RefreshTokenRepositoryImpl) GetByHash(ctx context.Context, tokenHash string) (domain.RefreshToken, error) {
 	row, err := r.queriesFromContext(ctx).GetRefreshTokenByHash(ctx, tokenHash)
 	if err != nil {
-		return domain.RefreshToken{}, err
+		return domain.RefreshToken{}, mapNoRows(err, auth.ErrTokenNotFound)
 	}
 	return domain.RefreshToken{
 		ID:        fromPgUUID(row.ID),

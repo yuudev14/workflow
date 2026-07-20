@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"errors"
 	"io"
 	"net/http"
 
@@ -32,8 +31,7 @@ func (h *ConnectorHandler) GetConnectors(c *gin.Context) {
 
 	infos, err := h.ConnectorService.GetConnectors(c.Request.Context())
 	if err != nil {
-		h.logger.Error(err)
-		response.ResponseError(http.StatusInternalServerError, err.Error())
+		response.Fail(h.logger, err)
 		return
 	}
 	response.ResponseSuccess(infos)
@@ -48,12 +46,7 @@ func (h *ConnectorHandler) GetConnector(c *gin.Context) {
 
 	info, err := h.ConnectorService.GetConnector(c.Request.Context(), c.Param("connector_id"))
 	if err != nil {
-		if errors.Is(err, connectors.ErrConnectorNotFound) {
-			response.ResponseError(http.StatusNotFound, err.Error())
-			return
-		}
-		h.logger.Error(err)
-		response.ResponseError(http.StatusInternalServerError, err.Error())
+		response.Fail(h.logger, err)
 		return
 	}
 	response.ResponseSuccess(info)
@@ -74,24 +67,19 @@ func (h *ConnectorHandler) UploadConnector(c *gin.Context) {
 	}
 	file, err := fileHeader.Open()
 	if err != nil {
-		response.ResponseError(http.StatusBadRequest, err.Error())
+		response.ResponseError(http.StatusBadRequest, "could not read the uploaded file")
 		return
 	}
 	defer file.Close()
 	zipBytes, err := io.ReadAll(file)
 	if err != nil {
-		response.ResponseError(http.StatusBadRequest, err.Error())
+		response.ResponseError(http.StatusBadRequest, "could not read the uploaded file")
 		return
 	}
 
 	info, err := h.ConnectorService.UploadConnector(c.Request.Context(), zipBytes, c.PostForm("uploaded_by"))
 	if err != nil {
-		if errors.Is(err, connectors.ErrInvalidConnector) {
-			response.ResponseError(http.StatusBadRequest, err.Error())
-			return
-		}
-		h.logger.Error(err)
-		response.ResponseError(http.StatusInternalServerError, err.Error())
+		response.Fail(h.logger, err)
 		return
 	}
 	c.JSON(http.StatusCreated, info)
@@ -106,12 +94,7 @@ func (h *ConnectorHandler) DeleteConnector(c *gin.Context) {
 
 	err := h.ConnectorService.DeleteConnector(c.Request.Context(), c.Param("connector_id"))
 	if err != nil {
-		if errors.Is(err, connectors.ErrConnectorNotFound) {
-			response.ResponseError(http.StatusNotFound, err.Error())
-			return
-		}
-		h.logger.Error(err)
-		response.ResponseError(http.StatusInternalServerError, err.Error())
+		response.Fail(h.logger, err)
 		return
 	}
 	c.Status(http.StatusNoContent)

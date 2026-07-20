@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"time"
 
 	sq "github.com/Masterminds/squirrel"
@@ -59,6 +60,15 @@ func CollectOneScalarFromSqlizer[T any](
 	return v, nil
 }
 
+// mapNoRows keeps "no such row" distinguishable from a database failure, so
+// callers can 404 one and 500 the other.
+func mapNoRows(err error, notFound error) error {
+	if errors.Is(err, pgx.ErrNoRows) {
+		return notFound
+	}
+	return err
+}
+
 func toPgUUID(id uuid.UUID) pgtype.UUID {
 	return pgtype.UUID{Bytes: id, Valid: true}
 }
@@ -105,6 +115,13 @@ func toPgTextFromNullable(n types.Nullable[string]) pgtype.Text {
 		return pgtype.Text{}
 	}
 	return pgtype.Text{String: *n.Value, Valid: true}
+}
+
+func toPgBoolFromNullable(n types.Nullable[bool]) pgtype.Bool {
+	if !n.Set || n.Value == nil {
+		return pgtype.Bool{}
+	}
+	return pgtype.Bool{Bool: *n.Value, Valid: true}
 }
 
 func toNullString(t pgtype.Text) sql.NullString {

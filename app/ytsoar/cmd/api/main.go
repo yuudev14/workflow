@@ -35,7 +35,6 @@ func main() {
 	appLogger := logger.SetupLogger()
 	defer appLogger.Sync()
 
-
 	if cfg.AppEnv == "production" && cfg.JWTSecret == config.DefaultJWTSecret {
 		log.Fatal("JWT_SECRET must be set to a private value when APP_ENV=production")
 	}
@@ -76,6 +75,7 @@ func main() {
 	userRepository := repository.NewUserRepositoryImpl(appLogger, queries, pool)
 	roleRepository := repository.NewRoleRepositoryImpl(appLogger, queries, pool)
 	refreshTokenRepository := repository.NewRefreshTokenRepositoryImpl(appLogger, queries, pool)
+	teamRepository := repository.NewTeamRepositoryImpl(appLogger, queries, pool)
 	auditRepository := repository.NewAuditLogRepositoryImpl(appLogger, queries, pool)
 
 	argonHasher := security.NewArgon2Hasher()
@@ -97,6 +97,7 @@ func main() {
 		userRepository,
 		roleRepository,
 		refreshTokenRepository,
+		teamRepository,
 		auditRepository,
 		argonHasher,
 		txManager,
@@ -142,6 +143,7 @@ func main() {
 	connectorService := connectors.NewConnectorService(appLogger, connectorStore,
 		connectorWriter, connectorRepository, connectorInstaller)
 	connectorHandler := handlers.NewConnectorHandler(appLogger, connectorService)
+	adminHandler := handlers.NewAdminHandler(appLogger, authService)
 
 	routerConfig := api.RouterConfig{
 		CORSOrigins: cfg.CORSOrigins,
@@ -152,6 +154,7 @@ func main() {
 		playbookHandler,
 		connectorHandler,
 		authHandler,
+		adminHandler,
 		hub,
 		middleware.Auth(appLogger, authService),
 		middleware.AuthFromRefreshCookie(appLogger, authService),

@@ -54,7 +54,7 @@ func Auth(log logger.Logger, verifier TokenVerifier) gin.HandlerFunc {
 			return
 		}
 
-		c.Set(authUserKey, user)
+		SetCurrentUser(c, user)
 		c.Next()
 	}
 }
@@ -78,9 +78,16 @@ func AuthFromRefreshCookie(log logger.Logger, verifier TokenVerifier) gin.Handle
 			return
 		}
 
-		c.Set(authUserKey, user)
+		SetCurrentUser(c, user)
 		c.Next()
 	}
+}
+
+// SetCurrentUser records the authenticated caller. The context key stays
+// unexported so identity can only be set through here — nothing outside this
+// package can forge one by writing the raw key.
+func SetCurrentUser(c *gin.Context, user domain.AuthUser) {
+	c.Set(authUserKey, user)
 }
 
 // CurrentUser returns the authenticated caller.
