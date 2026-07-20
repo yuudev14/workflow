@@ -14,6 +14,17 @@ type PermissionSource interface {
 	PermissionsFor(ctx context.Context, userID uuid.UUID) (domain.PermissionSet, error)
 }
 
+// PermissionMiddleware lets a route file declare a grant without knowing about
+// the logger or the auth service:
+// `requirePermission(domain.ModulePlaybooks, domain.ActionRead)`.
+type PermissionMiddleware func(module, action string) gin.HandlerFunc
+
+func NewPermissionMiddleware(log logger.Logger, src PermissionSource) PermissionMiddleware {
+	return func(module, action string) gin.HandlerFunc {
+		return RequirePermission(log, src, module, action)
+	}
+}
+
 // RequirePermission gates a route on one (module, action) grant. Mount it
 // after Auth.
 //
