@@ -35,6 +35,11 @@ func main() {
 	appLogger := logger.SetupLogger()
 	defer appLogger.Sync()
 
+
+	if cfg.AppEnv == "production" && cfg.JWTSecret == config.DefaultJWTSecret {
+		log.Fatal("JWT_SECRET must be set to a private value when APP_ENV=production")
+	}
+
 	ctx := context.Background()
 	pool, err := db.NewPool(ctx, cfg.DBUrl)
 	if err != nil {
@@ -97,6 +102,12 @@ func main() {
 		txManager,
 		authConfig,
 	)
+
+	// Without this a fresh database has roles but no users, so nobody could
+	// sign in. It is a no-op once someone holds the admin role.
+	if err := authService.EnsureAdminUser(ctx); err != nil {
+		log.Fatalf("failed to seed admin user: %v", err)
+	}
 
 	orchestrator := playbooks.NewPlaybookApplicationService(
 		appLogger,

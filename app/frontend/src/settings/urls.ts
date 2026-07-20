@@ -1,9 +1,8 @@
 const BASE_URL = {
   PLAYBOOK_SERVICE_API: (process.env.NEXT_PUBLIC_PLAYBOOK_SERVICE_API || "/playbook-api"),
   CONNECTORS_SERVICE_API: (process.env.NEXT_PUBLIC_CONNECTORS_SERVICE_API || "/connector-api"),
+  AUTH_SERVICE_API: (process.env.NEXT_PUBLIC_AUTH_SERVICE_API || "/auth-api"),
 }
-
-console.log(BASE_URL)
 
 // Live status socket. Derived from the page origin so it works behind nginx
 // (ws://host/ws/playbook) without extra config; override with an env var if the

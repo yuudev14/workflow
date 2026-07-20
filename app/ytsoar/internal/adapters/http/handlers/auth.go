@@ -31,11 +31,10 @@ type LoginRequest struct {
 	Password string `json:"password" binding:"required"`
 }
 
-// TokenResponse is the login/refresh body. The refresh token is absent on
-// purpose — it goes out as an httpOnly cookie the frontend never reads.
-type TokenResponse struct {
-	AccessToken string    `json:"access_token"`
-	ExpiresAt   time.Time `json:"expires_at"`
+type SessionResponse struct {
+	ExpiresAt    time.Time `json:"expires_at"`
+	AccessToken  string    `json:"access_token"`
+	RefreshToken string    `json:"refresh_token"`
 }
 
 // Login godoc
@@ -62,10 +61,12 @@ func (h *AuthHandler) Login(c *gin.Context) {
 		return
 	}
 
+	h.cookies.SetAccessCookie(c, pair.AccessToken, pair.AccessExpiresAt)
 	h.cookies.SetRefreshCookie(c, pair.RefreshToken, pair.RefreshExpires)
-	response.ResponseSuccess(TokenResponse{
-		AccessToken: pair.AccessToken,
-		ExpiresAt:   pair.AccessExpiresAt,
+	response.ResponseSuccess(SessionResponse{
+		ExpiresAt:    pair.AccessExpiresAt,
+		AccessToken:  pair.AccessToken,
+		RefreshToken: pair.RefreshToken,
 	})
 }
 
@@ -85,9 +86,9 @@ func (h *AuthHandler) Refresh(c *gin.Context) {
 	pair, err := h.authService.Refresh(c.Request.Context(), refreshToken)
 	if err != nil {
 		if errors.Is(err, auth.ErrInvalidCredentials) {
-			// The cookie is worthless now; clearing it stops the frontend
-			// from retrying with it forever.
-			h.cookies.ClearRefreshCookie(c)
+			// The session is dead; clearing both cookies stops the browser
+			// retrying with them forever.
+			h.cookies.ClearSession(c)
 			response.ResponseError(http.StatusUnauthorized, "session expired")
 			return
 		}
@@ -96,10 +97,12 @@ func (h *AuthHandler) Refresh(c *gin.Context) {
 		return
 	}
 
+	h.cookies.SetAccessCookie(c, pair.AccessToken, pair.AccessExpiresAt)
 	h.cookies.SetRefreshCookie(c, pair.RefreshToken, pair.RefreshExpires)
-	response.ResponseSuccess(TokenResponse{
-		AccessToken: pair.AccessToken,
-		ExpiresAt:   pair.AccessExpiresAt,
+	response.ResponseSuccess(SessionResponse{
+		ExpiresAt:    pair.AccessExpiresAt,
+		AccessToken:  pair.AccessToken,
+		RefreshToken: pair.RefreshToken,
 	})
 }
 
@@ -117,7 +120,7 @@ func (h *AuthHandler) Logout(c *gin.Context) {
 		h.logger.Error(err)
 	}
 
-	h.cookies.ClearRefreshCookie(c)
+	h.cookies.ClearSession(c)
 	response.ResponseSuccess(gin.H{"message": "signed out"})
 }
 
