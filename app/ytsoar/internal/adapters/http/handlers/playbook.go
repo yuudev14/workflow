@@ -275,10 +275,22 @@ func (w *PlaybookHandler) GetTasksByPlaybookId(c *gin.Context) {
 func (w *PlaybookHandler) Trigger(c *gin.Context) {
 	response := rest.Response{C: c}
 	playbookId := c.Param("playbook_id")
+
+	// Without this the raw string reaches postgres and comes back as an
+	// invalid-uuid-syntax error, which the branch below would report as 502.
+	if _, uuidErr := uuid.Parse(playbookId); uuidErr != nil {
+		response.ResponseError(http.StatusBadRequest, "playbook_id must be a uuid")
+		return
+	}
+
 	data, triggerErr := w.PlaybookApplicationService.TriggerPlaybook(c.Request.Context(), playbookId)
 	if triggerErr != nil {
-		w.logger.Errorf("error when sending the message to queue: %v", triggerErr)
-		response.ResponseError(http.StatusBadGateway, triggerErr.Error())
+		w.logger.Errorf("error when triggering the playbook: %v", triggerErr)
+		if errors.Is(triggerErr, playbooks.ErrPlaybookNotFound) {
+			response.ResponseError(http.StatusNotFound, triggerErr.Error())
+		} else {
+			response.ResponseError(http.StatusBadGateway, "could not trigger the playbook")
+		}
 		return
 	}
 

@@ -451,6 +451,63 @@ func TestControllerGetTasksByPlaybookIdSuccess(t *testing.T) {
 	assert.Equal(t, http.StatusOK, recorder.Code)
 }
 
+func TestControllerTrigger(t *testing.T) {
+	tests := []struct {
+		name           string
+		playbookId     string
+		serviceErr     error
+		expectedStatus int
+	}{
+		{
+			name:           "accepted",
+			playbookId:     uuid.New().String(),
+			expectedStatus: http.StatusAccepted,
+		},
+		{
+			name:           "malformed id never reaches the service",
+			playbookId:     "abc",
+			expectedStatus: http.StatusBadRequest,
+		},
+		{
+			name:           "unknown playbook",
+			playbookId:     uuid.New().String(),
+			serviceErr:     playbooks.ErrPlaybookNotFound,
+			expectedStatus: http.StatusNotFound,
+		},
+		{
+			name:           "queue failure",
+			playbookId:     uuid.New().String(),
+			serviceErr:     fmt.Errorf("mq is down"),
+			expectedStatus: http.StatusBadGateway,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			controller, mockService, c, recorder := setupController(t)
+
+			c.Request = httptest.NewRequest(http.MethodPost, "/playbooks/v1/trigger/"+tt.playbookId, nil)
+			c.Params = []gin.Param{
+				{Key: "playbook_id", Value: tt.playbookId},
+			}
+
+			if tt.expectedStatus != http.StatusBadRequest {
+				mockService.
+					PlaybookApplicationService.
+					EXPECT().
+					TriggerPlaybook(gomock.Any(), tt.playbookId).
+					Return(&domain.TaskMessage{}, tt.serviceErr)
+			}
+
+			controller.Trigger(c)
+
+			assert.Equal(t, tt.expectedStatus, recorder.Code)
+			assert.NotContains(t, recorder.Body.String(), "mq is down",
+				"internal error detail must not reach the client")
+		})
+	}
+}
+
 func TestControllerUpdateTaskStatus(t *testing.T) {
 	tests := []struct {
 		name           string
