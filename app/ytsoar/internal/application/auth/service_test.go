@@ -27,6 +27,11 @@ type testEnv struct {
 	mockUsers  *mock_auth.MockUserRepository
 	mockRoles  *mock_auth.MockRoleRepository
 	mockTokens *mock_auth.MockRefreshTokenRepository
+	mockTeams  *mock_auth.MockTeamRepository
+
+	// txCalls counts WithinTransaction entries so a test can assert that a
+	// multi-statement rewrite actually ran inside one.
+	txCalls    *int
 	mockAudit  *mock_auth.MockAuditLogRepository
 	mockHasher *mock_auth.MockPasswordHasher
 }
@@ -40,6 +45,7 @@ func setupTest(t *testing.T) *testEnv {
 	mockUsers := mock_auth.NewMockUserRepository(ctrl)
 	mockRoles := mock_auth.NewMockRoleRepository(ctrl)
 	mockTokens := mock_auth.NewMockRefreshTokenRepository(ctrl)
+	mockTeams := mock_auth.NewMockTeamRepository(ctrl)
 	mockHasher := mock_auth.NewMockPasswordHasher(ctrl)
 
 	// Audit rows are a side effect of nearly every path and never change the
@@ -48,10 +54,12 @@ func setupTest(t *testing.T) *testEnv {
 	mockAudit.EXPECT().Insert(gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
 
 	// transactions pass straight through so the closure runs against the mocks
+	txCalls := 0
 	mockTx := mock_contracts.NewMockTxManager(ctrl)
 	mockTx.EXPECT().
 		WithinTransaction(gomock.Any(), gomock.Any()).
 		DoAndReturn(func(ctx context.Context, fn func(context.Context) error) error {
+			txCalls++
 			return fn(ctx)
 		}).
 		AnyTimes()
@@ -61,6 +69,7 @@ func setupTest(t *testing.T) *testEnv {
 		mockUsers,
 		mockRoles,
 		mockTokens,
+		mockTeams,
 		mockAudit,
 		mockHasher,
 		mockTx,
@@ -79,6 +88,8 @@ func setupTest(t *testing.T) *testEnv {
 		mockUsers:  mockUsers,
 		mockRoles:  mockRoles,
 		mockTokens: mockTokens,
+		mockTeams:  mockTeams,
+		txCalls:    &txCalls,
 		mockAudit:  mockAudit,
 		mockHasher: mockHasher,
 	}

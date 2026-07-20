@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"errors"
 	"fmt"
 	"net/http"
 
@@ -72,7 +71,7 @@ func (w *PlaybookHandler) GetPlaybooks(c *gin.Context) {
 		filter,
 	)
 	if err != nil {
-		response.ResponseError(http.StatusBadRequest, err.Error())
+		response.Fail(w.logger, err)
 		return
 	}
 
@@ -86,13 +85,7 @@ func (w *PlaybookHandler) GetPlaybookGraphById(c *gin.Context) {
 	playbook, playbookErr := w.PlaybookService.GetPlaybookGraphById(c.Request.Context(), playbookId)
 
 	if playbookErr != nil {
-		w.logger.Error(playbookErr)
-
-		if errors.Is(playbookErr, playbooks.ErrPlaybookNotFound) {
-			response.ResponseError(http.StatusNotFound, playbookErr.Error())
-		} else {
-			response.ResponseError(http.StatusInternalServerError, playbookErr.Error())
-		}
+		response.Fail(w.logger, playbookErr)
 		return
 	}
 
@@ -125,7 +118,7 @@ func (w *PlaybookHandler) GetPlaybookHistory(c *gin.Context) {
 	histories, historiesErr := w.PlaybookService.GetPlaybooksHistoryData(c.Request.Context(), query.Offset, query.Limit, filter)
 
 	if historiesErr != nil {
-		response.ResponseError(http.StatusBadRequest, historiesErr.Error())
+		response.Fail(w.logger, historiesErr)
 		return
 	}
 
@@ -139,7 +132,7 @@ func (w *PlaybookHandler) GetTaskHistoryByPlaybookHistoryId(c *gin.Context) {
 	playbookHistoryId := c.Param("playbook_history_id")
 	playbookHistoryUUID, uuidErr := uuid.Parse(playbookHistoryId)
 	if uuidErr != nil {
-		response.ResponseError(http.StatusNotFound, uuidErr)
+		response.ResponseError(http.StatusBadRequest, "playbook_history_id must be a uuid")
 		return
 	}
 
@@ -152,8 +145,7 @@ func (w *PlaybookHandler) GetTaskHistoryByPlaybookHistoryId(c *gin.Context) {
 	playbookHistory, playbookHistoryErr := w.PlaybookService.GetPlaybookHistoryById(c.Request.Context(), playbookHistoryUUID)
 
 	if playbookHistoryErr != nil {
-		w.logger.Error(playbookHistoryErr)
-		response.ResponseError(http.StatusNotFound, playbookHistoryErr)
+		response.Fail(w.logger, playbookHistoryErr)
 		return
 	}
 
@@ -162,7 +154,7 @@ func (w *PlaybookHandler) GetTaskHistoryByPlaybookHistoryId(c *gin.Context) {
 	tasksHistory, err := w.TaskService.GetTaskHistoryByPlaybookHistoryId(c.Request.Context(), playbookHistoryId, taskHistoryFilter)
 
 	if err != nil {
-		response.ResponseError(http.StatusBadRequest, err.Error())
+		response.Fail(w.logger, err)
 		return
 	}
 
@@ -187,7 +179,7 @@ func (w *PlaybookHandler) CreatePlaybook(c *gin.Context) {
 	playbook, err := w.PlaybookService.CreatePlaybook(c.Request.Context(), body)
 
 	if err != nil {
-		response.ResponseError(http.StatusBadRequest, err.Error())
+		response.Fail(w.logger, err)
 		return
 	}
 
@@ -212,7 +204,7 @@ func (w *PlaybookHandler) UpdatePlaybook(c *gin.Context) {
 	playbook, err := w.PlaybookService.UpdatePlaybook(c.Request.Context(), playbookId, body)
 
 	if err != nil {
-		response.ResponseError(http.StatusBadRequest, err.Error())
+		response.Fail(w.logger, err)
 		return
 	}
 
@@ -236,8 +228,7 @@ func (w *PlaybookHandler) UpdatePlaybookTasks(c *gin.Context) {
 	playbook, playbookErr := w.PlaybookApplicationService.UpdatePlaybookTasks(c.Request.Context(), playbookId, body)
 
 	if playbookErr != nil {
-		w.logger.Error(playbookErr)
-		response.ResponseError(http.StatusInternalServerError, playbookErr.Error())
+		response.Fail(w.logger, playbookErr)
 		return
 	}
 
@@ -251,19 +242,13 @@ func (w *PlaybookHandler) GetTasksByPlaybookId(c *gin.Context) {
 	_, playbookErr := w.PlaybookService.GetPlaybookById(c.Request.Context(), playbookId)
 
 	if playbookErr != nil {
-		w.logger.Error(playbookErr)
-		if errors.Is(playbookErr, playbooks.ErrPlaybookNotFound) {
-			response.ResponseError(http.StatusNotFound, playbookErr.Error())
-		} else {
-			response.ResponseError(http.StatusInternalServerError, playbookErr.Error())
-		}
+		response.Fail(w.logger, playbookErr)
 		return
 	}
 
 	newTasks, newTaskErr := w.TaskService.GetTasksByPlaybookId(c.Request.Context(), playbookId)
 	if newTaskErr != nil {
-		w.logger.Errorf("error: %v", newTaskErr)
-		response.ResponseError(http.StatusBadRequest, newTaskErr.Error())
+		response.Fail(w.logger, newTaskErr)
 		return
 	}
 
@@ -285,12 +270,7 @@ func (w *PlaybookHandler) Trigger(c *gin.Context) {
 
 	data, triggerErr := w.PlaybookApplicationService.TriggerPlaybook(c.Request.Context(), playbookId)
 	if triggerErr != nil {
-		w.logger.Errorf("error when triggering the playbook: %v", triggerErr)
-		if errors.Is(triggerErr, playbooks.ErrPlaybookNotFound) {
-			response.ResponseError(http.StatusNotFound, triggerErr.Error())
-		} else {
-			response.ResponseError(http.StatusBadGateway, "could not trigger the playbook")
-		}
+		response.Fail(w.logger, triggerErr)
 		return
 	}
 
@@ -356,8 +336,7 @@ func (w *PlaybookHandler) UpdateTaskStatus(c *gin.Context) {
 	task, updateTaskErr := w.TaskService.UpdateTaskStatus(c.Request.Context(), playbookHistoryId, taskId, body.Status)
 
 	if updateTaskErr != nil {
-		w.logger.Errorf("%v", updateTaskErr)
-		response.ResponseError(http.StatusBadRequest, updateTaskErr.Error())
+		response.Fail(w.logger, updateTaskErr)
 		return
 	}
 
@@ -388,8 +367,7 @@ func (w *PlaybookHandler) UpdatePlaybookStatus(c *gin.Context) {
 	playbook, updatePlaybookErr := w.PlaybookService.UpdatePlaybookHistoryStatus(c.Request.Context(), playbookHistoryId, body.Status)
 
 	if updatePlaybookErr != nil {
-		w.logger.Errorf("%v", updatePlaybookErr)
-		response.ResponseError(http.StatusBadRequest, updatePlaybookErr.Error())
+		response.Fail(w.logger, updatePlaybookErr)
 		return
 	}
 

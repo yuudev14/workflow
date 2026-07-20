@@ -15,6 +15,7 @@ import (
 	"strings"
 
 	"github.com/yuudev14/ytsoar/internal/domain"
+	"github.com/yuudev14/ytsoar/internal/domain/apperr"
 	"github.com/yuudev14/ytsoar/internal/logger"
 )
 
@@ -81,11 +82,11 @@ func (s *ConnectorServiceImpl) GetConnector(ctx context.Context, connectorID str
 // row. Validation failures wrap ErrInvalidConnector.
 func (s *ConnectorServiceImpl) UploadConnector(ctx context.Context, zipBytes []byte, uploadedBy string) (domain.ConnectorInfo, error) {
 	if len(zipBytes) > MaxUploadBytes {
-		return nil, fmt.Errorf("%w: zip exceeds %d bytes", ErrInvalidConnector, MaxUploadBytes)
+		return nil, apperr.Wrap(apperr.Invalid, fmt.Sprintf("zip exceeds %d bytes", MaxUploadBytes), ErrInvalidConnector)
 	}
 	archive, err := zip.NewReader(bytes.NewReader(zipBytes), int64(len(zipBytes)))
 	if err != nil {
-		return nil, fmt.Errorf("%w: not a zip archive: %v", ErrInvalidConnector, err)
+		return nil, apperr.Wrap(apperr.Invalid, fmt.Sprintf("not a zip archive: %v", err), ErrInvalidConnector)
 	}
 
 	prefix, err := validateArchive(archive)
@@ -127,7 +128,7 @@ func (s *ConnectorServiceImpl) DeleteConnector(ctx context.Context, connectorID 
 	// reservedIDs guard deletes too: removing a builtin's info.json dir would
 	// strip it from the editor even though its implementation is compiled in.
 	if reservedIDs[connectorID] {
-		return fmt.Errorf("%w: connector id %q is reserved", ErrInvalidConnector, connectorID)
+		return apperr.Wrap(apperr.Invalid, fmt.Sprintf("connector id %q is reserved", connectorID), ErrInvalidConnector)
 	}
 	if _, err := s.store.Get(ctx, connectorID); err != nil {
 		return err
@@ -161,7 +162,7 @@ type archiveInfo struct {
 // folder to strip ("" when files sit at the zip root).
 func validateArchive(archive *zip.Reader) (string, error) {
 	if len(archive.File) == 0 {
-		return "", fmt.Errorf("%w: empty zip", ErrInvalidConnector)
+		return "", apperr.Wrap(apperr.Invalid, "empty zip", ErrInvalidConnector)
 	}
 	var total uint64
 	prefix := ""
@@ -169,18 +170,18 @@ func validateArchive(archive *zip.Reader) (string, error) {
 	for _, file := range archive.File {
 		name := file.Name
 		if strings.Contains(name, `\`) || strings.HasPrefix(name, "/") {
-			return "", fmt.Errorf("%w: unsafe path %q", ErrInvalidConnector, name)
+			return "", apperr.Wrap(apperr.Invalid, fmt.Sprintf("unsafe path %q", name), ErrInvalidConnector)
 		}
 		clean := path.Clean(name)
 		if clean == ".." || strings.HasPrefix(clean, "../") {
-			return "", fmt.Errorf("%w: unsafe path %q", ErrInvalidConnector, name)
+			return "", apperr.Wrap(apperr.Invalid, fmt.Sprintf("unsafe path %q", name), ErrInvalidConnector)
 		}
 		if file.Mode()&os.ModeSymlink != 0 {
-			return "", fmt.Errorf("%w: symlink %q not allowed", ErrInvalidConnector, name)
+			return "", apperr.Wrap(apperr.Invalid, fmt.Sprintf("symlink %q not allowed", name), ErrInvalidConnector)
 		}
 		total += file.UncompressedSize64
 		if total > maxUncompressedBytes {
-			return "", fmt.Errorf("%w: archive expands beyond %d bytes", ErrInvalidConnector, maxUncompressedBytes)
+			return "", apperr.Wrap(apperr.Invalid, fmt.Sprintf("archive expands beyond %d bytes", maxUncompressedBytes), ErrInvalidConnector)
 		}
 		if strings.HasSuffix(name, "/") {
 			continue // directory entry
@@ -226,7 +227,7 @@ func readArchiveInfo(archive *zip.Reader, prefix string) (archiveInfo, error) {
 		}
 	}
 	if raw == nil {
-		return archiveInfo{}, fmt.Errorf("%w: info.json missing at the connector root", ErrInvalidConnector)
+		return archiveInfo{}, apperr.Wrap(apperr.Invalid, "info.json missing at the connector root", ErrInvalidConnector)
 	}
 
 	var info struct {
@@ -236,16 +237,16 @@ func readArchiveInfo(archive *zip.Reader, prefix string) (archiveInfo, error) {
 		Version string `json:"version"`
 	}
 	if err := json.Unmarshal(raw, &info); err != nil {
-		return archiveInfo{}, fmt.Errorf("%w: invalid info.json: %v", ErrInvalidConnector, err)
+		return archiveInfo{}, apperr.Wrap(apperr.Invalid, fmt.Sprintf("invalid info.json: %v", err), ErrInvalidConnector)
 	}
 	if !idPattern.MatchString(info.ID) {
-		return archiveInfo{}, fmt.Errorf("%w: invalid connector id %q", ErrInvalidConnector, info.ID)
+		return archiveInfo{}, apperr.Wrap(apperr.Invalid, fmt.Sprintf("invalid connector id %q", info.ID), ErrInvalidConnector)
 	}
 	if reservedIDs[info.ID] {
-		return archiveInfo{}, fmt.Errorf("%w: connector id %q is reserved", ErrInvalidConnector, info.ID)
+		return archiveInfo{}, apperr.Wrap(apperr.Invalid, fmt.Sprintf("connector id %q is reserved", info.ID), ErrInvalidConnector)
 	}
 	if info.Name == "" {
-		return archiveInfo{}, fmt.Errorf("%w: info.json needs a name", ErrInvalidConnector)
+		return archiveInfo{}, apperr.Wrap(apperr.Invalid, "info.json needs a name", ErrInvalidConnector)
 	}
 	if info.Runtime == "" {
 		info.Runtime = "python"
@@ -254,14 +255,14 @@ func readArchiveInfo(archive *zip.Reader, prefix string) (archiveInfo, error) {
 	switch info.Runtime {
 	case "node":
 		if !files["connector.ts"] && !files["connector.js"] {
-			return archiveInfo{}, fmt.Errorf("%w: runtime node needs connector.ts or connector.js", ErrInvalidConnector)
+			return archiveInfo{}, apperr.Wrap(apperr.Invalid, "runtime node needs connector.ts or connector.js", ErrInvalidConnector)
 		}
 	case "python":
 		if !files["connector.py"] {
-			return archiveInfo{}, fmt.Errorf("%w: runtime python needs connector.py", ErrInvalidConnector)
+			return archiveInfo{}, apperr.Wrap(apperr.Invalid, "runtime python needs connector.py", ErrInvalidConnector)
 		}
 	default:
-		return archiveInfo{}, fmt.Errorf("%w: unknown runtime %q", ErrInvalidConnector, info.Runtime)
+		return archiveInfo{}, apperr.Wrap(apperr.Invalid, fmt.Sprintf("unknown runtime %q", info.Runtime), ErrInvalidConnector)
 	}
 
 	return archiveInfo{id: info.ID, name: info.Name, runtime: info.Runtime, version: info.Version}, nil

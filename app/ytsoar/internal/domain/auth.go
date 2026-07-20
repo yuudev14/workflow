@@ -1,6 +1,7 @@
 package domain
 
 import (
+	"encoding/json"
 	"time"
 
 	"github.com/google/uuid"
@@ -75,27 +76,41 @@ const (
 )
 
 type User struct {
-	ID           uuid.UUID    `json:"id"`
-	Username     string       `json:"username"`
-	Email        string       `json:"email"`
-	PasswordHash *string      `json:"-"`
-	FirstName    *string      `json:"first_name"`
-	LastName     *string      `json:"last_name"`
-	AuthProvider AuthProvider `json:"auth_provider"`
-	ExternalID   *string      `json:"external_id,omitempty"`
-	IsActive     bool         `json:"is_active"`
-	LastLoginAt  *time.Time   `json:"last_login_at"`
-	CreatedAt    time.Time    `json:"created_at"`
-	UpdatedAt    time.Time    `json:"updated_at"`
+	ID           uuid.UUID    `db:"id" json:"id"`
+	Username     string       `db:"username" json:"username"`
+	Email        string       `db:"email" json:"email"`
+	PasswordHash *string      `db:"password_hash" json:"-"`
+	FirstName    *string      `db:"first_name" json:"first_name"`
+	LastName     *string      `db:"last_name" json:"last_name"`
+	AuthProvider AuthProvider `db:"auth_provider" json:"auth_provider"`
+	ExternalID   *string      `db:"external_id" json:"external_id,omitempty"`
+	IsActive     bool         `db:"is_active" json:"is_active"`
+	LastLoginAt  *time.Time   `db:"last_login_at" json:"last_login_at"`
+	CreatedAt    time.Time    `db:"created_at" json:"created_at"`
+	UpdatedAt    time.Time    `db:"updated_at" json:"updated_at"`
+}
+
+// UserWithRoles is the list/detail shape the admin UI reads. Roles come from
+// an aggregate in the same query rather than a per-row lookup.
+type UserWithRoles struct {
+	User
+	Roles []string `db:"roles" json:"roles"`
 }
 
 type Role struct {
-	ID          uuid.UUID `json:"id"`
-	Name        string    `json:"name"`
-	Description *string   `json:"description"`
-	IsBuiltin   bool      `json:"is_builtin"`
-	CreatedAt   time.Time `json:"created_at"`
-	UpdatedAt   time.Time `json:"updated_at"`
+	ID          uuid.UUID `db:"id" json:"id"`
+	Name        string    `db:"name" json:"name"`
+	Description *string   `db:"description" json:"description"`
+	IsBuiltin   bool      `db:"is_builtin" json:"is_builtin"`
+	CreatedAt   time.Time `db:"created_at" json:"created_at"`
+	UpdatedAt   time.Time `db:"updated_at" json:"updated_at"`
+}
+
+// RoleWithPermissions is the matrix editor's shape: the role plus its grants
+// rendered as {module: [actions]}.
+type RoleWithPermissions struct {
+	Role
+	Permissions map[string][]string `json:"permissions"`
 }
 
 type Permission struct {
@@ -125,11 +140,22 @@ func (p PermissionSet) ToMap() map[string][]string {
 }
 
 type Team struct {
-	ID          uuid.UUID `json:"id"`
-	Name        string    `json:"name"`
-	Description *string   `json:"description"`
-	CreatedAt   time.Time `json:"created_at"`
-	UpdatedAt   time.Time `json:"updated_at"`
+	ID          uuid.UUID `db:"id" json:"id"`
+	Name        string    `db:"name" json:"name"`
+	Description *string   `db:"description" json:"description"`
+	CreatedAt   time.Time `db:"created_at" json:"created_at"`
+	UpdatedAt   time.Time `db:"updated_at" json:"updated_at"`
+}
+
+type TeamWithMembers struct {
+	Team
+	Members []TeamMember `json:"members"`
+}
+
+type TeamMember struct {
+	ID       uuid.UUID `db:"id" json:"id"`
+	Username string    `db:"username" json:"username"`
+	Email    string    `db:"email" json:"email"`
 }
 
 type RefreshToken struct {
@@ -141,6 +167,19 @@ type RefreshToken struct {
 	CreatedAt time.Time
 }
 
+// AuditLog is the read shape. ActorUsername is joined in and stays nil for
+// system-generated rows and for actors whose account was later removed
+// (actor_id is ON DELETE SET NULL — the trail outlives the user).
+type AuditLog struct {
+	ID            uuid.UUID       `db:"id" json:"id"`
+	ActorID       *uuid.UUID      `db:"actor_id" json:"actor_id"`
+	ActorUsername *string         `db:"actor_username" json:"actor_username"`
+	Module        string          `db:"module" json:"module"`
+	Action        string          `db:"action" json:"action"`
+	EntityID      *string         `db:"entity_id" json:"entity_id"`
+	Detail        json.RawMessage `db:"detail" json:"detail"`
+	CreatedAt     time.Time       `db:"created_at" json:"created_at"`
+}
 
 type AuditEntry struct {
 	ActorID  *uuid.UUID

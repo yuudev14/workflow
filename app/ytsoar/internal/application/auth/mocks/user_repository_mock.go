@@ -43,6 +43,21 @@ func (m *MockUserRepository) EXPECT() *MockUserRepositoryMockRecorder {
 	return m.recorder
 }
 
+// Count mocks base method.
+func (m *MockUserRepository) Count(ctx context.Context, filter auth.UserFilter) (int, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Count", ctx, filter)
+	ret0, _ := ret[0].(int)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// Count indicates an expected call of Count.
+func (mr *MockUserRepositoryMockRecorder) Count(ctx, filter any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Count", reflect.TypeOf((*MockUserRepository)(nil).Count), ctx, filter)
+}
+
 // CountWithRole mocks base method.
 func (m *MockUserRepository) CountWithRole(ctx context.Context, roleName string) (int64, error) {
 	m.ctrl.T.Helper()
@@ -103,6 +118,50 @@ func (mr *MockUserRepositoryMockRecorder) GetByUsername(ctx, username any) *gomo
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetByUsername", reflect.TypeOf((*MockUserRepository)(nil).GetByUsername), ctx, username)
 }
 
+// GetWithRoles mocks base method.
+func (m *MockUserRepository) GetWithRoles(ctx context.Context, id uuid.UUID) (domain.UserWithRoles, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetWithRoles", ctx, id)
+	ret0, _ := ret[0].(domain.UserWithRoles)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetWithRoles indicates an expected call of GetWithRoles.
+func (mr *MockUserRepositoryMockRecorder) GetWithRoles(ctx, id any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetWithRoles", reflect.TypeOf((*MockUserRepository)(nil).GetWithRoles), ctx, id)
+}
+
+// List mocks base method.
+func (m *MockUserRepository) List(ctx context.Context, offset, limit int, filter auth.UserFilter) ([]domain.UserWithRoles, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "List", ctx, offset, limit, filter)
+	ret0, _ := ret[0].([]domain.UserWithRoles)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// List indicates an expected call of List.
+func (mr *MockUserRepositoryMockRecorder) List(ctx, offset, limit, filter any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "List", reflect.TypeOf((*MockUserRepository)(nil).List), ctx, offset, limit, filter)
+}
+
+// SetPassword mocks base method.
+func (m *MockUserRepository) SetPassword(ctx context.Context, id uuid.UUID, passwordHash string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "SetPassword", ctx, id, passwordHash)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// SetPassword indicates an expected call of SetPassword.
+func (mr *MockUserRepositoryMockRecorder) SetPassword(ctx, id, passwordHash any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetPassword", reflect.TypeOf((*MockUserRepository)(nil).SetPassword), ctx, id, passwordHash)
+}
+
 // TouchLastLogin mocks base method.
 func (m *MockUserRepository) TouchLastLogin(ctx context.Context, id uuid.UUID) error {
 	m.ctrl.T.Helper()
@@ -115,4 +174,19 @@ func (m *MockUserRepository) TouchLastLogin(ctx context.Context, id uuid.UUID) e
 func (mr *MockUserRepositoryMockRecorder) TouchLastLogin(ctx, id any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "TouchLastLogin", reflect.TypeOf((*MockUserRepository)(nil).TouchLastLogin), ctx, id)
+}
+
+// Update mocks base method.
+func (m *MockUserRepository) Update(ctx context.Context, id uuid.UUID, params auth.UpdateUserParams) (domain.User, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Update", ctx, id, params)
+	ret0, _ := ret[0].(domain.User)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// Update indicates an expected call of Update.
+func (mr *MockUserRepositoryMockRecorder) Update(ctx, id, params any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Update", reflect.TypeOf((*MockUserRepository)(nil).Update), ctx, id, params)
 }

@@ -106,6 +106,82 @@ func TestConnectorRouteGrants(t *testing.T) {
 	}
 }
 
+// Everything under settings administers who may do what, so a gap here is a
+// privilege-escalation hole rather than a cosmetic inconsistency.
+func TestAdminRouteGrants(t *testing.T) {
+	h := &AdminHandler{}
+	register := func(g *gin.RouterGroup, p middleware.PermissionMiddleware) {
+		h.RegisterRoutes(g, p)
+	}
+
+	cases := []struct {
+		method string
+		path   string
+		want   string
+	}{
+		{http.MethodGet, "/api/users/v1", "settings.read"},
+		{http.MethodGet, "/api/users/v1/abc", "settings.read"},
+		{http.MethodPost, "/api/users/v1", "settings.create"},
+		{http.MethodPut, "/api/users/v1/abc", "settings.update"},
+		{http.MethodPut, "/api/users/v1/abc/roles", "settings.update"},
+		{http.MethodPut, "/api/users/v1/abc/password", "settings.update"},
+		{http.MethodDelete, "/api/users/v1/abc", "settings.delete"},
+
+		{http.MethodGet, "/api/roles/v1", "settings.read"},
+		{http.MethodGet, "/api/roles/v1/abc", "settings.read"},
+		{http.MethodPost, "/api/roles/v1", "settings.create"},
+		{http.MethodPut, "/api/roles/v1/abc", "settings.update"},
+		{http.MethodPut, "/api/roles/v1/abc/permissions", "settings.update"},
+		{http.MethodDelete, "/api/roles/v1/abc", "settings.delete"},
+
+		{http.MethodGet, "/api/teams/v1", "settings.read"},
+		{http.MethodGet, "/api/teams/v1/abc", "settings.read"},
+		{http.MethodPost, "/api/teams/v1", "settings.create"},
+		{http.MethodPut, "/api/teams/v1/abc", "settings.update"},
+		{http.MethodPut, "/api/teams/v1/abc/members", "settings.update"},
+		{http.MethodDelete, "/api/teams/v1/abc", "settings.delete"},
+
+		{http.MethodGet, "/api/audit/v1", "settings.read"},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.method+" "+tc.path, func(t *testing.T) {
+			assert.Equal(t, tc.want, grantFor(t, register, tc.method, tc.path))
+		})
+	}
+}
+
+// SameSite=Lax only defends non-GET verbs, so a mutation exposed over GET
+// would be reachable cross-site. This asserts the invariant instead of leaving
+// it to review.
+func TestNoMutationIsExposedOverGET(t *testing.T) {
+	registrars := []func(*gin.RouterGroup, middleware.PermissionMiddleware){
+		(&PlaybookHandler{}).RegisterRoutes,
+		(&ConnectorHandler{}).RegisterRoutes,
+		(&AdminHandler{}).RegisterRoutes,
+	}
+
+	gin.SetMode(gin.TestMode)
+	passthrough := func(module, action string) gin.HandlerFunc {
+		return func(c *gin.Context) { c.Next() }
+	}
+
+	router := gin.New()
+	for _, register := range registrars {
+		register(router.Group("/api"), passthrough)
+	}
+
+	for _, route := range router.Routes() {
+		if route.Method != http.MethodGet {
+			continue
+		}
+		for _, verb := range []string{"create", "update", "delete", "password", "trigger"} {
+			assert.NotContains(t, route.Path, verb,
+				"GET %s looks like a mutation; SameSite=Lax does not protect GET", route.Path)
+		}
+	}
+}
+
 // Every grant a route asks for must exist in the domain vocabulary. The
 // columns are TEXT, so a typo like "playbook.read" would not fail at the
 // database — it would silently grant nothing and 403 forever.
@@ -113,6 +189,7 @@ func TestRouteGrantsUseKnownVocabulary(t *testing.T) {
 	registrars := []func(*gin.RouterGroup, middleware.PermissionMiddleware){
 		(&PlaybookHandler{}).RegisterRoutes,
 		(&ConnectorHandler{}).RegisterRoutes,
+		(&AdminHandler{}).RegisterRoutes,
 	}
 
 	seen := map[string]bool{}

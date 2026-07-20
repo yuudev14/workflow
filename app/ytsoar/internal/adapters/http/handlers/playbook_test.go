@@ -17,6 +17,7 @@ import (
 	"github.com/yuudev14/ytsoar/internal/application/tasks"
 	mock_tasks "github.com/yuudev14/ytsoar/internal/application/tasks/mocks"
 	"github.com/yuudev14/ytsoar/internal/domain"
+	"github.com/yuudev14/ytsoar/internal/domain/apperr"
 	"github.com/yuudev14/ytsoar/internal/logger"
 	"github.com/yuudev14/ytsoar/internal/types"
 	"go.uber.org/mock/gomock"
@@ -119,7 +120,9 @@ func TestControllerGetPlaybooksError(t *testing.T) {
 
 	controller.GetPlaybooks(c)
 
-	assert.Equal(t, http.StatusBadRequest, recorder.Code)
+	assert.Equal(t, http.StatusInternalServerError, recorder.Code)
+	assert.NotContains(t, recorder.Body.String(), "service error",
+		"an unclassified error must not reach the client")
 }
 
 func TestControllerGetPlaybooksInvalidQuery(t *testing.T) {
@@ -298,7 +301,7 @@ func TestControllerGetPlaybooksHistoryError(t *testing.T) {
 
 	controller.GetPlaybookHistory(c)
 
-	assert.Equal(t, http.StatusBadRequest, recorder.Code)
+	assert.Equal(t, http.StatusInternalServerError, recorder.Code)
 }
 
 func TestControllerGetPlaybooksHistoryInvalidQuery(t *testing.T) {
@@ -475,10 +478,16 @@ func TestControllerTrigger(t *testing.T) {
 			expectedStatus: http.StatusNotFound,
 		},
 		{
-			name:           "queue failure",
+			name:           "queue failure is an upstream problem",
+			playbookId:     uuid.New().String(),
+			serviceErr:     apperr.Wrap(apperr.Unavailable, "could not queue the playbook run", fmt.Errorf("mq is down")),
+			expectedStatus: http.StatusBadGateway,
+		},
+		{
+			name:           "unclassified failure",
 			playbookId:     uuid.New().String(),
 			serviceErr:     fmt.Errorf("mq is down"),
-			expectedStatus: http.StatusBadGateway,
+			expectedStatus: http.StatusInternalServerError,
 		},
 	}
 

@@ -13,6 +13,7 @@ import (
 	context "context"
 	reflect "reflect"
 
+	auth "github.com/yuudev14/ytsoar/internal/application/auth"
 	domain "github.com/yuudev14/ytsoar/internal/domain"
 	gomock "go.uber.org/mock/gomock"
 )
@@ -41,6 +42,21 @@ func (m *MockAuditLogRepository) EXPECT() *MockAuditLogRepositoryMockRecorder {
 	return m.recorder
 }
 
+// Count mocks base method.
+func (m *MockAuditLogRepository) Count(ctx context.Context, filter auth.AuditFilter) (int, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Count", ctx, filter)
+	ret0, _ := ret[0].(int)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// Count indicates an expected call of Count.
+func (mr *MockAuditLogRepositoryMockRecorder) Count(ctx, filter any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Count", reflect.TypeOf((*MockAuditLogRepository)(nil).Count), ctx, filter)
+}
+
 // Insert mocks base method.
 func (m *MockAuditLogRepository) Insert(ctx context.Context, entry domain.AuditEntry) error {
 	m.ctrl.T.Helper()
@@ -53,4 +69,19 @@ func (m *MockAuditLogRepository) Insert(ctx context.Context, entry domain.AuditE
 func (mr *MockAuditLogRepositoryMockRecorder) Insert(ctx, entry any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Insert", reflect.TypeOf((*MockAuditLogRepository)(nil).Insert), ctx, entry)
+}
+
+// List mocks base method.
+func (m *MockAuditLogRepository) List(ctx context.Context, offset, limit int, filter auth.AuditFilter) ([]domain.AuditLog, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "List", ctx, offset, limit, filter)
+	ret0, _ := ret[0].([]domain.AuditLog)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// List indicates an expected call of List.
+func (mr *MockAuditLogRepositoryMockRecorder) List(ctx, offset, limit, filter any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "List", reflect.TypeOf((*MockAuditLogRepository)(nil).List), ctx, offset, limit, filter)
 }

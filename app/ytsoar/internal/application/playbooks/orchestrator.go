@@ -11,6 +11,7 @@ import (
 	"github.com/yuudev14/ytsoar/internal/application/edges"
 	"github.com/yuudev14/ytsoar/internal/application/tasks"
 	"github.com/yuudev14/ytsoar/internal/domain"
+	"github.com/yuudev14/ytsoar/internal/domain/apperr"
 	"github.com/yuudev14/ytsoar/internal/logger"
 )
 
@@ -316,19 +317,16 @@ func (w *PlaybookApplicationServiceImpl) UpdatePlaybookTasks(
 func (w *PlaybookApplicationServiceImpl) TriggerPlaybook(ctx context.Context, playbookId string) (*domain.TaskMessage, error) {
 	_, playbookErr := w.PlaybookService.GetPlaybookById(ctx, playbookId)
 	if playbookErr != nil {
-		w.Logger.Error(playbookErr)
 		return nil, playbookErr
 	}
 
 	taskData, tasksErr := w.TaskService.GetTasksByPlaybookId(ctx, playbookId)
 	if tasksErr != nil {
-		w.Logger.Errorf("error: %v", tasksErr)
 		return nil, tasksErr
 	}
 
 	edges, edgesErr := w.EdgeService.GetEdgesByPlaybookId(ctx, playbookId)
 	if edgesErr != nil {
-		w.Logger.Errorf("error: %v", edgesErr)
 		return nil, edgesErr
 	}
 
@@ -361,9 +359,10 @@ func (w *PlaybookApplicationServiceImpl) TriggerPlaybook(ctx context.Context, pl
 		Edges:             edgeRefs,
 	}
 
+	// The history row is already committed, so a publish failure is an upstream
+	// problem the caller can retry — not a bad request.
 	if mqErr := w.TaskPublisher.SendMessage(body); mqErr != nil {
-		w.Logger.Errorf("error when sending the message to queue: %v", mqErr)
-		return nil, mqErr
+		return nil, apperr.Wrap(apperr.Unavailable, "could not queue the playbook run", mqErr)
 	}
 	return &body, nil
 }
