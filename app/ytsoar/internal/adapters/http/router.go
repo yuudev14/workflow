@@ -7,7 +7,9 @@ import (
 	ginSwagger "github.com/swaggo/gin-swagger"
 	"github.com/yuudev14/ytsoar/docs"
 	"github.com/yuudev14/ytsoar/internal/adapters/http/handlers"
+	"github.com/yuudev14/ytsoar/internal/adapters/http/middleware"
 	"github.com/yuudev14/ytsoar/internal/adapters/ws"
+	"github.com/yuudev14/ytsoar/internal/domain"
 )
 
 type RouterConfig struct {
@@ -25,6 +27,7 @@ func NewRouter(
 	hub *ws.Hub,
 	authMW gin.HandlerFunc,
 	wsAuthMW gin.HandlerFunc,
+	requirePermission middleware.PermissionMiddleware,
 ) *gin.Engine {
 	app := gin.Default()
 
@@ -43,15 +46,23 @@ func NewRouter(
 	authHandler.RegisterPublicRoutes(apiGroup)
 
 	protected := apiGroup.Group("", authMW)
+
+	// /me carries no grant: every authenticated user must be able to read
+	// their own profile and permissions.
 	authHandler.RegisterProtectedRoutes(protected)
-	playbookHandler.RegisterRoutes(protected)
-	connectorHandler.RegisterRoutes(protected)
+
+	playbookHandler.RegisterRoutes(protected, requirePermission)
+	connectorHandler.RegisterRoutes(protected, requirePermission)
 
 	app.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
 	// The handshake authenticates with the refresh cookie: a browser cannot
-	// set an Authorization header on a WebSocket.
-	app.GET("/ws/playbook", wsAuthMW, hub.ServeWS)
+	// set an Authorization header on a WebSocket. The socket carries playbook
+	// status, so it needs the same grant as reading playbooks.
+	app.GET("/ws/playbook",
+		wsAuthMW,
+		requirePermission(domain.ModulePlaybooks, domain.ActionRead),
+		hub.ServeWS)
 
 	return app
 }

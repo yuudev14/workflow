@@ -155,6 +155,7 @@ func main() {
 		hub,
 		middleware.Auth(appLogger, authService),
 		middleware.AuthFromRefreshCookie(appLogger, authService),
+		middleware.NewPermissionMiddleware(appLogger, authService),
 	)
 	if err := app.Run(cfg.HTTPAddr); err != nil {
 		log.Fatalf("http server: %v", err)
