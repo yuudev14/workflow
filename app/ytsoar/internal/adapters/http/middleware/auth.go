@@ -15,22 +15,33 @@ import (
 // authUserKey is unexported so only CurrentUser can read the context value.
 const authUserKey = "auth_user"
 
-// RefreshCookieName is the httpOnly cookie holding the refresh token. It is
-// the only credential the browser stores; access tokens live in JS memory.
-const RefreshCookieName = "ytsoar_rt"
+const (
+	AccessCookieName  = "ytsoar_at"
+	RefreshCookieName = "ytsoar_rt"
+)
 
-// TokenVerifier is the slice of the auth service the middleware needs.
 type TokenVerifier interface {
 	VerifyAccessToken(tokenString string) (domain.AuthUser, error)
 	VerifyRefreshTokenForWS(ctx context.Context, refreshToken string) (domain.AuthUser, error)
 }
 
-// Auth authenticates ordinary API requests from the Authorization header.
-// Header-only is deliberate: a cross-site page can make the browser send
-// cookies but cannot make it send headers, so these routes cannot be forged.
+// Auth authenticates ordinary API requests.
+//
+// Browsers send the access token as an httpOnly cookie, which they attach
+// automatically. the frontend never handles the token. Service clients (the
+// agent service, the worker, the CLI) have no cookie jar, so an Authorization
+// header is accepted too; the header wins when both are present.
+//
+// Accepting cookies means CSRF protection rests on SameSite=Lax plus the
+// exact-origin CORS allow-list rather than on headers being unforgeable. Lax
+// keeps cookies off cross-site POST/PUT/DELETE, so mutations stay safe as long
+// as they never hide behind GET.
 func Auth(log logger.Logger, verifier TokenVerifier) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		raw := bearerToken(c.GetHeader("Authorization"))
+		if raw == "" {
+			raw = ReadAccessCookie(c)
+		}
 		if raw == "" {
 			unauthorized(c)
 			return
@@ -72,8 +83,7 @@ func AuthFromRefreshCookie(log logger.Logger, verifier TokenVerifier) gin.Handle
 	}
 }
 
-// CurrentUser returns the authenticated caller. The second result is false on
-// routes that did not run an auth middleware.
+// CurrentUser returns the authenticated caller.
 func CurrentUser(c *gin.Context) (domain.AuthUser, bool) {
 	value, exists := c.Get(authUserKey)
 	if !exists {

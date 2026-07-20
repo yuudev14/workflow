@@ -66,6 +66,18 @@ services:
       - AIR_WATCH_TMOUT=500ms
       - STATUS_EXCHANGE=playbook.status
       - CONNECTORS_DIR=/opt/ytsoar/connectors
+      - APP_ENV=development
+      # Dev-only secret. APP_ENV=production refuses to start with this value.
+      - JWT_SECRET=dev-secret
+      # Seeded on first boot only, when nobody holds the admin role yet.
+      - ADMIN_USERNAME=admin
+      - ADMIN_EMAIL=admin@ytsoar.local
+      - ADMIN_PASSWORD=admin123!
+      # Exact origins: a wildcard is invalid once credentials are involved.
+      # This list also drives the websocket origin check.
+      - CORS_ORIGINS=http://localhost:9999,http://localhost:3000
+      # Everything is plain http behind nginx in dev.
+      - COOKIE_SECURE=false
     networks:
       - ytsoar
     depends_on:

@@ -18,6 +18,10 @@
         "name": "next"
       }
     ],
+    // TS 5 with moduleResolution "bundler" resolves "paths" relative to this
+    // file, so baseUrl is not strictly required — it is set explicitly so
+    // older or alternative resolvers anchor the alias the same way.
+    "baseUrl": ".",
     "paths": {
       "@/*": ["./src/*"]
     }

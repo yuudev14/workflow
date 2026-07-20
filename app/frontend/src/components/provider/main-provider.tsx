@@ -2,7 +2,6 @@
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { ThemeProvider } from "./theme-provider"
-import PlaybookStatusProvider from "./playbook-status-provider"
 
 export const queryClient = new QueryClient({
   defaultOptions: {
@@ -24,7 +23,8 @@ export default function Providers({ children }: { children: React.ReactNode }) {
         enableSystem
         disableTransitionOnChange
       >
-        <PlaybookStatusProvider>{children}</PlaybookStatusProvider>
+
+        {children}
       </ThemeProvider>
 
     </QueryClientProvider>
