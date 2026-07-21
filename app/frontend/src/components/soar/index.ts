@@ -16,3 +16,5 @@ export { SearchInput } from "./SearchInput";
 export { Glyph, connectorGlyph, type GlyphTone } from "./Glyph";
 export { KVList, FieldGrid, type KV } from "./DataLists";
 export { PageShell } from "./PageShell";
+export { DataTable } from "./DataTable";
+export { PaginationBar } from "./PaginationBar";

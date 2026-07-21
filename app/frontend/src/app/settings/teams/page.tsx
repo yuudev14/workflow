@@ -2,14 +2,22 @@
 
 import * as React from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Pencil, Plus, Trash2, UsersRound } from "lucide-react";
+import { createColumnHelper } from "@tanstack/react-table";
+import { Pencil, Plus, Trash2, UsersRound, X } from "lucide-react";
 
 import AdminService from "@/services/admin/admin";
-import { Team } from "@/services/admin/admin.schema";
+import { Team, TeamMember } from "@/services/admin/admin.schema";
 import { apiErrorMessage } from "@/services/common/errors";
 import { toast } from "@/hooks/use-toast";
 import { usePermission } from "@/hooks/usePermission";
-import { EmptyState, PageShell, SearchInput } from "@/components/soar";
+import {
+  DataTable,
+  EmptyState,
+  Glyph,
+  InitialsAvatar,
+  PageShell,
+  SearchInput,
+} from "@/components/soar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -23,8 +31,9 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Chip } from "../_components/Chip";
 import { ConfirmDialog } from "../_components/ConfirmDialog";
+
+const columnHelper = createColumnHelper<Team>();
 
 export default function TeamsPage() {
   const queryClient = useQueryClient();
@@ -63,6 +72,72 @@ export default function TeamsPage() {
     setFormOpen(true);
   };
 
+  const columns = React.useMemo(
+    () => [
+      columnHelper.accessor("name", {
+        header: "Team",
+        cell: ({ row: { original: team } }) => (
+          <div className="flex min-w-0 items-start gap-2.5">
+            <Glyph icon={UsersRound} tone="slate" size="md" className="mt-0.5" />
+            <div className="min-w-0">
+              <div className="font-semibold">{team.name}</div>
+              <div className="truncate text-[12.5px] text-ink-faint">
+                {team.description ?? "No description"}
+              </div>
+            </div>
+          </div>
+        ),
+      }),
+      columnHelper.accessor("members", {
+        header: "Members",
+        cell: ({ getValue }) => {
+          const members = getValue();
+          if (members.length === 0) {
+            return <span className="text-[12.5px] text-ink-faint">No members</span>;
+          }
+          return (
+            <div className="flex items-center">
+              <div className="flex">
+                {members.slice(0, 6).map((m) => (
+                  <InitialsAvatar
+                    key={m.id}
+                    name={m.username}
+                    size={24}
+                    className="-ml-2 ring-2 ring-card first:ml-0"
+                  />
+                ))}
+              </div>
+              <span className="ml-2 text-[12.5px] text-ink-faint tnum">
+                {members.length > 6 ? `+${members.length - 6} more` : members.length}
+              </span>
+            </div>
+          );
+        },
+      }),
+      columnHelper.display({
+        id: "actions",
+        header: "Actions",
+        meta: { align: "right" },
+        cell: ({ row: { original: team } }) => (
+          <div className="flex justify-end gap-1">
+            {canUpdate && (
+              <Button variant="ghost" size="icon" title="Edit" onClick={() => open(team)}>
+                <Pencil />
+              </Button>
+            )}
+            {canDelete && (
+              <Button variant="ghost" size="icon" title="Delete" onClick={() => setDeleting(team)}>
+                <Trash2 />
+              </Button>
+            )}
+          </div>
+        ),
+      }),
+    ],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [canUpdate, canDelete]
+  );
+
   return (
     <PageShell
       title="Teams"
@@ -95,45 +170,7 @@ export default function TeamsPage() {
           description={search ? "Try a different search." : "Create the first team."}
         />
       ) : (
-        <div className="overflow-hidden rounded-md border border-line">
-          {teams.map((team) => (
-            <div
-              key={team.id}
-              className="flex items-start justify-between gap-3 border-b border-line px-3.5 py-3 last:border-b-0"
-            >
-              <div className="min-w-0">
-                <div className="text-[14px] font-semibold">{team.name}</div>
-                <div className="text-[12.5px] text-ink-faint">
-                  {team.description ?? "No description"}
-                </div>
-                <div className="mt-1.5 flex flex-wrap gap-1">
-                  {team.members.length === 0 ? (
-                    <span className="text-[12.5px] text-ink-faint">No members</span>
-                  ) : (
-                    team.members.map((m) => <Chip key={m.id}>{m.username}</Chip>)
-                  )}
-                </div>
-              </div>
-              <div className="flex shrink-0 gap-1">
-                {canUpdate && (
-                  <Button variant="ghost" size="icon" title="Edit" onClick={() => open(team)}>
-                    <Pencil />
-                  </Button>
-                )}
-                {canDelete && (
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    title="Delete"
-                    onClick={() => setDeleting(team)}
-                  >
-                    <Trash2 />
-                  </Button>
-                )}
-              </div>
-            </div>
-          ))}
-        </div>
+        <DataTable columns={columns} data={teams} getRowId={(team) => team.id} pageSize={10} />
       )}
 
       <TeamDialog open={formOpen} onOpenChange={setFormOpen} team={editing} />
@@ -164,24 +201,30 @@ function TeamDialog({
 
   const [name, setName] = React.useState("");
   const [description, setDescription] = React.useState("");
-  const [memberIds, setMemberIds] = React.useState<string[]>([]);
+  const [selected, setSelected] = React.useState<TeamMember[]>([]);
+  const [memberSearch, setMemberSearch] = React.useState("");
 
+  // Server-side search keeps the picker usable with thousands of users — we
+  // never pull the whole directory into the dialog.
   const usersQuery = useQuery({
-    queryKey: ["users", ""],
-    queryFn: () => AdminService.listUsers({ limit: 100 }),
+    queryKey: ["users", "team-picker", memberSearch],
+    queryFn: () => AdminService.listUsers({ search: memberSearch || undefined, limit: 20 }),
     enabled: open,
   });
-  const users = usersQuery.data?.entries ?? [];
+  const results = usersQuery.data?.entries ?? [];
+  const truncated = (usersQuery.data?.total ?? 0) > results.length;
 
   React.useEffect(() => {
     if (!open) return;
     setName(team?.name ?? "");
     setDescription(team?.description ?? "");
-    setMemberIds(team?.members.map((m) => m.id) ?? []);
+    setSelected(team?.members ?? []);
+    setMemberSearch("");
   }, [open, team]);
 
   const save = useMutation({
     mutationFn: async () => {
+      const memberIds = selected.map((m) => m.id);
       if (!editing) {
         await AdminService.createTeam({
           name,
@@ -206,8 +249,12 @@ function TeamDialog({
       }),
   });
 
-  const toggle = (id: string) =>
-    setMemberIds((prev) => (prev.includes(id) ? prev.filter((m) => m !== id) : [...prev, id]));
+  const toggle = (member: TeamMember) =>
+    setSelected((prev) =>
+      prev.some((m) => m.id === member.id)
+        ? prev.filter((m) => m.id !== member.id)
+        : [...prev, member]
+    );
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -236,21 +283,68 @@ function TeamDialog({
             />
           </div>
           <div className="flex flex-col gap-1.5">
-            <Label>Members</Label>
-            <div className="flex max-h-52 flex-col gap-1 overflow-y-auto rounded-md border border-line p-2">
-              {users.map((user) => (
-                <label key={user.id} className="flex items-center gap-2 text-[13px]">
-                  <input
-                    type="checkbox"
-                    className="size-4 accent-primary"
-                    checked={memberIds.includes(user.id)}
-                    onChange={() => toggle(user.id)}
-                  />
-                  <span className="font-medium">{user.username}</span>
-                  <span className="text-ink-faint">{user.email}</span>
-                </label>
-              ))}
-              {users.length === 0 && <span className="text-xs text-ink-faint">No users</span>}
+            <div className="flex items-baseline justify-between">
+              <Label>Members</Label>
+              <span className="text-[12px] text-ink-faint tnum">
+                {selected.length} selected
+              </span>
+            </div>
+
+            {selected.length > 0 && (
+              <div className="flex flex-wrap gap-1.5">
+                {selected.map((member) => (
+                  <button
+                    key={member.id}
+                    type="button"
+                    onClick={() => toggle(member)}
+                    className="flex items-center gap-1.5 rounded-full border border-line bg-paper-sunken py-0.5 pr-1.5 pl-1 text-[12.5px] hover:border-line-strong"
+                    title="Remove"
+                  >
+                    <InitialsAvatar name={member.username} size={18} />
+                    <span className="font-medium">{member.username}</span>
+                    <X className="size-3.5 text-ink-faint" />
+                  </button>
+                ))}
+              </div>
+            )}
+
+            <SearchInput
+              placeholder="Search users to add…"
+              value={memberSearch}
+              onChange={(e) => setMemberSearch(e.target.value)}
+            />
+            <div className="flex max-h-52 flex-col gap-0.5 overflow-y-auto rounded-md border border-line p-1.5">
+              {results.map((user) => {
+                const checked = selected.some((m) => m.id === user.id);
+                return (
+                  <label
+                    key={user.id}
+                    className="flex items-center gap-2.5 rounded-sm px-1.5 py-1.5 text-[13px] hover:bg-paper-sunken"
+                  >
+                    <input
+                      type="checkbox"
+                      className="size-4 accent-primary"
+                      checked={checked}
+                      onChange={() =>
+                        toggle({ id: user.id, username: user.username, email: user.email })
+                      }
+                    />
+                    <InitialsAvatar name={user.username} size={22} />
+                    <span className="font-medium">{user.username}</span>
+                    <span className="text-ink-faint">{user.email}</span>
+                  </label>
+                );
+              })}
+              {results.length === 0 && (
+                <span className="px-1.5 py-2 text-xs text-ink-faint">
+                  {usersQuery.isLoading ? "Searching…" : "No users match."}
+                </span>
+              )}
+              {truncated && (
+                <span className="px-1.5 py-1.5 text-[12px] text-ink-faint">
+                  More users exist — refine your search to find them.
+                </span>
+              )}
             </div>
           </div>
           <DialogFooter className="mt-2">
