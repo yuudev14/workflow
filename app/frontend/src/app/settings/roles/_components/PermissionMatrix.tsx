@@ -1,6 +1,8 @@
 "use client";
 
 import * as React from "react";
+import { Check } from "lucide-react";
+import { cn } from "@/lib/utils";
 import {
   ACTION_LABELS,
   MODULE_LABELS,
@@ -67,30 +69,45 @@ export function PermissionMatrix({
         </thead>
         <tbody>
           {PERMISSION_MODULES.map((module) => (
-            <tr key={module} className="border-t border-line">
+            <tr key={module} className="border-t border-line hover:bg-paper-sunken/60">
               <td className="px-3 py-2">
                 <button
                   type="button"
                   disabled={readOnly}
                   onClick={() => toggleRow(module)}
-                  className="font-semibold disabled:cursor-default"
-                  title={readOnly ? undefined : "Toggle the whole row"}
+                  className="font-semibold disabled:cursor-not-allowed"
+                  title={readOnly ? "Built-in roles can't be edited" : "Toggle the whole row"}
                 >
                   {MODULE_LABELS[module]}
                 </button>
               </td>
-              {PERMISSION_ACTIONS.map((action) => (
-                <td key={action} className="px-3 py-2 text-center">
-                  <input
-                    type="checkbox"
-                    className="size-4 accent-primary"
-                    disabled={readOnly}
-                    checked={has(value, module, action)}
-                    onChange={() => toggle(module, action)}
-                    aria-label={`${module}.${action}`}
-                  />
-                </td>
-              ))}
+              {PERMISSION_ACTIONS.map((action) => {
+                const checked = has(value, module, action);
+                return (
+                  <td key={action} className="p-0 text-center">
+                    <button
+                      type="button"
+                      disabled={readOnly}
+                      onClick={() => toggle(module, action)}
+                      aria-pressed={checked}
+                      aria-label={`${module}.${action}`}
+                      title={readOnly ? "Built-in roles can't be edited" : undefined}
+                      className="flex h-10 w-full items-center justify-center disabled:cursor-not-allowed"
+                    >
+                      <span
+                        className={cn(
+                          "flex size-4 items-center justify-center rounded-sm border transition-colors",
+                          checked
+                            ? "border-signal-dot bg-signal-dot"
+                            : "border-line-strong bg-transparent"
+                        )}
+                      >
+                        {checked && <Check className="size-3 text-signal-on" strokeWidth={3} />}
+                      </span>
+                    </button>
+                  </td>
+                );
+              })}
             </tr>
           ))}
         </tbody>

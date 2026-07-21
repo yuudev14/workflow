@@ -9,12 +9,12 @@ import { Role } from "@/services/admin/admin.schema";
 import { apiErrorMessage } from "@/services/common/errors";
 import { toast } from "@/hooks/use-toast";
 import { usePermission } from "@/hooks/usePermission";
-import { EmptyState, PageShell } from "@/components/soar";
+import { EmptyState, Glyph, PageShell } from "@/components/soar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Dialog,
   DialogContent,
@@ -105,24 +105,30 @@ export default function RolesPage() {
       ) : (
         <div className="flex flex-col gap-3.5 lg:flex-row">
           <div className="w-full shrink-0 overflow-hidden rounded-md border border-line lg:w-[260px]">
-            {roles.map((role) => (
-              <button
-                key={role.id}
-                onClick={() => setSelectedId(role.id)}
-                className={
-                  "flex w-full flex-col gap-0.5 border-b border-line px-3 py-2.5 text-left last:border-b-0 hover:bg-paper-sunken " +
-                  (selected?.id === role.id ? "bg-paper-sunken" : "")
-                }
-              >
-                <span className="flex items-center gap-1.5 text-[13.5px] font-semibold">
-                  {role.name}
-                  {role.is_builtin && <Chip>builtin</Chip>}
-                </span>
-                <span className="text-[12.5px] text-ink-faint">
-                  {role.description ?? "No description"}
-                </span>
-              </button>
-            ))}
+            {roles.map((role) => {
+              const isSelected = selected?.id === role.id;
+              return (
+                <button
+                  key={role.id}
+                  onClick={() => setSelectedId(role.id)}
+                  className={
+                    "flex w-full items-start gap-2.5 border-b border-l-2 border-line px-3 py-2.5 text-left last:border-b-0 hover:bg-paper-sunken " +
+                    (isSelected ? "border-l-signal-dot bg-paper-sunken" : "border-l-transparent")
+                  }
+                >
+                  <Glyph icon={ShieldCheck} tone={role.is_builtin ? "slate" : "signal"} size="sm" />
+                  <div className="min-w-0 flex-1">
+                    <span className="flex items-center gap-1.5 text-[13.5px] font-semibold">
+                      {role.name}
+                      {role.is_builtin && <Chip>builtin</Chip>}
+                    </span>
+                    <span className="line-clamp-1 text-[12.5px] text-ink-faint">
+                      {role.description ?? "No description"}
+                    </span>
+                  </div>
+                </button>
+              );
+            })}
           </div>
 
           {selected && (
@@ -215,43 +221,54 @@ function CreateRoleDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl">
-        <DialogHeader>
+      <DialogContent className="flex max-h-[calc(100dvh-3rem)] w-full max-w-4xl flex-col gap-0 overflow-hidden p-0">
+        <DialogHeader className="border-b border-line px-6 pt-6 pb-4">
           <DialogTitle>New role</DialogTitle>
           <DialogDescription>Pick the grants now; they can be changed later.</DialogDescription>
         </DialogHeader>
         <form
-          className="flex flex-col gap-3"
+          className="flex min-h-0 flex-1 flex-col"
           onSubmit={(e) => {
             e.preventDefault();
             create.mutate();
           }}
         >
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor="role_name">Name</Label>
-            <Input
-              id="role_name"
-              value={name}
-              required
-              onChange={(e) => setName(e.target.value)}
-              placeholder="tier-1-analyst"
-            />
+          <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-6 py-5">
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="role_name">Name</Label>
+              <Input
+                id="role_name"
+                value={name}
+                required
+                onChange={(e) => setName(e.target.value)}
+                placeholder="tier-1-analyst"
+              />
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="role_description">Description</Label>
+              <Textarea
+                id="role_description"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder="What this role is for"
+              />
+            </div>
+            <div className="flex flex-col gap-2">
+              <div className="flex items-baseline justify-between">
+                <Label>Permissions</Label>
+                <span className="text-[12px] text-ink-faint">
+                  Click a module name to toggle its whole row.
+                </span>
+              </div>
+              <PermissionMatrix value={permissions} onChange={setPermissions} />
+            </div>
           </div>
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor="role_description">Description</Label>
-            <Textarea
-              id="role_description"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-            />
-          </div>
-          <PermissionMatrix value={permissions} onChange={setPermissions} />
-          <DialogFooter className="mt-2">
+          <DialogFooter className="border-t border-line px-6 py-4">
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
             <Button type="submit" disabled={create.isPending} showLoader={create.isPending}>
-              Create
+              Create role
             </Button>
           </DialogFooter>
         </form>
