@@ -22,6 +22,7 @@ import { FLOW_START_ID } from "@/settings/reactFlowIds";
 import { Check, History, Workflow as PlaybookIcon, Zap } from "lucide-react";
 import Link from "next/link";
 import PlaybookHistoryModal from "@/components/executions/PlaybookHistoryModal";
+import { PermissionGate } from "@/components/auth/PermissionGate";
 
 // Canvas nav: a segmented Editor / Runs toggle pinned to the top-left of the
 // canvas. Replaces the two stacked bordered buttons that used to float mid-left.
@@ -172,9 +173,11 @@ const PlaybookPlayground: React.FC<{ playbookId: string }> = ({
             playbookId={playbookId}
             playbookName={workflowData.name}
           />
-          <Button variant="ghost" onClick={triggerPlaybookHandler}>
-            <Zap /> Trigger
-          </Button>
+          <PermissionGate module="playbooks" action="execute">
+            <Button variant="ghost" onClick={triggerPlaybookHandler}>
+              <Zap /> Trigger
+            </Button>
+          </PermissionGate>
           <Button variant="outline" className="text-rose-text">
             Delete
           </Button>

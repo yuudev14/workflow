@@ -8,6 +8,7 @@ import ConnectorService from "@/services/connectors/connectors";
 import { ConnectorInfo } from "@/services/connectors/connectors.schema";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Glyph, connectorGlyph } from "@/components/soar";
+import { PermissionGate } from "@/components/auth/PermissionGate";
 import { cn } from "@/lib/utils";
 
 // info.json carries a `runtime` (and often a version); the shared type keeps
@@ -94,21 +95,25 @@ export default function Page() {
               {connectors.length} installed · browse, enable, and upload connector packages.
             </p>
           </div>
-          <button className="inline-flex items-center gap-2 rounded-sm bg-primary px-3.5 py-2 text-[13.5px] font-semibold text-primary-foreground hover:brightness-110">
-            <Upload className="size-4" /> Install connector
-          </button>
+          <PermissionGate module="connectors" action="create">
+            <button className="inline-flex items-center gap-2 rounded-sm bg-primary px-3.5 py-2 text-[13.5px] font-semibold text-primary-foreground hover:brightness-110">
+              <Upload className="size-4" /> Install connector
+            </button>
+          </PermissionGate>
         </div>
 
-        <label className="cursor-pointer rounded-md border-[1.5px] border-dashed border-line-strong bg-paper-sunken px-6 py-7 text-center text-ink-faint hover:border-signal-dot">
-          <input type="file" accept=".zip" className="hidden" />
-          <Upload className="mx-auto size-6" />
-          <div className="mt-1.5 text-[14px] font-semibold text-ink-soft">
-            Drop a connector .zip, or browse
-          </div>
-          <div className="mt-0.5 text-[12.5px]">
-            Must include info.json + a python/node entry file — max 25 MB
-          </div>
-        </label>
+        <PermissionGate module="connectors" action="create">
+          <label className="cursor-pointer rounded-md border-[1.5px] border-dashed border-line-strong bg-paper-sunken px-6 py-7 text-center text-ink-faint hover:border-signal-dot">
+            <input type="file" accept=".zip" className="hidden" />
+            <Upload className="mx-auto size-6" />
+            <div className="mt-1.5 text-[14px] font-semibold text-ink-soft">
+              Drop a connector .zip, or browse
+            </div>
+            <div className="mt-0.5 text-[12.5px]">
+              Must include info.json + a python/node entry file — max 25 MB
+            </div>
+          </label>
+        </PermissionGate>
 
         {connectorsQuery.isLoading ? (
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
