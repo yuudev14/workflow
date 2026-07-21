@@ -76,3 +76,14 @@ func (r *RefreshTokenRepositoryImpl) Revoke(ctx context.Context, tokenHash strin
 func (r *RefreshTokenRepositoryImpl) RevokeAllForUser(ctx context.Context, userID uuid.UUID) error {
 	return r.queriesFromContext(ctx).RevokeAllRefreshTokensForUser(ctx, toPgUUID(userID))
 }
+
+// DeleteExpired drops rows past their expiry. Every reload rotates the refresh
+// token, so without periodic cleanup the table grows unbounded; expired rows are
+// already useless for auth (validation checks expiry).
+//
+// TODO(scheduler): intentionally uncalled for now. A per-replica ticker here
+// would sweep N times over with N replicas, so this must run as a singleton job
+// from the scheduler binary (see domain.Schedulers) once it exists. Not dead code.
+func (r *RefreshTokenRepositoryImpl) DeleteExpired(ctx context.Context) error {
+	return r.queriesFromContext(ctx).DeleteExpiredRefreshTokens(ctx)
+}
