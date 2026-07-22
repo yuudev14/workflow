@@ -11,6 +11,12 @@ func (h *AuthHandler) RegisterPublicRoutes(route *gin.RouterGroup) {
 		group.POST("/login", h.Login)
 		group.POST("/refresh", h.Refresh)
 		group.POST("/logout", h.Logout)
+
+		// OIDC is public by construction: the browser has no session yet, and
+		// the callback authenticates via the signed state cookie + PKCE.
+		group.GET("/providers", h.Providers)
+		group.GET("/oidc/:provider_id/start", h.OIDCStart)
+		group.GET("/oidc/:provider_id/callback", h.OIDCCallback)
 	}
 }
 

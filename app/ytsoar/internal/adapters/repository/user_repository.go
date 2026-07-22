@@ -47,6 +47,17 @@ func (r *UserRepositoryImpl) GetByUsername(ctx context.Context, username string)
 	return toDomainUser(row), nil
 }
 
+func (r *UserRepositoryImpl) GetByExternalID(ctx context.Context, provider domain.AuthProvider, externalID string) (domain.User, error) {
+	row, err := r.queriesFromContext(ctx).GetUserByExternalId(ctx, db.GetUserByExternalIdParams{
+		AuthProvider: db.AuthProviderType(provider),
+		ExternalID:   toPgTextFromString(externalID),
+	})
+	if err != nil {
+		return domain.User{}, mapNoRows(err, auth.ErrUserNotFound)
+	}
+	return toDomainUser(row), nil
+}
+
 func (r *UserRepositoryImpl) Create(ctx context.Context, params auth.CreateUserParams) (domain.User, error) {
 	row, err := r.queriesFromContext(ctx).CreateUser(ctx, db.CreateUserParams{
 		Username:     params.Username,

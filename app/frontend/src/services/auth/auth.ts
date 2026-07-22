@@ -1,6 +1,6 @@
 import settings from "@/settings";
 import apiClient, { refreshSession } from "../common/client";
-import { LoginPayload, Me, SessionResponse } from "./auth.schema";
+import { AuthProviderSummary, LoginPayload, Me, SessionResponse } from "./auth.schema";
 
 export default class AuthService {
   private static BASE_URL = settings.BASE_URL.AUTH_SERVICE_API + "/api/auth/v1";
@@ -31,6 +31,12 @@ export default class AuthService {
   /** Profile, role names, and the permission map that drives UI gating. */
   public static me = async (): Promise<Me> => {
     const res = await apiClient.get(`${this.BASE_URL}/me`);
+    return res.data;
+  };
+
+  /** Enabled SSO providers for the login screen. */
+  public static getProviders = async (): Promise<AuthProviderSummary[]> => {
+    const res = await apiClient.get(`${this.BASE_URL}/providers`);
     return res.data;
   };
 }

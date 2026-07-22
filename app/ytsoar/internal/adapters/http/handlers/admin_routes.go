@@ -52,4 +52,11 @@ func (h *AdminHandler) RegisterRoutes(
 
 	// Read-only by design: an editable audit trail is not an audit trail.
 	route.Group("audit/v1").GET("", read, h.ListAuditLogs)
+
+	providers := route.Group("auth-providers/v1")
+	{
+		providers.GET("", read, h.ListAuthProviders)
+		providers.POST("", create, h.CreateAuthProvider)
+		providers.PUT("/:provider_id", update, h.UpdateAuthProvider)
+	}
 }

@@ -1,10 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { z } from "zod";
 import { AxiosError } from "axios";
 
@@ -25,6 +25,20 @@ export default function LoginPage() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const [formError, setFormError] = useState<string | null>(null);
+  const [ssoError, setSsoError] = useState(false);
+
+  // The OIDC callback bounces here with ?error=sso when a round trip fails.
+  // Read it off the URL rather than useSearchParams to avoid the Suspense
+  // requirement that would otherwise fail the production build.
+  useEffect(() => {
+    setSsoError(new URLSearchParams(window.location.search).get("error") === "sso");
+  }, []);
+
+  const providersQuery = useQuery({
+    queryKey: ["auth-providers"],
+    queryFn: AuthService.getProviders,
+  });
+  const providers = providersQuery.data ?? [];
 
   const {
     register,
@@ -64,6 +78,12 @@ export default function LoginPage() {
             <p className="text-sm text-muted-foreground">SOAR platform</p>
           </div>
         </div>
+
+        {ssoError && (
+          <p className="mb-4 rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive" role="alert">
+            Single sign-on didn't complete. Try again, or use your username and password.
+          </p>
+        )}
 
         <form
           onSubmit={handleSubmit(onSubmit)}
@@ -106,8 +126,30 @@ export default function LoginPage() {
           </Button>
         </form>
 
-        {/* SSO providers (Keycloak, Google) get listed here in M3: fetch
-            /auth/v1/providers and render a button per provider. */}
+        {providers.length > 0 && (
+          <div className="mt-5">
+            <div className="mb-4 flex items-center gap-3 text-xs uppercase tracking-wide text-muted-foreground">
+              <span className="h-px flex-1 bg-border" />
+              or
+              <span className="h-px flex-1 bg-border" />
+            </div>
+            <div className="flex flex-col gap-2">
+              {providers.map((provider) => (
+                <Button
+                  key={provider.id}
+                  type="button"
+                  variant="outline"
+                  className="w-full"
+                  // A full-page navigation, not fetch: the IdP round trip sets
+                  // cookies, which only a top-level request can carry back.
+                  onClick={() => window.location.assign(provider.start_url)}
+                >
+                  Continue with {provider.name}
+                </Button>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

@@ -12,6 +12,7 @@ import (
 
 type Querier interface {
 	CountUsersWithRole(ctx context.Context, name string) (int64, error)
+	CreateAuthProvider(ctx context.Context, arg CreateAuthProviderParams) (AuthProvider, error)
 	CreatePlaybook(ctx context.Context, arg CreatePlaybookParams) (Playbook, error)
 	CreatePlaybookHistory(ctx context.Context, arg CreatePlaybookHistoryParams) (PlaybookHistory, error)
 	CreateRole(ctx context.Context, arg CreateRoleParams) (Role, error)
@@ -28,6 +29,7 @@ type Querier interface {
 	DeleteTeam(ctx context.Context, id pgtype.UUID) (int64, error)
 	DeleteTeamMembers(ctx context.Context, teamID pgtype.UUID) error
 	DeleteUserRoles(ctx context.Context, userID pgtype.UUID) error
+	GetAuthProviderByID(ctx context.Context, id pgtype.UUID) (AuthProvider, error)
 	GetConnectorRecord(ctx context.Context, id string) (Connector, error)
 	GetEdgesByPlaybookId(ctx context.Context, playbookID pgtype.UUID) ([]GetEdgesByPlaybookIdRow, error)
 	GetPlaybookById(ctx context.Context, id pgtype.UUID) (Playbook, error)
@@ -48,6 +50,8 @@ type Querier interface {
 	InsertRolePermission(ctx context.Context, arg InsertRolePermissionParams) error
 	InsertTeamMember(ctx context.Context, arg InsertTeamMemberParams) error
 	InsertUserRole(ctx context.Context, arg InsertUserRoleParams) error
+	ListAuthProviders(ctx context.Context) ([]AuthProvider, error)
+	ListEnabledAuthProviders(ctx context.Context) ([]AuthProvider, error)
 	ListPermissionsForUser(ctx context.Context, id pgtype.UUID) ([]ListPermissionsForUserRow, error)
 	ListRolePermissions(ctx context.Context, roleID pgtype.UUID) ([]ListRolePermissionsRow, error)
 	ListRoles(ctx context.Context) ([]Role, error)
@@ -56,6 +60,7 @@ type Querier interface {
 	RevokeRefreshToken(ctx context.Context, tokenHash string) (int64, error)
 	SetUserPassword(ctx context.Context, arg SetUserPasswordParams) error
 	TouchUserLastLogin(ctx context.Context, id pgtype.UUID) error
+	UpdateAuthProvider(ctx context.Context, arg UpdateAuthProviderParams) (AuthProvider, error)
 	UpdatePlaybook(ctx context.Context, arg UpdatePlaybookParams) (Playbook, error)
 	UpdatePlaybookHistory(ctx context.Context, arg UpdatePlaybookHistoryParams) (PlaybookHistory, error)
 	UpdatePlaybookHistoryStatus(ctx context.Context, arg UpdatePlaybookHistoryStatusParams) (PlaybookHistory, error)

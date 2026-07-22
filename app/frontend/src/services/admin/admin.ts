@@ -4,12 +4,15 @@ import { EntryResponse } from "../common/schema";
 import {
   AuditFilter,
   AuditLog,
+  AuthProviderAdmin,
+  CreateProviderPayload,
   CreateUserPayload,
   Role,
   RolePayload,
   Team,
   TeamFilter,
   TeamPayload,
+  UpdateProviderPayload,
   UpdateRolePayload,
   UpdateTeamPayload,
   UpdateUserPayload,
@@ -136,6 +139,28 @@ export default class AdminService {
     filter: AuditFilter = {},
   ): Promise<EntryResponse<AuditLog>> => {
     const res = await apiClient.get(`${this.BASE_URL}/audit/v1`, { params: filter });
+    return res.data;
+  };
+
+  // ---- auth providers ----
+
+  public static listAuthProviders = async (): Promise<AuthProviderAdmin[]> => {
+    const res = await apiClient.get(`${this.BASE_URL}/auth-providers/v1`);
+    return res.data;
+  };
+
+  public static createAuthProvider = async (
+    payload: CreateProviderPayload,
+  ): Promise<AuthProviderAdmin> => {
+    const res = await apiClient.post(`${this.BASE_URL}/auth-providers/v1`, payload);
+    return res.data;
+  };
+
+  public static updateAuthProvider = async (
+    id: string,
+    payload: UpdateProviderPayload,
+  ): Promise<AuthProviderAdmin> => {
+    const res = await apiClient.put(`${this.BASE_URL}/auth-providers/v1/${id}`, payload);
     return res.data;
   };
 }

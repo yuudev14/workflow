@@ -55,6 +55,27 @@ func (w *CookieWriter) ClearSession(c *gin.Context) {
 	w.ClearRefreshCookie(c)
 }
 
+// SetOIDCStateCookie holds the signed state+PKCE-verifier blob across the round
+// trip to the IdP. Short-lived and single-use: the callback clears it. Lax lets
+// it ride the top-level redirect back from the provider.
+func (w *CookieWriter) SetOIDCStateCookie(c *gin.Context, value string, ttl time.Duration) {
+	c.SetSameSite(http.SameSiteLaxMode)
+	c.SetCookie(OIDCStateCookieName, value, int(ttl.Seconds()), "/", "", w.Secure, true)
+}
+
+func (w *CookieWriter) ClearOIDCStateCookie(c *gin.Context) {
+	c.SetSameSite(http.SameSiteLaxMode)
+	c.SetCookie(OIDCStateCookieName, "", -1, "/", "", w.Secure, true)
+}
+
+func ReadOIDCStateCookie(c *gin.Context) string {
+	value, err := c.Cookie(OIDCStateCookieName)
+	if err != nil {
+		return ""
+	}
+	return value
+}
+
 func ReadAccessCookie(c *gin.Context) string {
 	value, err := c.Cookie(AccessCookieName)
 	if err != nil {

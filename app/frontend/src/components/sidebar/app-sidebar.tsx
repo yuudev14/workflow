@@ -4,6 +4,7 @@ import * as React from "react";
 import {
   AlertTriangle,
   Bell,
+  KeyRound,
   LayoutDashboard,
   Layers,
   LayoutGrid,
@@ -54,6 +55,7 @@ const sections: NavSection[] = [
       { title: "Roles", url: "/settings/roles", icon: ShieldCheck, permission: SETTINGS_READ },
       { title: "Teams", url: "/settings/teams", icon: UsersRound, permission: SETTINGS_READ },
       { title: "Audit", url: "/settings/audit", icon: ScrollText, permission: SETTINGS_READ },
+      { title: "Providers", url: "/settings/providers", icon: KeyRound, permission: SETTINGS_READ },
     ],
   },
 ];

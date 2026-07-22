@@ -24,10 +24,12 @@ import (
 type testEnv struct {
 	service *auth.Service
 
-	mockUsers  *mock_auth.MockUserRepository
-	mockRoles  *mock_auth.MockRoleRepository
-	mockTokens *mock_auth.MockRefreshTokenRepository
-	mockTeams  *mock_auth.MockTeamRepository
+	mockUsers     *mock_auth.MockUserRepository
+	mockRoles     *mock_auth.MockRoleRepository
+	mockTokens    *mock_auth.MockRefreshTokenRepository
+	mockTeams     *mock_auth.MockTeamRepository
+	mockProviders *mock_auth.MockAuthProviderRepository
+	mockOIDC      *mock_auth.MockOIDCClient
 
 	// txCalls counts WithinTransaction entries so a test can assert that a
 	// multi-statement rewrite actually ran inside one.
@@ -46,6 +48,8 @@ func setupTest(t *testing.T) *testEnv {
 	mockRoles := mock_auth.NewMockRoleRepository(ctrl)
 	mockTokens := mock_auth.NewMockRefreshTokenRepository(ctrl)
 	mockTeams := mock_auth.NewMockTeamRepository(ctrl)
+	mockProviders := mock_auth.NewMockAuthProviderRepository(ctrl)
+	mockOIDC := mock_auth.NewMockOIDCClient(ctrl)
 	mockHasher := mock_auth.NewMockPasswordHasher(ctrl)
 
 	// Audit rows are a side effect of nearly every path and never change the
@@ -71,7 +75,9 @@ func setupTest(t *testing.T) *testEnv {
 		mockTokens,
 		mockTeams,
 		mockAudit,
+		mockProviders,
 		mockHasher,
+		mockOIDC,
 		mockTx,
 		auth.AuthConfig{
 			JWTSecret:       testSecret,
@@ -80,18 +86,22 @@ func setupTest(t *testing.T) *testEnv {
 			AdminUsername:   "admin",
 			AdminEmail:      "admin@ytsoar.local",
 			AdminPassword:   "admin-password",
+			FrontendURL:     "http://localhost:9999",
+			AuthPublicURL:   "http://localhost:9999/auth-api",
 		},
 	)
 
 	return &testEnv{
-		service:    service,
-		mockUsers:  mockUsers,
-		mockRoles:  mockRoles,
-		mockTokens: mockTokens,
-		mockTeams:  mockTeams,
-		txCalls:    &txCalls,
-		mockAudit:  mockAudit,
-		mockHasher: mockHasher,
+		service:       service,
+		mockUsers:     mockUsers,
+		mockRoles:     mockRoles,
+		mockTokens:    mockTokens,
+		mockTeams:     mockTeams,
+		mockProviders: mockProviders,
+		mockOIDC:      mockOIDC,
+		txCalls:       &txCalls,
+		mockAudit:     mockAudit,
+		mockHasher:    mockHasher,
 	}
 }
 

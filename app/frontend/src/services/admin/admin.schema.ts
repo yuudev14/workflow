@@ -85,6 +85,31 @@ export interface UpdateTeamPayload {
   description?: string | null;
 }
 
+/**
+ * An auth provider as the admin API returns it. `config` is an opaque blob whose
+ * shape depends on `type` (OIDC vs LDAP); secrets come back masked as "********".
+ */
+export interface AuthProviderAdmin {
+  id: string;
+  type: "oidc" | "ldap";
+  name: string;
+  enabled: boolean;
+  config: Record<string, unknown>;
+}
+
+export interface CreateProviderPayload {
+  type: string;
+  name: string;
+  config: Record<string, unknown>;
+  enabled?: boolean;
+}
+
+export interface UpdateProviderPayload {
+  name?: string;
+  config?: Record<string, unknown>;
+  enabled?: boolean;
+}
+
 export interface UserFilter {
   offset?: number;
   limit?: number;

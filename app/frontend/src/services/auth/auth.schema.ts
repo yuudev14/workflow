@@ -16,6 +16,14 @@ export interface LoginPayload {
   password: string;
 }
 
+/** The public per-provider shape for the login screen — never carries a secret. */
+export interface AuthProviderSummary {
+  id: string;
+  name: string;
+  type: "oidc" | "ldap";
+  start_url: string;
+}
+
 /**
  * The tokens also arrive as httpOnly cookies, which is what the browser
  * actually authenticates with — these fields exist for clients without a
