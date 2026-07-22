@@ -32,15 +32,17 @@ const (
 )
 
 type Service struct {
-	logger    logger.Logger
-	users     UserRepository
-	roles     RoleRepository
-	tokens    RefreshTokenRepository
-	teams     TeamRepository
-	audit     AuditLogRepository
-	hasher    PasswordHasher
-	txManager contracts.TxManager
-	cfg       AuthConfig
+	logger     logger.Logger
+	users      UserRepository
+	roles      RoleRepository
+	tokens     RefreshTokenRepository
+	teams      TeamRepository
+	audit      AuditLogRepository
+	providers  AuthProviderRepository
+	hasher     PasswordHasher
+	oidcClient OIDCClient
+	txManager  contracts.TxManager
+	cfg        AuthConfig
 
 	// now is swappable so tests can drive expiry without sleeping.
 	now func() time.Time
@@ -53,21 +55,25 @@ func NewService(
 	tokens RefreshTokenRepository,
 	teams TeamRepository,
 	audit AuditLogRepository,
+	providers AuthProviderRepository,
 	hasher PasswordHasher,
+	oidcClient OIDCClient,
 	txManager contracts.TxManager,
 	cfg AuthConfig,
 ) *Service {
 	return &Service{
-		logger:    log,
-		users:     users,
-		roles:     roles,
-		tokens:    tokens,
-		teams:     teams,
-		audit:     audit,
-		hasher:    hasher,
-		txManager: txManager,
-		cfg:       cfg,
-		now:       time.Now,
+		logger:     log,
+		users:      users,
+		roles:      roles,
+		tokens:     tokens,
+		teams:      teams,
+		audit:      audit,
+		providers:  providers,
+		hasher:     hasher,
+		oidcClient: oidcClient,
+		txManager:  txManager,
+		cfg:        cfg,
+		now:        time.Now,
 	}
 }
 

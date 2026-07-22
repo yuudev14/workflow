@@ -142,6 +142,10 @@ func TestAdminRouteGrants(t *testing.T) {
 		{http.MethodDelete, "/api/teams/v1/abc", "settings.delete"},
 
 		{http.MethodGet, "/api/audit/v1", "settings.read"},
+
+		{http.MethodGet, "/api/auth-providers/v1", "settings.read"},
+		{http.MethodPost, "/api/auth-providers/v1", "settings.create"},
+		{http.MethodPut, "/api/auth-providers/v1/abc", "settings.update"},
 	}
 
 	for _, tc := range cases {

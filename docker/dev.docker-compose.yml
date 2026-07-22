@@ -39,6 +39,27 @@ services:
       - ytsoar
     volumes:
       - postgres_data:/var/lib/postgresql/data
+  ytsoar_keycloak:
+    image: quay.io/keycloak/keycloak:26.2
+    container_name: ytsoar_keycloak
+    command: ["start-dev", "--import-realm", "--http-port=8180"]
+    ports:
+      - "8180:8180"
+    environment:
+      - KC_BOOTSTRAP_ADMIN_USERNAME=admin
+      - KC_BOOTSTRAP_ADMIN_PASSWORD=admin
+      - KC_HTTP_PORT=8180
+      # Split-horizon: the browser reaches Keycloak at localhost:8180 (so the
+      # id_token issuer and the authorization redirect use this), while the api
+      # reaches it in-network at ytsoar_keycloak:8180. BACKCHANNEL_DYNAMIC makes
+      # the token/discovery endpoints follow the request host, so the api's
+      # internal discovery returns internal backchannel urls it can actually hit.
+      - KC_HOSTNAME=http://localhost:8180
+      - KC_HOSTNAME_BACKCHANNEL_DYNAMIC=true
+    volumes:
+      - ./keycloak:/opt/keycloak/data/import:ro
+    networks:
+      - ytsoar
   ytsoar_api:
     build:
       context: ../app/ytsoar
@@ -78,6 +99,11 @@ services:
       - CORS_ORIGINS=http://localhost:9999,http://localhost:3000
       # Everything is plain http behind nginx in dev.
       - COOKIE_SECURE=false
+      # OIDC: where the callback sends the browser after a session is set, and
+      # the browser-facing base used to build the IdP redirect_uri (nginx strips
+      # /auth-api/ before it reaches the api).
+      - FRONTEND_URL=http://localhost:9999
+      - AUTH_PUBLIC_URL=http://localhost:9999/auth-api
     networks:
       - ytsoar
     depends_on:

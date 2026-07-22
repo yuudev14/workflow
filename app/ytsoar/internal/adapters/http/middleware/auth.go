@@ -16,8 +16,9 @@ import (
 const authUserKey = "auth_user"
 
 const (
-	AccessCookieName  = "ytsoar_at"
-	RefreshCookieName = "ytsoar_rt"
+	AccessCookieName    = "ytsoar_at"
+	RefreshCookieName   = "ytsoar_rt"
+	OIDCStateCookieName = "ytsoar_oidc"
 )
 
 type TokenVerifier interface {

@@ -12,6 +12,7 @@ import (
 	"github.com/yuudev14/ytsoar/internal/adapters/http/handlers"
 	"github.com/yuudev14/ytsoar/internal/adapters/http/middleware"
 	"github.com/yuudev14/ytsoar/internal/adapters/mq"
+	"github.com/yuudev14/ytsoar/internal/adapters/oidcclient"
 	"github.com/yuudev14/ytsoar/internal/adapters/repository"
 	"github.com/yuudev14/ytsoar/internal/adapters/security"
 	"github.com/yuudev14/ytsoar/internal/adapters/ws"
@@ -77,8 +78,10 @@ func main() {
 	refreshTokenRepository := repository.NewRefreshTokenRepositoryImpl(appLogger, queries, pool)
 	teamRepository := repository.NewTeamRepositoryImpl(appLogger, queries, pool)
 	auditRepository := repository.NewAuditLogRepositoryImpl(appLogger, queries, pool)
+	authProviderRepository := repository.NewAuthProviderRepositoryImpl(appLogger, queries, pool)
 
 	argonHasher := security.NewArgon2Hasher()
+	oidcClient := oidcclient.New()
 
 	authConfig := auth.AuthConfig{
 		JWTSecret:       cfg.JWTSecret,
@@ -87,6 +90,8 @@ func main() {
 		AdminUsername:   cfg.AdminUsername,
 		AdminEmail:      cfg.AdminEmail,
 		AdminPassword:   cfg.AdminPassword,
+		FrontendURL:     cfg.FrontendURL,
+		AuthPublicURL:   cfg.AuthPublicURL,
 	}
 
 	playbookService := playbooks.NewPlaybookService(appLogger, playbookRepository)
@@ -99,7 +104,9 @@ func main() {
 		refreshTokenRepository,
 		teamRepository,
 		auditRepository,
+		authProviderRepository,
 		argonHasher,
+		oidcClient,
 		txManager,
 		authConfig,
 	)

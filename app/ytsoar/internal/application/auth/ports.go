@@ -2,6 +2,7 @@ package auth
 
 import (
 	"context"
+	"encoding/json"
 	"time"
 
 	"github.com/google/uuid"
@@ -13,6 +14,7 @@ import (
 type UserRepository interface {
 	GetByID(ctx context.Context, id uuid.UUID) (domain.User, error)
 	GetByUsername(ctx context.Context, username string) (domain.User, error)
+	GetByExternalID(ctx context.Context, provider domain.AuthProvider, externalID string) (domain.User, error)
 	Create(ctx context.Context, params CreateUserParams) (domain.User, error)
 	Update(ctx context.Context, id uuid.UUID, params UpdateUserParams) (domain.User, error)
 	SetPassword(ctx context.Context, id uuid.UUID, passwordHash string) error
@@ -77,4 +79,33 @@ type AuditLogRepository interface {
 type PasswordHasher interface {
 	Hash(password string) (string, error)
 	Verify(password, encodedHash string) bool
+}
+
+//go:generate mockgen -destination=mocks/auth_provider_repository_mock.go -package=mocks . AuthProviderRepository
+
+type AuthProviderRepository interface {
+	ListEnabled(ctx context.Context) ([]AuthProvider, error)
+	List(ctx context.Context) ([]AuthProvider, error)
+	GetByID(ctx context.Context, id uuid.UUID) (AuthProvider, error)
+	Create(ctx context.Context, typ domain.AuthProvider, name string, config json.RawMessage, enabled bool) (AuthProvider, error)
+	Update(ctx context.Context, id uuid.UUID, params UpdateProviderParams) (AuthProvider, error)
+}
+
+// UpdateProviderParams is the partial-update shape (Set flags mirror the
+// types.Nullable pattern the sql CASE arms read).
+type UpdateProviderParams struct {
+	Name    *string
+	Config  json.RawMessage
+	Enabled *bool
+}
+
+//go:generate mockgen -destination=mocks/oidc_client_mock.go -package=mocks . OIDCClient
+
+// OIDCClient is the thin seam over go-oidc/oauth2 so the OIDC flow is testable
+// without a live IdP. AuthCodeURL builds the redirect to the provider; Exchange
+// swaps the returned code for a verified identity (id_token signature + claims
+// already checked by the adapter).
+type OIDCClient interface {
+	AuthCodeURL(ctx context.Context, cfg OIDCConfig, redirectURL, state, codeChallenge string) (string, error)
+	Exchange(ctx context.Context, cfg OIDCConfig, redirectURL, code, codeVerifier string) (OIDCIdentity, error)
 }

@@ -44,6 +44,12 @@ type Config struct {
 	AdminEmail    string
 	AdminPassword string
 
+	// OIDC. FrontendURL is where the callback sends the browser after a
+	// successful sign-in; AuthPublicURL is the browser-facing base the IdP
+	// redirects back to (nginx strips /auth-api/ before it reaches the api).
+	FrontendURL   string
+	AuthPublicURL string
+
 	StatusExchangeName string
 
 	// SandboxAddr is where the worker sends every dynamic node
@@ -99,6 +105,9 @@ func LoadFrom(dest string) Config {
 		AdminUsername:   getEnvOr("ADMIN_USERNAME", "admin"),
 		AdminEmail:      getEnvOr("ADMIN_EMAIL", "admin@ytsoar.local"),
 		AdminPassword:   os.Getenv("ADMIN_PASSWORD"),
+
+		FrontendURL:   getEnvOr("FRONTEND_URL", "http://localhost:9999"),
+		AuthPublicURL: getEnvOr("AUTH_PUBLIC_URL", "http://localhost:9999/auth-api"),
 
 		StatusExchangeName: getEnvOr("STATUS_EXCHANGE", "playbook.status"),
 

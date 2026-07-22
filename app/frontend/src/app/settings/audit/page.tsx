@@ -64,6 +64,9 @@ const AUDIT_ACTIONS = [
   "user_deactivated",
   "user_roles_changed",
   "user_password_reset",
+  "jit_provisioned",
+  "auth_provider_created",
+  "auth_provider_updated",
 ];
 
 function humanizeAction(action: string) {

@@ -135,4 +135,9 @@ type AuthConfig struct {
 	AdminUsername   string
 	AdminEmail      string
 	AdminPassword   string
+
+	// OIDC. FrontendURL is where the callback redirects the browser on success;
+	// AuthPublicURL is the browser-facing base used to build the IdP redirect_uri.
+	FrontendURL   string
+	AuthPublicURL string
 }
