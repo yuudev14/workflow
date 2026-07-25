@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -134,11 +135,14 @@ func (s *Service) resolveOIDCUser(ctx context.Context, providerID uuid.UUID, cfg
 	externalID := providerID.String() + "|" + id.Subject
 
 	user, err := s.users.GetByExternalID(ctx, domain.AuthProviderOIDC, externalID)
-	if err == nil {
+	switch {
+	case err == nil:
 		if !user.IsActive {
 			return domain.User{}, false, ErrOIDCState
 		}
 		return user, false, nil
+	case !errors.Is(err, ErrUserNotFound):
+		return domain.User{}, false, err
 	}
 
 	if !cfg.AllowJIT {
@@ -178,27 +182,45 @@ func (s *Service) uniqueUsername(ctx context.Context, id OIDCIdentity) (string, 
 
 	candidate := base
 	for i := 2; i < 1000; i++ {
-		if _, err := s.users.GetByUsername(ctx, candidate); err != nil {
+		_, err := s.users.GetByUsername(ctx, candidate)
+		if errors.Is(err, ErrUserNotFound) {
 			return candidate, nil
+		}
+		if err != nil {
+			return "", err
 		}
 		candidate = fmt.Sprintf("%s-%d", base, i)
 	}
 	return "", ErrValidation
 }
 
-// syncOIDCRoles replaces the user's roles from the groups claim on every login.
-// OIDC users only — a local user's manual roles are never touched by this path.
+// syncOIDCRoles replaces the user's roles from the groups claim on every login,
+// unless the provider's sync_mode leaves roles to an admin. OIDC users only — a
+// local user's manual roles are never touched by this path.
 func (s *Service) syncOIDCRoles(ctx context.Context, userID uuid.UUID, cfg OIDCConfig, groups []string) error {
-	names := desiredRoleNames(cfg, groups)
+	if !cfg.SyncsRoles() {
+		return nil
+	}
 
-	roleIDs := make([]uuid.UUID, 0, len(names))
-	for _, name := range names {
+	roleIDs := make([]uuid.UUID, 0)
+	for _, name := range desiredRoleNames(cfg, groups) {
 		role, err := s.roles.GetByName(ctx, name)
 		if err != nil {
-			s.logger.Warnf("oidc group maps to unknown role %q — skipping", name)
+			// A passthrough candidate that isn't a real role (most IdP groups
+			// aren't) is inert — skip it, never fail the login on it.
 			continue
 		}
 		roleIDs = append(roleIDs, role.ID)
+	}
+	// Nothing resolved → the provider default. Decided on resolved roles, not
+	// candidate names, so a group that maps to no real role still lands on the
+	// default rather than leaving the user with nothing.
+	if len(roleIDs) == 0 && cfg.DefaultRole != "" {
+		if role, err := s.roles.GetByName(ctx, cfg.DefaultRole); err != nil {
+			s.logger.Warnf("oidc default_role %q is not a known role", cfg.DefaultRole)
+		} else {
+			roleIDs = append(roleIDs, role.ID)
+		}
 	}
 
 	return s.txManager.WithinTransaction(ctx, func(txCtx context.Context) error {
@@ -214,20 +236,29 @@ func (s *Service) syncOIDCRoles(ctx context.Context, userID uuid.UUID, cfg OIDCC
 	})
 }
 
-// desiredRoleNames maps IdP groups to role names, falling back to the provider
-// default when nothing matched.
+// desiredRoleNames resolves IdP group/role values to candidate YTSoar role
+// names: an explicit group_role_mapping entry (one-to-many) wins; otherwise the
+// raw value passes through as a candidate, so an IdP that already emits role
+// names (Azure app roles, Okta roles) needs no mapping table. Unknown candidates
+// are filtered by the role lookup in the caller. The default is NOT applied here
+// — that belongs to the caller, decided on resolved roles.
 func desiredRoleNames(cfg OIDCConfig, groups []string) []string {
 	seen := map[string]bool{}
 	names := make([]string, 0, len(groups))
-	for _, g := range groups {
-		role, ok := cfg.GroupRoleMapping[g]
-		if ok && role != "" && !seen[role] {
-			seen[role] = true
-			names = append(names, role)
+	add := func(name string) {
+		if name != "" && !seen[name] {
+			seen[name] = true
+			names = append(names, name)
 		}
 	}
-	if len(names) == 0 && cfg.DefaultRole != "" {
-		names = append(names, cfg.DefaultRole)
+	for _, g := range groups {
+		if mapped, ok := cfg.GroupRoleMapping[g]; ok {
+			for _, r := range mapped {
+				add(r)
+			}
+			continue
+		}
+		add(g) // passthrough
 	}
 	return names
 }

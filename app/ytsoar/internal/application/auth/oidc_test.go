@@ -3,6 +3,7 @@ package auth_test
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"testing"
 	"time"
 
@@ -16,6 +17,21 @@ import (
 	"github.com/yuudev14/ytsoar/internal/domain"
 	"github.com/yuudev14/ytsoar/internal/token"
 )
+
+// oidcProviderWithConfig builds an enabled oidc provider from a partial config,
+// filling in the required issuer/client_id so tests only state what they exercise.
+func oidcProviderWithConfig(id uuid.UUID, extra map[string]any) auth.AuthProvider {
+	extra["issuer"] = "https://idp.example"
+	extra["client_id"] = "cid"
+	raw, _ := json.Marshal(extra)
+	return auth.AuthProvider{
+		ID:      id,
+		Type:    domain.AuthProviderOIDC,
+		Name:    "keycloak",
+		Enabled: true,
+		Config:  raw,
+	}
+}
 
 // oidcProviderRow builds an enabled oidc provider whose group map sends
 // soc-analysts → analyst, with viewer as the default.
@@ -198,4 +214,156 @@ func TestStartOIDCBuildsRedirectAndStateCookie(t *testing.T) {
 	assert.Equal(t, "oidc_state", claims["typ"])
 	assert.Equal(t, pid.String(), claims["pid"])
 	assert.NotEmpty(t, claims["verifier"])
+}
+
+// A single IdP group mapping to a list of roles assigns every one of them.
+func TestCompleteOIDCOneToManyRoleMapping(t *testing.T) {
+	env := setupTest(t)
+	pid := uuid.New()
+	cookie := stateCookie(t, pid, "s", "v", time.Now().Add(time.Minute))
+	externalID := pid.String() + "|kc-sub"
+	existing := domain.User{ID: uuid.New(), Username: "bob", AuthProvider: domain.AuthProviderOIDC, IsActive: true}
+
+	env.mockProviders.EXPECT().GetByID(gomock.Any(), pid).Return(oidcProviderWithConfig(pid, map[string]any{
+		"group_role_mapping": map[string]any{"soc-admins": []string{"admin", "analyst"}},
+	}), nil)
+	env.mockOIDC.EXPECT().Exchange(gomock.Any(), gomock.Any(), gomock.Any(), "code", "v").
+		Return(auth.OIDCIdentity{Subject: "kc-sub", Groups: []string{"soc-admins"}}, nil)
+	env.mockUsers.EXPECT().GetByExternalID(gomock.Any(), domain.AuthProviderOIDC, externalID).Return(existing, nil)
+
+	admin := domain.Role{ID: uuid.New(), Name: "admin"}
+	analyst := domain.Role{ID: uuid.New(), Name: "analyst"}
+	env.mockRoles.EXPECT().GetByName(gomock.Any(), "admin").Return(admin, nil)
+	env.mockRoles.EXPECT().GetByName(gomock.Any(), "analyst").Return(analyst, nil)
+	env.mockRoles.EXPECT().RemoveAllFromUser(gomock.Any(), existing.ID).Return(nil)
+	env.mockRoles.EXPECT().AssignToUser(gomock.Any(), existing.ID, admin.ID).Return(nil)
+	env.mockRoles.EXPECT().AssignToUser(gomock.Any(), existing.ID, analyst.ID).Return(nil)
+	env.mockTokens.EXPECT().Insert(gomock.Any(), existing.ID, gomock.Any(), gomock.Any()).Return(nil)
+	env.mockUsers.EXPECT().TouchLastLogin(gomock.Any(), existing.ID).Return(nil)
+
+	_, err := env.service.CompleteOIDC(context.Background(), pid, "code", "s", cookie)
+	require.NoError(t, err)
+}
+
+// No mapping table: the IdP emits a value that already is a role name
+// (Azure app roles / Okta roles) and it is assigned directly via passthrough.
+func TestCompleteOIDCPassthroughRole(t *testing.T) {
+	env := setupTest(t)
+	pid := uuid.New()
+	cookie := stateCookie(t, pid, "s", "v", time.Now().Add(time.Minute))
+	externalID := pid.String() + "|kc-sub"
+	existing := domain.User{ID: uuid.New(), Username: "bob", AuthProvider: domain.AuthProviderOIDC, IsActive: true}
+
+	env.mockProviders.EXPECT().GetByID(gomock.Any(), pid).Return(oidcProviderWithConfig(pid, map[string]any{
+		"groups_claim": "roles",
+		"default_role": "viewer",
+	}), nil)
+	env.mockOIDC.EXPECT().Exchange(gomock.Any(), gomock.Any(), gomock.Any(), "code", "v").
+		Return(auth.OIDCIdentity{Subject: "kc-sub", Groups: []string{"analyst"}}, nil)
+	env.mockUsers.EXPECT().GetByExternalID(gomock.Any(), domain.AuthProviderOIDC, externalID).Return(existing, nil)
+
+	analyst := domain.Role{ID: uuid.New(), Name: "analyst"}
+	env.mockRoles.EXPECT().GetByName(gomock.Any(), "analyst").Return(analyst, nil)
+	env.mockRoles.EXPECT().RemoveAllFromUser(gomock.Any(), existing.ID).Return(nil)
+	env.mockRoles.EXPECT().AssignToUser(gomock.Any(), existing.ID, analyst.ID).Return(nil)
+	env.mockTokens.EXPECT().Insert(gomock.Any(), existing.ID, gomock.Any(), gomock.Any()).Return(nil)
+	env.mockUsers.EXPECT().TouchLastLogin(gomock.Any(), existing.ID).Return(nil)
+
+	_, err := env.service.CompleteOIDC(context.Background(), pid, "code", "s", cookie)
+	require.NoError(t, err)
+}
+
+// A group that maps to nothing and is not itself a role resolves nothing, so
+// the user still lands on the default role rather than losing all access.
+func TestCompleteOIDCPassthroughMissFallsToDefault(t *testing.T) {
+	env := setupTest(t)
+	pid := uuid.New()
+	cookie := stateCookie(t, pid, "s", "v", time.Now().Add(time.Minute))
+	externalID := pid.String() + "|kc-sub"
+	existing := domain.User{ID: uuid.New(), Username: "bob", AuthProvider: domain.AuthProviderOIDC, IsActive: true}
+
+	env.mockProviders.EXPECT().GetByID(gomock.Any(), pid).Return(oidcProviderWithConfig(pid, map[string]any{
+		"default_role": "viewer",
+	}), nil)
+	env.mockOIDC.EXPECT().Exchange(gomock.Any(), gomock.Any(), gomock.Any(), "code", "v").
+		Return(auth.OIDCIdentity{Subject: "kc-sub", Groups: []string{"random-ad-group"}}, nil)
+	env.mockUsers.EXPECT().GetByExternalID(gomock.Any(), domain.AuthProviderOIDC, externalID).Return(existing, nil)
+
+	// passthrough candidate isn't a real role → skipped; default resolves.
+	env.mockRoles.EXPECT().GetByName(gomock.Any(), "random-ad-group").Return(domain.Role{}, errors.New("no rows"))
+	viewer := domain.Role{ID: uuid.New(), Name: "viewer"}
+	env.mockRoles.EXPECT().GetByName(gomock.Any(), "viewer").Return(viewer, nil)
+	env.mockRoles.EXPECT().RemoveAllFromUser(gomock.Any(), existing.ID).Return(nil)
+	env.mockRoles.EXPECT().AssignToUser(gomock.Any(), existing.ID, viewer.ID).Return(nil)
+	env.mockTokens.EXPECT().Insert(gomock.Any(), existing.ID, gomock.Any(), gomock.Any()).Return(nil)
+	env.mockUsers.EXPECT().TouchLastLogin(gomock.Any(), existing.ID).Return(nil)
+
+	_, err := env.service.CompleteOIDC(context.Background(), pid, "code", "s", cookie)
+	require.NoError(t, err)
+}
+
+// sync_mode "attributes" hands roles to an admin: a login refreshes the session
+// but must never touch the user's roles, even with a matching group claim.
+func TestCompleteOIDCSyncModeAttributesLeavesRoles(t *testing.T) {
+	env := setupTest(t)
+	pid := uuid.New()
+	cookie := stateCookie(t, pid, "s", "v", time.Now().Add(time.Minute))
+	externalID := pid.String() + "|kc-sub"
+	existing := domain.User{ID: uuid.New(), Username: "bob", AuthProvider: domain.AuthProviderOIDC, IsActive: true}
+
+	env.mockProviders.EXPECT().GetByID(gomock.Any(), pid).Return(oidcProviderWithConfig(pid, map[string]any{
+		"sync_mode":          "attributes",
+		"group_role_mapping": map[string]any{"soc-analysts": "analyst"},
+		"default_role":       "viewer",
+	}), nil)
+	env.mockOIDC.EXPECT().Exchange(gomock.Any(), gomock.Any(), gomock.Any(), "code", "v").
+		Return(auth.OIDCIdentity{Subject: "kc-sub", Groups: []string{"soc-analysts"}}, nil)
+	env.mockUsers.EXPECT().GetByExternalID(gomock.Any(), domain.AuthProviderOIDC, externalID).Return(existing, nil)
+	// deliberately no mockRoles expectations — any role call fails the test.
+	env.mockTokens.EXPECT().Insert(gomock.Any(), existing.ID, gomock.Any(), gomock.Any()).Return(nil)
+	env.mockUsers.EXPECT().TouchLastLogin(gomock.Any(), existing.ID).Return(nil)
+
+	_, err := env.service.CompleteOIDC(context.Background(), pid, "code", "s", cookie)
+	require.NoError(t, err)
+}
+
+// A lookup that fails for any reason other than "no such user" must not fall
+// through to JIT — re-provisioning an existing account would trip the
+// external_id unique index and report a database outage as a bad login.
+func TestCompleteOIDCLookupFailureDoesNotProvision(t *testing.T) {
+	env := setupTest(t)
+	pid := uuid.New()
+	cookie := stateCookie(t, pid, "s", "verifier", time.Now().Add(time.Minute))
+	dbDown := errors.New("connection refused")
+
+	env.mockProviders.EXPECT().GetByID(gomock.Any(), pid).Return(oidcProviderRow(pid, true), nil)
+	env.mockOIDC.EXPECT().
+		Exchange(gomock.Any(), gomock.Any(), gomock.Any(), "code", "verifier").
+		Return(auth.OIDCIdentity{Subject: "kc-sub", PreferredUsername: "alice"}, nil)
+	env.mockUsers.EXPECT().
+		GetByExternalID(gomock.Any(), domain.AuthProviderOIDC, pid.String()+"|kc-sub").
+		Return(domain.User{}, dbDown)
+	// no Create expectation: gomock fails the test if provisioning is attempted.
+
+	_, err := env.service.CompleteOIDC(context.Background(), pid, "code", "s", cookie)
+	assert.ErrorIs(t, err, dbDown)
+}
+
+func TestCompleteOIDCUsernameLookupFailureDoesNotProvision(t *testing.T) {
+	env := setupTest(t)
+	pid := uuid.New()
+	cookie := stateCookie(t, pid, "s", "verifier", time.Now().Add(time.Minute))
+	dbDown := errors.New("connection refused")
+
+	env.mockProviders.EXPECT().GetByID(gomock.Any(), pid).Return(oidcProviderRow(pid, true), nil)
+	env.mockOIDC.EXPECT().
+		Exchange(gomock.Any(), gomock.Any(), gomock.Any(), "code", "verifier").
+		Return(auth.OIDCIdentity{Subject: "kc-sub", PreferredUsername: "alice"}, nil)
+	env.mockUsers.EXPECT().
+		GetByExternalID(gomock.Any(), domain.AuthProviderOIDC, pid.String()+"|kc-sub").
+		Return(domain.User{}, auth.ErrUserNotFound)
+	env.mockUsers.EXPECT().GetByUsername(gomock.Any(), "alice").Return(domain.User{}, dbDown)
+
+	_, err := env.service.CompleteOIDC(context.Background(), pid, "code", "s", cookie)
+	assert.ErrorIs(t, err, dbDown)
 }
