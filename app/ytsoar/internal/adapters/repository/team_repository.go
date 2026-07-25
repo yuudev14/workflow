@@ -37,6 +37,7 @@ func (r *TeamRepositoryImpl) queriesFromContext(ctx context.Context) db.Querier 
 type teamRow struct {
 	domain.Team
 	Members json.RawMessage `db:"members"`
+	Roles   json.RawMessage `db:"roles"`
 }
 
 const membersAggregate = `COALESCE((
@@ -46,8 +47,15 @@ const membersAggregate = `COALESCE((
     WHERE tm.team_id = t.id
 ), '[]'::jsonb) AS members`
 
+const teamRolesAggregate = `COALESCE((
+    SELECT jsonb_agg(jsonb_build_object('id', r.id, 'name', r.name) ORDER BY r.name)
+    FROM team_roles tr JOIN roles r ON r.id = tr.role_id
+    WHERE tr.team_id = t.id
+), '[]'::jsonb) AS roles`
+
 func selectTeams() sq.SelectBuilder {
-	return sq.Select("t.*, " + membersAggregate).From("teams t").PlaceholderFormat(sq.Dollar)
+	return sq.Select("t.*, " + membersAggregate + ", " + teamRolesAggregate).
+		From("teams t").PlaceholderFormat(sq.Dollar)
 }
 
 func applyTeamFilter(stmt sq.SelectBuilder, filter auth.TeamFilter) sq.SelectBuilder {
@@ -144,6 +152,23 @@ func (r *TeamRepositoryImpl) ReplaceMembers(ctx context.Context, teamID uuid.UUI
 	return nil
 }
 
+func (r *TeamRepositoryImpl) ReplaceRoles(ctx context.Context, teamID uuid.UUID, roleIDs []uuid.UUID) error {
+	q := r.queriesFromContext(ctx)
+	if err := q.DeleteTeamRoles(ctx, toPgUUID(teamID)); err != nil {
+		return err
+	}
+
+	for _, roleID := range roleIDs {
+		if err := q.InsertTeamRole(ctx, db.InsertTeamRoleParams{
+			TeamID: toPgUUID(teamID),
+			RoleID: toPgUUID(roleID),
+		}); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func toDomainTeam(row teamRow) (domain.TeamWithMembers, error) {
 	members := []domain.TeamMember{}
 	if len(row.Members) > 0 {
@@ -151,7 +176,13 @@ func toDomainTeam(row teamRow) (domain.TeamWithMembers, error) {
 			return domain.TeamWithMembers{}, err
 		}
 	}
-	return domain.TeamWithMembers{Team: row.Team, Members: members}, nil
+	roles := []domain.RoleRef{}
+	if len(row.Roles) > 0 {
+		if err := json.Unmarshal(row.Roles, &roles); err != nil {
+			return domain.TeamWithMembers{}, err
+		}
+	}
+	return domain.TeamWithMembers{Team: row.Team, Members: members, Roles: roles}, nil
 }
 
 func toDomainTeamRow(row db.Team) domain.Team {

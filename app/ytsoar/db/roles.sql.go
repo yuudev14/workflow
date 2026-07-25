@@ -132,12 +132,19 @@ func (q *Queries) InsertUserRole(ctx context.Context, arg InsertUserRoleParams) 
 }
 
 const listPermissionsForUser = `-- name: ListPermissionsForUser :many
-SELECT DISTINCT rp.module, rp.action
+SELECT rp.module, rp.action
 FROM role_permissions rp
 JOIN user_roles ur ON ur.role_id = rp.role_id
 JOIN users u ON u.id = ur.user_id
 WHERE u.id = $1 AND u.is_active = TRUE
-ORDER BY rp.module, rp.action
+UNION
+SELECT rp.module, rp.action
+FROM role_permissions rp
+JOIN team_roles tr ON tr.role_id = rp.role_id
+JOIN team_members tm ON tm.team_id = tr.team_id
+JOIN users u ON u.id = tm.user_id
+WHERE u.id = $1 AND u.is_active = TRUE
+ORDER BY module, action
 `
 
 type ListPermissionsForUserRow struct {
@@ -145,6 +152,10 @@ type ListPermissionsForUserRow struct {
 	Action string `json:"action"`
 }
 
+// Effective permissions: roles assigned directly to the user, UNION roles
+// granted by every team they belong to. UNION dedups, so an overlap costs
+// nothing. Both halves filter is_active, so a deactivated user keeps nothing —
+// not even through a team.
 func (q *Queries) ListPermissionsForUser(ctx context.Context, id pgtype.UUID) ([]ListPermissionsForUserRow, error) {
 	rows, err := q.db.Query(ctx, listPermissionsForUser, id)
 	if err != nil {
@@ -229,9 +240,15 @@ const listRolesForUser = `-- name: ListRolesForUser :many
 SELECT r.id, r.name, r.description, r.is_builtin, r.created_at, r.updated_at FROM roles r
 JOIN user_roles ur ON ur.role_id = r.id
 WHERE ur.user_id = $1
-ORDER BY r.name
+UNION
+SELECT r.id, r.name, r.description, r.is_builtin, r.created_at, r.updated_at FROM roles r
+JOIN team_roles tr ON tr.role_id = r.id
+JOIN team_members tm ON tm.team_id = tr.team_id
+WHERE tm.user_id = $1
+ORDER BY name
 `
 
+// Effective roles: direct assignments UNION those inherited from teams.
 func (q *Queries) ListRolesForUser(ctx context.Context, userID pgtype.UUID) ([]Role, error) {
 	rows, err := q.db.Query(ctx, listRolesForUser, userID)
 	if err != nil {

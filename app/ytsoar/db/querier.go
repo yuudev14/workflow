@@ -28,6 +28,7 @@ type Querier interface {
 	DeleteTasks(ctx context.Context, ids []pgtype.UUID) error
 	DeleteTeam(ctx context.Context, id pgtype.UUID) (int64, error)
 	DeleteTeamMembers(ctx context.Context, teamID pgtype.UUID) error
+	DeleteTeamRoles(ctx context.Context, teamID pgtype.UUID) error
 	DeleteUserRoles(ctx context.Context, userID pgtype.UUID) error
 	GetAuthProviderByID(ctx context.Context, id pgtype.UUID) (AuthProvider, error)
 	GetConnectorRecord(ctx context.Context, id string) (Connector, error)
@@ -49,12 +50,18 @@ type Querier interface {
 	InsertRefreshToken(ctx context.Context, arg InsertRefreshTokenParams) (RefreshToken, error)
 	InsertRolePermission(ctx context.Context, arg InsertRolePermissionParams) error
 	InsertTeamMember(ctx context.Context, arg InsertTeamMemberParams) error
+	InsertTeamRole(ctx context.Context, arg InsertTeamRoleParams) error
 	InsertUserRole(ctx context.Context, arg InsertUserRoleParams) error
 	ListAuthProviders(ctx context.Context) ([]AuthProvider, error)
 	ListEnabledAuthProviders(ctx context.Context) ([]AuthProvider, error)
+	// Effective permissions: roles assigned directly to the user, UNION roles
+	// granted by every team they belong to. UNION dedups, so an overlap costs
+	// nothing. Both halves filter is_active, so a deactivated user keeps nothing —
+	// not even through a team.
 	ListPermissionsForUser(ctx context.Context, id pgtype.UUID) ([]ListPermissionsForUserRow, error)
 	ListRolePermissions(ctx context.Context, roleID pgtype.UUID) ([]ListRolePermissionsRow, error)
 	ListRoles(ctx context.Context) ([]Role, error)
+	// Effective roles: direct assignments UNION those inherited from teams.
 	ListRolesForUser(ctx context.Context, userID pgtype.UUID) ([]Role, error)
 	RevokeAllRefreshTokensForUser(ctx context.Context, userID pgtype.UUID) error
 	RevokeRefreshToken(ctx context.Context, tokenHash string) (int64, error)

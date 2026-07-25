@@ -96,6 +96,7 @@ type TeamInput struct {
 	Name        string   `json:"name" binding:"required"`
 	Description *string  `json:"description"`
 	MemberIDs   []string `json:"member_ids"`
+	RoleIDs     []string `json:"role_ids"`
 }
 
 type UpdateTeamInput struct {
@@ -105,6 +106,10 @@ type UpdateTeamInput struct {
 
 type SetTeamMembersInput struct {
 	MemberIDs []string `json:"member_ids"`
+}
+
+type SetTeamRolesInput struct {
+	RoleIDs []string `json:"role_ids"`
 }
 
 type AuditFilter struct {

@@ -47,6 +47,7 @@ func (h *AdminHandler) RegisterRoutes(
 		teams.POST("", create, h.CreateTeam)
 		teams.PUT("/:team_id", update, h.UpdateTeam)
 		teams.PUT("/:team_id/members", update, h.SetTeamMembers)
+		teams.PUT("/:team_id/roles", update, h.SetTeamRoles)
 		teams.DELETE("/:team_id", remove, h.DeleteTeam)
 	}
 

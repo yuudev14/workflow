@@ -132,6 +132,20 @@ func (mr *MockTeamRepositoryMockRecorder) ReplaceMembers(ctx, teamID, userIDs an
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ReplaceMembers", reflect.TypeOf((*MockTeamRepository)(nil).ReplaceMembers), ctx, teamID, userIDs)
 }
 
+// ReplaceRoles mocks base method.
+func (m *MockTeamRepository) ReplaceRoles(ctx context.Context, teamID uuid.UUID, roleIDs []uuid.UUID) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ReplaceRoles", ctx, teamID, roleIDs)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// ReplaceRoles indicates an expected call of ReplaceRoles.
+func (mr *MockTeamRepositoryMockRecorder) ReplaceRoles(ctx, teamID, roleIDs any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ReplaceRoles", reflect.TypeOf((*MockTeamRepository)(nil).ReplaceRoles), ctx, teamID, roleIDs)
+}
+
 // Update mocks base method.
 func (m *MockTeamRepository) Update(ctx context.Context, id uuid.UUID, params auth.UpdateTeamParams) (domain.Team, error) {
 	m.ctrl.T.Helper()

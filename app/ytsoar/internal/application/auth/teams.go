@@ -34,6 +34,10 @@ func (s *Service) CreateTeam(ctx context.Context, actorID uuid.UUID, input TeamI
 	if err != nil {
 		return domain.TeamWithMembers{}, err
 	}
+	roleIDs, err := parseUUIDs(input.RoleIDs, "role_ids")
+	if err != nil {
+		return domain.TeamWithMembers{}, err
+	}
 
 	var created domain.Team
 	txErr := s.txManager.WithinTransaction(ctx, func(ctx context.Context) error {
@@ -42,7 +46,13 @@ func (s *Service) CreateTeam(ctx context.Context, actorID uuid.UUID, input TeamI
 			return err
 		}
 		created = team
-		return s.teams.ReplaceMembers(ctx, team.ID, memberIDs)
+		if err := s.teams.ReplaceMembers(ctx, team.ID, memberIDs); err != nil {
+			return err
+		}
+		if err := s.verifyRolesExist(ctx, roleIDs); err != nil {
+			return err
+		}
+		return s.teams.ReplaceRoles(ctx, team.ID, roleIDs)
 	})
 	if txErr != nil {
 		return domain.TeamWithMembers{}, txErr
@@ -99,6 +109,47 @@ func (s *Service) SetTeamMembers(ctx context.Context, actorID, id uuid.UUID, mem
 	})
 
 	return s.teams.GetWithMembers(ctx, id)
+}
+
+// SetTeamRoles replaces the roles a team grants its members. This escalates
+// privilege for everyone in the team, so it stays behind settings.update and is
+// always audited. Builtin roles may be granted freely — that only *uses* a
+// role; ErrBuiltinRole still guards editing a builtin's own matrix.
+func (s *Service) SetTeamRoles(ctx context.Context, actorID, id uuid.UUID, roleIDStrings []string) (domain.TeamWithMembers, error) {
+	roleIDs, err := parseUUIDs(roleIDStrings, "role_ids")
+	if err != nil {
+		return domain.TeamWithMembers{}, err
+	}
+
+	if err := s.txManager.WithinTransaction(ctx, func(ctx context.Context) error {
+		if err := s.verifyRolesExist(ctx, roleIDs); err != nil {
+			return err
+		}
+		return s.teams.ReplaceRoles(ctx, id, roleIDs)
+	}); err != nil {
+		return domain.TeamWithMembers{}, err
+	}
+
+	s.writeAudit(ctx, domain.AuditEntry{
+		ActorID:  &actorID,
+		Module:   domain.ModuleSettings,
+		Action:   "team_roles_changed",
+		EntityID: entityID(id),
+		Detail:   map[string]any{"role_ids": roleIDStrings},
+	})
+
+	return s.teams.GetWithMembers(ctx, id)
+}
+
+// verifyRolesExist fails before any write, so an unknown id surfaces as a clean
+// not-found rather than an opaque foreign-key violation.
+func (s *Service) verifyRolesExist(ctx context.Context, roleIDs []uuid.UUID) error {
+	for _, roleID := range roleIDs {
+		if _, err := s.roles.GetByID(ctx, roleID); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (s *Service) DeleteTeam(ctx context.Context, actorID, id uuid.UUID) error {

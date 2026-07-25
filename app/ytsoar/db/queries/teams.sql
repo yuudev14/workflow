@@ -27,3 +27,9 @@ INSERT INTO team_members (team_id, user_id) VALUES ($1, $2) ON CONFLICT DO NOTHI
 
 -- name: DeleteTeamMembers :exec
 DELETE FROM team_members WHERE team_id = $1;
+
+-- name: InsertTeamRole :exec
+INSERT INTO team_roles (team_id, role_id) VALUES ($1, $2) ON CONFLICT DO NOTHING;
+
+-- name: DeleteTeamRoles :exec
+DELETE FROM team_roles WHERE team_id = $1;
