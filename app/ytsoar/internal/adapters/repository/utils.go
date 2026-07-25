@@ -8,7 +8,9 @@ import (
 
 	sq "github.com/Masterminds/squirrel"
 	"github.com/google/uuid"
+	"github.com/jackc/pgerrcode"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/yuudev14/ytsoar/db"
@@ -65,6 +67,14 @@ func CollectOneScalarFromSqlizer[T any](
 func mapNoRows(err error, notFound error) error {
 	if errors.Is(err, pgx.ErrNoRows) {
 		return notFound
+	}
+	return err
+}
+
+func mapUniqueViolation(err error, conflict error) error {
+	var pgErr *pgconn.PgError
+	if errors.As(err, &pgErr) && pgErr.Code == pgerrcode.UniqueViolation {
+		return conflict
 	}
 	return err
 }

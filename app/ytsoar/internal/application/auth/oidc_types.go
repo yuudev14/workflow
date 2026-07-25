@@ -11,11 +11,12 @@ import (
 )
 
 var (
-	ErrProviderNotFound = apperr.New(apperr.NotFound, "auth provider not found")
-	ErrProviderDisabled = apperr.New(apperr.Invalid, "auth provider is disabled")
+	ErrProviderNotFound  = apperr.New(apperr.NotFound, "auth provider not found")
+	ErrProviderDisabled  = apperr.New(apperr.Invalid, "auth provider is disabled")
+	ErrProviderNameTaken = apperr.New(apperr.Conflict, "an auth provider with that name already exists")
 	// ErrOIDCState is deliberately vague — a state mismatch is the CSRF signal
 	// on the one state-changing GET, and the reason must not leak to the caller.
-	ErrOIDCState = apperr.New(apperr.Unauthorized, "authentication could not be completed")
+	ErrOIDCState   = apperr.New(apperr.Unauthorized, "authentication could not be completed")
 	ErrJITDisabled = apperr.New(apperr.Forbidden, "no account for this identity and just-in-time provisioning is off")
 )
 
@@ -52,15 +53,16 @@ type OIDCConfig struct {
 	// from the IdP each login; "attributes"/"off" leave roles to an admin. See
 	// SyncsRoles.
 	SyncMode string `json:"sync_mode,omitempty"`
-	// UsernameClaim / EmailClaim name the JIT profile source claims; empty means
-	// "preferred_username" / "email".
-	UsernameClaim string `json:"username_claim,omitempty"`
-	EmailClaim    string `json:"email_claim,omitempty"`
-	AllowJIT      bool   `json:"allow_jit"`
+	// UsernameClaim / EmailClaim / FirstNameClaim / LastNameClaim name the
+	// profile source claims; empty means "preferred_username" / "email" /
+	// "given_name" / "family_name".
+	UsernameClaim  string `json:"username_claim,omitempty"`
+	EmailClaim     string `json:"email_claim,omitempty"`
+	FirstNameClaim string `json:"first_name_claim,omitempty"`
+	LastNameClaim  string `json:"last_name_claim,omitempty"`
+	AllowJIT       bool   `json:"allow_jit"`
 }
 
-// Sync modes for OIDCConfig.SyncMode — mirrors FortiSOAR's IdP attribute-sync
-// toggle. Roles are re-synced from the IdP unless the admin opts out.
 const (
 	SyncModeRoles      = "roles"
 	SyncModeAttributes = "attributes"
@@ -68,8 +70,6 @@ const (
 	SyncModeOff        = "off"
 )
 
-// SyncsRoles reports whether a login should replace the user's roles from the
-// IdP. False when the admin owns roles (attributes-only or off).
 func (c OIDCConfig) SyncsRoles() bool {
 	switch c.SyncMode {
 	case SyncModeAttributes, SyncModeOff:
@@ -79,9 +79,18 @@ func (c OIDCConfig) SyncsRoles() bool {
 	}
 }
 
-// RoleMapping maps an IdP group/role value to one or more YTSoar role names. It
-// decodes a config value written as either a bare string or a list of strings,
-// so "admin" and ["admin","analyst"] are both valid on the wire.
+// SyncsAttributes reports whether a login should refresh the user's profile
+// from the IdP. Off by default: empty/"roles" keeps the historical behaviour of
+// writing the profile once at JIT and leaving it alone afterwards.
+func (c OIDCConfig) SyncsAttributes() bool {
+	switch c.SyncMode {
+	case SyncModeAttributes, SyncModeAll:
+		return true
+	default:
+		return false
+	}
+}
+
 type RoleMapping map[string][]string
 
 func (m *RoleMapping) UnmarshalJSON(data []byte) error {
@@ -136,11 +145,11 @@ type OIDCIdentity struct {
 	Subject           string
 	Email             string
 	PreferredUsername string
+	FirstName         string
+	LastName          string
 	Groups            []string
 }
 
-// ProviderInput / UpdateProviderInput back the admin CRUD. ClientSecret is
-// masked on read (see maskProviderConfig).
 type ProviderInput struct {
 	Type    string          `json:"type" binding:"required"`
 	Name    string          `json:"name" binding:"required"`

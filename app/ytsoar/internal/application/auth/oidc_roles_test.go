@@ -60,3 +60,11 @@ func TestDecodeOIDCConfigRequiresOpenidScope(t *testing.T) {
 	assert.NoError(t, withScopes(`[]`), "unset scopes fall back to the adapter default")
 	assert.Error(t, withScopes(`["email","profile"]`), "no openid scope means no id_token")
 }
+
+func TestSyncsAttributes(t *testing.T) {
+	assert.False(t, OIDCConfig{}.SyncsAttributes(), "empty keeps the profile at JIT-only")
+	assert.False(t, OIDCConfig{SyncMode: SyncModeRoles}.SyncsAttributes())
+	assert.False(t, OIDCConfig{SyncMode: SyncModeOff}.SyncsAttributes())
+	assert.True(t, OIDCConfig{SyncMode: SyncModeAttributes}.SyncsAttributes())
+	assert.True(t, OIDCConfig{SyncMode: SyncModeAll}.SyncsAttributes())
+}
