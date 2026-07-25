@@ -90,6 +90,8 @@ func (c *Client) Exchange(ctx context.Context, cfg auth.OIDCConfig, redirectURL,
 		Subject:           idToken.Subject,
 		Email:             stringFromClaim(claims, claimNameOr(cfg.EmailClaim, "email")),
 		PreferredUsername: stringFromClaim(claims, claimNameOr(cfg.UsernameClaim, "preferred_username")),
+		FirstName:         stringFromClaim(claims, claimNameOr(cfg.FirstNameClaim, "given_name")),
+		LastName:          stringFromClaim(claims, claimNameOr(cfg.LastNameClaim, "family_name")),
 		Groups:            stringsFromClaim(claims, claimNameOr(cfg.GroupsClaim, "groups")),
 	}, nil
 }

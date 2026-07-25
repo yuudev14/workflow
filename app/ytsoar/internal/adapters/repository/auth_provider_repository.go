@@ -63,7 +63,7 @@ func (r *AuthProviderRepositoryImpl) Create(ctx context.Context, typ domain.Auth
 		Enabled: enabled,
 	})
 	if err != nil {
-		return auth.AuthProvider{}, err
+		return auth.AuthProvider{}, mapUniqueViolation(err, auth.ErrProviderNameTaken)
 	}
 	return toDomainProvider(row), nil
 }
@@ -85,7 +85,7 @@ func (r *AuthProviderRepositoryImpl) Update(ctx context.Context, id uuid.UUID, p
 
 	row, err := r.queriesFromContext(ctx).UpdateAuthProvider(ctx, arg)
 	if err != nil {
-		return auth.AuthProvider{}, mapNoRows(err, auth.ErrProviderNotFound)
+		return auth.AuthProvider{}, mapUniqueViolation(mapNoRows(err, auth.ErrProviderNotFound), auth.ErrProviderNameTaken)
 	}
 	return toDomainProvider(row), nil
 }

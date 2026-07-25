@@ -35,3 +35,14 @@ func TestClaimNameOr(t *testing.T) {
 	assert.Equal(t, "groups", claimNameOr("", "groups"))
 	assert.Equal(t, "roles", claimNameOr("roles", "groups"))
 }
+
+func TestNameClaimDefaultsAndOverrides(t *testing.T) {
+	assert.Equal(t, "given_name", claimNameOr("", "given_name"))
+	assert.Equal(t, "family_name", claimNameOr("", "family_name"))
+	// Some IdPs spell them differently.
+	assert.Equal(t, "firstName", claimNameOr("firstName", "given_name"))
+
+	claims := map[string]any{"given_name": "Bob", "profile": map[string]any{"surname": "Stone"}}
+	assert.Equal(t, "Bob", stringFromClaim(claims, "given_name"))
+	assert.Equal(t, "Stone", stringFromClaim(claims, "profile.surname"))
+}

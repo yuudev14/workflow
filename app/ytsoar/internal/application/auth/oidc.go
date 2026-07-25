@@ -14,6 +14,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/yuudev14/ytsoar/internal/domain"
 	"github.com/yuudev14/ytsoar/internal/token"
+	"github.com/yuudev14/ytsoar/internal/types"
 )
 
 const (
@@ -103,8 +104,11 @@ func (s *Service) CompleteOIDC(ctx context.Context, providerID uuid.UUID, code, 
 
 	// A failed role sync must not strand a just-provisioned user with no way in;
 	// it is logged, and the next login re-syncs.
-	if err := s.syncOIDCRoles(ctx, user.ID, cfg, identity.Groups); err != nil {
+	if err := s.syncOIDCRoles(ctx, user.ID, cfg, identity.Groups, isNew); err != nil {
 		s.logger.Errorf("oidc role sync failed for %s: %v", user.ID, err)
+	}
+	if err := s.syncOIDCAttributes(ctx, user, cfg, identity); err != nil {
+		s.logger.Errorf("oidc attribute sync failed for %s: %v", user.ID, err)
 	}
 
 	pair, err := s.issuePair(ctx, user)
@@ -156,6 +160,8 @@ func (s *Service) resolveOIDCUser(ctx context.Context, providerID uuid.UUID, cfg
 	created, err := s.users.Create(ctx, CreateUserParams{
 		Username:     username,
 		Email:        id.Email,
+		FirstName:    optionalString(id.FirstName),
+		LastName:     optionalString(id.LastName),
 		AuthProvider: domain.AuthProviderOIDC,
 		ExternalID:   &externalID,
 	})
@@ -197,9 +203,15 @@ func (s *Service) uniqueUsername(ctx context.Context, id OIDCIdentity) (string, 
 // syncOIDCRoles replaces the user's roles from the groups claim on every login,
 // unless the provider's sync_mode leaves roles to an admin. OIDC users only — a
 // local user's manual roles are never touched by this path.
-func (s *Service) syncOIDCRoles(ctx context.Context, userID uuid.UUID, cfg OIDCConfig, groups []string) error {
+func (s *Service) syncOIDCRoles(ctx context.Context, userID uuid.UUID, cfg OIDCConfig, groups []string, isNew bool) error {
 	if !cfg.SyncsRoles() {
-		return nil
+		if !isNew {
+			return nil
+		}
+		// A just-provisioned account still needs a starting role, or it signs in
+		// with zero permissions and nobody is told. Only default_role applies
+		// here — in this mode the IdP's groups are never consulted.
+		groups = nil
 	}
 
 	roleIDs := make([]uuid.UUID, 0)
@@ -234,6 +246,47 @@ func (s *Service) syncOIDCRoles(ctx context.Context, userID uuid.UUID, cfg OIDCC
 		}
 		return nil
 	})
+}
+
+// syncOIDCAttributes refreshes the stored profile from the IdP when the
+// provider's sync_mode asks for it. Only non-empty claims are pushed, so an IdP
+// that omits given_name cannot blank a name someone set by hand, and an
+// unchanged profile costs no write. The username is deliberately never
+// re-synced: it is the login identifier, it was collision-checked once at
+// provision time, and renaming it would break the audit trail's legibility.
+func (s *Service) syncOIDCAttributes(ctx context.Context, user domain.User, cfg OIDCConfig, id OIDCIdentity) error {
+	if !cfg.SyncsAttributes() {
+		return nil
+	}
+
+	var params UpdateUserParams
+	changed := false
+	set := func(field *types.Nullable[string], value string) {
+		*field = types.Nullable[string]{Value: new(value), Set: true}
+		changed = true
+	}
+	if id.Email != "" && id.Email != user.Email {
+		set(&params.Email, id.Email)
+	}
+	if id.FirstName != "" && (user.FirstName == nil || *user.FirstName != id.FirstName) {
+		set(&params.FirstName, id.FirstName)
+	}
+	if id.LastName != "" && (user.LastName == nil || *user.LastName != id.LastName) {
+		set(&params.LastName, id.LastName)
+	}
+	if !changed {
+		return nil
+	}
+
+	_, err := s.users.Update(ctx, user.ID, params)
+	return err
+}
+
+func optionalString(s string) *string {
+	if s == "" {
+		return nil
+	}
+	return new(s)
 }
 
 // desiredRoleNames resolves IdP group/role values to candidate YTSoar role

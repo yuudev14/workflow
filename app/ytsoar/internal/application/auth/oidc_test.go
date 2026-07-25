@@ -367,3 +367,157 @@ func TestCompleteOIDCUsernameLookupFailureDoesNotProvision(t *testing.T) {
 	_, err := env.service.CompleteOIDC(context.Background(), pid, "code", "s", cookie)
 	assert.ErrorIs(t, err, dbDown)
 }
+
+func TestCompleteOIDCSyncModeAllPushesAttributes(t *testing.T) {
+	env := setupTest(t)
+	pid := uuid.New()
+	cookie := stateCookie(t, pid, "s", "v", time.Now().Add(time.Minute))
+	externalID := pid.String() + "|kc-sub"
+	stale := "Bobby"
+	existing := domain.User{
+		ID: uuid.New(), Username: "bob", Email: "old@corp", FirstName: &stale,
+		AuthProvider: domain.AuthProviderOIDC, IsActive: true,
+	}
+
+	env.mockProviders.EXPECT().GetByID(gomock.Any(), pid).
+		Return(oidcProviderWithConfig(pid, map[string]any{"sync_mode": "all"}), nil)
+	env.mockOIDC.EXPECT().Exchange(gomock.Any(), gomock.Any(), gomock.Any(), "code", "v").
+		Return(auth.OIDCIdentity{Subject: "kc-sub", Email: "new@corp", FirstName: "Bob", LastName: "Stone"}, nil)
+	env.mockUsers.EXPECT().GetByExternalID(gomock.Any(), domain.AuthProviderOIDC, externalID).Return(existing, nil)
+	env.mockRoles.EXPECT().RemoveAllFromUser(gomock.Any(), existing.ID).Return(nil)
+
+	env.mockUsers.EXPECT().Update(gomock.Any(), existing.ID, gomock.Any()).
+		DoAndReturn(func(_ context.Context, _ uuid.UUID, p auth.UpdateUserParams) (domain.User, error) {
+			require.True(t, p.Email.Set)
+			assert.Equal(t, "new@corp", *p.Email.Value)
+			require.True(t, p.FirstName.Set)
+			assert.Equal(t, "Bob", *p.FirstName.Value)
+			require.True(t, p.LastName.Set)
+			assert.Equal(t, "Stone", *p.LastName.Value)
+			return existing, nil
+		})
+	env.mockTokens.EXPECT().Insert(gomock.Any(), existing.ID, gomock.Any(), gomock.Any()).Return(nil)
+	env.mockUsers.EXPECT().TouchLastLogin(gomock.Any(), existing.ID).Return(nil)
+
+	_, err := env.service.CompleteOIDC(context.Background(), pid, "code", "s", cookie)
+	require.NoError(t, err)
+}
+
+// The default mode syncs roles only — a profile edited in YTSoar must survive.
+func TestCompleteOIDCDefaultModeDoesNotPushAttributes(t *testing.T) {
+	env := setupTest(t)
+	pid := uuid.New()
+	cookie := stateCookie(t, pid, "s", "v", time.Now().Add(time.Minute))
+	externalID := pid.String() + "|kc-sub"
+	existing := domain.User{ID: uuid.New(), Username: "bob", Email: "kept@corp", AuthProvider: domain.AuthProviderOIDC, IsActive: true}
+
+	env.mockProviders.EXPECT().GetByID(gomock.Any(), pid).
+		Return(oidcProviderWithConfig(pid, map[string]any{}), nil)
+	env.mockOIDC.EXPECT().Exchange(gomock.Any(), gomock.Any(), gomock.Any(), "code", "v").
+		Return(auth.OIDCIdentity{Subject: "kc-sub", Email: "different@corp", FirstName: "Bob"}, nil)
+	env.mockUsers.EXPECT().GetByExternalID(gomock.Any(), domain.AuthProviderOIDC, externalID).Return(existing, nil)
+	env.mockRoles.EXPECT().RemoveAllFromUser(gomock.Any(), existing.ID).Return(nil)
+	// no Update expectation: gomock fails the test if the profile is written.
+	env.mockTokens.EXPECT().Insert(gomock.Any(), existing.ID, gomock.Any(), gomock.Any()).Return(nil)
+	env.mockUsers.EXPECT().TouchLastLogin(gomock.Any(), existing.ID).Return(nil)
+
+	_, err := env.service.CompleteOIDC(context.Background(), pid, "code", "s", cookie)
+	require.NoError(t, err)
+}
+
+// An unchanged profile costs no write, and a claim the IdP omits must not blank
+// a value someone set by hand.
+func TestCompleteOIDCAttributeSyncSkipsUnchangedAndEmpty(t *testing.T) {
+	env := setupTest(t)
+	pid := uuid.New()
+	cookie := stateCookie(t, pid, "s", "v", time.Now().Add(time.Minute))
+	externalID := pid.String() + "|kc-sub"
+	kept := "Bob"
+	existing := domain.User{
+		ID: uuid.New(), Username: "bob", Email: "same@corp", FirstName: &kept,
+		AuthProvider: domain.AuthProviderOIDC, IsActive: true,
+	}
+
+	env.mockProviders.EXPECT().GetByID(gomock.Any(), pid).
+		Return(oidcProviderWithConfig(pid, map[string]any{"sync_mode": "attributes"}), nil)
+	// email identical, first name identical, last name absent from the token.
+	env.mockOIDC.EXPECT().Exchange(gomock.Any(), gomock.Any(), gomock.Any(), "code", "v").
+		Return(auth.OIDCIdentity{Subject: "kc-sub", Email: "same@corp", FirstName: "Bob"}, nil)
+	env.mockUsers.EXPECT().GetByExternalID(gomock.Any(), domain.AuthProviderOIDC, externalID).Return(existing, nil)
+	// no Update expectation, and no role expectations.
+	env.mockTokens.EXPECT().Insert(gomock.Any(), existing.ID, gomock.Any(), gomock.Any()).Return(nil)
+	env.mockUsers.EXPECT().TouchLastLogin(gomock.Any(), existing.ID).Return(nil)
+
+	_, err := env.service.CompleteOIDC(context.Background(), pid, "code", "s", cookie)
+	require.NoError(t, err)
+}
+
+// The Google preset ships sync_mode "attributes" (Google sends no groups), so a
+// JIT user would otherwise arrive with no roles at all. default_role must still
+// apply on the provisioning login.
+func TestCompleteOIDCJITGetsDefaultRoleEvenWhenRoleSyncIsOff(t *testing.T) {
+	env := setupTest(t)
+	pid := uuid.New()
+	cookie := stateCookie(t, pid, "s", "v", time.Now().Add(time.Minute))
+	externalID := pid.String() + "|g-sub"
+
+	env.mockProviders.EXPECT().GetByID(gomock.Any(), pid).Return(oidcProviderWithConfig(pid, map[string]any{
+		"sync_mode":    "attributes",
+		"default_role": "viewer",
+		"allow_jit":    true,
+	}), nil)
+	env.mockOIDC.EXPECT().Exchange(gomock.Any(), gomock.Any(), gomock.Any(), "code", "v").
+		Return(auth.OIDCIdentity{Subject: "g-sub", PreferredUsername: "carol", Email: "carol@corp"}, nil)
+	env.mockUsers.EXPECT().GetByExternalID(gomock.Any(), domain.AuthProviderOIDC, externalID).
+		Return(domain.User{}, auth.ErrUserNotFound)
+	env.mockUsers.EXPECT().GetByUsername(gomock.Any(), "carol").Return(domain.User{}, auth.ErrUserNotFound)
+
+	created := domain.User{ID: uuid.New(), Username: "carol", Email: "carol@corp", AuthProvider: domain.AuthProviderOIDC, IsActive: true}
+	env.mockUsers.EXPECT().Create(gomock.Any(), gomock.Any()).Return(created, nil)
+
+	viewer := domain.Role{ID: uuid.New(), Name: "viewer"}
+	env.mockRoles.EXPECT().GetByName(gomock.Any(), "viewer").Return(viewer, nil)
+	env.mockRoles.EXPECT().RemoveAllFromUser(gomock.Any(), created.ID).Return(nil)
+	env.mockRoles.EXPECT().AssignToUser(gomock.Any(), created.ID, viewer.ID).Return(nil)
+	env.mockTokens.EXPECT().Insert(gomock.Any(), created.ID, gomock.Any(), gomock.Any()).Return(nil)
+	env.mockUsers.EXPECT().TouchLastLogin(gomock.Any(), created.ID).Return(nil)
+
+	_, err := env.service.CompleteOIDC(context.Background(), pid, "code", "s", cookie)
+	require.NoError(t, err)
+}
+
+// ...but the IdP's groups are still ignored in that mode: a group that maps to
+// admin must not sneak a role in through the provisioning path.
+func TestCompleteOIDCJITRoleSyncOffIgnoresGroups(t *testing.T) {
+	env := setupTest(t)
+	pid := uuid.New()
+	cookie := stateCookie(t, pid, "s", "v", time.Now().Add(time.Minute))
+	externalID := pid.String() + "|g-sub"
+
+	env.mockProviders.EXPECT().GetByID(gomock.Any(), pid).Return(oidcProviderWithConfig(pid, map[string]any{
+		"sync_mode":          "attributes",
+		"default_role":       "viewer",
+		"group_role_mapping": map[string]any{"soc-admins": "admin"},
+		"allow_jit":          true,
+	}), nil)
+	env.mockOIDC.EXPECT().Exchange(gomock.Any(), gomock.Any(), gomock.Any(), "code", "v").
+		Return(auth.OIDCIdentity{Subject: "g-sub", PreferredUsername: "carol", Groups: []string{"soc-admins"}}, nil)
+	env.mockUsers.EXPECT().GetByExternalID(gomock.Any(), domain.AuthProviderOIDC, externalID).
+		Return(domain.User{}, auth.ErrUserNotFound)
+	env.mockUsers.EXPECT().GetByUsername(gomock.Any(), "carol").Return(domain.User{}, auth.ErrUserNotFound)
+
+	created := domain.User{ID: uuid.New(), Username: "carol", AuthProvider: domain.AuthProviderOIDC, IsActive: true}
+	env.mockUsers.EXPECT().Create(gomock.Any(), gomock.Any()).Return(created, nil)
+
+	viewer := domain.Role{ID: uuid.New(), Name: "viewer"}
+	// only viewer is looked up — no GetByName("admin") expectation, so the
+	// mapping firing would fail this test.
+	env.mockRoles.EXPECT().GetByName(gomock.Any(), "viewer").Return(viewer, nil)
+	env.mockRoles.EXPECT().RemoveAllFromUser(gomock.Any(), created.ID).Return(nil)
+	env.mockRoles.EXPECT().AssignToUser(gomock.Any(), created.ID, viewer.ID).Return(nil)
+	env.mockTokens.EXPECT().Insert(gomock.Any(), created.ID, gomock.Any(), gomock.Any()).Return(nil)
+	env.mockUsers.EXPECT().TouchLastLogin(gomock.Any(), created.ID).Return(nil)
+
+	_, err := env.service.CompleteOIDC(context.Background(), pid, "code", "s", cookie)
+	require.NoError(t, err)
+}
