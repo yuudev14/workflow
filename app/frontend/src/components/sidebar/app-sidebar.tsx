@@ -1,7 +1,13 @@
 "use client";
 
 import * as React from "react";
-import { AlertTriangle, Bell, LayoutDashboard, Layers, LayoutGrid } from "lucide-react";
+import {
+  AlertTriangle,
+  Bell,
+  LayoutDashboard,
+  Layers,
+  LayoutGrid,
+} from "lucide-react";
 import Link from "next/link";
 
 import { NavMain, type NavSection } from "@/components/sidebar/nav-main";
@@ -17,6 +23,8 @@ import {
   SidebarRail,
 } from "@/components/ui/sidebar";
 import ModeToggle from "./toggle-dark-theme";
+import { useAuth } from "@/components/provider/auth-provider";
+
 
 const sections: NavSection[] = [
   {
@@ -36,9 +44,15 @@ const sections: NavSection[] = [
   },
 ];
 
-const user = { name: "takakiiiyuuu", email: "takakiiiyuuu@gmail.com", avatar: "" };
-
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
+  const { user } = useAuth();
+
+  const navUser = {
+    name: user?.username ?? "",
+    email: user?.email ?? "",
+    avatar: "",
+  };
+
   return (
     <Sidebar collapsible="icon" {...props}>
       <SidebarHeader>
@@ -63,7 +77,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       </SidebarContent>
       <SidebarFooter>
         <ModeToggle />
-        <NavUser user={user} />
+        <NavUser user={navUser} />
       </SidebarFooter>
       <SidebarRail />
     </Sidebar>

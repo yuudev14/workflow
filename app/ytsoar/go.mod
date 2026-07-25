@@ -19,14 +19,17 @@ require (
 
 require (
 	github.com/KyleBanks/depth v1.2.1 // indirect
+	github.com/alexedwards/argon2id v1.0.0 // indirect
 	github.com/bytedance/sonic v1.12.4 // indirect
 	github.com/bytedance/sonic/loader v0.2.1 // indirect
 	github.com/cloudwego/base64x v0.1.4 // indirect
 	github.com/cloudwego/iasm v0.2.0 // indirect
+	github.com/coreos/go-oidc/v3 v3.20.0 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/dustin/go-humanize v1.0.1 // indirect
 	github.com/gabriel-vasile/mimetype v1.4.6 // indirect
 	github.com/gin-contrib/sse v0.1.0 // indirect
+	github.com/go-jose/go-jose/v4 v4.1.4 // indirect
 	github.com/go-openapi/jsonpointer v0.21.0 // indirect
 	github.com/go-openapi/jsonreference v0.21.0 // indirect
 	github.com/go-openapi/spec v0.21.0 // indirect
@@ -35,6 +38,7 @@ require (
 	github.com/go-playground/universal-translator v0.18.1 // indirect
 	github.com/go-playground/validator/v10 v10.23.0 // indirect
 	github.com/goccy/go-json v0.10.3 // indirect
+	github.com/jackc/pgerrcode v0.0.0-20250907135507-afb5586c32a6 // indirect
 	github.com/jackc/pgpassfile v1.0.0 // indirect
 	github.com/jackc/pgservicefile v0.0.0-20240606120523-5a60cdf6a761 // indirect
 	github.com/jackc/puddle/v2 v2.2.2 // indirect
@@ -60,6 +64,7 @@ require (
 	golang.org/x/arch v0.12.0 // indirect
 	golang.org/x/crypto v0.54.0 // indirect
 	golang.org/x/exp v0.0.0-20240719175910-8a7402abbf56 // indirect
+	golang.org/x/oauth2 v0.36.0 // indirect
 	golang.org/x/sync v0.22.0 // indirect
 	golang.org/x/sys v0.47.0 // indirect
 	golang.org/x/text v0.40.0 // indirect

@@ -3,12 +3,10 @@ import localFont from "next/font/local";
 import "./globals.css";
 
 
-import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar"
-import { AppSidebar } from "@/components/sidebar/app-sidebar";
-import Header from "@/components/header/header";
-
 import dynamic from 'next/dynamic'
 import { Toaster } from "@/components/ui/toaster";
+import AuthProvider from "@/components/provider/auth-provider";
+import AppShell from "@/components/provider/app-shell";
 const Providers = dynamic(() => import("../components/provider/main-provider"), { ssr: false })
 
 
@@ -35,18 +33,13 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`} suppressHydrationWarning
       >
+        {/* AuthProvider resolves the session before anything protected
+            renders; AppShell then decides whether the page gets the sidebar
+            chrome, so /login can render bare. */}
         <Providers>
-          <SidebarProvider>
-            <AppSidebar />
-            <SidebarInset>
-              <Header />
-              <div className="flex-1">
-                {children}
-              </div>
-
-            </SidebarInset>
-
-          </SidebarProvider>
+          <AuthProvider>
+            <AppShell>{children}</AppShell>
+          </AuthProvider>
         </Providers>
         <Toaster />
 
