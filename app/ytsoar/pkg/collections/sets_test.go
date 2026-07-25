@@ -34,7 +34,8 @@ func TestSet(t *testing.T) {
 
 	for _, test := range tests {
 		test.method(test.param)
-		assert.Equal(t, set.ToList(), test.expected)
+		// ToList walks a map, so order is undefined — compare as a set.
+		assert.ElementsMatch(t, test.expected, set.ToList())
 	}
 }
 

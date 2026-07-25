@@ -45,15 +45,6 @@ EXCEPTION
 END $$;
 -- +goose StatementEnd
 
-CREATE TABLE IF NOT EXISTS users (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    username TEXT NOT NULL UNIQUE,
-    email TEXT NOT NULL UNIQUE,
-    password TEXT NOT NULL,
-    first_name TEXT,
-    last_name TEXT
-);
-
 CREATE TABLE IF NOT EXISTS playbooks (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4 (),
     name VARCHAR(200),

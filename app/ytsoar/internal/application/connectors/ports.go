@@ -3,20 +3,20 @@ package connectors
 import (
 	"archive/zip"
 	"context"
-	"errors"
 
 	"github.com/yuudev14/ytsoar/internal/domain"
+	"github.com/yuudev14/ytsoar/internal/domain/apperr"
 )
 
 //go:generate mockgen -destination=mocks/store_mock.go -package=mocks . ConnectorStore,ConnectorWriter,ConnectorRepository,DepsInstaller
 
 // ErrConnectorNotFound is returned when the requested connector id does not
 // exist in the tree.
-var ErrConnectorNotFound = errors.New("connector not found")
+var ErrConnectorNotFound = apperr.New(apperr.NotFound, "connector not found")
 
 // ErrInvalidConnector marks upload validation failures (bad zip, missing
 // info.json, unsafe paths, ...) — handlers map it to 400.
-var ErrInvalidConnector = errors.New("invalid connector")
+var ErrInvalidConnector = apperr.New(apperr.Invalid, "invalid connector")
 
 // ConnectorStore reads connector metadata from the unified connectors tree.
 type ConnectorStore interface {

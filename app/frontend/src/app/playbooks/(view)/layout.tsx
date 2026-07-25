@@ -7,6 +7,7 @@ import { useQuery } from "@tanstack/react-query";
 import CreatePlaybookForm from "../_components/CreatePlaybookForm";
 import MetricsService from "@/services/metrics/metrics";
 import { KpiRow } from "@/components/soar";
+import { PermissionGate } from "@/components/auth/PermissionGate";
 import { cn } from "@/lib/utils";
 
 const tabs = [
@@ -33,7 +34,9 @@ const Layout = ({ children }: Readonly<{ children: React.ReactNode }>) => {
               Every playbook you can run, with the status of its last execution.
             </p>
           </div>
-          <CreatePlaybookForm />
+          <PermissionGate module="playbooks" action="create">
+            <CreatePlaybookForm />
+          </PermissionGate>
         </div>
 
         <KpiRow metrics={kpiQuery.data} loading={kpiQuery.isLoading} />

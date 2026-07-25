@@ -3,10 +3,14 @@ package repository
 import (
 	"context"
 	"database/sql"
+	"errors"
+	"time"
 
 	sq "github.com/Masterminds/squirrel"
 	"github.com/google/uuid"
+	"github.com/jackc/pgerrcode"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/yuudev14/ytsoar/db"
@@ -58,6 +62,23 @@ func CollectOneScalarFromSqlizer[T any](
 	return v, nil
 }
 
+// mapNoRows keeps "no such row" distinguishable from a database failure, so
+// callers can 404 one and 500 the other.
+func mapNoRows(err error, notFound error) error {
+	if errors.Is(err, pgx.ErrNoRows) {
+		return notFound
+	}
+	return err
+}
+
+func mapUniqueViolation(err error, conflict error) error {
+	var pgErr *pgconn.PgError
+	if errors.As(err, &pgErr) && pgErr.Code == pgerrcode.UniqueViolation {
+		return conflict
+	}
+	return err
+}
+
 func toPgUUID(id uuid.UUID) pgtype.UUID {
 	return pgtype.UUID{Bytes: id, Valid: true}
 }
@@ -106,12 +127,26 @@ func toPgTextFromNullable(n types.Nullable[string]) pgtype.Text {
 	return pgtype.Text{String: *n.Value, Valid: true}
 }
 
+func toPgBoolFromNullable(n types.Nullable[bool]) pgtype.Bool {
+	if !n.Set || n.Value == nil {
+		return pgtype.Bool{}
+	}
+	return pgtype.Bool{Bool: *n.Value, Valid: true}
+}
+
 func toNullString(t pgtype.Text) sql.NullString {
 	return sql.NullString{String: t.String, Valid: t.Valid}
 }
 
 func toPgTextFromNullString(n sql.NullString) pgtype.Text {
 	return pgtype.Text{String: n.String, Valid: n.Valid}
+}
+
+func fromPgTimestampPtr(t pgtype.Timestamp) *time.Time {
+	if !t.Valid {
+		return nil
+	}
+	return &t.Time
 }
 
 func toPgFloat8(f float32) pgtype.Float8 {

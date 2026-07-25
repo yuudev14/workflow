@@ -1,0 +1,74 @@
+{
+  "realm": "ytsoar",
+  "enabled": true,
+  "sslRequired": "none",
+  "loginTheme": "keycloak",
+  "groups": [
+    { "name": "soc-admins" },
+    { "name": "soc-analysts" }
+  ],
+  "clients": [
+    {
+      "clientId": "ytsoar",
+      "name": "YTSoar",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "secret": "ytsoar-dev-secret",
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": false,
+      "redirectUris": [
+        "http://localhost:9999/auth-api/api/auth/v1/oidc/*"
+      ],
+      "webOrigins": [
+        "http://localhost:9999"
+      ],
+      "attributes": {
+        "pkce.code.challenge.method": "S256",
+        "post.logout.redirect.uris": "http://localhost:9999/*"
+      },
+      "protocolMappers": [
+        {
+          "name": "groups",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-group-membership-mapper",
+          "consentRequired": false,
+          "config": {
+            "full.path": "false",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "userinfo.token.claim": "true",
+            "claim.name": "groups"
+          }
+        }
+      ]
+    }
+  ],
+  "users": [
+    {
+      "username": "kc-admin",
+      "enabled": true,
+      "emailVerified": true,
+      "email": "kc-admin@ytsoar.local",
+      "firstName": "KC",
+      "lastName": "Admin",
+      "credentials": [
+        { "type": "password", "value": "admin123", "temporary": false }
+      ],
+      "groups": ["/soc-admins"]
+    },
+    {
+      "username": "kc-analyst",
+      "enabled": true,
+      "emailVerified": true,
+      "email": "kc-analyst@ytsoar.local",
+      "firstName": "KC",
+      "lastName": "Analyst",
+      "credentials": [
+        { "type": "password", "value": "analyst123", "temporary": false }
+      ],
+      "groups": ["/soc-analysts"]
+    }
+  ]
+}

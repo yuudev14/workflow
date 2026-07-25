@@ -1,8 +1,31 @@
 package token
 
 import (
+	"errors"
+
 	"github.com/golang-jwt/jwt/v5"
 )
+
+
+var ErrInvalidToken = errors.New("invalid token")
+
+func Parse(tokenString string, jwtSecret string) (jwt.MapClaims, error) {
+	parsed, err := jwt.Parse(
+		tokenString,
+		func(t *jwt.Token) (any, error) { return []byte(jwtSecret), nil },
+		jwt.WithValidMethods([]string{jwt.SigningMethodHS256.Alg()}),
+		jwt.WithExpirationRequired(),
+	)
+	if err != nil || !parsed.Valid {
+		return nil, ErrInvalidToken
+	}
+
+	claims, ok := parsed.Claims.(jwt.MapClaims)
+	if !ok {
+		return nil, ErrInvalidToken
+	}
+	return claims, nil
+}
 
 // function to generate a token
 func GenerateToken(claims jwt.MapClaims, jwtSecret string) (string, error) {

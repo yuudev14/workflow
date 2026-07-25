@@ -1,0 +1,20 @@
+{
+  // The TypeScript Native Preview extension (typescriptteam.native-preview)
+  // runs tsgo, the experimental Go rewrite of the compiler. It is incomplete
+  // around generic inference and path-alias resolution, so it reports errors
+  // that the real compiler does not: "@/..." imports flagged as missing, and
+  // react-query's useQuery data collapsing to `unknown`. Turn it off so the
+  // editor and `npx tsc --noEmit` agree.
+  "typescript.experimental.useTsgo": false,
+
+  // The TS project lives in app/frontend, not the repo root, so point the
+  // editor at that package's TypeScript rather than the bundled one.
+  "typescript.tsdk": "app/frontend/node_modules/typescript/lib",
+  "typescript.enablePromptUseWorkspaceTsdk": true,
+
+  // eslint has to run from the frontend package for the same reason.
+  "eslint.workingDirectories": ["app/frontend"],
+
+  // Prefer the @/* alias over deep relative paths on auto-import.
+  "typescript.preferences.importModuleSpecifier": "non-relative"
+}
