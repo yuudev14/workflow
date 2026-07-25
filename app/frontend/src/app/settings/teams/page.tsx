@@ -33,6 +33,7 @@ import {
 } from "@/components/ui/dialog";
 import { ConfirmDialog } from "../_components/ConfirmDialog";
 import { Chip } from "../_components/Chip";
+import { RolePicker } from "../_components/RolePicker";
 
 const columnHelper = createColumnHelper<Team>();
 
@@ -160,7 +161,7 @@ export default function TeamsPage() {
   return (
     <PageShell
       title="Teams"
-      subtitle="Labels for grouping people. They do not grant anything on their own."
+      subtitle="Groups of people. Every member inherits the roles the team grants, on top of their own."
       actions={
         canCreate && (
           <Button onClick={() => open(null)}>
@@ -197,7 +198,7 @@ export default function TeamsPage() {
         open={deleting !== null}
         onOpenChange={(next) => !next && setDeleting(null)}
         title={`Delete ${deleting?.name}?`}
-        description="The members keep their accounts and roles; only the grouping goes away."
+        description="Members keep their accounts and their own roles, but lose any role this team granted them."
         confirmLabel="Delete"
         pending={remove.isPending}
         onConfirm={() => remove.mutate()}
@@ -315,36 +316,13 @@ function TeamDialog({
               onChange={(e) => setDescription(e.target.value)}
             />
           </div>
-          <div className="flex flex-col gap-1.5">
-            <div className="flex items-baseline justify-between">
-              <Label>Roles granted to members</Label>
-              <span className="text-[12px] text-ink-faint tnum">{roleIds.length} selected</span>
-            </div>
-            <div className="flex flex-wrap gap-1.5">
-              {allRoles.map((role) => {
-                const on = roleIds.includes(role.id);
-                return (
-                  <button
-                    key={role.id}
-                    type="button"
-                    onClick={() => toggleRole(role.id)}
-                    aria-pressed={on}
-                    className={
-                      "rounded-full border px-2.5 py-1 text-[12.5px] font-medium transition-colors " +
-                      (on
-                        ? "border-primary bg-primary/10 text-primary"
-                        : "border-line bg-paper-sunken text-ink-faint hover:border-line-strong")
-                    }
-                  >
-                    {role.name}
-                  </button>
-                );
-              })}
-            </div>
-            <span className="text-[12px] text-ink-faint">
-              Everyone in this team inherits these roles, on top of their own.
-            </span>
-          </div>
+          <RolePicker
+            roles={allRoles}
+            selected={roleIds}
+            onToggle={toggleRole}
+            label="Roles granted to members"
+            hint="Everyone in this team inherits these roles, on top of their own."
+          />
 
           <div className="flex flex-col gap-1.5">
             <div className="flex items-baseline justify-between">

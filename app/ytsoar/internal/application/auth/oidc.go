@@ -366,7 +366,6 @@ func (s *Service) oidcStartURL(providerID uuid.UUID) string {
 	return fmt.Sprintf("%s/api/auth/v1/oidc/%s/start", strings.TrimRight(s.cfg.AuthPublicURL, "/"), providerID)
 }
 
-// FrontendURL is where the callback sends the browser after a session is set.
 func (s *Service) FrontendURL() string { return s.cfg.FrontendURL }
 
 func randomToken() string {

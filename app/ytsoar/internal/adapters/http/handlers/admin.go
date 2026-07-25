@@ -55,8 +55,6 @@ func (h *AdminHandler) actor(c *gin.Context) (uuid.UUID, bool) {
 	return actor.ID, true
 }
 
-
-
 func (h *AdminHandler) ListUsers(c *gin.Context) {
 	response := rest.Response{C: c}
 
@@ -207,8 +205,6 @@ func (h *AdminHandler) DeactivateUser(c *gin.Context) {
 	c.Status(http.StatusNoContent)
 }
 
-// ---- roles ----
-
 func (h *AdminHandler) ListRoles(c *gin.Context) {
 	response := rest.Response{C: c}
 
@@ -319,8 +315,6 @@ func (h *AdminHandler) DeleteRole(c *gin.Context) {
 	}
 	c.Status(http.StatusNoContent)
 }
-
-// ---- teams ----
 
 func (h *AdminHandler) ListTeams(c *gin.Context) {
 	response := rest.Response{C: c}
@@ -466,8 +460,6 @@ func (h *AdminHandler) DeleteTeam(c *gin.Context) {
 	}
 	c.Status(http.StatusNoContent)
 }
-
-// ---- audit ----
 
 func (h *AdminHandler) ListAuditLogs(c *gin.Context) {
 	response := rest.Response{C: c}

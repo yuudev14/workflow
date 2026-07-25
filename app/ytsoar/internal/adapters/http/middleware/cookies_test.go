@@ -13,7 +13,6 @@ import (
 	"github.com/yuudev14/ytsoar/internal/adapters/http/middleware"
 )
 
-// captureCookie runs fn inside a handler and returns the cookie it wrote.
 func captureCookie(t *testing.T, fn func(c *gin.Context)) *http.Cookie {
 	t.Helper()
 	gin.SetMode(gin.TestMode)

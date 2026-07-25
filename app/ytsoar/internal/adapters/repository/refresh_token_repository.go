@@ -13,7 +13,6 @@ import (
 	"github.com/yuudev14/ytsoar/internal/logger"
 )
 
-// RefreshTokenRepositoryImpl implements auth.RefreshTokenRepository.
 type RefreshTokenRepositoryImpl struct {
 	logger logger.Logger
 	q      QuerierTx

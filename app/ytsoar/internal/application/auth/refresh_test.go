@@ -23,7 +23,6 @@ import (
 	"github.com/yuudev14/ytsoar/internal/token"
 )
 
-// signRefreshToken mints a token shaped like the one the service issues.
 func signRefreshToken(t *testing.T, userID uuid.UUID) string {
 	t.Helper()
 	now := time.Now()

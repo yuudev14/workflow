@@ -37,7 +37,6 @@ func (w *CookieWriter) ClearAccessCookie(c *gin.Context) {
 	c.SetCookie(AccessCookieName, "", -1, "/", "", w.Secure, true)
 }
 
-// SetRefreshCookie writes the refresh token.
 func (w *CookieWriter) SetRefreshCookie(c *gin.Context, token string, expiresAt time.Time) {
 	c.SetSameSite(http.SameSiteLaxMode)
 	c.SetCookie(RefreshCookieName, token, maxAgeUntil(expiresAt), "/", "", w.Secure, true)

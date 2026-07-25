@@ -91,7 +91,6 @@ func SetCurrentUser(c *gin.Context, user domain.AuthUser) {
 	c.Set(authUserKey, user)
 }
 
-// CurrentUser returns the authenticated caller.
 func CurrentUser(c *gin.Context) (domain.AuthUser, bool) {
 	value, exists := c.Get(authUserKey)
 	if !exists {
