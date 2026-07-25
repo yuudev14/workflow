@@ -129,6 +129,13 @@ export default class AdminService {
     return res.data;
   };
 
+  public static setTeamRoles = async (id: string, roleIds: string[]): Promise<Team> => {
+    const res = await apiClient.put(`${this.BASE_URL}/teams/v1/${id}/roles`, {
+      role_ids: roleIds,
+    });
+    return res.data;
+  };
+
   public static deleteTeam = async (id: string): Promise<void> => {
     await apiClient.delete(`${this.BASE_URL}/teams/v1/${id}`);
   };

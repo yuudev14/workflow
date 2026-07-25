@@ -428,6 +428,30 @@ func (h *AdminHandler) SetTeamMembers(c *gin.Context) {
 	response.ResponseSuccess(team)
 }
 
+// SetTeamRoles grants roles to every member of the team, so it carries the same
+// weight as editing a user's roles and sits behind the same settings.update.
+func (h *AdminHandler) SetTeamRoles(c *gin.Context) {
+	response := rest.Response{C: c}
+
+	actorID, teamID, ok := h.actorAndTarget(c, "team_id")
+	if !ok {
+		return
+	}
+
+	var body auth.SetTeamRolesInput
+	if err := c.ShouldBindJSON(&body); err != nil {
+		response.ResponseError(http.StatusBadRequest, err.Error())
+		return
+	}
+
+	team, err := h.authService.SetTeamRoles(c.Request.Context(), actorID, teamID, body.RoleIDs)
+	if err != nil {
+		response.Fail(h.logger, err)
+		return
+	}
+	response.ResponseSuccess(team)
+}
+
 func (h *AdminHandler) DeleteTeam(c *gin.Context) {
 	response := rest.Response{C: c}
 

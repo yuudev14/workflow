@@ -40,10 +40,16 @@ ON CONFLICT DO NOTHING;
 DELETE FROM role_permissions WHERE role_id = $1;
 
 -- name: ListRolesForUser :many
+-- Effective roles: direct assignments UNION those inherited from teams.
 SELECT r.* FROM roles r
 JOIN user_roles ur ON ur.role_id = r.id
 WHERE ur.user_id = $1
-ORDER BY r.name;
+UNION
+SELECT r.* FROM roles r
+JOIN team_roles tr ON tr.role_id = r.id
+JOIN team_members tm ON tm.team_id = tr.team_id
+WHERE tm.user_id = $1
+ORDER BY name;
 
 -- name: InsertUserRole :exec
 INSERT INTO user_roles (user_id, role_id) VALUES ($1, $2) ON CONFLICT DO NOTHING;
@@ -52,9 +58,20 @@ INSERT INTO user_roles (user_id, role_id) VALUES ($1, $2) ON CONFLICT DO NOTHING
 DELETE FROM user_roles WHERE user_id = $1;
 
 -- name: ListPermissionsForUser :many
-SELECT DISTINCT rp.module, rp.action
+-- Effective permissions: roles assigned directly to the user, UNION roles
+-- granted by every team they belong to. UNION dedups, so an overlap costs
+-- nothing. Both halves filter is_active, so a deactivated user keeps nothing —
+-- not even through a team.
+SELECT rp.module, rp.action
 FROM role_permissions rp
 JOIN user_roles ur ON ur.role_id = rp.role_id
 JOIN users u ON u.id = ur.user_id
 WHERE u.id = $1 AND u.is_active = TRUE
-ORDER BY rp.module, rp.action;
+UNION
+SELECT rp.module, rp.action
+FROM role_permissions rp
+JOIN team_roles tr ON tr.role_id = rp.role_id
+JOIN team_members tm ON tm.team_id = tr.team_id
+JOIN users u ON u.id = tm.user_id
+WHERE u.id = $1 AND u.is_active = TRUE
+ORDER BY module, action;

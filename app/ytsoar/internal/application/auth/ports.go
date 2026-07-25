@@ -55,6 +55,7 @@ type TeamRepository interface {
 	Update(ctx context.Context, id uuid.UUID, params UpdateTeamParams) (domain.Team, error)
 	Delete(ctx context.Context, id uuid.UUID) (int64, error)
 	ReplaceMembers(ctx context.Context, teamID uuid.UUID, userIDs []uuid.UUID) error
+	ReplaceRoles(ctx context.Context, teamID uuid.UUID, roleIDs []uuid.UUID) error
 }
 
 //go:generate mockgen -destination=mocks/refresh_token_repository_mock.go -package=mocks . RefreshTokenRepository

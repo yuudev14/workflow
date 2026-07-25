@@ -139,6 +139,7 @@ func TestAdminRouteGrants(t *testing.T) {
 		{http.MethodPost, "/api/teams/v1", "settings.create"},
 		{http.MethodPut, "/api/teams/v1/abc", "settings.update"},
 		{http.MethodPut, "/api/teams/v1/abc/members", "settings.update"},
+		{http.MethodPut, "/api/teams/v1/abc/roles", "settings.update"},
 		{http.MethodDelete, "/api/teams/v1/abc", "settings.delete"},
 
 		{http.MethodGet, "/api/audit/v1", "settings.read"},

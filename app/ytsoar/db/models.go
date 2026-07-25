@@ -331,6 +331,11 @@ type TeamMember struct {
 	UserID pgtype.UUID `json:"user_id"`
 }
 
+type TeamRole struct {
+	TeamID pgtype.UUID `json:"team_id"`
+	RoleID pgtype.UUID `json:"role_id"`
+}
+
 type User struct {
 	ID           pgtype.UUID      `json:"id"`
 	Username     string           `json:"username"`

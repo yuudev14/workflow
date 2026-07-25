@@ -54,6 +54,15 @@ func (q *Queries) DeleteTeamMembers(ctx context.Context, teamID pgtype.UUID) err
 	return err
 }
 
+const deleteTeamRoles = `-- name: DeleteTeamRoles :exec
+DELETE FROM team_roles WHERE team_id = $1
+`
+
+func (q *Queries) DeleteTeamRoles(ctx context.Context, teamID pgtype.UUID) error {
+	_, err := q.db.Exec(ctx, deleteTeamRoles, teamID)
+	return err
+}
+
 const getTeamById = `-- name: GetTeamById :one
 SELECT id, name, description, created_at, updated_at FROM teams WHERE id = $1
 `
@@ -82,6 +91,20 @@ type InsertTeamMemberParams struct {
 
 func (q *Queries) InsertTeamMember(ctx context.Context, arg InsertTeamMemberParams) error {
 	_, err := q.db.Exec(ctx, insertTeamMember, arg.TeamID, arg.UserID)
+	return err
+}
+
+const insertTeamRole = `-- name: InsertTeamRole :exec
+INSERT INTO team_roles (team_id, role_id) VALUES ($1, $2) ON CONFLICT DO NOTHING
+`
+
+type InsertTeamRoleParams struct {
+	TeamID pgtype.UUID `json:"team_id"`
+	RoleID pgtype.UUID `json:"role_id"`
+}
+
+func (q *Queries) InsertTeamRole(ctx context.Context, arg InsertTeamRoleParams) error {
+	_, err := q.db.Exec(ctx, insertTeamRole, arg.TeamID, arg.RoleID)
 	return err
 }
 

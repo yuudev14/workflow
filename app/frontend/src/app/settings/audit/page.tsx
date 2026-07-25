@@ -59,6 +59,7 @@ const AUDIT_ACTIONS = [
   "team_updated",
   "team_deleted",
   "team_members_changed",
+  "team_roles_changed",
   "user_created",
   "user_updated",
   "user_deactivated",

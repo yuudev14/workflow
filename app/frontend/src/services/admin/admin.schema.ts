@@ -21,6 +21,12 @@ export interface TeamMember {
   email: string;
 }
 
+/** A role a team grants. Every member inherits it. */
+export interface RoleRef {
+  id: string;
+  name: string;
+}
+
 export interface Team {
   id: string;
   name: string;
@@ -28,6 +34,7 @@ export interface Team {
   created_at: string;
   updated_at: string;
   members: TeamMember[];
+  roles: RoleRef[];
 }
 
 /** actor_username is null for system rows and for actors whose account was removed. */
@@ -78,6 +85,7 @@ export interface TeamPayload {
   name: string;
   description?: string | null;
   member_ids?: string[];
+  role_ids?: string[];
 }
 
 export interface UpdateTeamPayload {

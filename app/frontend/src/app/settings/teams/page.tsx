@@ -32,6 +32,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { ConfirmDialog } from "../_components/ConfirmDialog";
+import { Chip } from "../_components/Chip";
 
 const columnHelper = createColumnHelper<Team>();
 
@@ -110,6 +111,24 @@ export default function TeamsPage() {
               <span className="ml-2 text-[12.5px] text-ink-faint tnum">
                 {members.length > 6 ? `+${members.length - 6} more` : members.length}
               </span>
+            </div>
+          );
+        },
+      }),
+      // Grants are visible at a glance because team membership escalates
+      // privilege — every member inherits these roles.
+      columnHelper.accessor("roles", {
+        header: "Grants",
+        cell: ({ getValue }) => {
+          const roles = getValue() ?? [];
+          if (roles.length === 0) {
+            return <span className="text-[12.5px] text-ink-faint">No grants</span>;
+          }
+          return (
+            <div className="flex flex-wrap gap-1">
+              {roles.map((r) => (
+                <Chip key={r.id}>{r.name}</Chip>
+              ))}
             </div>
           );
         },
@@ -203,6 +222,14 @@ function TeamDialog({
   const [description, setDescription] = React.useState("");
   const [selected, setSelected] = React.useState<TeamMember[]>([]);
   const [memberSearch, setMemberSearch] = React.useState("");
+  const [roleIds, setRoleIds] = React.useState<string[]>([]);
+
+  const rolesQuery = useQuery({
+    queryKey: ["roles", "team-picker"],
+    queryFn: () => AdminService.listRoles(),
+    enabled: open,
+  });
+  const allRoles = rolesQuery.data ?? [];
 
   // Server-side search keeps the picker usable with thousands of users — we
   // never pull the whole directory into the dialog.
@@ -220,6 +247,7 @@ function TeamDialog({
     setDescription(team?.description ?? "");
     setSelected(team?.members ?? []);
     setMemberSearch("");
+    setRoleIds((team?.roles ?? []).map((r) => r.id));
   }, [open, team]);
 
   const save = useMutation({
@@ -230,11 +258,13 @@ function TeamDialog({
           name,
           description: description || null,
           member_ids: memberIds,
+          role_ids: roleIds,
         });
         return;
       }
       await AdminService.updateTeam(team.id, { name, description: description || null });
       await AdminService.setTeamMembers(team.id, memberIds);
+      await AdminService.setTeamRoles(team.id, roleIds);
     },
     onSuccess: () => {
       toast({ variant: "success", title: editing ? "Team updated" : "Team created" });
@@ -255,6 +285,9 @@ function TeamDialog({
         ? prev.filter((m) => m.id !== member.id)
         : [...prev, member]
     );
+
+  const toggleRole = (id: string) =>
+    setRoleIds((prev) => (prev.includes(id) ? prev.filter((r) => r !== id) : [...prev, id]));
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -282,6 +315,37 @@ function TeamDialog({
               onChange={(e) => setDescription(e.target.value)}
             />
           </div>
+          <div className="flex flex-col gap-1.5">
+            <div className="flex items-baseline justify-between">
+              <Label>Roles granted to members</Label>
+              <span className="text-[12px] text-ink-faint tnum">{roleIds.length} selected</span>
+            </div>
+            <div className="flex flex-wrap gap-1.5">
+              {allRoles.map((role) => {
+                const on = roleIds.includes(role.id);
+                return (
+                  <button
+                    key={role.id}
+                    type="button"
+                    onClick={() => toggleRole(role.id)}
+                    aria-pressed={on}
+                    className={
+                      "rounded-full border px-2.5 py-1 text-[12.5px] font-medium transition-colors " +
+                      (on
+                        ? "border-primary bg-primary/10 text-primary"
+                        : "border-line bg-paper-sunken text-ink-faint hover:border-line-strong")
+                    }
+                  >
+                    {role.name}
+                  </button>
+                );
+              })}
+            </div>
+            <span className="text-[12px] text-ink-faint">
+              Everyone in this team inherits these roles, on top of their own.
+            </span>
+          </div>
+
           <div className="flex flex-col gap-1.5">
             <div className="flex items-baseline justify-between">
               <Label>Members</Label>
