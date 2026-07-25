@@ -2,6 +2,8 @@ package auth
 
 import (
 	"encoding/json"
+	"fmt"
+	"slices"
 
 	"github.com/google/uuid"
 	"github.com/yuudev14/ytsoar/internal/domain"
@@ -33,14 +35,76 @@ type OIDCConfig struct {
 	// InternalIssuer handles split-horizon dev: the api discovers the IdP at
 	// this url while the browser is redirected to the public Issuer. Empty in
 	// normal deployments.
-	InternalIssuer   string            `json:"internal_issuer,omitempty"`
-	ClientID         string            `json:"client_id"`
-	ClientSecret     string            `json:"client_secret"`
-	Scopes           []string          `json:"scopes,omitempty"`
-	GroupsClaim      string            `json:"groups_claim,omitempty"`
-	GroupRoleMapping map[string]string `json:"group_role_mapping,omitempty"`
-	DefaultRole      string            `json:"default_role,omitempty"`
-	AllowJIT         bool              `json:"allow_jit"`
+	InternalIssuer string   `json:"internal_issuer,omitempty"`
+	ClientID       string   `json:"client_id"`
+	ClientSecret   string   `json:"client_secret"`
+	Scopes         []string `json:"scopes,omitempty"`
+	// GroupsClaim names the token claim carrying the role source. It may be a
+	// dotted path (e.g. "realm_access.roles" for Keycloak realm roles); empty
+	// means "groups".
+	GroupsClaim string `json:"groups_claim,omitempty"`
+	// GroupRoleMapping maps an IdP group/role value to one or more YTSoar role
+	// names. A config value may be a single string or a list; both decode to a
+	// list. An unmapped value passes through as a candidate role name.
+	GroupRoleMapping RoleMapping `json:"group_role_mapping,omitempty"`
+	DefaultRole      string      `json:"default_role,omitempty"`
+	// SyncMode controls what a login re-syncs. Empty/"roles"/"all" re-sync roles
+	// from the IdP each login; "attributes"/"off" leave roles to an admin. See
+	// SyncsRoles.
+	SyncMode string `json:"sync_mode,omitempty"`
+	// UsernameClaim / EmailClaim name the JIT profile source claims; empty means
+	// "preferred_username" / "email".
+	UsernameClaim string `json:"username_claim,omitempty"`
+	EmailClaim    string `json:"email_claim,omitempty"`
+	AllowJIT      bool   `json:"allow_jit"`
+}
+
+// Sync modes for OIDCConfig.SyncMode — mirrors FortiSOAR's IdP attribute-sync
+// toggle. Roles are re-synced from the IdP unless the admin opts out.
+const (
+	SyncModeRoles      = "roles"
+	SyncModeAttributes = "attributes"
+	SyncModeAll        = "all"
+	SyncModeOff        = "off"
+)
+
+// SyncsRoles reports whether a login should replace the user's roles from the
+// IdP. False when the admin owns roles (attributes-only or off).
+func (c OIDCConfig) SyncsRoles() bool {
+	switch c.SyncMode {
+	case SyncModeAttributes, SyncModeOff:
+		return false
+	default:
+		return true
+	}
+}
+
+// RoleMapping maps an IdP group/role value to one or more YTSoar role names. It
+// decodes a config value written as either a bare string or a list of strings,
+// so "admin" and ["admin","analyst"] are both valid on the wire.
+type RoleMapping map[string][]string
+
+func (m *RoleMapping) UnmarshalJSON(data []byte) error {
+	var raw map[string]json.RawMessage
+	if err := json.Unmarshal(data, &raw); err != nil {
+		return err
+	}
+	out := make(RoleMapping, len(raw))
+	for key, val := range raw {
+		var list []string
+		if err := json.Unmarshal(val, &list); err == nil {
+			out[key] = list
+			continue
+		}
+		var single string
+		if err := json.Unmarshal(val, &single); err == nil {
+			out[key] = []string{single}
+			continue
+		}
+		return fmt.Errorf("group_role_mapping[%q] must be a string or a list of strings", key)
+	}
+	*m = out
+	return nil
 }
 
 func decodeOIDCConfig(raw json.RawMessage) (OIDCConfig, error) {
@@ -50,6 +114,11 @@ func decodeOIDCConfig(raw json.RawMessage) (OIDCConfig, error) {
 	}
 	if cfg.Issuer == "" || cfg.ClientID == "" {
 		return OIDCConfig{}, apperr.New(apperr.Invalid, "provider config missing issuer or client_id")
+	}
+	// Without the openid scope the IdP returns no id_token, which would surface
+	// as a generic login failure rather than the config error it is.
+	if len(cfg.Scopes) > 0 && !slices.Contains(cfg.Scopes, "openid") {
+		return OIDCConfig{}, apperr.New(apperr.Invalid, `provider config scopes must include "openid"`)
 	}
 	return cfg, nil
 }
@@ -66,7 +135,6 @@ type ProviderSummary struct {
 type OIDCIdentity struct {
 	Subject           string
 	Email             string
-	EmailVerified     bool
 	PreferredUsername string
 	Groups            []string
 }

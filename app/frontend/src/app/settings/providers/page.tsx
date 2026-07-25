@@ -39,19 +39,83 @@ import {
 } from "@/components/ui/select";
 import { Chip } from "../_components/Chip";
 
-// A starting point for a Keycloak provider — the admin fills in the secret and
-// tweaks the mapping. internal_issuer is the split-horizon dev url.
-const OIDC_TEMPLATE = {
-  issuer: "http://localhost:8180/realms/ytsoar",
-  internal_issuer: "http://ytsoar_keycloak:8180/realms/ytsoar",
-  client_id: "ytsoar",
-  client_secret: "",
-  scopes: ["openid", "profile", "email"],
-  groups_claim: "groups",
-  group_role_mapping: { "soc-admins": "admin", "soc-analysts": "analyst" },
-  default_role: "viewer",
-  allow_jit: true,
+// Per-IdP config presets. The template `kind` is a UI convenience only — it
+// seeds the config editor below; the backend stores just type=oidc and runs one
+// generic OIDC engine (see docker/keycloak/README.md). Google's token carries no
+// groups, so it leans on default_role; Azure/Okta emit role names in a claim, so
+// the mapping table is optional (unmatched values pass through).
+const OIDC_PRESETS: Record<string, { label: string; config: Record<string, unknown> }> = {
+  keycloak: {
+    label: "Keycloak",
+    config: {
+      issuer: "http://localhost:8180/realms/ytsoar",
+      internal_issuer: "http://ytsoar_keycloak:8180/realms/ytsoar",
+      client_id: "ytsoar",
+      client_secret: "",
+      scopes: ["openid", "profile", "email"],
+      groups_claim: "groups",
+      group_role_mapping: { "soc-admins": "admin", "soc-analysts": "analyst" },
+      default_role: "viewer",
+      sync_mode: "roles",
+      allow_jit: true,
+    },
+  },
+  google: {
+    label: "Google Workspace",
+    config: {
+      issuer: "https://accounts.google.com",
+      client_id: "",
+      client_secret: "",
+      scopes: ["openid", "email", "profile"],
+      default_role: "viewer",
+      sync_mode: "attributes",
+      allow_jit: true,
+    },
+  },
+  okta: {
+    label: "Okta",
+    config: {
+      issuer: "https://your-org.okta.com",
+      client_id: "",
+      client_secret: "",
+      scopes: ["openid", "profile", "email", "groups"],
+      groups_claim: "groups",
+      group_role_mapping: { "SOC Admins": "admin", "SOC Analysts": "analyst" },
+      default_role: "viewer",
+      sync_mode: "roles",
+      allow_jit: true,
+    },
+  },
+  azure: {
+    label: "Microsoft Entra (Azure AD)",
+    config: {
+      issuer: "https://login.microsoftonline.com/<tenant-id>/v2.0",
+      client_id: "",
+      client_secret: "",
+      scopes: ["openid", "profile", "email"],
+      groups_claim: "roles",
+      default_role: "viewer",
+      sync_mode: "roles",
+      allow_jit: true,
+    },
+  },
+  generic: {
+    label: "Generic OIDC",
+    config: {
+      issuer: "https://idp.example.com",
+      client_id: "",
+      client_secret: "",
+      scopes: ["openid", "profile", "email"],
+      groups_claim: "groups",
+      group_role_mapping: {},
+      default_role: "viewer",
+      sync_mode: "roles",
+      allow_jit: true,
+    },
+  },
 };
+
+const DEFAULT_PRESET = "keycloak";
 
 const columnHelper = createColumnHelper<AuthProviderAdmin>();
 
@@ -162,6 +226,7 @@ function ProviderDialog({
   const [name, setName] = React.useState("");
   const [type, setType] = React.useState("oidc");
   const [enabled, setEnabled] = React.useState(true);
+  const [preset, setPreset] = React.useState(DEFAULT_PRESET);
   const [configText, setConfigText] = React.useState("");
   const [configError, setConfigError] = React.useState<string | null>(null);
 
@@ -177,9 +242,16 @@ function ProviderDialog({
       setName("");
       setType("oidc");
       setEnabled(true);
-      setConfigText(JSON.stringify(OIDC_TEMPLATE, null, 2));
+      setPreset(DEFAULT_PRESET);
+      setConfigText(JSON.stringify(OIDC_PRESETS[DEFAULT_PRESET].config, null, 2));
     }
   }, [open, provider]);
+
+  const applyPreset = (kind: string) => {
+    setPreset(kind);
+    setConfigText(JSON.stringify(OIDC_PRESETS[kind].config, null, 2));
+    setConfigError(null);
+  };
 
   const save = useMutation({
     mutationFn: async () => {
@@ -266,6 +338,27 @@ function ProviderDialog({
               />
               Enabled — appears on the login screen
             </label>
+
+            {!editing && type === "oidc" && (
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="provider_preset">Template</Label>
+                <Select value={preset} onValueChange={applyPreset}>
+                  <SelectTrigger id="provider_preset">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {Object.entries(OIDC_PRESETS).map(([kind, p]) => (
+                      <SelectItem key={kind} value={kind}>
+                        {p.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <span className="text-[12px] text-ink-faint">
+                  Seeds the config below — a starting point you can edit. Backend stores the type only.
+                </span>
+              </div>
+            )}
 
             <div className="flex flex-col gap-1.5">
               <div className="flex items-baseline justify-between">

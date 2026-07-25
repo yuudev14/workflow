@@ -6,6 +6,7 @@ package oidcclient
 import (
 	"context"
 	"errors"
+	"strings"
 
 	"github.com/coreos/go-oidc/v3/oidc"
 	"golang.org/x/oauth2"
@@ -87,34 +88,43 @@ func (c *Client) Exchange(ctx context.Context, cfg auth.OIDCConfig, redirectURL,
 
 	return auth.OIDCIdentity{
 		Subject:           idToken.Subject,
-		Email:             stringClaim(claims, "email"),
-		EmailVerified:     boolClaim(claims, "email_verified"),
-		PreferredUsername: stringClaim(claims, "preferred_username"),
-		Groups:            stringsClaim(claims, groupsClaimName(cfg)),
+		Email:             stringFromClaim(claims, claimNameOr(cfg.EmailClaim, "email")),
+		PreferredUsername: stringFromClaim(claims, claimNameOr(cfg.UsernameClaim, "preferred_username")),
+		Groups:            stringsFromClaim(claims, claimNameOr(cfg.GroupsClaim, "groups")),
 	}, nil
 }
 
-func groupsClaimName(cfg auth.OIDCConfig) string {
-	if cfg.GroupsClaim != "" {
-		return cfg.GroupsClaim
+func claimNameOr(name, fallback string) string {
+	if name != "" {
+		return name
 	}
-	return "groups"
+	return fallback
 }
 
-func stringClaim(claims map[string]any, key string) string {
-	s, _ := claims[key].(string)
+// claimByPath resolves a claim by a dotted path, so a nested claim like
+// "realm_access.roles" (Keycloak realm roles) reaches its value. A single
+// segment is an ordinary top-level lookup.
+func claimByPath(claims map[string]any, path string) any {
+	var cur any = claims
+	for part := range strings.SplitSeq(path, ".") {
+		m, ok := cur.(map[string]any)
+		if !ok {
+			return nil
+		}
+		cur = m[part]
+	}
+	return cur
+}
+
+func stringFromClaim(claims map[string]any, path string) string {
+	s, _ := claimByPath(claims, path).(string)
 	return s
 }
 
-func boolClaim(claims map[string]any, key string) bool {
-	b, _ := claims[key].(bool)
-	return b
-}
-
-// stringsClaim reads a claim that may be a JSON array of strings (groups). A
-// single-string value is tolerated as a one-element list.
-func stringsClaim(claims map[string]any, key string) []string {
-	switch v := claims[key].(type) {
+// stringsFromClaim reads a claim (possibly a dotted path) that may be a JSON
+// array of strings. A single-string value is tolerated as a one-element list.
+func stringsFromClaim(claims map[string]any, path string) []string {
+	switch v := claimByPath(claims, path).(type) {
 	case []any:
 		out := make([]string, 0, len(v))
 		for _, item := range v {
@@ -123,6 +133,8 @@ func stringsClaim(claims map[string]any, key string) []string {
 			}
 		}
 		return out
+	case []string:
+		return v
 	case string:
 		return []string{v}
 	default:
