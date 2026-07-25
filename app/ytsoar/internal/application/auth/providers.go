@@ -11,8 +11,6 @@ import (
 
 const maskedSecret = "********"
 
-// AdminProvider is the admin-listing shape. Config is returned with secrets
-// masked — the raw secret is write-only from the api's perspective.
 type AdminProvider struct {
 	ID      string          `json:"id"`
 	Type    string          `json:"type"`
@@ -21,8 +19,6 @@ type AdminProvider struct {
 	Config  json.RawMessage `json:"config"`
 }
 
-// ListProvidersAdmin returns every provider for the settings screen with
-// secrets masked.
 func (s *Service) ListProvidersAdmin(ctx context.Context) ([]AdminProvider, error) {
 	rows, err := s.providers.List(ctx)
 	if err != nil {

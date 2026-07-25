@@ -261,7 +261,6 @@ func TestLogoutIsIdempotent(t *testing.T) {
 	user := activeUser()
 	refreshToken := issueRefreshToken(t, env, user)
 
-	// Second logout: the row is already revoked and the repository says so.
 	env.mockTokens.EXPECT().Revoke(gomock.Any(), gomock.Any()).Return(auth.ErrTokenNotFound)
 
 	assert.NoError(t, env.service.Logout(context.Background(), refreshToken))

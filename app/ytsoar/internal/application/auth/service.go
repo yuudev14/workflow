@@ -223,7 +223,6 @@ func (s *Service) Logout(ctx context.Context, refreshToken string) error {
 	return nil
 }
 
-// Me returns the profile, role names and permission map for a user.
 func (s *Service) Me(ctx context.Context, userID uuid.UUID) (Me, error) {
 	user, err := s.users.GetByID(ctx, userID)
 	if err != nil {
@@ -247,7 +246,6 @@ func (s *Service) Me(ctx context.Context, userID uuid.UUID) (Me, error) {
 	return Me{User: user, Roles: names, Permissions: permissions.ToMap()}, nil
 }
 
-// VerifyAccessToken authenticates an API request from its bearer token.
 func (s *Service) VerifyAccessToken(tokenString string) (domain.AuthUser, error) {
 	claims, err := token.Parse(tokenString, s.cfg.JWTSecret)
 	if err != nil {
@@ -284,7 +282,6 @@ func (s *Service) VerifyRefreshTokenForWS(ctx context.Context, refreshToken stri
 	return domain.AuthUser{ID: user.ID, Username: user.Username}, nil
 }
 
-// PermissionsFor backs the RequirePermission middleware.
 func (s *Service) PermissionsFor(ctx context.Context, userID uuid.UUID) (domain.PermissionSet, error) {
 	return s.roles.ListPermissionsForUser(ctx, userID)
 }

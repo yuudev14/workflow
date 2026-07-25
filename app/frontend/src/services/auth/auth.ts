@@ -23,18 +23,15 @@ export default class AuthService {
     return refreshSession();
   };
 
-  /** Revokes the session server-side and clears both cookies. */
   public static logout = async (): Promise<void> => {
     await apiClient.post(`${this.BASE_URL}/logout`);
   };
 
-  /** Profile, role names, and the permission map that drives UI gating. */
   public static me = async (): Promise<Me> => {
     const res = await apiClient.get(`${this.BASE_URL}/me`);
     return res.data;
   };
 
-  /** Enabled SSO providers for the login screen. */
   public static getProviders = async (): Promise<AuthProviderSummary[]> => {
     const res = await apiClient.get(`${this.BASE_URL}/providers`);
     return res.data;

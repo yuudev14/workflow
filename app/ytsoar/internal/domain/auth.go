@@ -147,7 +147,6 @@ type Team struct {
 	UpdatedAt   time.Time `db:"updated_at" json:"updated_at"`
 }
 
-
 type TeamWithMembers struct {
 	Team
 	Members []TeamMember `json:"members"`

@@ -88,7 +88,6 @@ func TestCompleteOIDCExpiredStateRejected(t *testing.T) {
 func TestCompleteOIDCWrongProviderInCookieRejected(t *testing.T) {
 	env := setupTest(t)
 	pid := uuid.New()
-	// cookie sealed for a different provider than the callback path names.
 	cookie := stateCookie(t, uuid.New(), "s", "v", time.Now().Add(time.Minute))
 
 	_, err := env.service.CompleteOIDC(context.Background(), pid, "code", "s", cookie)
@@ -106,7 +105,6 @@ func TestCompleteOIDCJITProvisionsUser(t *testing.T) {
 		Exchange(gomock.Any(), gomock.Any(), gomock.Any(), "code", "verifier").
 		Return(auth.OIDCIdentity{Subject: "kc-sub", Email: "alice@corp", PreferredUsername: "alice", Groups: []string{"soc-analysts"}}, nil)
 
-	// no existing account for this subject → JIT.
 	env.mockUsers.EXPECT().GetByExternalID(gomock.Any(), domain.AuthProviderOIDC, externalID).
 		Return(domain.User{}, auth.ErrUserNotFound)
 	env.mockUsers.EXPECT().GetByUsername(gomock.Any(), "alice").Return(domain.User{}, auth.ErrUserNotFound)
@@ -122,7 +120,6 @@ func TestCompleteOIDCJITProvisionsUser(t *testing.T) {
 			return created, nil
 		})
 
-	// role sync: soc-analysts → analyst, replaced wholesale in a tx.
 	analyst := domain.Role{ID: uuid.New(), Name: "analyst"}
 	env.mockRoles.EXPECT().GetByName(gomock.Any(), "analyst").Return(analyst, nil)
 	env.mockRoles.EXPECT().RemoveAllFromUser(gomock.Any(), created.ID).Return(nil)
@@ -440,7 +437,6 @@ func TestCompleteOIDCAttributeSyncSkipsUnchangedAndEmpty(t *testing.T) {
 
 	env.mockProviders.EXPECT().GetByID(gomock.Any(), pid).
 		Return(oidcProviderWithConfig(pid, map[string]any{"sync_mode": "attributes"}), nil)
-	// email identical, first name identical, last name absent from the token.
 	env.mockOIDC.EXPECT().Exchange(gomock.Any(), gomock.Any(), gomock.Any(), "code", "v").
 		Return(auth.OIDCIdentity{Subject: "kc-sub", Email: "same@corp", FirstName: "Bob"}, nil)
 	env.mockUsers.EXPECT().GetByExternalID(gomock.Any(), domain.AuthProviderOIDC, externalID).Return(existing, nil)

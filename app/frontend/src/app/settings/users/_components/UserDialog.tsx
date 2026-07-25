@@ -18,6 +18,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { RolePicker } from "../../_components/RolePicker";
 
 /**
  * Create and edit share this dialog because the fields are the same. They are
@@ -63,7 +64,6 @@ export function UserDialog({
     setRoleIds([]);
   }, [open, user]);
 
-  // Role ids need the roles list to resolve the names the user row carries.
   React.useEffect(() => {
     if (!open || !user || roles.length === 0) return;
     setRoleIds(roles.filter((r) => user.roles.includes(r.name)).map((r) => r.id));
@@ -179,26 +179,7 @@ export function UserDialog({
             </div>
           </div>
 
-          <div className="flex flex-col gap-1.5">
-            <Label>Roles</Label>
-            <div className="flex flex-wrap gap-1.5">
-              {roles.map((role) => (
-                <button
-                  key={role.id}
-                  type="button"
-                  onClick={() => toggleRole(role.id)}
-                  className={
-                    roleIds.includes(role.id)
-                      ? "rounded-sm border border-signal-dot bg-paper-sunken px-2 py-1 text-[12.5px] font-semibold"
-                      : "rounded-sm border border-line-strong px-2 py-1 text-[12.5px] text-ink-soft hover:bg-paper-sunken"
-                  }
-                >
-                  {role.name}
-                </button>
-              ))}
-              {roles.length === 0 && <span className="text-xs text-ink-faint">No roles yet</span>}
-            </div>
-          </div>
+          <RolePicker roles={roles} selected={roleIds} onToggle={toggleRole} />
 
           <DialogFooter className="mt-2">
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>

@@ -27,8 +27,6 @@ import {
 export default class AdminService {
   private static BASE_URL = settings.BASE_URL.AUTH_SERVICE_API + "/api";
 
-  // ---- users ----
-
   public static listUsers = async (filter: UserFilter = {}): Promise<EntryResponse<UserWithRoles>> => {
     const res = await apiClient.get(`${this.BASE_URL}/users/v1`, { params: filter });
     return res.data;
@@ -66,8 +64,6 @@ export default class AdminService {
     await apiClient.delete(`${this.BASE_URL}/users/v1/${id}`);
   };
 
-  // ---- roles ----
-
   public static listRoles = async (): Promise<Role[]> => {
     const res = await apiClient.get(`${this.BASE_URL}/roles/v1`);
     return res.data;
@@ -99,8 +95,6 @@ export default class AdminService {
   public static deleteRole = async (id: string): Promise<void> => {
     await apiClient.delete(`${this.BASE_URL}/roles/v1/${id}`);
   };
-
-  // ---- teams ----
 
   public static listTeams = async (filter: TeamFilter = {}): Promise<EntryResponse<Team>> => {
     const res = await apiClient.get(`${this.BASE_URL}/teams/v1`, { params: filter });
@@ -140,16 +134,12 @@ export default class AdminService {
     await apiClient.delete(`${this.BASE_URL}/teams/v1/${id}`);
   };
 
-  // ---- audit ----
-
   public static listAuditLogs = async (
     filter: AuditFilter = {},
   ): Promise<EntryResponse<AuditLog>> => {
     const res = await apiClient.get(`${this.BASE_URL}/audit/v1`, { params: filter });
     return res.data;
   };
-
-  // ---- auth providers ----
 
   public static listAuthProviders = async (): Promise<AuthProviderAdmin[]> => {
     const res = await apiClient.get(`${this.BASE_URL}/auth-providers/v1`);
