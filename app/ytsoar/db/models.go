@@ -12,6 +12,95 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+type AlertSeverity string
+
+const (
+	AlertSeverityCritical AlertSeverity = "critical"
+	AlertSeverityHigh     AlertSeverity = "high"
+	AlertSeverityMedium   AlertSeverity = "medium"
+	AlertSeverityLow      AlertSeverity = "low"
+)
+
+func (e *AlertSeverity) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = AlertSeverity(s)
+	case string:
+		*e = AlertSeverity(s)
+	default:
+		return fmt.Errorf("unsupported scan type for AlertSeverity: %T", src)
+	}
+	return nil
+}
+
+type NullAlertSeverity struct {
+	AlertSeverity AlertSeverity `json:"alert_severity"`
+	Valid         bool          `json:"valid"` // Valid is true if AlertSeverity is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullAlertSeverity) Scan(value interface{}) error {
+	if value == nil {
+		ns.AlertSeverity, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.AlertSeverity.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullAlertSeverity) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.AlertSeverity), nil
+}
+
+type AlertStatus string
+
+const (
+	AlertStatusNew           AlertStatus = "new"
+	AlertStatusInvestigating AlertStatus = "investigating"
+	AlertStatusResolved      AlertStatus = "resolved"
+	AlertStatusFalsepos      AlertStatus = "falsepos"
+	AlertStatusClosed        AlertStatus = "closed"
+)
+
+func (e *AlertStatus) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = AlertStatus(s)
+	case string:
+		*e = AlertStatus(s)
+	default:
+		return fmt.Errorf("unsupported scan type for AlertStatus: %T", src)
+	}
+	return nil
+}
+
+type NullAlertStatus struct {
+	AlertStatus AlertStatus `json:"alert_status"`
+	Valid       bool        `json:"valid"` // Valid is true if AlertStatus is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullAlertStatus) Scan(value interface{}) error {
+	if value == nil {
+		ns.AlertStatus, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.AlertStatus.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullAlertStatus) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.AlertStatus), nil
+}
+
 type AuthProviderType string
 
 const (
@@ -55,6 +144,143 @@ func (ns NullAuthProviderType) Value() (driver.Value, error) {
 	return string(ns.AuthProviderType), nil
 }
 
+type EventType string
+
+const (
+	EventTypeCreated       EventType = "created"
+	EventTypeStatusChanged EventType = "status_changed"
+	EventTypeEscalated     EventType = "escalated"
+	EventTypeTriage        EventType = "triage"
+	EventTypeSla           EventType = "sla"
+	EventTypeCorrelation   EventType = "correlation"
+	EventTypeAttackTag     EventType = "attack_tag"
+	EventTypeLinked        EventType = "linked"
+	EventTypeUnlinked      EventType = "unlinked"
+)
+
+func (e *EventType) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = EventType(s)
+	case string:
+		*e = EventType(s)
+	default:
+		return fmt.Errorf("unsupported scan type for EventType: %T", src)
+	}
+	return nil
+}
+
+type NullEventType struct {
+	EventType EventType `json:"event_type"`
+	Valid     bool      `json:"valid"` // Valid is true if EventType is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullEventType) Scan(value interface{}) error {
+	if value == nil {
+		ns.EventType, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.EventType.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullEventType) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.EventType), nil
+}
+
+type IncidentStatus string
+
+const (
+	IncidentStatusOpen          IncidentStatus = "open"
+	IncidentStatusInvestigating IncidentStatus = "investigating"
+	IncidentStatusContained     IncidentStatus = "contained"
+	IncidentStatusResolved      IncidentStatus = "resolved"
+	IncidentStatusClosed        IncidentStatus = "closed"
+)
+
+func (e *IncidentStatus) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = IncidentStatus(s)
+	case string:
+		*e = IncidentStatus(s)
+	default:
+		return fmt.Errorf("unsupported scan type for IncidentStatus: %T", src)
+	}
+	return nil
+}
+
+type NullIncidentStatus struct {
+	IncidentStatus IncidentStatus `json:"incident_status"`
+	Valid          bool           `json:"valid"` // Valid is true if IncidentStatus is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullIncidentStatus) Scan(value interface{}) error {
+	if value == nil {
+		ns.IncidentStatus, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.IncidentStatus.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullIncidentStatus) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.IncidentStatus), nil
+}
+
+type LinkSource string
+
+const (
+	LinkSourceManual      LinkSource = "manual"
+	LinkSourceEscalate    LinkSource = "escalate"
+	LinkSourceCorrelation LinkSource = "correlation"
+)
+
+func (e *LinkSource) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = LinkSource(s)
+	case string:
+		*e = LinkSource(s)
+	default:
+		return fmt.Errorf("unsupported scan type for LinkSource: %T", src)
+	}
+	return nil
+}
+
+type NullLinkSource struct {
+	LinkSource LinkSource `json:"link_source"`
+	Valid      bool       `json:"valid"` // Valid is true if LinkSource is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullLinkSource) Scan(value interface{}) error {
+	if value == nil {
+		ns.LinkSource, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.LinkSource.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullLinkSource) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.LinkSource), nil
+}
+
 type PlaybookStatus string
 
 const (
@@ -96,6 +322,95 @@ func (ns NullPlaybookStatus) Value() (driver.Value, error) {
 		return nil, nil
 	}
 	return string(ns.PlaybookStatus), nil
+}
+
+type SlaState string
+
+const (
+	SlaStateOk       SlaState = "ok"
+	SlaStateWarning  SlaState = "warning"
+	SlaStateBreached SlaState = "breached"
+	SlaStateMet      SlaState = "met"
+)
+
+func (e *SlaState) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = SlaState(s)
+	case string:
+		*e = SlaState(s)
+	default:
+		return fmt.Errorf("unsupported scan type for SlaState: %T", src)
+	}
+	return nil
+}
+
+type NullSlaState struct {
+	SlaState SlaState `json:"sla_state"`
+	Valid    bool     `json:"valid"` // Valid is true if SlaState is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullSlaState) Scan(value interface{}) error {
+	if value == nil {
+		ns.SlaState, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.SlaState.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullSlaState) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.SlaState), nil
+}
+
+type SourceKind string
+
+const (
+	SourceKindEdr      SourceKind = "edr"
+	SourceKindIdentity SourceKind = "identity"
+	SourceKindEmail    SourceKind = "email"
+	SourceKindFirewall SourceKind = "firewall"
+	SourceKindDlp      SourceKind = "dlp"
+)
+
+func (e *SourceKind) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = SourceKind(s)
+	case string:
+		*e = SourceKind(s)
+	default:
+		return fmt.Errorf("unsupported scan type for SourceKind: %T", src)
+	}
+	return nil
+}
+
+type NullSourceKind struct {
+	SourceKind SourceKind `json:"source_kind"`
+	Valid      bool       `json:"valid"` // Valid is true if SourceKind is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullSourceKind) Scan(value interface{}) error {
+	if value == nil {
+		ns.SourceKind, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.SourceKind.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullSourceKind) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.SourceKind), nil
 }
 
 type TaskStatus string
@@ -189,6 +504,48 @@ func (ns NullTriggerType) Value() (driver.Value, error) {
 	return string(ns.TriggerType), nil
 }
 
+type Alert struct {
+	ID            pgtype.UUID      `json:"id"`
+	Title         string           `json:"title"`
+	Severity      AlertSeverity    `json:"severity"`
+	Status        AlertStatus      `json:"status"`
+	SourceKind    SourceKind       `json:"source_kind"`
+	Reporter      pgtype.Text      `json:"reporter"`
+	AssigneeID    pgtype.UUID      `json:"assignee_id"`
+	TeamID        pgtype.UUID      `json:"team_id"`
+	Payload       json.RawMessage  `json:"payload"`
+	Tags          []string         `json:"tags"`
+	Triage        []byte           `json:"triage"`
+	ClosureNote   pgtype.Text      `json:"closure_note"`
+	Fingerprint   string           `json:"fingerprint"`
+	DedupCount    int32            `json:"dedup_count"`
+	LastSeen      pgtype.Timestamp `json:"last_seen"`
+	TriagedAt     pgtype.Timestamp `json:"triaged_at"`
+	SlaDeadline   pgtype.Timestamp `json:"sla_deadline"`
+	SlaBreachedAt pgtype.Timestamp `json:"sla_breached_at"`
+	SlaState      SlaState         `json:"sla_state"`
+	CreatedAt     pgtype.Timestamp `json:"created_at"`
+	UpdatedAt     pgtype.Timestamp `json:"updated_at"`
+}
+
+type AlertEvent struct {
+	ID        pgtype.UUID      `json:"id"`
+	AlertID   pgtype.UUID      `json:"alert_id"`
+	Type      EventType        `json:"type"`
+	ActorID   pgtype.UUID      `json:"actor_id"`
+	Body      json.RawMessage  `json:"body"`
+	CreatedAt pgtype.Timestamp `json:"created_at"`
+}
+
+type AlertNote struct {
+	ID        pgtype.UUID      `json:"id"`
+	AlertID   pgtype.UUID      `json:"alert_id"`
+	AuthorID  pgtype.UUID      `json:"author_id"`
+	Body      string           `json:"body"`
+	CreatedAt pgtype.Timestamp `json:"created_at"`
+	UpdatedAt pgtype.Timestamp `json:"updated_at"`
+}
+
 type AuditLog struct {
 	ID        pgtype.UUID      `json:"id"`
 	ActorID   pgtype.UUID      `json:"actor_id"`
@@ -228,6 +585,47 @@ type Edge struct {
 	PlaybookID        pgtype.UUID `json:"playbook_id"`
 	SourceHandle      pgtype.Text `json:"source_handle"`
 	DestinationHandle pgtype.Text `json:"destination_handle"`
+}
+
+type Incident struct {
+	ID            pgtype.UUID      `json:"id"`
+	Title         string           `json:"title"`
+	Severity      AlertSeverity    `json:"severity"`
+	Status        IncidentStatus   `json:"status"`
+	AssigneeID    pgtype.UUID      `json:"assignee_id"`
+	TeamID        pgtype.UUID      `json:"team_id"`
+	Tags          []string         `json:"tags"`
+	ResolvedAt    pgtype.Timestamp `json:"resolved_at"`
+	SlaDeadline   pgtype.Timestamp `json:"sla_deadline"`
+	SlaBreachedAt pgtype.Timestamp `json:"sla_breached_at"`
+	SlaState      SlaState         `json:"sla_state"`
+	CreatedAt     pgtype.Timestamp `json:"created_at"`
+	UpdatedAt     pgtype.Timestamp `json:"updated_at"`
+}
+
+type IncidentAlert struct {
+	IncidentID pgtype.UUID      `json:"incident_id"`
+	AlertID    pgtype.UUID      `json:"alert_id"`
+	Source     LinkSource       `json:"source"`
+	CreatedAt  pgtype.Timestamp `json:"created_at"`
+}
+
+type IncidentEvent struct {
+	ID         pgtype.UUID      `json:"id"`
+	IncidentID pgtype.UUID      `json:"incident_id"`
+	Type       EventType        `json:"type"`
+	ActorID    pgtype.UUID      `json:"actor_id"`
+	Body       json.RawMessage  `json:"body"`
+	CreatedAt  pgtype.Timestamp `json:"created_at"`
+}
+
+type IncidentNote struct {
+	ID         pgtype.UUID      `json:"id"`
+	IncidentID pgtype.UUID      `json:"incident_id"`
+	AuthorID   pgtype.UUID      `json:"author_id"`
+	Body       string           `json:"body"`
+	CreatedAt  pgtype.Timestamp `json:"created_at"`
+	UpdatedAt  pgtype.Timestamp `json:"updated_at"`
 }
 
 type Playbook struct {

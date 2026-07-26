@@ -1,4 +1,6 @@
 
+.PHONY: seed-alerts drip-alerts storm-alerts
+
 rebuild-containers:
 		docker compose -f ./docker/dev.docker-compose.yml up --build -d
 
@@ -34,6 +36,24 @@ start-debug:
 		docker compose -f ./docker/dev.docker-compose.yml -f ./docker/debug.docker-compose.yml up -d && \
 		cd ./app/frontend && \
 		npm run dev -- --hostname 0.0.0.0
+
+# Dev/demo alert data. Stdlib python on the HOST, talking to the dev stack over
+# HTTP — see tools/alertgen/README.md. Not shipped, nothing imports it.
+ALERTGEN := python3 ./tools/alertgen/alertgen.py
+
+# ~40 alerts across all 5 source kinds and all severities, created_at spread
+# over 14 days so the volume chart has a shape. Also escalates 3 into incidents.
+seed-alerts:
+		$(ALERTGEN) seed --count $(or $(N),40)
+
+# One alert every ~20s until Ctrl-C. Leave running while clicking the UI.
+drip-alerts:
+		$(ALERTGEN) drip
+
+# N byte-identical alerts. Must collapse to ONE row with dedup_count=N; if it
+# does not, alerts_open_fingerprint_idx is wrong.
+storm-alerts:
+		$(ALERTGEN) storm --count $(or $(N),200)
 
 # Install per-connector dependencies declared as <id>/requirements.txt (python,
 # vendored into <id>/deps) or <id>/package.json (node, into <id>/node_modules).

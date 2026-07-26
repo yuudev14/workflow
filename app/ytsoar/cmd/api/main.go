@@ -16,9 +16,11 @@ import (
 	"github.com/yuudev14/ytsoar/internal/adapters/repository"
 	"github.com/yuudev14/ytsoar/internal/adapters/security"
 	"github.com/yuudev14/ytsoar/internal/adapters/ws"
+	"github.com/yuudev14/ytsoar/internal/application/alerts"
 	"github.com/yuudev14/ytsoar/internal/application/auth"
 	"github.com/yuudev14/ytsoar/internal/application/connectors"
 	"github.com/yuudev14/ytsoar/internal/application/edges"
+	"github.com/yuudev14/ytsoar/internal/application/incidents"
 	"github.com/yuudev14/ytsoar/internal/application/playbooks"
 	"github.com/yuudev14/ytsoar/internal/application/tasks"
 	"github.com/yuudev14/ytsoar/internal/config"
@@ -152,6 +154,24 @@ func main() {
 	connectorHandler := handlers.NewConnectorHandler(appLogger, connectorService)
 	adminHandler := handlers.NewAdminHandler(appLogger, authService)
 
+	moduleEventPublisher, err := mq.NewModuleEventPublisher(appLogger, mqConn, cfg.ModuleEventsExchangeName)
+	if err != nil {
+		log.Fatalf("failed to setup module event publisher: %v", err)
+	}
+
+	alertRepository := repository.NewAlertRepositoryImpl(appLogger, queries, pool)
+	incidentRepository := repository.NewIncidentRepositoryImpl(appLogger, queries, pool)
+
+	// The alert repository doubles as incidents.AlertTimeline so linking writes
+	// the other half of the story onto the alert.
+	incidentService := incidents.NewService(
+		appLogger, incidentRepository, alertRepository, txManager, moduleEventPublisher)
+	alertService := alerts.NewService(
+		appLogger, alertRepository, incidentService, txManager, moduleEventPublisher)
+
+	alertHandler := handlers.NewAlertHandler(appLogger, alertService)
+	incidentHandler := handlers.NewIncidentHandler(appLogger, incidentService)
+
 	routerConfig := api.RouterConfig{
 		CORSOrigins: cfg.CORSOrigins,
 	}
@@ -162,6 +182,8 @@ func main() {
 		connectorHandler,
 		authHandler,
 		adminHandler,
+		alertHandler,
+		incidentHandler,
 		hub,
 		middleware.Auth(appLogger, authService),
 		middleware.AuthFromRefreshCookie(appLogger, authService),

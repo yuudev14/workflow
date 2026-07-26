@@ -14,6 +14,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/yuudev14/ytsoar/db"
+	"github.com/yuudev14/ytsoar/internal/domain"
 	"github.com/yuudev14/ytsoar/internal/logger"
 	"github.com/yuudev14/ytsoar/internal/types"
 )
@@ -96,6 +97,56 @@ func fromPgUUID(id pgtype.UUID) uuid.UUID {
 		return uuid.Nil
 	}
 	return uuid.UUID(id.Bytes)
+}
+
+func toPgUUIDPtr(id *uuid.UUID) pgtype.UUID {
+	if id == nil {
+		return pgtype.UUID{}
+	}
+	return toPgUUID(*id)
+}
+
+func fromPgUUIDPtr(id pgtype.UUID) *uuid.UUID {
+	if !id.Valid {
+		return nil
+	}
+	parsed := uuid.UUID(id.Bytes)
+	return &parsed
+}
+
+func toPgUUIDFromNullable(n types.Nullable[uuid.UUID]) pgtype.UUID {
+	if !n.Set || n.Value == nil {
+		return pgtype.UUID{}
+	}
+	return toPgUUID(*n.Value)
+}
+
+func toPgTimestampPtr(t *time.Time) pgtype.Timestamp {
+	if t == nil {
+		return pgtype.Timestamp{}
+	}
+	return pgtype.Timestamp{Time: *t, Valid: true}
+}
+
+func fromNullableStrings(n types.Nullable[[]string]) []string {
+	if !n.Set || n.Value == nil {
+		return nil
+	}
+	return *n.Value
+}
+
+func toNullAlertSeverity(n types.Nullable[domain.AlertSeverity]) db.NullAlertSeverity {
+	if !n.Set || n.Value == nil {
+		return db.NullAlertSeverity{}
+	}
+	return db.NullAlertSeverity{AlertSeverity: db.AlertSeverity(*n.Value), Valid: true}
+}
+
+func toNullIncidentStatus(n *string) db.NullIncidentStatus {
+	if n == nil {
+		return db.NullIncidentStatus{}
+	}
+	return db.NullIncidentStatus{IncidentStatus: db.IncidentStatus(*n), Valid: true}
 }
 
 func toPgText(s *string) pgtype.Text {
