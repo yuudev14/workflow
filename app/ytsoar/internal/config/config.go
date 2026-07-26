@@ -30,10 +30,8 @@ type Config struct {
 	// AppEnv gates the production safety checks in cmd/api.
 	AppEnv string
 
-
 	AccessTokenTTL  time.Duration
 	RefreshTokenTTL time.Duration
-
 
 	CORSOrigins []string
 
@@ -50,7 +48,8 @@ type Config struct {
 	FrontendURL   string
 	AuthPublicURL string
 
-	StatusExchangeName string
+	StatusExchangeName       string
+	ModuleEventsExchangeName string
 
 	// SandboxAddr is where the worker sends every dynamic node
 	// (ConnectorRuntime gRPC on cmd/sandbox).
@@ -65,8 +64,8 @@ type Config struct {
 	ConnectorsDir string
 
 	// Worker execution tuning.
-	MaxParallelNodes int // nodes run concurrently within one playbook run
-	PlaybookPrefetch int // playbook messages one worker runs concurrently (MQ Qos)
+	MaxParallelNodes int           // nodes run concurrently within one playbook run
+	PlaybookPrefetch int           // playbook messages one worker runs concurrently (MQ Qos)
 	NodeTimeout      time.Duration // per-node execution timeout (sandbox fallback too)
 
 	// Sandbox subprocess memory caps. Keep concurrency x cap under the
@@ -109,7 +108,8 @@ func LoadFrom(dest string) Config {
 		FrontendURL:   getEnvOr("FRONTEND_URL", "http://localhost:9999"),
 		AuthPublicURL: getEnvOr("AUTH_PUBLIC_URL", "http://localhost:9999/auth-api"),
 
-		StatusExchangeName: getEnvOr("STATUS_EXCHANGE", "playbook.status"),
+		StatusExchangeName:       getEnvOr("STATUS_EXCHANGE", "playbook.status"),
+		ModuleEventsExchangeName: getEnvOr("MODULE_EVENTS_EXCHANGE", "module.events"),
 
 		SandboxAddr:       getEnvOr("SANDBOX_ADDR", "localhost:50052"),
 		SandboxListenAddr: getEnvOr("SANDBOX_LISTEN_ADDR", ":50052"),

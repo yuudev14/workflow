@@ -13,16 +13,20 @@ import (
 type Querier interface {
 	CountUsersWithRole(ctx context.Context, name string) (int64, error)
 	CreateAuthProvider(ctx context.Context, arg CreateAuthProviderParams) (AuthProvider, error)
+	CreateIncident(ctx context.Context, arg CreateIncidentParams) (Incident, error)
 	CreatePlaybook(ctx context.Context, arg CreatePlaybookParams) (Playbook, error)
 	CreatePlaybookHistory(ctx context.Context, arg CreatePlaybookHistoryParams) (PlaybookHistory, error)
 	CreateRole(ctx context.Context, arg CreateRoleParams) (Role, error)
 	CreateTaskHistory(ctx context.Context, arg CreateTaskHistoryParams) (TaskHistory, error)
 	CreateTeam(ctx context.Context, arg CreateTeamParams) (Team, error)
 	CreateUser(ctx context.Context, arg CreateUserParams) (User, error)
+	DeleteAlertNote(ctx context.Context, id pgtype.UUID) (int64, error)
 	DeleteAllPlaybookEdges(ctx context.Context, playbookID pgtype.UUID) error
 	DeleteConnectorRecord(ctx context.Context, id string) (int64, error)
 	DeleteEdges(ctx context.Context, ids []pgtype.UUID) error
 	DeleteExpiredRefreshTokens(ctx context.Context) error
+	DeleteIncidentAlert(ctx context.Context, arg DeleteIncidentAlertParams) (int64, error)
+	DeleteIncidentNote(ctx context.Context, id pgtype.UUID) (int64, error)
 	DeleteRole(ctx context.Context, id pgtype.UUID) (int64, error)
 	DeleteRolePermissions(ctx context.Context, roleID pgtype.UUID) error
 	DeleteTasks(ctx context.Context, ids []pgtype.UUID) error
@@ -30,9 +34,13 @@ type Querier interface {
 	DeleteTeamMembers(ctx context.Context, teamID pgtype.UUID) error
 	DeleteTeamRoles(ctx context.Context, teamID pgtype.UUID) error
 	DeleteUserRoles(ctx context.Context, userID pgtype.UUID) error
+	GetAlertById(ctx context.Context, id pgtype.UUID) (Alert, error)
+	GetAlertNoteById(ctx context.Context, id pgtype.UUID) (AlertNote, error)
 	GetAuthProviderByID(ctx context.Context, id pgtype.UUID) (AuthProvider, error)
 	GetConnectorRecord(ctx context.Context, id string) (Connector, error)
 	GetEdgesByPlaybookId(ctx context.Context, playbookID pgtype.UUID) ([]GetEdgesByPlaybookIdRow, error)
+	GetIncidentById(ctx context.Context, id pgtype.UUID) (Incident, error)
+	GetIncidentNoteById(ctx context.Context, id pgtype.UUID) (IncidentNote, error)
 	GetPlaybookById(ctx context.Context, id pgtype.UUID) (Playbook, error)
 	GetPlaybookGraphById(ctx context.Context, id pgtype.UUID) (GetPlaybookGraphByIdRow, error)
 	GetPlaybookHistoryById(ctx context.Context, id pgtype.UUID) (GetPlaybookHistoryByIdRow, error)
@@ -46,14 +54,24 @@ type Querier interface {
 	GetUserByExternalId(ctx context.Context, arg GetUserByExternalIdParams) (User, error)
 	GetUserById(ctx context.Context, id pgtype.UUID) (User, error)
 	GetUserByUsername(ctx context.Context, username string) (User, error)
+	InsertAlertEvent(ctx context.Context, arg InsertAlertEventParams) (AlertEvent, error)
+	InsertAlertNote(ctx context.Context, arg InsertAlertNoteParams) (AlertNote, error)
 	InsertAuditLog(ctx context.Context, arg InsertAuditLogParams) (AuditLog, error)
+	InsertIncidentAlert(ctx context.Context, arg InsertIncidentAlertParams) (int64, error)
+	InsertIncidentEvent(ctx context.Context, arg InsertIncidentEventParams) (IncidentEvent, error)
+	InsertIncidentNote(ctx context.Context, arg InsertIncidentNoteParams) (IncidentNote, error)
 	InsertRefreshToken(ctx context.Context, arg InsertRefreshTokenParams) (RefreshToken, error)
 	InsertRolePermission(ctx context.Context, arg InsertRolePermissionParams) error
 	InsertTeamMember(ctx context.Context, arg InsertTeamMemberParams) error
 	InsertTeamRole(ctx context.Context, arg InsertTeamRoleParams) error
 	InsertUserRole(ctx context.Context, arg InsertUserRoleParams) error
+	ListAlertEvents(ctx context.Context, alertID pgtype.UUID) ([]ListAlertEventsRow, error)
+	ListAlertNotes(ctx context.Context, alertID pgtype.UUID) ([]ListAlertNotesRow, error)
 	ListAuthProviders(ctx context.Context) ([]AuthProvider, error)
 	ListEnabledAuthProviders(ctx context.Context) ([]AuthProvider, error)
+	ListIncidentAlerts(ctx context.Context, incidentID pgtype.UUID) ([]ListIncidentAlertsRow, error)
+	ListIncidentEvents(ctx context.Context, incidentID pgtype.UUID) ([]ListIncidentEventsRow, error)
+	ListIncidentNotes(ctx context.Context, incidentID pgtype.UUID) ([]ListIncidentNotesRow, error)
 	// Effective permissions: roles assigned directly to the user, UNION roles
 	// granted by every team they belong to. UNION dedups, so an overlap costs
 	// nothing. Both halves filter is_active, so a deactivated user keeps nothing —
@@ -67,7 +85,13 @@ type Querier interface {
 	RevokeRefreshToken(ctx context.Context, tokenHash string) (int64, error)
 	SetUserPassword(ctx context.Context, arg SetUserPasswordParams) error
 	TouchUserLastLogin(ctx context.Context, id pgtype.UUID) error
+	UpdateAlert(ctx context.Context, arg UpdateAlertParams) (Alert, error)
+	UpdateAlertNote(ctx context.Context, arg UpdateAlertNoteParams) (AlertNote, error)
+	UpdateAlertStatus(ctx context.Context, arg UpdateAlertStatusParams) (Alert, error)
 	UpdateAuthProvider(ctx context.Context, arg UpdateAuthProviderParams) (AuthProvider, error)
+	UpdateIncident(ctx context.Context, arg UpdateIncidentParams) (Incident, error)
+	UpdateIncidentNote(ctx context.Context, arg UpdateIncidentNoteParams) (IncidentNote, error)
+	UpdateIncidentStatus(ctx context.Context, arg UpdateIncidentStatusParams) (Incident, error)
 	UpdatePlaybook(ctx context.Context, arg UpdatePlaybookParams) (Playbook, error)
 	UpdatePlaybookHistory(ctx context.Context, arg UpdatePlaybookHistoryParams) (PlaybookHistory, error)
 	UpdatePlaybookHistoryStatus(ctx context.Context, arg UpdatePlaybookHistoryStatusParams) (PlaybookHistory, error)
@@ -76,6 +100,11 @@ type Querier interface {
 	UpdateTaskStatus(ctx context.Context, arg UpdateTaskStatusParams) (TaskHistory, error)
 	UpdateTeam(ctx context.Context, arg UpdateTeamParams) (Team, error)
 	UpdateUser(ctx context.Context, arg UpdateUserParams) (User, error)
+	// Dedup lives in the unique partial index alerts_open_fingerprint_idx, so the
+	// ON CONFLICT predicate must repeat that index's WHERE verbatim to target it.
+	// xmax is 0 only on a freshly inserted row, which is how the caller tells a new
+	// alert from a deduped one without a second query.
+	UpsertAlert(ctx context.Context, arg UpsertAlertParams) (UpsertAlertRow, error)
 	UpsertConnector(ctx context.Context, arg UpsertConnectorParams) (Connector, error)
 	UpsertEdge(ctx context.Context, arg UpsertEdgeParams) (Edge, error)
 	UpsertTask(ctx context.Context, arg UpsertTaskParams) (Task, error)
