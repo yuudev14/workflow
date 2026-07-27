@@ -26,23 +26,53 @@ const (
 type IncidentFilter struct {
 	Status     []string `form:"status" binding:"omitempty,dive,oneof=open investigating contained resolved closed"`
 	Severity   []string `form:"severity" binding:"omitempty,dive,oneof=critical high medium low"`
-	AssigneeID *string  `form:"assignee_id" binding:"omitempty,uuid"`
-	TeamID     *string  `form:"team_id" binding:"omitempty,uuid"`
-	Search     *string  `form:"q" binding:"omitempty"`
-	Cursor     *string  `form:"cursor" binding:"omitempty"`
-	Limit      int      `form:"limit" binding:"omitempty,min=1,max=200"`
+	SLAState   []string `form:"sla_state" binding:"omitempty,dive,oneof=ok warning breached met"`
+	AssigneeID []string `form:"assignee_id" binding:"omitempty,dive,uuid"`
+	TeamID     []string `form:"team_id" binding:"omitempty,dive,uuid"`
+	// Unassigned unions with AssigneeID rather than contradicting it: a picker
+	// offering "Unassigned" beside names has to mean "either".
+	Unassigned *bool    `form:"unassigned" binding:"omitempty"`
+	Tags       []string `form:"tags" binding:"omitempty"`
+	// RFC3339 instants, not dates - a queue filter is "since 14:30 today my
+	// time", and the offset removes any question of whose midnight is meant.
+	// The datetime tag is gin's own validator, so a bad value 400s at bind.
+	CreatedFrom *string `form:"created_from" binding:"omitempty,datetime=2006-01-02T15:04:05Z07:00"`
+	CreatedTo   *string `form:"created_to" binding:"omitempty,datetime=2006-01-02T15:04:05Z07:00"`
+	Search      *string `form:"q" binding:"omitempty"`
+	Cursor      *string `form:"cursor" binding:"omitempty"`
+	// Offset is the programmatic paging mode. Unlike the cursor it can skip or
+	// repeat rows when incidents arrive mid-page; that is the trade a caller
+	// opts into by using it.
+	Offset *int `form:"offset" binding:"omitempty,min=0"`
+	Limit  int  `form:"limit" binding:"omitempty,min=1,max=200"`
 	// Open filters to the not-yet-closed set, matching incidents_open_idx.
 	Open *bool `form:"open" binding:"omitempty"`
 }
 
-func (f IncidentFilter) Normalized() IncidentFilter {
+func (f IncidentFilter) CreatedRange() (from, to *time.Time, err error) {
+	if from, err = types.ParseInstant(f.CreatedFrom); err != nil {
+		return nil, nil, err
+	}
+	if to, err = types.ParseInstant(f.CreatedTo); err != nil {
+		return nil, nil, err
+	}
+	if from != nil && to != nil && from.After(*to) {
+		return nil, nil, apperr.New(apperr.Invalid, "created_from must not be after created_to")
+	}
+	return from, to, nil
+}
+
+func (f IncidentFilter) Normalized() (IncidentFilter, error) {
+	if f.Cursor != nil && *f.Cursor != "" && f.Offset != nil {
+		return f, apperr.New(apperr.Invalid, "use either cursor or offset, not both")
+	}
 	if f.Limit <= 0 {
 		f.Limit = DefaultLimit
 	}
 	if f.Limit > MaxLimit {
 		f.Limit = MaxLimit
 	}
-	return f
+	return f, nil
 }
 
 type CreateIncidentPayload struct {
@@ -163,12 +193,27 @@ type SLARisk struct {
 	Breached    bool       `db:"breached" json:"breached"`
 }
 
+// MTTRPoint is one point on the resolution-time series. It carries the
+// timestamp it covers because the range is caller-picked: length, start and
+// bucket width all vary per request, so the chart cannot derive its own x-axis.
+type MTTRPoint struct {
+	BucketStart time.Time `db:"bucket_start" json:"bucket_start"`
+	AvgSeconds  int       `db:"avg_seconds" json:"avg_seconds"`
+}
+
+// OpenTotal, StatusMix and SeverityMix stay all-time-open on purpose: the queue
+// header and its filter counts read them, so range-scoping would silently turn
+// "6 open" into "opened in the last 14 days".
 type IncidentsSummary struct {
-	OpenTotal   int              `json:"open_total"`
-	StatusMix   []StatusBucket   `json:"status_mix"`
-	SeverityMix []SeverityBucket `json:"severity_mix"`
-	// MTTRTrend is one average resolution time in seconds per week, oldest
-	// first, over the last 8 weeks.
-	MTTRTrend []int     `json:"mttr_trend"`
-	SLAAtRisk []SLARisk `json:"sla_at_risk"`
+	OpenTotal   int                 `json:"open_total"`
+	StatusMix   []StatusBucket      `json:"status_mix"`
+	SeverityMix []SeverityBucket    `json:"severity_mix"`
+	MTTRTrend   []MTTRPoint         `json:"mttr_trend"`
+	SLAAtRisk   []SLARisk           `json:"sla_at_risk"`
+	Range       types.ResolvedRange `json:"range"`
+	Created     types.WindowCount   `json:"created"`
+	Resolved    types.WindowCount   `json:"resolved"`
+	// MTTRSeconds is mean time to resolve across the whole window, beside the
+	// same figure for the preceding window.
+	MTTRSeconds types.WindowCount `json:"mttr_seconds"`
 }

@@ -128,7 +128,7 @@ func (s *Service) Login(ctx context.Context, username, password string) (TokenPa
 // Refresh rotates the refresh token: the presented one is revoked and a new
 // pair is issued. Presenting an already-revoked token is treated as theft.
 //
-// This is provider-agnostic on purpose — an OIDC or LDAP session refreshes
+// This is provider-agnostic on purpose - an OIDC or LDAP session refreshes
 // here too, without the identity provider being involved.
 func (s *Service) Refresh(ctx context.Context, refreshToken string) (TokenPair, error) {
 	claims, err := token.Parse(refreshToken, s.cfg.JWTSecret)
@@ -185,7 +185,7 @@ func (s *Service) handleReuse(ctx context.Context, stored domain.RefreshToken) e
 		return ErrInvalidCredentials
 	}
 
-	s.logger.Warnf("refresh token reuse detected for user %s — revoking all sessions", stored.UserID)
+	s.logger.Warnf("refresh token reuse detected for user %s - revoking all sessions", stored.UserID)
 	if err := s.tokens.RevokeAllForUser(ctx, stored.UserID); err != nil {
 		s.logger.Errorf("could not revoke sessions after reuse: %v", err)
 	}
@@ -259,7 +259,7 @@ func (s *Service) VerifyAccessToken(tokenString string) (domain.AuthUser, error)
 
 // VerifyRefreshTokenForWS authenticates a websocket handshake, which carries
 // the refresh cookie because a browser cannot set headers on a WebSocket.
-// The token is only read — never rotated — but it is checked against the
+// The token is only read - never rotated - but it is checked against the
 // database so logout and deactivation stop reconnects immediately.
 func (s *Service) VerifyRefreshTokenForWS(ctx context.Context, refreshToken string) (domain.AuthUser, error) {
 	claims, err := token.Parse(refreshToken, s.cfg.JWTSecret)
@@ -338,7 +338,7 @@ func (s *Service) recordLoginFailure(ctx context.Context, actorID *uuid.UUID, us
 	})
 }
 
-// writeAudit never fails the caller — losing an audit row must not turn a
+// writeAudit never fails the caller - losing an audit row must not turn a
 // successful login into an error.
 func (s *Service) writeAudit(ctx context.Context, entry domain.AuditEntry) {
 	if err := s.audit.Insert(ctx, entry); err != nil {

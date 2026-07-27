@@ -19,6 +19,7 @@ import (
 
 type PlaybookApplicationService interface {
 	TriggerPlaybook(ctx context.Context, playbookId string) (*domain.TaskMessage, error)
+	RunPlaybook(ctx context.Context, playbookId string, moduleType string, payload RunPlaybookPayload, actorID *uuid.UUID) (*domain.TaskMessage, error)
 	PreparePlaybookMessage(tasks []domain.Tasks, edges []domain.ResponseEdges) (map[string]domain.Tasks, map[string][]string, []domain.EdgeRef)
 	UpsertTasks(ctx context.Context, playbookUUID uuid.UUID, nodes []tasks.TaskPayload) ([]domain.Tasks, error)
 	InsertEdges(ctx context.Context, playbookUUID uuid.UUID, edges map[string][]string, tasks []domain.Tasks, handles map[string]map[string]domain.EdgeHandle) error
@@ -35,6 +36,7 @@ type PlaybookApplicationServiceImpl struct {
 	Tx                contracts.TxManager
 	TaskPublisher     contracts.TaskPublisher
 	StatusBroadcaster contracts.StatusBroadcaster
+	Records           RecordResolver
 }
 
 func NewPlaybookApplicationService(
@@ -45,6 +47,7 @@ func NewPlaybookApplicationService(
 	tx contracts.TxManager,
 	taskPublisher contracts.TaskPublisher,
 	statusBroadcaster contracts.StatusBroadcaster,
+	records RecordResolver,
 ) PlaybookApplicationService {
 	return &PlaybookApplicationServiceImpl{
 		Logger:            log,
@@ -54,6 +57,7 @@ func NewPlaybookApplicationService(
 		Tx:                tx,
 		TaskPublisher:     taskPublisher,
 		StatusBroadcaster: statusBroadcaster,
+		Records:           records,
 	}
 }
 
@@ -313,8 +317,58 @@ func (w *PlaybookApplicationServiceImpl) UpdatePlaybookTasks(
 	return playbookGraph, nil
 }
 
-// TriggerPlaybook implements PlaybookApplicationService.
+// TriggerPlaybook implements PlaybookApplicationService. The editor's bare
+// trigger has no records and no analyst-supplied parameters.
 func (w *PlaybookApplicationServiceImpl) TriggerPlaybook(ctx context.Context, playbookId string) (*domain.TaskMessage, error) {
+	return w.runPlaybook(ctx, playbookId, RunStamp{
+		TriggerType: new(string(domain.TriggerTypeManual)),
+		Input:       domain.NewEmptyRunInput(),
+	}, "", nil)
+}
+
+// RunPlaybook implements PlaybookApplicationService. The caller sends record ids
+// and the records are hydrated here, so a fabricated payload cannot aim a
+// playbook at a target the analyst never selected.
+func (w *PlaybookApplicationServiceImpl) RunPlaybook(ctx context.Context, playbookId string, moduleType string, payload RunPlaybookPayload, actorID *uuid.UUID) (*domain.TaskMessage, error) {
+	recordIDs, err := parseRecordIDs(payload.RecordIDs)
+	if err != nil {
+		return nil, err
+	}
+
+	records, err := w.Records.Resolve(ctx, moduleType, recordIDs)
+	if err != nil {
+		return nil, err
+	}
+
+	parameters := payload.Parameters
+	if parameters == nil {
+		parameters = map[string]any{}
+	}
+
+	return w.runPlaybook(ctx, playbookId, RunStamp{
+		TriggerType: new(string(domain.TriggerTypeManual)),
+		TriggeredBy: actorID,
+		Input: &domain.RunInput{
+			ModuleType: &moduleType,
+			Records:    records,
+			Parameters: parameters,
+		},
+	}, moduleType, recordIDs)
+}
+
+func parseRecordIDs(raw []string) ([]uuid.UUID, error) {
+	ids := make([]uuid.UUID, 0, len(raw))
+	for _, s := range raw {
+		id, err := uuid.Parse(s)
+		if err != nil {
+			return nil, apperr.New(apperr.Invalid, "record_ids must be uuids")
+		}
+		ids = append(ids, id)
+	}
+	return ids, nil
+}
+
+func (w *PlaybookApplicationServiceImpl) runPlaybook(ctx context.Context, playbookId string, run RunStamp, moduleType string, recordIDs []uuid.UUID) (*domain.TaskMessage, error) {
 	_, playbookErr := w.PlaybookService.GetPlaybookById(ctx, playbookId)
 	if playbookErr != nil {
 		return nil, playbookErr
@@ -334,11 +388,17 @@ func (w *PlaybookApplicationServiceImpl) TriggerPlaybook(ctx context.Context, pl
 
 	var playbookHistory *domain.PlaybookHistory
 	txErr := w.Tx.WithinTransaction(ctx, func(ctx context.Context) error {
-		history, historyErr := w.PlaybookService.CreatePlaybookHistory(ctx, playbookId, edges)
+		history, historyErr := w.PlaybookService.CreatePlaybookHistory(ctx, playbookId, edges, run)
 		if historyErr != nil {
 			return historyErr
 		}
 		playbookHistory = history
+
+		if len(recordIDs) > 0 {
+			if err := w.PlaybookService.CreatePlaybookRunRecords(ctx, playbookHistory.ID, moduleType, recordIDs); err != nil {
+				return err
+			}
+		}
 
 		w.Logger.Infof("Created playbook history with ID: %v", playbookHistory.ID)
 		_, createTaskHistoryErr := w.TaskService.CreateTaskHistory(ctx, playbookHistory.ID.String(), taskData, GetGraphUUIDS(edges))
@@ -348,7 +408,7 @@ func (w *PlaybookApplicationServiceImpl) TriggerPlaybook(ctx context.Context, pl
 		return nil, txErr
 	}
 
-	// broadcast only after the tx commits — a rollback must not leak a
+	// broadcast only after the tx commits - a rollback must not leak a
 	// phantom history to WS clients, and a slow client must not hold the tx open
 	w.StatusBroadcaster.Broadcast(playbookHistory)
 
@@ -357,10 +417,11 @@ func (w *PlaybookApplicationServiceImpl) TriggerPlaybook(ctx context.Context, pl
 		Tasks:             tasksMap,
 		PlaybookHistoryId: playbookHistory.ID,
 		Edges:             edgeRefs,
+		Input:             run.Input.Resolved(),
 	}
 
 	// The history row is already committed, so a publish failure is an upstream
-	// problem the caller can retry — not a bad request.
+	// problem the caller can retry - not a bad request.
 	if mqErr := w.TaskPublisher.SendMessage(body); mqErr != nil {
 		return nil, apperr.Wrap(apperr.Unavailable, "could not queue the playbook run", mqErr)
 	}

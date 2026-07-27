@@ -38,8 +38,13 @@ const sections: NavSection[] = [
   {
     label: "Monitor",
     items: [
-      { title: "Alerts", url: "/alerts", icon: Bell },
-      { title: "Incidents", url: "/incidents", icon: AlertTriangle },
+      { title: "Alerts", url: "/alerts/dashboard", match: "/alerts", icon: Bell },
+      {
+        title: "Incidents",
+        url: "/incidents/dashboard",
+        match: "/incidents",
+        icon: AlertTriangle,
+      },
     ],
   },
 ];

@@ -17,7 +17,7 @@ const (
 )
 
 // Permission modules and actions are stored as TEXT, so these constants are
-// the source of truth. Adding a module is a code change, not a migration —
+// the source of truth. Adding a module is a code change, not a migration -
 // keep this list in sync with the frontend's settings/permissions.ts.
 const (
 	ModulePlaybooks  = "playbooks"
@@ -175,7 +175,7 @@ type RefreshToken struct {
 
 // AuditLog is the read shape. ActorUsername is joined in and stays nil for
 // system-generated rows and for actors whose account was later removed
-// (actor_id is ON DELETE SET NULL — the trail outlives the user).
+// (actor_id is ON DELETE SET NULL - the trail outlives the user).
 type AuditLog struct {
 	ID            uuid.UUID       `db:"id" json:"id"`
 	ActorID       *uuid.UUID      `db:"actor_id" json:"actor_id"`
@@ -198,4 +198,11 @@ type AuditEntry struct {
 type AuthUser struct {
 	ID       uuid.UUID `json:"id"`
 	Username string    `json:"username"`
+}
+
+// AssignableUser is the minimum an assignee picker needs: enough to attribute
+// work, nothing that would leak a directory.
+type AssignableUser struct {
+	ID       uuid.UUID `db:"id" json:"id"`
+	Username string    `db:"username" json:"username"`
 }

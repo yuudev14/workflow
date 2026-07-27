@@ -47,7 +47,7 @@ func requireNode(t *testing.T) {
 }
 
 // requireTypeScriptNode skips when node cannot evaluate TypeScript natively
-// (--input-type=commonjs-typescript needs Node >= 23.6) — the node harnesses
+// (--input-type=commonjs-typescript needs Node >= 23.6) - the node harnesses
 // are TypeScript, so every test that executes them needs this.
 func requireTypeScriptNode(t *testing.T) {
 	t.Helper()
@@ -212,7 +212,7 @@ func TestNodeRunnerTimeoutKillsProcess(t *testing.T) {
 }
 
 // realTSCore is the actual core shipped in the repo tree, relative to this
-// package directory — the tests exercise the real class-discovery/templating
+// package directory - the tests exercise the real class-discovery/templating
 // contract, not a fake. The implementation is TypeScript; plain-JS connectors
 // reach it through the 1-line connector.js shim (extensionless require never
 // resolves .ts), so the temp tree replicates both files.
@@ -262,7 +262,7 @@ module.exports = { EchoConnector };`
 }
 
 // writeTSConnector adds a TypeScript connector (connector.ts, no .js) to the
-// tree — Node executes it directly via native type stripping.
+// tree - Node executes it directly via native type stripping.
 func writeTSConnector(t *testing.T, dir string) {
 	t.Helper()
 
@@ -357,7 +357,7 @@ func TestNodeConnectorRunnerExecutesTypeScriptConnector(t *testing.T) {
 
 // Vendored per-connector dependencies: <id>/node_modules (populated by `make
 // connector-deps` from <id>/package.json) resolve through Node's standard
-// upward walk from the connector file — no harness involvement.
+// upward walk from the connector file - no harness involvement.
 func TestNodeConnectorRunnerVendoredDeps(t *testing.T) {
 	requireTypeScriptNode(t)
 	dir := t.TempDir()
@@ -433,7 +433,7 @@ func TestNodeConnectorRunnerUnknownOperation(t *testing.T) {
 func TestListNodeConnectors(t *testing.T) {
 	dir := t.TempDir()
 	writeNodeConnector(t, dir)
-	writeTSConnector(t, dir) // ships only connector.ts — still listed
+	writeTSConnector(t, dir) // ships only connector.ts - still listed
 	// python connectors, dirs without info.json and plain files are ignored
 	require.NoError(t, os.MkdirAll(filepath.Join(dir, "python_connector"), 0o755))
 	require.NoError(t, os.WriteFile(filepath.Join(dir, "python_connector", "info.json"),

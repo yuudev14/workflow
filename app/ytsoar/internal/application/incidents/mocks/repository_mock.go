@@ -16,6 +16,7 @@ import (
 	uuid "github.com/google/uuid"
 	incidents "github.com/yuudev14/ytsoar/internal/application/incidents"
 	domain "github.com/yuudev14/ytsoar/internal/domain"
+	types "github.com/yuudev14/ytsoar/internal/types"
 	gomock "go.uber.org/mock/gomock"
 )
 
@@ -208,18 +209,18 @@ func (mr *MockIncidentRepositoryMockRecorder) ListNotes(ctx, incidentID any) *go
 }
 
 // Summary mocks base method.
-func (m *MockIncidentRepository) Summary(ctx context.Context) (incidents.IncidentsSummary, error) {
+func (m *MockIncidentRepository) Summary(ctx context.Context, rng types.ResolvedRange) (incidents.IncidentsSummary, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Summary", ctx)
+	ret := m.ctrl.Call(m, "Summary", ctx, rng)
 	ret0, _ := ret[0].(incidents.IncidentsSummary)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // Summary indicates an expected call of Summary.
-func (mr *MockIncidentRepositoryMockRecorder) Summary(ctx any) *gomock.Call {
+func (mr *MockIncidentRepositoryMockRecorder) Summary(ctx, rng any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Summary", reflect.TypeOf((*MockIncidentRepository)(nil).Summary), ctx)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Summary", reflect.TypeOf((*MockIncidentRepository)(nil).Summary), ctx, rng)
 }
 
 // UnlinkAlert mocks base method.

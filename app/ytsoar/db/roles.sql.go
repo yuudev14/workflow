@@ -154,7 +154,7 @@ type ListPermissionsForUserRow struct {
 
 // Effective permissions: roles assigned directly to the user, UNION roles
 // granted by every team they belong to. UNION dedups, so an overlap costs
-// nothing. Both halves filter is_active, so a deactivated user keeps nothing —
+// nothing. Both halves filter is_active, so a deactivated user keeps nothing -
 // not even through a team.
 func (q *Queries) ListPermissionsForUser(ctx context.Context, id pgtype.UUID) ([]ListPermissionsForUserRow, error) {
 	rows, err := q.db.Query(ctx, listPermissionsForUser, id)

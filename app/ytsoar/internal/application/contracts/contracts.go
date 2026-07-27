@@ -1,6 +1,10 @@
 package contracts
 
-import "context"
+import (
+	"context"
+
+	"github.com/google/uuid"
+)
 
 //go:generate mockgen -destination=mocks/task_publisher_mock.go -package=mocks . TaskPublisher
 
@@ -35,4 +39,13 @@ type ModuleEventPublisher interface {
 // repositories join it transparently and services never touch the driver.
 type TxManager interface {
 	WithinTransaction(ctx context.Context, fn func(ctx context.Context) error) error
+}
+
+//go:generate mockgen -destination=mocks/user_directory_mock.go -package=mocks . UserDirectory
+
+// UserDirectory resolves user ids to usernames for display inside timeline
+// events. Without it an assignment event reads "assignee changed from 3f2a… to
+// 9b1c…", and who it was assigned to is the entire content of that event.
+type UserDirectory interface {
+	UsernamesByIDs(ctx context.Context, ids []uuid.UUID) (map[uuid.UUID]string, error)
 }

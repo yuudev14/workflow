@@ -1,7 +1,7 @@
 /**
  * Mirror of the backend vocabulary in `app/ytsoar/internal/domain/auth.go`.
  * The columns are TEXT, so a string that exists here but not there is accepted
- * on write and then grants nothing — keep the two lists in sync.
+ * on write and then grants nothing - keep the two lists in sync.
  */
 export const PERMISSION_MODULES = [
   "playbooks",

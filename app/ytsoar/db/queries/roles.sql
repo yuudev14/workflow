@@ -60,7 +60,7 @@ DELETE FROM user_roles WHERE user_id = $1;
 -- name: ListPermissionsForUser :many
 -- Effective permissions: roles assigned directly to the user, UNION roles
 -- granted by every team they belong to. UNION dedups, so an overlap costs
--- nothing. Both halves filter is_active, so a deactivated user keeps nothing —
+-- nothing. Both halves filter is_active, so a deactivated user keeps nothing -
 -- not even through a team.
 SELECT rp.module, rp.action
 FROM role_permissions rp

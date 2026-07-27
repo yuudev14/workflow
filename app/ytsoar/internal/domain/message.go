@@ -11,6 +11,10 @@ type TaskMessage struct {
 	Tasks             map[string]Tasks    `json:"tasks"`
 	PlaybookHistoryId uuid.UUID           `json:"playbook_history_id"`
 	Edges             []EdgeRef           `json:"edges,omitempty"`
+	// Input is the trigger data, reachable in templates as `var.input`. Additive
+	// and optional, the only kind of change this wire format allows - an old
+	// producer that omits it still runs.
+	Input *RunInput `json:"input,omitempty"`
 }
 
 // EdgeRef mirrors one playbook edge on the wire. A SourceHandle of "true" or

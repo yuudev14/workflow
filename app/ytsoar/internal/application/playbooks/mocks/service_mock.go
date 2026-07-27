@@ -60,18 +60,32 @@ func (mr *MockPlaybookServiceMockRecorder) CreatePlaybook(ctx, playbook any) *go
 }
 
 // CreatePlaybookHistory mocks base method.
-func (m *MockPlaybookService) CreatePlaybookHistory(ctx context.Context, id string, edges []domain.ResponseEdges) (*domain.PlaybookHistory, error) {
+func (m *MockPlaybookService) CreatePlaybookHistory(ctx context.Context, id string, edges []domain.ResponseEdges, run playbooks.RunStamp) (*domain.PlaybookHistory, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "CreatePlaybookHistory", ctx, id, edges)
+	ret := m.ctrl.Call(m, "CreatePlaybookHistory", ctx, id, edges, run)
 	ret0, _ := ret[0].(*domain.PlaybookHistory)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // CreatePlaybookHistory indicates an expected call of CreatePlaybookHistory.
-func (mr *MockPlaybookServiceMockRecorder) CreatePlaybookHistory(ctx, id, edges any) *gomock.Call {
+func (mr *MockPlaybookServiceMockRecorder) CreatePlaybookHistory(ctx, id, edges, run any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreatePlaybookHistory", reflect.TypeOf((*MockPlaybookService)(nil).CreatePlaybookHistory), ctx, id, edges)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreatePlaybookHistory", reflect.TypeOf((*MockPlaybookService)(nil).CreatePlaybookHistory), ctx, id, edges, run)
+}
+
+// CreatePlaybookRunRecords mocks base method.
+func (m *MockPlaybookService) CreatePlaybookRunRecords(ctx context.Context, historyID uuid.UUID, moduleType string, recordIDs []uuid.UUID) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CreatePlaybookRunRecords", ctx, historyID, moduleType, recordIDs)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// CreatePlaybookRunRecords indicates an expected call of CreatePlaybookRunRecords.
+func (mr *MockPlaybookServiceMockRecorder) CreatePlaybookRunRecords(ctx, historyID, moduleType, recordIDs any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreatePlaybookRunRecords", reflect.TypeOf((*MockPlaybookService)(nil).CreatePlaybookRunRecords), ctx, historyID, moduleType, recordIDs)
 }
 
 // GetPlaybookById mocks base method.
@@ -207,6 +221,21 @@ func (m *MockPlaybookService) GetPlaybooksHistoryData(ctx context.Context, offse
 func (mr *MockPlaybookServiceMockRecorder) GetPlaybooksHistoryData(ctx, offset, limit, filter any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetPlaybooksHistoryData", reflect.TypeOf((*MockPlaybookService)(nil).GetPlaybooksHistoryData), ctx, offset, limit, filter)
+}
+
+// Summary mocks base method.
+func (m *MockPlaybookService) Summary(ctx context.Context, rng types.ResolvedRange) (playbooks.PlaybooksSummary, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Summary", ctx, rng)
+	ret0, _ := ret[0].(playbooks.PlaybooksSummary)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// Summary indicates an expected call of Summary.
+func (mr *MockPlaybookServiceMockRecorder) Summary(ctx, rng any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Summary", reflect.TypeOf((*MockPlaybookService)(nil).Summary), ctx, rng)
 }
 
 // UpdatePlaybook mocks base method.

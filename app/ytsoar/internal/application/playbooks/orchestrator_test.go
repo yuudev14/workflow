@@ -701,7 +701,7 @@ func TestTriggerPlaybook(t *testing.T) {
 
 				env.mockPlaybook.
 					EXPECT().
-					CreatePlaybookHistory(gomock.Any(), playbookID, gomock.Any()).
+					CreatePlaybookHistory(gomock.Any(), playbookID, gomock.Any(), gomock.Any()).
 					Return(nil, fmt.Errorf("history error"))
 
 			},
@@ -730,7 +730,7 @@ func TestTriggerPlaybook(t *testing.T) {
 
 				env.mockPlaybook.
 					EXPECT().
-					CreatePlaybookHistory(gomock.Any(), playbookID, gomock.Any()).
+					CreatePlaybookHistory(gomock.Any(), playbookID, gomock.Any(), gomock.Any()).
 					Return(&domain.PlaybookHistory{ID: historyID}, nil)
 
 				env.mockTask.
@@ -765,7 +765,7 @@ func TestTriggerPlaybook(t *testing.T) {
 
 				env.mockPlaybook.
 					EXPECT().
-					CreatePlaybookHistory(gomock.Any(), playbookID, gomock.Any()).
+					CreatePlaybookHistory(gomock.Any(), playbookID, gomock.Any(), gomock.Any()).
 					Return(&domain.PlaybookHistory{ID: historyID}, nil)
 
 				env.mockTask.
@@ -805,7 +805,7 @@ func TestTriggerPlaybook(t *testing.T) {
 
 				env.mockPlaybook.
 					EXPECT().
-					CreatePlaybookHistory(gomock.Any(), playbookID, gomock.Any()).
+					CreatePlaybookHistory(gomock.Any(), playbookID, gomock.Any(), gomock.Any()).
 					Return(&domain.PlaybookHistory{ID: historyID}, nil)
 
 				env.mockTask.

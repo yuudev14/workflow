@@ -1,5 +1,5 @@
 // Static trigger types. Must stay in sync with the backend `trigger_type` enum
-// (app/ytsoar/internal/domain/playbook.go) — the API rejects anything else on save.
+// (app/ytsoar/internal/domain/playbook.go) - the API rejects anything else on save.
 export const TRIGGER_MANUAL = "manual"
 export const TRIGGER_WEBHOOK = "webhook"
 export const TRIGGER_REFERENCED = "referenced"

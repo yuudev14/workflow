@@ -36,21 +36,26 @@ export function StatusMenu({
   onChange,
   prefix,
   align = "start",
+  disabled,
 }: {
   value: PillVariant;
   options: StatusOption[];
   onChange?: (v: PillVariant) => void;
   prefix?: React.ReactNode;
   align?: "start" | "end";
+  disabled?: boolean;
 }) {
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <button type="button" className="outline-none">
-          <StatusPill variant={value} className="cursor-pointer hover:brightness-95">
+      <DropdownMenuTrigger asChild disabled={disabled}>
+        <button type="button" className="outline-none disabled:cursor-default">
+          <StatusPill
+            variant={value}
+            className={cn(!disabled && "cursor-pointer hover:brightness-95")}
+          >
             {prefix}
             {pillLabel(value)}
-            <ChevronDown className="size-3" />
+            {!disabled && <ChevronDown className="size-3" />}
           </StatusPill>
         </button>
       </DropdownMenuTrigger>

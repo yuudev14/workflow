@@ -31,7 +31,7 @@ func IsValidAlertSeverity(s string) bool {
 	return false
 }
 
-// AlertStatus mirrors the alert_status pg enum. "falsepos" is deliberate — it
+// AlertStatus mirrors the alert_status pg enum. "falsepos" is deliberate - it
 // is the spelling the frontend schema uses.
 type AlertStatus string
 
@@ -91,6 +91,9 @@ const (
 	EventTypeAttackTag     EventType = "attack_tag"
 	EventTypeLinked        EventType = "linked"
 	EventTypeUnlinked      EventType = "unlinked"
+	// EventTypeUpdated records a field-level edit (severity, assignee, team,
+	// tags) so the timeline is a complete audit trail, not only status changes.
+	EventTypeUpdated EventType = "updated"
 )
 
 // SLAState mirrors the sla_state pg enum. Nothing transitions it until the SLA

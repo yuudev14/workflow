@@ -21,6 +21,9 @@ message ExecuteOperationRequest {
   string playbook_history_id = 6;
   string task_id = 7;
   uint32 timeout_ms = 8;
+  // trigger data for the run (JSON object: module_type, records, parameters),
+  // exposed to templates as `var.input`
+  optional string input_json = 9;
 }
 
 message ExecuteOperationResponse {

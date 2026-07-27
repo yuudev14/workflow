@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Dev/demo alert generator for YTSoar.
 
-Python stdlib only — no venv, no requirements.txt. Run it on the host against
+Python stdlib only - no venv, no requirements.txt. Run it on the host against
 the dev stack; nothing in app/ytsoar imports it.
 
     python3 tools/alertgen/alertgen.py seed
@@ -11,7 +11,7 @@ the dev stack; nothing in app/ytsoar imports it.
 
 Ingest API-key auth does not exist yet, so this authenticates as a user: it
 logs in and lets an http.cookiejar carry the httpOnly cookies. Never read or
-forward the token by hand — the cookies ride every later request on their own.
+forward the token by hand - the cookies ride every later request on their own.
 """
 
 import argparse
@@ -69,7 +69,7 @@ def spread_over_days(n, days, rng):
 
     Without this every seeded alert lands in one bucket and the 14-day volume
     chart is a single spike instead of a shape. The ingest payload accepts
-    created_at for exactly this reason — real forwarders send the event time too.
+    created_at for exactly this reason - real forwarders send the event time too.
     """
     now = dt.datetime.now(dt.timezone.utc)
     stamps = []
@@ -89,7 +89,7 @@ def cmd_seed(client, args):
 
     if args.count >= 50:
         # One transaction, so every row shares a created_at unless the payload
-        # carries its own — which is precisely the case the keyset cursor's id
+        # carries its own - which is precisely the case the keyset cursor's id
         # tiebreaker exists for.
         result = client.request("POST", "/api/alerts/v1/batch", {"alerts": bodies})
         created = result.get("created", [])
@@ -136,7 +136,7 @@ def seed_incidents(client, alerts, rng, count):
 
 def cmd_drip(client, args):
     rng = random.Random(args.seed)
-    print(f"dripping one alert every ~{args.interval}s — Ctrl-C to stop")
+    print(f"dripping one alert every ~{args.interval}s - Ctrl-C to stop")
     n = 0
     try:
         while True:
@@ -179,11 +179,11 @@ def cmd_storm(client, args):
     print(f"\nalert id        : {alert_id}")
     print(f"dedup_count     : {final['dedup_count']}  (want {args.count})")
     print(f"new rows        : {after - before}  (want 1)")
-    print(f"timeline entries: {len(final['timeline'])}  (want 1 — a recurrence is not a timeline row)")
+    print(f"timeline entries: {len(final['timeline'])}  (want 1 - a recurrence is not a timeline row)")
 
     ok = final["dedup_count"] == args.count and (after - before) == 1 and len(final["timeline"]) == 1
     print("\nPASS: the storm collapsed into one alert" if ok else
-          "\nFAIL: dedup did not hold — check alerts_open_fingerprint_idx")
+          "\nFAIL: dedup did not hold - check alerts_open_fingerprint_idx")
     return 0 if ok else 1
 
 
@@ -201,7 +201,7 @@ def main():
     p = sub.add_parser("drip", help="one alert at a time, for watching the UI live")
     p.add_argument("--interval", type=float, default=20.0)
 
-    p = sub.add_parser("storm", help="N identical alerts — proves dedup")
+    p = sub.add_parser("storm", help="N identical alerts - proves dedup")
     p.add_argument("--count", type=int, default=200)
 
     args = parser.parse_args()

@@ -9,12 +9,12 @@ import (
 	"time"
 )
 
-// maxResponseBytes caps how much of a response body is read — the body lands
+// maxResponseBytes caps how much of a response body is read - the body lands
 // in the task-history result column, so an unbounded read would balloon both
 // worker memory and the row.
 const maxResponseBytes = 10 << 20
 
-// HTTPRequestConnector is the Go builtin http client — result shape matches
+// HTTPRequestConnector is the Go builtin http client - result shape matches
 // http_request_js: {"status": <code>, "body": <json-or-text>}.
 type HTTPRequestConnector struct {
 	client *http.Client

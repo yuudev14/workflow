@@ -27,21 +27,53 @@ type AlertFilter struct {
 	Status     []string `form:"status" binding:"omitempty,dive,oneof=new investigating resolved falsepos closed"`
 	Severity   []string `form:"severity" binding:"omitempty,dive,oneof=critical high medium low"`
 	SourceKind []string `form:"source_kind" binding:"omitempty,dive,oneof=edr identity email firewall dlp"`
-	AssigneeID *string  `form:"assignee_id" binding:"omitempty,uuid"`
-	TeamID     *string  `form:"team_id" binding:"omitempty,uuid"`
-	Search     *string  `form:"q" binding:"omitempty"`
-	Cursor     *string  `form:"cursor" binding:"omitempty"`
-	Limit      int      `form:"limit" binding:"omitempty,min=1,max=200"`
+	SLAState   []string `form:"sla_state" binding:"omitempty,dive,oneof=ok warning breached met"`
+	AssigneeID []string `form:"assignee_id" binding:"omitempty,dive,uuid"`
+	TeamID     []string `form:"team_id" binding:"omitempty,dive,uuid"`
+	// Unassigned unions with AssigneeID rather than contradicting it: a picker
+	// offering "Unassigned" beside names has to mean "either".
+	Unassigned *bool    `form:"unassigned" binding:"omitempty"`
+	Tags       []string `form:"tags" binding:"omitempty"`
+	// RFC3339 instants, not dates - a queue filter is "since 14:30 today my
+	// time", and the offset removes any question of whose midnight is meant.
+	// The datetime tag is gin's own validator, so a bad value 400s at bind.
+	CreatedFrom *string `form:"created_from" binding:"omitempty,datetime=2006-01-02T15:04:05Z07:00"`
+	CreatedTo   *string `form:"created_to" binding:"omitempty,datetime=2006-01-02T15:04:05Z07:00"`
+	DedupMin    *int    `form:"dedup_min" binding:"omitempty,min=1"`
+	Triaged     *bool   `form:"triaged" binding:"omitempty"`
+	Search      *string `form:"q" binding:"omitempty"`
+	Cursor      *string `form:"cursor" binding:"omitempty"`
+	// Offset is the programmatic paging mode. Unlike the cursor it can skip or
+	// repeat rows when alerts arrive mid-page; that is the trade a caller opts
+	// into by using it.
+	Offset *int `form:"offset" binding:"omitempty,min=0"`
+	Limit  int  `form:"limit" binding:"omitempty,min=1,max=200"`
 }
 
-func (f AlertFilter) Normalized() AlertFilter {
+func (f AlertFilter) CreatedRange() (from, to *time.Time, err error) {
+	if from, err = types.ParseInstant(f.CreatedFrom); err != nil {
+		return nil, nil, err
+	}
+	if to, err = types.ParseInstant(f.CreatedTo); err != nil {
+		return nil, nil, err
+	}
+	if from != nil && to != nil && from.After(*to) {
+		return nil, nil, apperr.New(apperr.Invalid, "created_from must not be after created_to")
+	}
+	return from, to, nil
+}
+
+func (f AlertFilter) Normalized() (AlertFilter, error) {
+	if f.Cursor != nil && *f.Cursor != "" && f.Offset != nil {
+		return f, apperr.New(apperr.Invalid, "use either cursor or offset, not both")
+	}
 	if f.Limit <= 0 {
 		f.Limit = DefaultLimit
 	}
 	if f.Limit > MaxLimit {
 		f.Limit = MaxLimit
 	}
-	return f
+	return f, nil
 }
 
 type CreateAlertPayload struct {
@@ -129,6 +161,7 @@ type AlertListItem struct {
 	SLAState    domain.SLAState      `db:"sla_state" json:"sla_state"`
 	CreatedAt   time.Time            `db:"created_at" json:"created_at"`
 	UpdatedAt   time.Time            `db:"updated_at" json:"updated_at"`
+	RunCount    int                  `db:"run_count" json:"run_count"`
 }
 
 type IncidentRef struct {
@@ -146,6 +179,16 @@ type AlertDetail struct {
 	Notes           []domain.AlertNote  `json:"notes"`
 	LinkedIncidents []IncidentRef       `json:"linked_incidents"`
 	RelatedAlerts   []RelatedAlert      `json:"related_alerts"`
+	RunCount        int                 `json:"run_count"`
+	Runs            []RunRef            `json:"runs"`
+}
+
+// RunRef is one playbook run that acted on this record.
+type RunRef struct {
+	PlaybookHistoryID uuid.UUID `json:"playbook_history_id"`
+	Playbook          *string   `json:"playbook"`
+	Status            string    `json:"status"`
+	CreatedAt         time.Time `json:"created_at"`
 }
 
 type RelatedAlert struct {
@@ -171,10 +214,27 @@ type PlaybookSuccess struct {
 	SuccessRate float64 `db:"success_rate" json:"success_rate"`
 }
 
+// VolumePoint is one point on the volume series. It carries the timestamp it
+// covers because the range is caller-picked: length, start and bucket width all
+// vary per request, so the chart cannot derive its own x-axis labels.
+type VolumePoint struct {
+	BucketStart time.Time `db:"bucket_start" json:"bucket_start"`
+	Count       int       `db:"count" json:"count"`
+}
+
+// Total, BySeverity and BySource stay all-time-open on purpose: the queue header
+// and its filter counts read them, so range-scoping would silently turn
+// "47 open" into "opened in the last 14 days". The range applies to Volume and
+// the window counts only.
 type AlertsSummary struct {
-	Total        int               `json:"total"`
-	BySeverity   []SeverityBucket  `json:"by_severity"`
-	BySource     []SourceBucket    `json:"by_source"`
-	TopPlaybooks []PlaybookSuccess `json:"top_playbooks"`
-	Volume       []int             `json:"volume"`
+	Total        int                 `json:"total"`
+	BySeverity   []SeverityBucket    `json:"by_severity"`
+	BySource     []SourceBucket      `json:"by_source"`
+	TopPlaybooks []PlaybookSuccess   `json:"top_playbooks"`
+	Volume       []VolumePoint       `json:"volume"`
+	Range        types.ResolvedRange `json:"range"`
+	Created      types.WindowCount   `json:"created"`
+	Resolved     types.WindowCount   `json:"resolved"`
+	// MTTTSeconds is mean time to triage: created_at to triaged_at.
+	MTTTSeconds types.WindowCount `json:"mttt_seconds"`
 }

@@ -20,7 +20,7 @@ var statusByKind = map[apperr.Kind]int{
 // A classified error becomes its status and its own message; anything else is
 // a 500 whose detail goes to the log and never to the client.
 //
-// It logs once — layers below must return errors rather than logging them, or
+// It logs once - layers below must return errors rather than logging them, or
 // one failure appears several times with no way to tell they are one event.
 func (r *Response) Fail(log logger.Logger, err error) {
 	kind, msg := apperr.KindOf(err)

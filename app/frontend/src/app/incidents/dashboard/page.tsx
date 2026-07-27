@@ -19,6 +19,7 @@ import {
   type BarTone,
   type DonutSlice,
 } from "@/components/soar";
+import { humanDuration, relativeAge } from "@/lib/utils";
 
 const SEV_TONE: Record<string, BarTone> = { critical: "rose", high: "amber", medium: "signal", low: "slate" };
 const STATUS_COLOR: Record<string, string> = {
@@ -37,9 +38,9 @@ export default function Page() {
   });
   const summary = summaryQuery.data;
 
-  const maxSev = Math.max(...(summary?.severityMix.map((s) => s.count) ?? [1]));
+  const maxSev = Math.max(...(summary?.severity_mix.map((s) => s.count) ?? [1]));
   const sevRows: BarRow[] =
-    summary?.severityMix.map((s) => ({
+    summary?.severity_mix.map((s) => ({
       label: s.severity[0].toUpperCase() + s.severity.slice(1),
       value: s.count / maxSev,
       display: s.count,
@@ -47,11 +48,15 @@ export default function Page() {
     })) ?? [];
 
   const slices: DonutSlice[] =
-    summary?.statusMix.map((s) => ({
+    summary?.status_mix.map((s) => ({
       label: s.status[0].toUpperCase() + s.status.slice(1),
       value: s.count,
       color: STATUS_COLOR[s.status],
     })) ?? [];
+
+  // The trend is in seconds; show the most recent week that actually resolved
+  // something rather than a trailing zero.
+  const mttr = [...(summary?.mttr_trend ?? [])].reverse().find((v) => v > 0) ?? 0;
 
   return (
     <div className="flex justify-center">
@@ -73,12 +78,12 @@ export default function Page() {
 
         <div className="grid grid-cols-1 gap-3 lg:grid-cols-[1.3fr_1fr]">
           <Panel>
-            <PanelTitle aside="2h 14m">Mean time to resolve — last 8 weeks</PanelTitle>
-            <TrendChart values={summary?.mttrTrend ?? []} startLabel="8 weeks ago" endLabel="this week" />
+            <PanelTitle aside={humanDuration(mttr)}>Mean time to resolve - last 8 weeks</PanelTitle>
+            <TrendChart values={summary?.mttr_trend ?? []} startLabel="8 weeks ago" endLabel="this week" />
           </Panel>
           <Panel>
             <PanelTitle>By status</PanelTitle>
-            <Donut slices={slices} centerValue={summary?.openTotal ?? 0} centerLabel="open" />
+            <Donut slices={slices} centerValue={summary?.open_total ?? 0} centerLabel="open" />
           </Panel>
         </div>
 
@@ -90,7 +95,12 @@ export default function Page() {
           <Panel>
             <PanelTitle>SLA at risk</PanelTitle>
             <div className="flex flex-col gap-2.5">
-              {summary?.slaAtRisk.map((s) => (
+              {summary?.sla_at_risk.length === 0 && (
+                <p className="text-[12.5px] text-ink-faint">
+                  Nothing at risk - no SLA policy is stamping deadlines yet.
+                </p>
+              )}
+              {summary?.sla_at_risk.map((s) => (
                 <div key={s.id} className="flex items-center justify-between text-[12.5px]">
                   <span className="flex items-center gap-1.5">
                     {s.breached ? (
@@ -101,7 +111,7 @@ export default function Page() {
                     {s.title}
                   </span>
                   <StatusPill variant={s.breached ? "critical" : "high"} noDot className="px-2">
-                    {s.left}
+                    {relativeAge(s.sla_deadline)}
                   </StatusPill>
                 </div>
               ))}

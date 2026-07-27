@@ -111,7 +111,7 @@ func TestRequirePermissionRejectsUnauthenticated(t *testing.T) {
 	assert.False(t, ran)
 }
 
-// A failed lookup must fail closed — this is the one that turns an outage into
+// A failed lookup must fail closed - this is the one that turns an outage into
 // a breach if it regresses.
 func TestRequirePermissionFailsClosedOnError(t *testing.T) {
 	src := &stubPermissions{err: errors.New("connection refused")}

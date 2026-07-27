@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"time"
 
 	sq "github.com/Masterminds/squirrel"
 	"github.com/google/uuid"
@@ -12,6 +13,7 @@ import (
 	"github.com/yuudev14/ytsoar/internal/application/alerts"
 	"github.com/yuudev14/ytsoar/internal/domain"
 	"github.com/yuudev14/ytsoar/internal/logger"
+	"github.com/yuudev14/ytsoar/internal/types"
 )
 
 type AlertRepositoryImpl struct {
@@ -33,13 +35,29 @@ func (r *AlertRepositoryImpl) queriesFromContext(ctx context.Context) db.Querier
 
 // payload and triage are detail-only: a queue page of 50 would otherwise drag
 // 50 raw event documents across the wire.
+const alertRunCount = `(SELECT count(*)::int FROM playbook_run_records prr
+    WHERE prr.module_type = 'alert' AND prr.record_id = a.id) AS run_count`
+
 const alertListColumns = `a.id, a.title, a.severity, a.status, a.source_kind, a.reporter,
     a.assignee_id, u.username AS assignee, a.team_id, a.tags, a.dedup_count, a.last_seen,
-    a.triaged_at, a.sla_deadline, a.sla_state, a.created_at, a.updated_at`
+    a.triaged_at, a.sla_deadline, a.sla_state, a.created_at, a.updated_at, ` + alertRunCount
+
+// Timestamps inside the aggregate are cast to UTC because jsonb renders a bare
+// `timestamp` with no offset, which Go's RFC3339 unmarshal then rejects.
+const alertRunsAggregate = `COALESCE((
+    SELECT jsonb_agg(jsonb_build_object(
+               'playbook_history_id', h.id, 'playbook', p.name, 'status', h.status,
+               'created_at', h.triggered_at AT TIME ZONE 'UTC')
+           ORDER BY h.triggered_at DESC)
+    FROM playbook_run_records prr
+    JOIN playbook_history h ON h.id = prr.playbook_history_id
+    LEFT JOIN playbooks p ON p.id = h.playbook_id
+    WHERE prr.module_type = 'alert' AND prr.record_id = a.id
+), '[]'::jsonb) AS runs`
 
 // The timestamps are cast to UTC because jsonb renders a bare `timestamp` with
 // no offset, which Go's RFC3339 unmarshal then rejects. The top-level columns
-// are unaffected — pgx scans those natively.
+// are unaffected - pgx scans those natively.
 const alertTimelineAggregate = `COALESCE((
     SELECT jsonb_agg(jsonb_build_object(
                'id', e.id, 'alert_id', e.alert_id, 'type', e.type, 'actor_id', e.actor_id,
@@ -75,6 +93,8 @@ type alertDetailRow struct {
 	Timeline        json.RawMessage `db:"timeline"`
 	Notes           json.RawMessage `db:"notes"`
 	LinkedIncidents json.RawMessage `db:"linked_incidents"`
+	RunCount        int             `db:"run_count"`
+	Runs            json.RawMessage `db:"runs"`
 }
 
 func selectAlerts(columns string) sq.SelectBuilder {
@@ -84,7 +104,7 @@ func selectAlerts(columns string) sq.SelectBuilder {
 		PlaceholderFormat(sq.Dollar)
 }
 
-func applyAlertFilter(stmt sq.SelectBuilder, filter alerts.AlertFilter) sq.SelectBuilder {
+func applyAlertFilter(stmt sq.SelectBuilder, filter alerts.AlertFilter) (sq.SelectBuilder, error) {
 	if len(filter.Status) > 0 {
 		stmt = stmt.Where(sq.Eq{"a.status": filter.Status})
 	}
@@ -94,40 +114,77 @@ func applyAlertFilter(stmt sq.SelectBuilder, filter alerts.AlertFilter) sq.Selec
 	if len(filter.SourceKind) > 0 {
 		stmt = stmt.Where(sq.Eq{"a.source_kind": filter.SourceKind})
 	}
-	if filter.AssigneeID != nil {
-		stmt = stmt.Where(sq.Eq{"a.assignee_id": *filter.AssigneeID})
+	if len(filter.SLAState) > 0 {
+		stmt = stmt.Where(sq.Eq{"a.sla_state": filter.SLAState})
 	}
-	if filter.TeamID != nil {
-		stmt = stmt.Where(sq.Eq{"a.team_id": *filter.TeamID})
+	stmt = applyAssigneeFilter(stmt, "a", filter.AssigneeID, filter.Unassigned)
+	if len(filter.TeamID) > 0 {
+		stmt = stmt.Where(sq.Eq{"a.team_id": filter.TeamID})
 	}
-	if filter.Search != nil {
-		term := fmt.Sprint("%", *filter.Search, "%")
+	if len(filter.Tags) > 0 {
+		stmt = stmt.Where(sq.Expr("a.tags && ?", filter.Tags))
+	}
+	if filter.DedupMin != nil {
+		stmt = stmt.Where(sq.GtOrEq{"a.dedup_count": *filter.DedupMin})
+	}
+	if filter.Triaged != nil {
+		if *filter.Triaged {
+			stmt = stmt.Where(sq.Expr("a.triaged_at IS NOT NULL"))
+		} else {
+			stmt = stmt.Where(sq.Expr("a.triaged_at IS NULL"))
+		}
+	}
+
+	from, to, err := filter.CreatedRange()
+	if err != nil {
+		return stmt, err
+	}
+	if from != nil {
+		stmt = stmt.Where(sq.GtOrEq{"a.created_at": *from})
+	}
+	if to != nil {
+		stmt = stmt.Where(sq.LtOrEq{"a.created_at": *to})
+	}
+
+	if term, ok := likeTerm(filter.Search); ok {
 		stmt = stmt.Where(sq.Expr("(a.title ILIKE ? OR a.reporter ILIKE ?)", term, term))
 	}
-	return stmt
+	return stmt, nil
 }
 
 // Fetching limit+1 is what decides whether a next page exists, without a second
 // query.
 func (r *AlertRepositoryImpl) List(ctx context.Context, filter alerts.AlertFilter) ([]alerts.AlertListItem, *string, error) {
-	stmt := applyAlertFilter(selectAlerts(alertListColumns), filter)
+	stmt, err := applyAlertFilter(selectAlerts(alertListColumns), filter)
+	if err != nil {
+		return nil, nil, err
+	}
 
-	stmt, err := applyKeyset(stmt, "a", filter.Cursor)
+	stmt, err = applyKeyset(stmt, "a", filter.Cursor)
 	if err != nil {
 		return nil, nil, err
 	}
 	stmt = orderKeyset(stmt, "a").Limit(uint64(filter.Limit + 1))
+	if filter.Offset != nil {
+		stmt = stmt.Offset(uint64(*filter.Offset))
+	}
 
 	rows, err := CollectRowsFromSqlizer[alerts.AlertListItem](ctx, stmt, r.pool, r.logger)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	if len(rows) <= filter.Limit {
+	hasMore := len(rows) > filter.Limit
+	if hasMore {
+		rows = rows[:filter.Limit]
+	}
+
+	// Offset mode returns no cursor: handing back both would invite a client to
+	// interleave the two paging modes on one result set.
+	if !hasMore || filter.Offset != nil {
 		return rows, nil, nil
 	}
 
-	rows = rows[:filter.Limit]
 	last := rows[len(rows)-1]
 	next, err := encodeCursor("created_at", last.CreatedAt, last.ID)
 	if err != nil {
@@ -137,8 +194,11 @@ func (r *AlertRepositoryImpl) List(ctx context.Context, filter alerts.AlertFilte
 }
 
 func (r *AlertRepositoryImpl) Count(ctx context.Context, filter alerts.AlertFilter) (int, error) {
-	stmt := applyAlertFilter(
+	stmt, err := applyAlertFilter(
 		sq.Select("count(*)").From("alerts a").PlaceholderFormat(sq.Dollar), filter)
+	if err != nil {
+		return 0, err
+	}
 	return CollectOneScalarFromSqlizer[int](ctx, stmt, r.pool, r.logger)
 }
 
@@ -152,7 +212,8 @@ func (r *AlertRepositoryImpl) GetByID(ctx context.Context, id uuid.UUID) (domain
 
 func (r *AlertRepositoryImpl) GetDetail(ctx context.Context, id uuid.UUID) (alerts.AlertDetail, error) {
 	columns := "a.*, u.username AS assignee, " +
-		alertTimelineAggregate + ", " + alertNotesAggregate + ", " + alertIncidentsAggregate
+		alertTimelineAggregate + ", " + alertNotesAggregate + ", " + alertIncidentsAggregate +
+		", " + alertRunCount + ", " + alertRunsAggregate
 
 	rows, err := CollectRowsFromSqlizer[alertDetailRow](
 		ctx, selectAlerts(columns).Where(sq.Eq{"a.id": id}), r.pool, r.logger)
@@ -168,6 +229,10 @@ func (r *AlertRepositoryImpl) GetDetail(ctx context.Context, id uuid.UUID) (aler
 		Alert:         row.Alert,
 		Assignee:      row.Assignee,
 		RelatedAlerts: []alerts.RelatedAlert{},
+		RunCount:      row.RunCount,
+	}
+	if err := json.Unmarshal(row.Runs, &detail.Runs); err != nil {
+		return alerts.AlertDetail{}, err
 	}
 	if err := json.Unmarshal(row.Timeline, &detail.Timeline); err != nil {
 		return alerts.AlertDetail{}, err
@@ -317,12 +382,13 @@ func (r *AlertRepositoryImpl) ListNotes(ctx context.Context, alertID uuid.UUID) 
 // Every bucket is a live GROUP BY over the open partial index rather than a
 // rollup table: the open set stays small even when alerts does not, and a
 // counter would drift.
-func (r *AlertRepositoryImpl) Summary(ctx context.Context) (alerts.AlertsSummary, error) {
+func (r *AlertRepositoryImpl) Summary(ctx context.Context, rng types.ResolvedRange) (alerts.AlertsSummary, error) {
 	summary := alerts.AlertsSummary{
 		BySeverity:   []alerts.SeverityBucket{},
 		BySource:     []alerts.SourceBucket{},
 		TopPlaybooks: []alerts.PlaybookSuccess{},
-		Volume:       []int{},
+		Volume:       []alerts.VolumePoint{},
+		Range:        rng,
 	}
 
 	openFilter := sq.Expr("a.status IN ('new', 'investigating')")
@@ -355,12 +421,18 @@ func (r *AlertRepositoryImpl) Summary(ctx context.Context) (alerts.AlertsSummary
 	}
 	summary.BySource = bySource
 
+	// Scoped to alert runs so the "share of that playbook's runs on alerts"
+	// label on the dashboard is actually true.
 	topPlaybooks, err := CollectRowsFromSqlizer[alerts.PlaybookSuccess](ctx,
 		sq.Select(`p.name AS label,
             (count(*) FILTER (WHERE h.status = 'success'))::float / count(*)::float AS success_rate`).
 			From("playbook_history h").
 			Join("playbooks p ON p.id = h.playbook_id").
-			Where(sq.Expr("h.triggered_at >= NOW() - INTERVAL '14 days'")).
+			Where(sq.Expr(`EXISTS (
+                SELECT 1 FROM playbook_run_records prr
+                WHERE prr.playbook_history_id = h.id AND prr.module_type = ?)`, domain.ModuleEventAlert)).
+			Where(sq.GtOrEq{"h.triggered_at": rng.From}).
+			Where(sq.LtOrEq{"h.triggered_at": rng.To}).
 			GroupBy("p.name").
 			OrderBy("count(*) DESC").
 			Limit(5).
@@ -371,44 +443,111 @@ func (r *AlertRepositoryImpl) Summary(ctx context.Context) (alerts.AlertsSummary
 	}
 	summary.TopPlaybooks = topPlaybooks
 
-	volume, err := r.volume(ctx)
+	volume, err := r.volume(ctx, rng)
 	if err != nil {
 		return alerts.AlertsSummary{}, err
 	}
 	summary.Volume = volume
 
+	prevFrom, prevTo := rng.Previous()
+	created, err := r.windowCount(ctx, "created_at", rng, prevFrom, prevTo)
+	if err != nil {
+		return alerts.AlertsSummary{}, err
+	}
+	summary.Created = created
+
+	resolved, err := r.resolvedWindow(ctx, rng, prevFrom, prevTo)
+	if err != nil {
+		return alerts.AlertsSummary{}, err
+	}
+	summary.Resolved = resolved
+
+	mttt, err := r.mtttWindow(ctx, rng, prevFrom, prevTo)
+	if err != nil {
+		return alerts.AlertsSummary{}, err
+	}
+	summary.MTTTSeconds = mttt
+
 	return summary, nil
 }
 
-// generate_series supplies the zero days; a plain GROUP BY drops them, and the
-// chart would then compress a quiet week into a spike.
-func (r *AlertRepositoryImpl) volume(ctx context.Context) ([]int, error) {
+// generate_series supplies the empty buckets; a plain GROUP BY drops them, and
+// the chart would then compress a quiet week into a spike.
+func (r *AlertRepositoryImpl) volume(ctx context.Context, rng types.ResolvedRange) ([]alerts.VolumePoint, error) {
 	const q = `
-        SELECT COALESCE(c.count, 0)::int AS count
-        FROM generate_series(CURRENT_DATE - 13, CURRENT_DATE, INTERVAL '1 day') AS d(day)
+        SELECT d.bucket_start AT TIME ZONE 'UTC' AS bucket_start, COALESCE(c.count, 0)::int AS count
+        FROM generate_series(
+                 date_trunc($3, $1::timestamptz), $2::timestamptz, ('1 ' || $3)::interval
+             ) AS d(bucket_start)
         LEFT JOIN (
-            SELECT created_at::date AS day, count(*) AS count
+            SELECT date_trunc($3, created_at) AS bucket_start, count(*) AS count
             FROM alerts
-            WHERE created_at >= CURRENT_DATE - 13
-            GROUP BY created_at::date
-        ) c ON c.day = d.day::date
-        ORDER BY d.day`
+            WHERE created_at >= $1 AND created_at <= $2
+            GROUP BY 1
+        ) c ON c.bucket_start = d.bucket_start
+        ORDER BY d.bucket_start`
 
-	rows, err := r.pool.Query(ctx, q)
+	rows, err := r.pool.Query(ctx, q, rng.From, rng.To, rng.Bucket)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 
-	volume := make([]int, 0, 14)
+	points := make([]alerts.VolumePoint, 0, 32)
 	for rows.Next() {
-		var n int
-		if err := rows.Scan(&n); err != nil {
+		var p alerts.VolumePoint
+		if err := rows.Scan(&p.BucketStart, &p.Count); err != nil {
 			return nil, err
 		}
-		volume = append(volume, n)
+		points = append(points, p)
 	}
-	return volume, rows.Err()
+	return points, rows.Err()
+}
+
+// windowCount counts rows whose column falls in the selected range beside the
+// same count for the preceding range - the only baseline that makes the delta
+// on a KPI card mean anything.
+func (r *AlertRepositoryImpl) windowCount(ctx context.Context, column string, rng types.ResolvedRange, prevFrom, prevTo time.Time) (types.WindowCount, error) {
+	q := fmt.Sprintf(`
+        SELECT
+            count(*) FILTER (WHERE %[1]s >= $1 AND %[1]s <= $2)::int AS current,
+            count(*) FILTER (WHERE %[1]s >= $3 AND %[1]s < $4)::int AS previous
+        FROM alerts`, column)
+
+	var out types.WindowCount
+	err := r.pool.QueryRow(ctx, q, rng.From, rng.To, prevFrom, prevTo).Scan(&out.Current, &out.Previous)
+	return out, err
+}
+
+// alerts has no resolved_at column, so the timeline is the authority on when an
+// alert was closed out. Counting the event rather than the current status is
+// also what makes the previous window answerable at all - a row that was
+// resolved and later reopened must still count in the window it was resolved in.
+func (r *AlertRepositoryImpl) resolvedWindow(ctx context.Context, rng types.ResolvedRange, prevFrom, prevTo time.Time) (types.WindowCount, error) {
+	const q = `
+        SELECT
+            count(DISTINCT e.alert_id) FILTER (WHERE e.created_at >= $1 AND e.created_at <= $2)::int AS current,
+            count(DISTINCT e.alert_id) FILTER (WHERE e.created_at >= $3 AND e.created_at < $4)::int AS previous
+        FROM alert_events e
+        WHERE e.type = 'status_changed' AND e.body->>'to' IN ('resolved', 'falsepos', 'closed')`
+
+	var out types.WindowCount
+	err := r.pool.QueryRow(ctx, q, rng.From, rng.To, prevFrom, prevTo).Scan(&out.Current, &out.Previous)
+	return out, err
+}
+
+func (r *AlertRepositoryImpl) mtttWindow(ctx context.Context, rng types.ResolvedRange, prevFrom, prevTo time.Time) (types.WindowCount, error) {
+	const q = `
+        SELECT
+            COALESCE(avg(EXTRACT(EPOCH FROM (triaged_at - created_at)))
+                     FILTER (WHERE triaged_at >= $1 AND triaged_at <= $2), 0)::int AS current,
+            COALESCE(avg(EXTRACT(EPOCH FROM (triaged_at - created_at)))
+                     FILTER (WHERE triaged_at >= $3 AND triaged_at < $4), 0)::int AS previous
+        FROM alerts WHERE triaged_at IS NOT NULL`
+
+	var out types.WindowCount
+	err := r.pool.QueryRow(ctx, q, rng.From, rng.To, prevFrom, prevTo).Scan(&out.Current, &out.Previous)
+	return out, err
 }
 
 func toDomainAlert(row db.Alert) domain.Alert {

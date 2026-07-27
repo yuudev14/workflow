@@ -20,6 +20,7 @@ type Service struct {
 	alerts    AlertTimeline
 	txManager contracts.TxManager
 	events    contracts.ModuleEventPublisher
+	users     contracts.UserDirectory
 }
 
 func NewService(
@@ -28,6 +29,7 @@ func NewService(
 	alertTimeline AlertTimeline,
 	txManager contracts.TxManager,
 	events contracts.ModuleEventPublisher,
+	users contracts.UserDirectory,
 ) *Service {
 	return &Service{
 		logger:    log,
@@ -35,11 +37,15 @@ func NewService(
 		alerts:    alertTimeline,
 		txManager: txManager,
 		events:    events,
+		users:     users,
 	}
 }
 
 func (s *Service) List(ctx context.Context, filter IncidentFilter) (types.CursorPage[IncidentListItem], error) {
-	filter = filter.Normalized()
+	filter, err := filter.Normalized()
+	if err != nil {
+		return types.CursorPage[IncidentListItem]{}, err
+	}
 
 	items, next, err := s.repo.List(ctx, filter)
 	if err != nil {
@@ -58,8 +64,8 @@ func (s *Service) GetByID(ctx context.Context, id uuid.UUID) (IncidentDetail, er
 	return s.repo.GetDetail(ctx, id)
 }
 
-func (s *Service) Summary(ctx context.Context) (IncidentsSummary, error) {
-	return s.repo.Summary(ctx)
+func (s *Service) Summary(ctx context.Context, rng types.ResolvedRange) (IncidentsSummary, error) {
+	return s.repo.Summary(ctx, rng)
 }
 
 func (s *Service) Create(ctx context.Context, payload CreateIncidentPayload, actorID *uuid.UUID) (domain.Incident, error) {
@@ -105,7 +111,7 @@ func (s *Service) Create(ctx context.Context, payload CreateIncidentPayload, act
 }
 
 // CreateForEscalation runs inside the alert service's transaction, so it must
-// not publish or open one of its own — the caller announces both entities once
+// not publish or open one of its own - the caller announces both entities once
 // the whole escalation has committed.
 func (s *Service) CreateForEscalation(ctx context.Context, params alerts.EscalationParams) (domain.Incident, error) {
 	incident, err := s.repo.Create(ctx, CreateParams{
@@ -153,8 +159,17 @@ func (s *Service) Update(ctx context.Context, id uuid.UUID, payload UpdateIncide
 
 	var incident domain.Incident
 	err = s.txManager.WithinTransaction(ctx, func(txCtx context.Context) error {
+		before, err := s.repo.GetByID(txCtx, id)
+		if err != nil {
+			return err
+		}
+
 		incident, err = s.repo.Update(txCtx, id, params)
-		return err
+		if err != nil {
+			return err
+		}
+
+		return s.appendUpdateEvent(txCtx, id, before, incident, actorID)
 	})
 	if err != nil {
 		return domain.Incident{}, err
@@ -445,4 +460,73 @@ func mustJSON(v any) json.RawMessage {
 		return json.RawMessage(`{}`)
 	}
 	return raw
+}
+
+// appendUpdateEvent records a field-level edit on the timeline. It returns
+// without writing when nothing actually changed, so a no-op PATCH leaves the
+// audit log alone.
+func (s *Service) appendUpdateEvent(ctx context.Context, id uuid.UUID, before, after domain.Incident, actorID *uuid.UUID) error {
+	changes := domain.DiffAssignable(
+		before.Severity, after.Severity,
+		before.AssigneeID, after.AssigneeID,
+		before.TeamID, after.TeamID,
+		before.Tags, after.Tags,
+	)
+	if len(changes) == 0 {
+		return nil
+	}
+
+	s.labelAssignees(ctx, changes)
+
+	return s.repo.AppendEvent(ctx, AppendEventParams{
+		IncidentID: id,
+		Type:       domain.EventTypeUpdated,
+		ActorID:    actorID,
+		Body:       mustJSON(map[string]any{"changes": changes}),
+	})
+}
+
+// A missing directory is not worth failing an edit over: the event still records
+// the change, just with uuids instead of names.
+func (s *Service) labelAssignees(ctx context.Context, changes []domain.FieldChange) {
+	if s.users == nil {
+		return
+	}
+
+	ids := make([]uuid.UUID, 0, 2)
+	for _, c := range changes {
+		if c.Field != "assignee_id" {
+			continue
+		}
+		if from, ok := c.From.(uuid.UUID); ok {
+			ids = append(ids, from)
+		}
+		if to, ok := c.To.(uuid.UUID); ok {
+			ids = append(ids, to)
+		}
+	}
+	if len(ids) == 0 {
+		return
+	}
+
+	names, err := s.users.UsernamesByIDs(ctx, ids)
+	if err != nil {
+		s.logger.Warnw("could not resolve usernames for update event", "error", err)
+		return
+	}
+	for i := range changes {
+		if changes[i].Field != "assignee_id" {
+			continue
+		}
+		if from, ok := changes[i].From.(uuid.UUID); ok {
+			if name, found := names[from]; found {
+				changes[i].FromUsername = &name
+			}
+		}
+		if to, ok := changes[i].To.(uuid.UUID); ok {
+			if name, found := names[to]; found {
+				changes[i].ToUsername = &name
+			}
+		}
+	}
 }

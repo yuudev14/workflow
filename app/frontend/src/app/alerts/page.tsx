@@ -2,41 +2,146 @@
 
 import React from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useQuery } from "@tanstack/react-query";
-import { AlertTriangle, ChevronRight, RefreshCw, Zap } from "lucide-react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { RefreshCw } from "lucide-react";
 
 import AlertService from "@/services/alerts/alerts";
-import type { AlertStatus, Severity } from "@/services/alerts/alerts.schema";
+import type {
+  AlertFilter,
+  AlertStatus,
+  Severity,
+  SourceKind,
+} from "@/services/alerts/alerts.schema";
+import { useAuth } from "@/components/provider/auth-provider";
 import {
-  FilterChips,
-  InitialsAvatar,
-  StatusMenu,
+  ActiveFilters,
+  CursorPagination,
+  FilterMenu,
+  SearchInput,
+  type ActiveFilter,
 } from "@/components/soar";
+import { pillLabel } from "@/components/soar";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useCursorPager } from "@/hooks/useCursorPager";
+import { cn } from "@/lib/utils";
 import { AlertRow } from "./_components/AlertRow";
-import { ALERT_STATUS_OPTIONS } from "./_components/constants";
+import { SOURCE_LABEL } from "./_components/alertPresentation";
+
+const SEVERITIES: Severity[] = ["critical", "high", "medium", "low"];
+const STATUSES: AlertStatus[] = ["new", "investigating", "resolved", "falsepos", "closed"];
+const SOURCE_KINDS: SourceKind[] = ["edr", "identity", "email", "firewall", "dlp"];
 
 export default function Page() {
-  const router = useRouter();
-  const [severity, setSeverity] = React.useState<Severity | "all">("all");
-  const [selectedId, setSelectedId] = React.useState<string | null>(null);
-  const [statusOverride, setStatusOverride] = React.useState<Record<string, AlertStatus>>({});
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
 
-  const alertsQuery = useQuery({ queryKey: ["alerts"], queryFn: () => AlertService.getAlerts() });
-  const alerts = alertsQuery.data ?? [];
+  const [severity, setSeverity] = React.useState<string[]>([]);
+  const [status, setStatus] = React.useState<string[]>([]);
+  const [sourceKind, setSourceKind] = React.useState<string[]>([]);
+  const [mineOnly, setMineOnly] = React.useState(false);
+  const [search, setSearch] = React.useState("");
+  const [debounced, setDebounced] = React.useState("");
 
-  const filtered = alerts.filter((a) => severity === "all" || a.severity === severity);
-  const selected =
-    alerts.find((a) => a.id === selectedId) ?? filtered[0] ?? alerts[0];
+  // Debounced so typing does not fire a request per keystroke, each of which
+  // would also reset the cursor.
+  React.useEffect(() => {
+    const t = setTimeout(() => setDebounced(search.trim()), 300);
+    return () => clearTimeout(t);
+  }, [search]);
+
+  const filter: AlertFilter = React.useMemo(
+    () => ({
+      ...(severity.length ? { severity: severity as Severity[] } : {}),
+      ...(status.length ? { status: status as AlertStatus[] } : {}),
+      ...(sourceKind.length ? { source_kind: sourceKind as SourceKind[] } : {}),
+      ...(debounced ? { q: debounced } : {}),
+      ...(mineOnly && user ? { assignee_id: user.id } : {}),
+    }),
+    [severity, status, sourceKind, debounced, mineOnly, user]
+  );
+
+  const pager = useCursorPager(JSON.stringify(filter));
+
+  const alertsQuery = useQuery({
+    queryKey: ["alerts", filter, pager.limit, pager.cursor],
+    queryFn: () =>
+      AlertService.getAlerts({ ...filter, limit: pager.limit, cursor: pager.cursor }),
+  });
+  const summaryQuery = useQuery({
+    queryKey: ["alerts-summary"],
+    queryFn: () => AlertService.getAlertsSummary(),
+  });
+
+  const alerts = alertsQuery.data?.entries ?? [];
+  const summary = summaryQuery.data;
+  const sevCount = (s: Severity) =>
+    summary?.by_severity.find((b) => b.severity === s)?.count ?? 0;
+  const srcCount = (s: SourceKind) =>
+    summary?.by_source.find((b) => b.source_kind === s)?.count ?? 0;
+
+  const refresh = () => {
+    queryClient.invalidateQueries({ queryKey: ["alerts"] });
+    queryClient.invalidateQueries({ queryKey: ["alerts-summary"] });
+  };
+
+  const clearAll = () => {
+    setSeverity([]);
+    setStatus([]);
+    setSourceKind([]);
+    setMineOnly(false);
+    setSearch("");
+  };
+
+  const active: ActiveFilter[] = [
+    ...severity.map((v) => ({
+      group: "Severity",
+      value: v,
+      label: pillLabel(v as Severity),
+      onRemove: () => setSeverity((s) => s.filter((x) => x !== v)),
+    })),
+    ...status.map((v) => ({
+      group: "Status",
+      value: v,
+      label: pillLabel(v as AlertStatus),
+      onRemove: () => setStatus((s) => s.filter((x) => x !== v)),
+    })),
+    ...sourceKind.map((v) => ({
+      group: "Source",
+      value: v,
+      label: SOURCE_LABEL[v as SourceKind],
+      onRemove: () => setSourceKind((s) => s.filter((x) => x !== v)),
+    })),
+    ...(mineOnly
+      ? [
+          {
+            group: "Assignee",
+            value: "me",
+            label: "me",
+            onRemove: () => setMineOnly(false),
+          },
+        ]
+      : []),
+    ...(debounced
+      ? [
+          {
+            group: "Search",
+            value: debounced,
+            label: debounced,
+            onRemove: () => setSearch(""),
+          },
+        ]
+      : []),
+  ];
 
   return (
     <div className="flex justify-center">
-      <div className="flex w-full flex-col gap-5 px-6 py-8">
+      <div className="flex w-full flex-col gap-4 px-6 py-8">
         <div className="flex items-start justify-between gap-4">
           <div>
             <h1>Alerts</h1>
-            <p className="mt-1 text-[15px] text-ink-soft">47 open · 5 critical</p>
+            <p className="mt-1 text-[15px] text-ink-soft">
+              {summary ? `${summary.total} open · ${sevCount("critical")} critical` : " "}
+            </p>
           </div>
           <div className="flex items-center gap-2">
             <Link
@@ -45,104 +150,94 @@ export default function Page() {
             >
               Dashboard
             </Link>
-            <button className="flex size-9 items-center justify-center rounded-sm border border-line-strong text-ink-soft hover:bg-paper-sunken">
-              <RefreshCw className="size-4" />
+            <button
+              onClick={refresh}
+              className="flex size-9 items-center justify-center rounded-sm border border-line-strong text-ink-soft hover:bg-paper-sunken"
+            >
+              <RefreshCw className={cn("size-4", alertsQuery.isFetching && "animate-spin")} />
             </button>
           </div>
         </div>
 
-        <FilterChips
-          value={severity}
-          onChange={(v) => setSeverity(v as Severity | "all")}
-          chips={[
-            { value: "all", label: "All (47)" },
-            { value: "critical", label: "Critical (5)", accent: "text-rose-text border-rose-dot" },
-            { value: "high", label: "High (14)", accent: "text-amber-text border-amber-dot" },
-            { value: "medium", label: "Medium" },
-            { value: "low", label: "Low" },
-          ]}
-        />
-
-        <div className="flex gap-3.5">
-          <div className="flex-[1.35]">
-            {alertsQuery.isLoading ? (
-              <div className="flex flex-col gap-2">
-                {Array.from({ length: 5 }).map((_, i) => (
-                  <Skeleton key={i} className="h-[62px] rounded-md" />
-                ))}
-              </div>
-            ) : (
-              <div className="overflow-hidden rounded-md border border-line">
-                {filtered.map((a) => (
-                  <AlertRow
-                    key={a.id}
-                    alert={{ ...a, status: statusOverride[a.id] ?? a.status }}
-                    selected={selected?.id === a.id}
-                    href={`/alerts/${a.id}`}
-                    onHover={() => setSelectedId(a.id)}
-                  />
-                ))}
-              </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <FilterMenu
+            label="Severity"
+            selected={severity}
+            onChange={setSeverity}
+            options={SEVERITIES.map((s) => ({
+              value: s,
+              label: pillLabel(s),
+              count: sevCount(s),
+            }))}
+          />
+          <FilterMenu
+            label="Status"
+            selected={status}
+            onChange={setStatus}
+            options={STATUSES.map((s) => ({ value: s, label: pillLabel(s) }))}
+          />
+          <FilterMenu
+            label="Source"
+            selected={sourceKind}
+            onChange={setSourceKind}
+            options={SOURCE_KINDS.map((s) => ({
+              value: s,
+              label: SOURCE_LABEL[s],
+              count: srcCount(s),
+            }))}
+          />
+          <button
+            onClick={() => setMineOnly((v) => !v)}
+            className={cn(
+              "rounded-sm border px-3 py-1.5 text-[13px] font-semibold transition-colors",
+              mineOnly
+                ? "border-signal-dot bg-signal-soft text-signal-text"
+                : "border-line-strong text-ink-soft hover:bg-paper-sunken"
             )}
-          </div>
-
-          {selected && (
-            <div className="flex w-[320px] shrink-0 flex-col gap-2.5 rounded-md border border-line bg-card p-3.5">
-              <div className="flex items-start justify-between gap-2">
-                <div>
-                  <div className="text-[15px] font-semibold">{selected.title}</div>
-                  <div className="mt-1 text-[12.5px] text-ink-faint">
-                    {selected.severity[0].toUpperCase() + selected.severity.slice(1)} · from{" "}
-                    {selected.reporter ?? selected.source} · {selected.age} ago
-                  </div>
-                </div>
-                <Link
-                  href={`/alerts/${selected.id}`}
-                  className="inline-flex items-center gap-1 text-[13px] font-semibold text-ink-soft hover:text-foreground"
-                >
-                  Open <ChevronRight className="size-3.5" />
-                </Link>
-              </div>
-
-              <div className="flex flex-col gap-1.5">
-                <label className="text-[12px] font-semibold uppercase tracking-wide text-ink-soft">
-                  Status
-                </label>
-                <div>
-                  <StatusMenu
-                    value={statusOverride[selected.id] ?? selected.status}
-                    options={ALERT_STATUS_OPTIONS}
-                    onChange={(v) =>
-                      setStatusOverride((prev) => ({ ...prev, [selected.id]: v as AlertStatus }))
-                    }
-                  />
-                </div>
-              </div>
-
-              <div className="flex flex-col gap-1.5">
-                <label className="text-[12px] font-semibold uppercase tracking-wide text-ink-soft">
-                  Assignee
-                </label>
-                <div className="flex items-center gap-2 rounded-sm border border-line-strong bg-background px-2.5 py-2 text-[13.5px]">
-                  <InitialsAvatar name={selected.assignee} size={20} />
-                  {selected.assignee ?? "Unassigned"}
-                </div>
-              </div>
-
-              <div className="mt-1 flex gap-2">
-                <button
-                  onClick={() => router.push("/incidents")}
-                  className="flex flex-1 items-center justify-center gap-1.5 rounded-sm border border-line-strong px-3 py-2 text-[13px] font-semibold text-ink-soft hover:bg-paper-sunken"
-                >
-                  <AlertTriangle className="size-3.5" /> Escalate
-                </button>
-                <button className="flex flex-1 items-center justify-center gap-1.5 rounded-sm bg-primary px-3 py-2 text-[13px] font-semibold text-primary-foreground hover:brightness-110">
-                  <Zap className="size-3.5" /> Run playbook
-                </button>
-              </div>
-            </div>
-          )}
+          >
+            Assigned to me
+          </button>
+          <SearchInput
+            className="ml-auto"
+            placeholder="Search alerts…"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
         </div>
+
+        <ActiveFilters filters={active} onClearAll={clearAll} />
+
+        {alertsQuery.isLoading ? (
+          <div className="flex flex-col gap-2">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <Skeleton key={i} className="h-[62px] rounded-md" />
+            ))}
+          </div>
+        ) : alerts.length === 0 ? (
+          <div className="rounded-md border border-line bg-card px-4 py-10 text-center text-[13.5px] text-ink-faint">
+            No alerts match these filters.
+          </div>
+        ) : (
+          <>
+            <div className="overflow-hidden rounded-md border border-line">
+              {alerts.map((a) => (
+                <AlertRow key={a.id} alert={a} href={`/alerts/${a.id}`} />
+              ))}
+            </div>
+            <CursorPagination
+              page={pager.page}
+              shown={alerts.length}
+              total={alertsQuery.data?.total ?? alerts.length}
+              limit={pager.limit}
+              onLimitChange={pager.setLimit}
+              canPrev={pager.canPrev}
+              canNext={!!alertsQuery.data?.next_cursor}
+              onPrev={pager.goPrev}
+              onNext={() => pager.goNext(alertsQuery.data?.next_cursor)}
+              busy={alertsQuery.isFetching}
+            />
+          </>
+        )}
       </div>
     </div>
   );

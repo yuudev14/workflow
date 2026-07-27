@@ -55,6 +55,16 @@ func (s *RuntimeServer) ExecuteOperation(ctx context.Context, req *runtimepb.Exe
 		}
 	}
 
+	// A missing input_json is an older producer, not an error: the empty shape
+	// keeps `var.input` defined for every template regardless.
+	input := domain.NewEmptyRunInput()
+	if req.InputJson != nil && *req.InputJson != "" {
+		if err := json.Unmarshal([]byte(*req.InputJson), input); err != nil {
+			return &runtimepb.ExecuteOperationResponse{Error: "invalid input_json: " + err.Error()}, nil
+		}
+		input = input.Resolved()
+	}
+
 	timeout := s.defaultTimeout
 	if req.TimeoutMs > 0 {
 		timeout = time.Duration(req.TimeoutMs) * time.Millisecond
@@ -78,6 +88,7 @@ func (s *RuntimeServer) ExecuteOperation(ctx context.Context, req *runtimepb.Exe
 		Steps:             steps,
 		PlaybookHistoryID: historyID,
 		Timeout:           timeout,
+		Input:             input,
 	})
 	if err != nil {
 		s.logger.Errorw("sandbox execution failed",

@@ -19,6 +19,10 @@ type ExecutionRequest struct {
 	Steps             map[string]any
 	PlaybookHistoryID uuid.UUID
 	Timeout           time.Duration
+	// Input is the run's trigger data, exposed to templates as `var.input`. It
+	// is always non-nil so a template referencing it never raises on a run that
+	// had no trigger data.
+	Input *domain.RunInput
 }
 
 // NodeRuntime executes one playbook node and returns its JSON-encoded result.

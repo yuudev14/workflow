@@ -78,7 +78,7 @@ const PlaybookOperations: React.FC = () => {
   )
 }
 
-// step types that map to a single, known connector id — these skip the connector
+// step types that map to a single, known connector id - these skip the connector
 // picker and drop straight into the config form for that virtual connector.
 const DIRECT_CONNECTOR: Partial<Record<NonNullable<TaskOperationType>, string>> = {
   decision: CONDITION_CONNECTOR_ID,

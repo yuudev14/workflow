@@ -88,7 +88,7 @@ func TestCreateUserRejectsMalformedRoleID(t *testing.T) {
 }
 
 // The security-relevant half of deactivation: flipping is_active alone would
-// leave the user working until their refresh token expires — up to a week.
+// leave the user working until their refresh token expires - up to a week.
 func TestDeactivateUserRevokesEverySession(t *testing.T) {
 	env := setupTest(t)
 	userID := uuid.New()
@@ -153,7 +153,7 @@ func TestSetUserPasswordRevokesEverySession(t *testing.T) {
 	require.NoError(t, env.service.SetUserPassword(context.Background(), uuid.New(), userID, "brand-new-password"))
 }
 
-// Replacing roles must clear the old grants first — appending would silently
+// Replacing roles must clear the old grants first - appending would silently
 // widen access instead of setting it.
 func TestSetUserRolesReplacesRatherThanAppends(t *testing.T) {
 	env := setupTest(t)

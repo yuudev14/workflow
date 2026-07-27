@@ -1,7 +1,7 @@
 // Package goconnectors runs built-in connectors compiled into the worker.
-// These are OUR code — not user code — so they may run in-process; everything
+// These are OUR code - not user code - so they may run in-process; everything
 // user-authored still goes to the sandbox. Metadata parity: each builtin has
-// an info.json dir in the connectors tree with "runtime": "go" (virtual — the
+// an info.json dir in the connectors tree with "runtime": "go" (virtual - the
 // registry is the implementation).
 package goconnectors
 
@@ -20,7 +20,7 @@ import (
 
 //go:generate mockgen -destination=mocks/goconnectors_mock.go -package=mocks . TemplateEngine
 
-// TemplateEngine renders {{ var.steps["node"] }} templates inside params —
+// TemplateEngine renders {{ var.steps["node"] }} templates inside params -
 // jinja2 semantics (gonja adapter), golden-tested against the python side.
 type TemplateEngine interface {
 	Render(value any, variables map[string]any) (any, error)
@@ -54,7 +54,7 @@ func (r *Registry) Register(id string, connector Connector) {
 	r.connectors[id] = connector
 }
 
-// IDs returns the registered connector ids — the composition root maps each
+// IDs returns the registered connector ids - the composition root maps each
 // of them to this runtime in the resolver.
 func (r *Registry) IDs() []string {
 	ids := make([]string, 0, len(r.connectors))
@@ -80,7 +80,7 @@ func (r *Registry) Execute(ctx context.Context, req execution.ExecutionRequest) 
 			return nil, fmt.Errorf("could not decode parameters for %s: %w", req.Task.Name, err)
 		}
 	}
-	rendered, err := r.template.Render(params, map[string]any{"steps": req.Steps})
+	rendered, err := r.template.Render(params, map[string]any{"steps": req.Steps, "input": req.Input.TemplateVars()})
 	if err != nil {
 		return nil, err
 	}

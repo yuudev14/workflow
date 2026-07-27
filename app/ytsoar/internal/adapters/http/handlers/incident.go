@@ -7,16 +7,19 @@ import (
 
 	rest "github.com/yuudev14/ytsoar/internal/adapters/http/rests"
 	"github.com/yuudev14/ytsoar/internal/application/incidents"
+	"github.com/yuudev14/ytsoar/internal/application/playbooks"
+	"github.com/yuudev14/ytsoar/internal/domain"
 	"github.com/yuudev14/ytsoar/internal/logger"
 )
 
 type IncidentHandler struct {
 	logger          logger.Logger
 	incidentService *incidents.Service
+	orchestrator    playbooks.PlaybookApplicationService
 }
 
-func NewIncidentHandler(log logger.Logger, incidentService *incidents.Service) *IncidentHandler {
-	return &IncidentHandler{logger: log, incidentService: incidentService}
+func NewIncidentHandler(log logger.Logger, incidentService *incidents.Service, orchestrator playbooks.PlaybookApplicationService) *IncidentHandler {
+	return &IncidentHandler{logger: log, incidentService: incidentService, orchestrator: orchestrator}
 }
 
 func (h *IncidentHandler) List(c *gin.Context) {
@@ -39,7 +42,12 @@ func (h *IncidentHandler) List(c *gin.Context) {
 func (h *IncidentHandler) Summary(c *gin.Context) {
 	response := rest.Response{C: c}
 
-	summary, err := h.incidentService.Summary(c.Request.Context())
+	rng, ok := bindRange(c, h.logger)
+	if !ok {
+		return
+	}
+
+	summary, err := h.incidentService.Summary(c.Request.Context(), rng)
 	if err != nil {
 		response.Fail(h.logger, err)
 		return
@@ -237,4 +245,23 @@ func (h *IncidentHandler) UnlinkAlert(c *gin.Context) {
 		return
 	}
 	c.Status(http.StatusNoContent)
+}
+
+// Run starts one playbook run against the selected incidents.
+func (h *IncidentHandler) Run(c *gin.Context) {
+	response := rest.Response{C: c}
+
+	var payload playbooks.RunPlaybookPayload
+	if ok, code, err := rest.BindFormAndValidate(c, &payload); !ok {
+		response.ResponseError(code, err)
+		return
+	}
+
+	message, err := h.orchestrator.RunPlaybook(
+		c.Request.Context(), payload.PlaybookID, domain.ModuleEventIncident, payload, actorID(c))
+	if err != nil {
+		response.Fail(h.logger, err)
+		return
+	}
+	response.Response(http.StatusAccepted, message)
 }

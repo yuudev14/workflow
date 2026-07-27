@@ -1,4 +1,4 @@
-// Sample JavaScript connector — the JS mirror of the Python contract.
+// Sample JavaScript connector - the JS mirror of the Python contract.
 // Export a class extending core/connector.js's Connector; execute() receives
 // the parsed TOML config, the already-templated params, and the operation
 // name, and dispatches however it likes.

@@ -20,7 +20,7 @@ export function TrendChart({
   const H = 108;
   const pad = 14;
 
-  // Nothing to plot yet (e.g. data still loading) — render an empty frame
+  // Nothing to plot yet (e.g. data still loading) - render an empty frame
   // instead of destructuring an out-of-range point.
   if (!values || values.length === 0) {
     return <div className={cn("h-[108px]", className)} />;

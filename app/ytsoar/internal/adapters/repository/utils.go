@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"strings"
 	"time"
 
 	sq "github.com/Masterminds/squirrel"
@@ -238,4 +239,35 @@ func fromNullTriggerType(nt db.NullTriggerType) *string {
 	}
 	s := string(nt.TriggerType)
 	return &s
+}
+
+// likeTerm builds an ILIKE pattern, escaping the wildcards so a user searching
+// for a literal "%" or "_" does not get wildcard behaviour. An empty search is
+// not a match-everything pattern - it is no filter at all.
+func likeTerm(search *string) (string, bool) {
+	if search == nil || strings.TrimSpace(*search) == "" {
+		return "", false
+	}
+	escaped := strings.NewReplacer(`\`, `\\`, `%`, `\%`, `_`, `\_`).Replace(*search)
+	return "%" + escaped + "%", true
+}
+
+// applyAssigneeFilter ORs the two controls together rather than ANDing them: a
+// picker offering "Unassigned" beside a list of names has to mean union, and
+// AND would make that selection return nothing.
+func applyAssigneeFilter(stmt sq.SelectBuilder, alias string, ids []string, unassigned *bool) sq.SelectBuilder {
+	col := alias + ".assignee_id"
+	isNull := sq.Expr(col + " IS NULL")
+
+	switch {
+	case len(ids) > 0 && unassigned != nil && *unassigned:
+		return stmt.Where(sq.Or{isNull, sq.Eq{col: ids}})
+	case len(ids) > 0:
+		return stmt.Where(sq.Eq{col: ids})
+	case unassigned != nil && *unassigned:
+		return stmt.Where(isNull)
+	case unassigned != nil:
+		return stmt.Where(sq.Expr(col + " IS NOT NULL"))
+	}
+	return stmt
 }

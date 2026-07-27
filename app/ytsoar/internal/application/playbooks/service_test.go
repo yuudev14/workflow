@@ -283,10 +283,10 @@ func TestServiceCreatePlaybookHistorySuccess(t *testing.T) {
 
 	mockRepo.
 		EXPECT().
-		CreatePlaybookHistory(gomock.Any(), playbookID.String(), []domain.ResponseEdges{}).
+		CreatePlaybookHistory(gomock.Any(), playbookID.String(), []domain.ResponseEdges{}, gomock.Any()).
 		Return(returnedHistory, nil)
 
-	history, err := service.CreatePlaybookHistory(context.Background(), playbookID.String(), []domain.ResponseEdges{})
+	history, err := service.CreatePlaybookHistory(context.Background(), playbookID.String(), []domain.ResponseEdges{}, playbooks.RunStamp{})
 	assert.NoError(t, err)
 	assert.Equal(t, "created", history.Status)
 }

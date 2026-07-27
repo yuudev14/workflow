@@ -6,7 +6,7 @@ ATT&CK extraction (#15) and IOC extraction (#12) will read, so seeding them now
 makes that work testable against real data later. A future ELK branch points
 these same builders at an index instead of the ingest endpoint.
 
-Stdlib only — this file is imported by alertgen.py, which has no dependencies.
+Stdlib only - this file is imported by alertgen.py, which has no dependencies.
 """
 
 import hashlib

@@ -119,6 +119,9 @@ func main() {
 		log.Fatalf("failed to seed admin user: %v", err)
 	}
 
+	alertRepository := repository.NewAlertRepositoryImpl(appLogger, queries, pool)
+	incidentRepository := repository.NewIncidentRepositoryImpl(appLogger, queries, pool)
+
 	orchestrator := playbooks.NewPlaybookApplicationService(
 		appLogger,
 		playbookService,
@@ -127,6 +130,7 @@ func main() {
 		txManager,
 		taskPublisher,
 		hub,
+		repository.NewRecordResolverImpl(appLogger, alertRepository, incidentRepository),
 	)
 
 	playbookHandler := handlers.NewPlaybookHandler(
@@ -159,18 +163,15 @@ func main() {
 		log.Fatalf("failed to setup module event publisher: %v", err)
 	}
 
-	alertRepository := repository.NewAlertRepositoryImpl(appLogger, queries, pool)
-	incidentRepository := repository.NewIncidentRepositoryImpl(appLogger, queries, pool)
-
 	// The alert repository doubles as incidents.AlertTimeline so linking writes
 	// the other half of the story onto the alert.
 	incidentService := incidents.NewService(
-		appLogger, incidentRepository, alertRepository, txManager, moduleEventPublisher)
+		appLogger, incidentRepository, alertRepository, txManager, moduleEventPublisher, userRepository)
 	alertService := alerts.NewService(
-		appLogger, alertRepository, incidentService, txManager, moduleEventPublisher)
+		appLogger, alertRepository, incidentService, txManager, moduleEventPublisher, userRepository)
 
-	alertHandler := handlers.NewAlertHandler(appLogger, alertService)
-	incidentHandler := handlers.NewIncidentHandler(appLogger, incidentService)
+	alertHandler := handlers.NewAlertHandler(appLogger, alertService, orchestrator)
+	incidentHandler := handlers.NewIncidentHandler(appLogger, incidentService, orchestrator)
 
 	routerConfig := api.RouterConfig{
 		CORSOrigins: cfg.CORSOrigins,

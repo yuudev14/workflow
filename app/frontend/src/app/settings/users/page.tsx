@@ -118,7 +118,7 @@ export default function UsersPage() {
           return (
             <div className="flex flex-wrap gap-1">
               {roles.length === 0 ? (
-                <span className="text-ink-faint">—</span>
+                <span className="text-ink-faint">-</span>
               ) : (
                 roles.map((role) => <Chip key={role}>{role}</Chip>)
               )}
@@ -170,7 +170,7 @@ export default function UsersPage() {
                 <UserCheck />
               </Button>
             )}
-            {/* Deactivating yourself is rejected by the api too — this just
+            {/* Deactivating yourself is rejected by the api too - this just
                 keeps the button from being offered. */}
             {canDelete && user.is_active && user.id !== currentUser?.id && (
               <Button variant="ghost" size="icon" title="Deactivate" onClick={() => open(user, "deactivate")}>
@@ -264,7 +264,7 @@ export default function UsersPage() {
         open={dialog === "deactivate"}
         onOpenChange={(next) => setDialog(next ? "deactivate" : "none")}
         title={`Deactivate ${editing?.username}?`}
-        description="They are signed out everywhere and cannot sign in again until reactivated. The account is kept — the audit trail references it."
+        description="They are signed out everywhere and cannot sign in again until reactivated. The account is kept - the audit trail references it."
         confirmLabel="Deactivate"
         pending={deactivate.isPending}
         onConfirm={() => deactivate.mutate()}

@@ -1,7 +1,7 @@
 import * as React from "react";
 import { cn } from "@/lib/utils";
 
-/** Small bordered chip with an optional leading icon — links, tags, counts. */
+/** Small bordered chip with an optional leading icon - links, tags, counts. */
 export function LinkChip({
   className,
   children,

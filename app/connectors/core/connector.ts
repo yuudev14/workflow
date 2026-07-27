@@ -1,4 +1,4 @@
-// Base class + shared helpers for JavaScript/TypeScript connectors — the
+// Base class + shared helpers for JavaScript/TypeScript connectors - the
 // mirror of core/connector.py. Node strips the types natively (>= 23.6), so
 // this file runs as-is; only erasable TS syntax is allowed (no enums,
 // namespaces or parameter properties).
