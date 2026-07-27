@@ -40,7 +40,7 @@ const caseText = (c: CaseLike): string => {
   const parts = [c.left, c.operator, c.right]
     .map((p) => (p ?? "").toString().trim())
     .filter(Boolean);
-  return parts.length ? parts.join(" ") : "—";
+  return parts.length ? parts.join(" ") : "-";
 };
 
 // Read-only replay of a single run's task graph, plus a per-step output/params
@@ -74,7 +74,7 @@ const RunHistoryDetail: React.FC<{ playbookHistoryId: string }> = ({
   };
 
   // Condition edges carry a branch handle (a case id, "else" or "output") that
-  // doesn't exist on history nodes — React Flow would silently drop those edges.
+  // doesn't exist on history nodes - React Flow would silently drop those edges.
   // This view is read-only, so anchor them to the bottom handle instead.
   const setMappedEdges = (edge: Edges) => ({
     id: edge.id,
@@ -100,7 +100,7 @@ const RunHistoryDetail: React.FC<{ playbookHistoryId: string }> = ({
     const statusOf = (id: string) =>
       tasks.find((t) => t.task_id === id)?.status;
     return edges.map((edge) => {
-      // green when the edge was actually followed to a successful step — both
+      // green when the edge was actually followed to a successful step - both
       // endpoints ran (status "success", i.e. not skipped and not failed).
       const followed =
         statusOf(edge.source_id) === "success" &&
@@ -118,7 +118,7 @@ const RunHistoryDetail: React.FC<{ playbookHistoryId: string }> = ({
   const output = failed ? currentNode?.error ?? {} : currentNode?.result ?? {};
 
   // Parameters: condition cases get their own readable branch list; code /
-  // multiline strings render as a code block; short scalars as key/value rows —
+  // multiline strings render as a code block; short scalars as key/value rows -
   // so nothing is squeezed into a right-aligned text cell as raw JSON.
   const paramEntries = currentNode?.parameters
     ? Object.entries(currentNode.parameters)

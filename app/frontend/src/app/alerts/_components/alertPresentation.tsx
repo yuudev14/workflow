@@ -9,6 +9,18 @@ export const SEV_STRIPE: Record<Severity, string> = {
   low: "bg-slate-dot",
 };
 
+/**
+ * Display label for a source kind. The API dropped the free-text `source`
+ * column - `source_kind` + `reporter` cover it - so the label lives here.
+ */
+export const SOURCE_LABEL: Record<SourceKind, string> = {
+  edr: "EDR",
+  identity: "Identity",
+  email: "Email",
+  firewall: "Firewall",
+  dlp: "DLP",
+};
+
 export function sourceGlyph(kind: SourceKind): { icon: LucideIcon; tone: GlyphTone } {
   switch (kind) {
     case "edr":

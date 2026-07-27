@@ -302,7 +302,7 @@ const PlaybookOperationProvider: React.FC<{
           eds.concat({
             id,
             source: connectionState.fromNode!.id,
-            // keep the handle the user actually dragged from — without this the
+            // keep the handle the user actually dragged from - without this the
             // edge falls back to the node's first source handle (source-top),
             // so every new-step wire wrongly exits the top of the source node.
             sourceHandle: connectionState.fromHandle?.id ?? undefined,

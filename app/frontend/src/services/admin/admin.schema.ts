@@ -11,7 +11,7 @@ export interface Role {
   is_builtin: boolean;
   created_at: string;
   updated_at: string;
-  /** {module: [actions]} — replaced wholesale by the matrix editor, never patched. */
+  /** {module: [actions]} - replaced wholesale by the matrix editor, never patched. */
   permissions: Record<string, string[]>;
 }
 
@@ -59,8 +59,8 @@ export interface CreateUserPayload {
 }
 
 /**
- * Partial update. The backend reads absence and presence differently — an
- * omitted key leaves the column alone, an explicit `null` clears it — so never
+ * Partial update. The backend reads absence and presence differently - an
+ * omitted key leaves the column alone, an explicit `null` clears it - so never
  * send a key you did not mean to change.
  */
 export interface UpdateUserPayload {

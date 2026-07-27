@@ -15,7 +15,7 @@ type AuthContextValue = {
   user: AuthUser | null;
   roles: string[];
   permissions: Record<string, string[]>;
-  /** UI-level check. The backend re-checks every request — this only decides what to show. */
+  /** UI-level check. The backend re-checks every request - this only decides what to show. */
   hasPermission: (module: string, action: string) => boolean;
   isLoading: boolean;
   logout: () => Promise<void>;
@@ -92,7 +92,7 @@ const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
     [data, permissions, hasPermission, meLoading, logout],
   );
 
-  // Public pages render immediately — they must work with no session at all.
+  // Public pages render immediately - they must work with no session at all.
   if (isPublic) {
     return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
   }

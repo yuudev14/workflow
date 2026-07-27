@@ -70,7 +70,8 @@ CREATE TYPE event_type AS ENUM (
     'correlation',
     'attack_tag',
     'linked',
-    'unlinked'
+    'unlinked',
+    'updated'
 );
 
 CREATE TYPE link_source AS ENUM (

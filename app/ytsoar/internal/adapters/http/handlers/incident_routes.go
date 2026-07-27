@@ -24,6 +24,10 @@ func (h *IncidentHandler) RegisterRoutes(
 			requirePermission(domain.ModuleIncidents, domain.ActionCreate),
 			h.Create)
 
+		// incidents:execute, not playbooks:update - "may run automation on
+		// incidents" is a different grant from "may edit playbooks".
+		r.POST("/run", requirePermission(domain.ModuleIncidents, domain.ActionExecute), h.Run)
+
 		r.PATCH("/:incident_id", updateIncidents, h.Update)
 		r.PATCH("/:incident_id/status", updateIncidents, h.UpdateStatus)
 

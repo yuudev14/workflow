@@ -1,5 +1,5 @@
 // Package oidcclient is the thin go-oidc/oauth2 wrapper behind auth.OIDCClient.
-// It carries no policy — discovery, PKCE params and id_token verification only —
+// It carries no policy - discovery, PKCE params and id_token verification only -
 // so all provisioning/role logic stays in the service and stays mockable.
 package oidcclient
 

@@ -17,6 +17,7 @@ import (
 	"github.com/yuudev14/ytsoar/internal/domain"
 	"github.com/yuudev14/ytsoar/internal/domain/apperr"
 	"github.com/yuudev14/ytsoar/internal/logger"
+	"github.com/yuudev14/ytsoar/internal/types"
 )
 
 type publishedEvent struct {
@@ -66,8 +67,16 @@ func setup(t *testing.T) *testEnv {
 		}).
 		AnyTimes()
 
+	// The directory only labels assignee changes; returning nothing keeps the
+	// diff assertions about the diff.
+	users := mock_contracts.NewMockUserDirectory(ctrl)
+	users.EXPECT().
+		UsernamesByIDs(gomock.Any(), gomock.Any()).
+		Return(map[uuid.UUID]string{}, nil).
+		AnyTimes()
+
 	return &testEnv{
-		service:   alerts.NewService(logger.NewNop(), repo, incidents, tx, events),
+		service:   alerts.NewService(logger.NewNop(), repo, incidents, tx, events, users),
 		repo:      repo,
 		incidents: incidents,
 		published: &published,
@@ -134,7 +143,7 @@ func TestCreateDedupPublishesUpdatedAndWritesNoTimelineRow(t *testing.T) {
 	alert := domain.Alert{ID: uuid.New(), DedupCount: 2}
 
 	env.repo.EXPECT().Upsert(gomock.Any(), gomock.Any()).Return(alert, false, nil)
-	// A recurrence is not a timeline entry — dedup_count/last_seen carry it.
+	// A recurrence is not a timeline entry - dedup_count/last_seen carry it.
 	env.repo.EXPECT().AppendEvent(gomock.Any(), gomock.Any()).Times(0)
 
 	_, err := env.service.Create(context.Background(), createPayload(), nil)
@@ -177,6 +186,65 @@ func TestCreateBatchIsolatesFailures(t *testing.T) {
 	assert.Len(t, created, 2)
 	assert.Equal(t, 1, failed)
 	assert.Len(t, *env.published, 2)
+}
+
+func TestUpdateWritesFieldDiffToTimeline(t *testing.T) {
+	env := setup(t)
+	id := uuid.New()
+	actor := uuid.New()
+	assignee := uuid.New()
+
+	env.repo.EXPECT().GetByID(gomock.Any(), id).
+		Return(domain.Alert{ID: id, Severity: domain.SeverityLow}, nil)
+	env.repo.EXPECT().Update(gomock.Any(), id, gomock.Any()).
+		Return(domain.Alert{
+			ID: id, Severity: domain.SeverityCritical, AssigneeID: &assignee,
+		}, nil)
+	env.repo.EXPECT().
+		AppendEvent(gomock.Any(), gomock.Any()).
+		DoAndReturn(func(_ context.Context, p alerts.AppendEventParams) error {
+			assert.Equal(t, domain.EventTypeUpdated, p.Type)
+			assert.Equal(t, &actor, p.ActorID)
+
+			var body struct {
+				Changes []domain.FieldChange `json:"changes"`
+			}
+			require.NoError(t, json.Unmarshal(p.Body, &body))
+			require.Len(t, body.Changes, 2)
+
+			assert.Equal(t, "severity", body.Changes[0].Field)
+			assert.Equal(t, "low", body.Changes[0].From)
+			assert.Equal(t, "critical", body.Changes[0].To)
+
+			assert.Equal(t, "assignee_id", body.Changes[1].Field)
+			assert.Nil(t, body.Changes[1].From)
+			assert.Equal(t, assignee.String(), body.Changes[1].To)
+			return nil
+		})
+
+	sev := "critical"
+	_, err := env.service.Update(context.Background(), id, alerts.UpdateAlertPayload{
+		Severity: types.Nullable[string]{Value: &sev, Set: true},
+	}, &actor)
+	require.NoError(t, err)
+}
+
+// A PATCH that changes nothing must not append an event: the timeline is an audit
+// log, and a row saying "nothing happened" is noise a reviewer has to read past.
+func TestUpdateWithNoActualChangeWritesNoEvent(t *testing.T) {
+	env := setup(t)
+	id := uuid.New()
+	unchanged := domain.Alert{ID: id, Severity: domain.SeverityHigh}
+
+	env.repo.EXPECT().GetByID(gomock.Any(), id).Return(unchanged, nil)
+	env.repo.EXPECT().Update(gomock.Any(), id, gomock.Any()).Return(unchanged, nil)
+	// no AppendEvent expectation: gomock fails the test if one is called
+
+	sev := "high"
+	_, err := env.service.Update(context.Background(), id, alerts.UpdateAlertPayload{
+		Severity: types.Nullable[string]{Value: &sev, Set: true},
+	}, nil)
+	require.NoError(t, err)
 }
 
 func TestUpdateStatusWritesTransitionToTimeline(t *testing.T) {

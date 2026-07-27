@@ -62,7 +62,7 @@ func Auth(log logger.Logger, verifier TokenVerifier) gin.HandlerFunc {
 
 // AuthFromRefreshCookie authenticates the websocket handshake. A browser
 // cannot attach headers to a WebSocket, but the handshake is a normal GET, so
-// the refresh cookie rides along. The token is read only — never rotated —
+// the refresh cookie rides along. The token is read only - never rotated -
 // and verified against the database so a logout stops reconnects at once.
 func AuthFromRefreshCookie(log logger.Logger, verifier TokenVerifier) gin.HandlerFunc {
 	return func(c *gin.Context) {
@@ -85,7 +85,7 @@ func AuthFromRefreshCookie(log logger.Logger, verifier TokenVerifier) gin.Handle
 }
 
 // SetCurrentUser records the authenticated caller. The context key stays
-// unexported so identity can only be set through here — nothing outside this
+// unexported so identity can only be set through here - nothing outside this
 // package can forge one by writing the raw key.
 func SetCurrentUser(c *gin.Context, user domain.AuthUser) {
 	c.Set(authUserKey, user)

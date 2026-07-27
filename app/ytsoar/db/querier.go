@@ -16,6 +16,7 @@ type Querier interface {
 	CreateIncident(ctx context.Context, arg CreateIncidentParams) (Incident, error)
 	CreatePlaybook(ctx context.Context, arg CreatePlaybookParams) (Playbook, error)
 	CreatePlaybookHistory(ctx context.Context, arg CreatePlaybookHistoryParams) (PlaybookHistory, error)
+	CreatePlaybookRunRecord(ctx context.Context, arg CreatePlaybookRunRecordParams) error
 	CreateRole(ctx context.Context, arg CreateRoleParams) (Role, error)
 	CreateTaskHistory(ctx context.Context, arg CreateTaskHistoryParams) (TaskHistory, error)
 	CreateTeam(ctx context.Context, arg CreateTeamParams) (Team, error)
@@ -74,7 +75,7 @@ type Querier interface {
 	ListIncidentNotes(ctx context.Context, incidentID pgtype.UUID) ([]ListIncidentNotesRow, error)
 	// Effective permissions: roles assigned directly to the user, UNION roles
 	// granted by every team they belong to. UNION dedups, so an overlap costs
-	// nothing. Both halves filter is_active, so a deactivated user keeps nothing —
+	// nothing. Both halves filter is_active, so a deactivated user keeps nothing -
 	// not even through a team.
 	ListPermissionsForUser(ctx context.Context, id pgtype.UUID) ([]ListPermissionsForUserRow, error)
 	ListRolePermissions(ctx context.Context, roleID pgtype.UUID) ([]ListRolePermissionsRow, error)

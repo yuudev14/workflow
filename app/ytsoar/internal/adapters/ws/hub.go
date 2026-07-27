@@ -99,7 +99,7 @@ func (h *Hub) Run() {
 				select {
 				case c.send <- message:
 				default:
-					// client is too far behind — drop it rather than block
+					// client is too far behind - drop it rather than block
 					delete(h.clients, c)
 					close(c.send)
 				}

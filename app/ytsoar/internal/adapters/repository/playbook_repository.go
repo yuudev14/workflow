@@ -14,6 +14,7 @@ import (
 	"github.com/yuudev14/ytsoar/internal/application/playbooks"
 	"github.com/yuudev14/ytsoar/internal/domain"
 	"github.com/yuudev14/ytsoar/internal/logger"
+	"github.com/yuudev14/ytsoar/internal/types"
 	"github.com/yuudev14/ytsoar/internal/utils"
 )
 
@@ -59,6 +60,9 @@ func toDomainPlaybookHistory(row db.PlaybookHistory) domain.PlaybookHistory {
 		Result:      result,
 		TriggeredAt: row.TriggeredAt.Time,
 		Edges:       row.Edges,
+		TriggerType: fromNullTriggerType(row.TriggerType),
+		TriggeredBy: fromPgUUIDPtr(row.TriggeredBy),
+		Input:       row.Input,
 	}
 }
 
@@ -89,6 +93,53 @@ func (w *PlaybookRepositoryImpl) GetPlaybooksCount(ctx context.Context, filter p
 	return CollectOneScalarFromSqlizer[int](ctx, stmt, w.pool, w.logger)
 }
 
+// Summary implements playbooks.PlaybookRepository. Each figure is paired with the
+// preceding window of equal length so the UI can render an honest delta.
+//
+// Playbooks.previous is deliberately "how many existed before the window", not
+// "how many were created in the previous window": the card shows a running total,
+// so its delta is the growth inside the selected range.
+func (w *PlaybookRepositoryImpl) Summary(ctx context.Context, rng types.ResolvedRange) (playbooks.PlaybooksSummary, error) {
+	summary := playbooks.PlaybooksSummary{Range: rng}
+	prevFrom, prevTo := rng.Previous()
+
+	const playbookCounts = `
+        SELECT
+            count(*) FILTER (WHERE created_at <= $2)::int AS current,
+            count(*) FILTER (WHERE created_at < $1)::int AS previous
+        FROM playbooks`
+	if err := w.pool.QueryRow(ctx, playbookCounts, rng.From, rng.To).
+		Scan(&summary.Playbooks.Current, &summary.Playbooks.Previous); err != nil {
+		return playbooks.PlaybooksSummary{}, err
+	}
+
+	const runCounts = `
+        SELECT
+            count(*) FILTER (WHERE in_current)::int AS runs_current,
+            count(*) FILTER (WHERE in_previous)::int AS runs_previous,
+            count(*) FILTER (WHERE in_current AND status = 'failed')::int AS failed_current,
+            count(*) FILTER (WHERE in_previous AND status = 'failed')::int AS failed_previous,
+            COALESCE(count(*) FILTER (WHERE in_current AND status = 'success')::float
+                     / NULLIF(count(*) FILTER (WHERE in_current), 0), 0) AS rate_current,
+            COALESCE(count(*) FILTER (WHERE in_previous AND status = 'success')::float
+                     / NULLIF(count(*) FILTER (WHERE in_previous), 0), 0) AS rate_previous
+        FROM (
+            SELECT status,
+                   triggered_at >= $1 AND triggered_at <= $2 AS in_current,
+                   triggered_at >= $3 AND triggered_at <  $4 AS in_previous
+            FROM playbook_history
+        ) h`
+	if err := w.pool.QueryRow(ctx, runCounts, rng.From, rng.To, prevFrom, prevTo).Scan(
+		&summary.Runs.Current, &summary.Runs.Previous,
+		&summary.Failed.Current, &summary.Failed.Previous,
+		&summary.SuccessRate.Current, &summary.SuccessRate.Previous,
+	); err != nil {
+		return playbooks.PlaybooksSummary{}, err
+	}
+
+	return summary, nil
+}
+
 // GetPlaybookHistory implements playbooks.PlaybookRepository.
 func (w *PlaybookRepositoryImpl) GetPlaybookHistory(ctx context.Context, offset int, limit int, filter playbooks.PlaybookHistoryFilter) ([]domain.PlaybookHistoryResponse, error) {
 	stmt := sq.Select("playbook_history.*, to_jsonb(playbooks) AS playbook_data").
@@ -99,12 +150,7 @@ func (w *PlaybookRepositoryImpl) GetPlaybookHistory(ctx context.Context, offset 
 		Offset(uint64(offset)).
 		Limit(uint64(limit))
 
-	if filter.Name != nil {
-		stmt = stmt.Where(sq.Expr("playbooks.name ILIKE ?", fmt.Sprint("%", *filter.Name, "%")))
-	}
-	if filter.PlaybookID != nil {
-		stmt = stmt.Where(sq.Eq{"playbook_history.playbook_id": *filter.PlaybookID})
-	}
+	stmt = applyPlaybookHistoryFilter(stmt, filter)
 
 	return CollectRowsFromSqlizer[domain.PlaybookHistoryResponse](ctx, stmt, w.pool, w.logger)
 }
@@ -116,11 +162,32 @@ func (w *PlaybookRepositoryImpl) GetPlaybookHistoryCount(ctx context.Context, fi
 		Join("playbooks ON playbooks.id = playbook_history.playbook_id").
 		PlaceholderFormat(sq.Dollar)
 
-	if filter.Name != nil {
-		stmt = stmt.Where(sq.Expr("playbooks.name ILIKE ?", fmt.Sprint("%", *filter.Name, "%")))
-	}
+	stmt = applyPlaybookHistoryFilter(stmt, filter)
 
 	return CollectOneScalarFromSqlizer[int](ctx, stmt, w.pool, w.logger)
+}
+
+// Shared by the list and the count so `total` can never disagree with the page
+// it describes - previously the count applied only Name.
+func applyPlaybookHistoryFilter(stmt sq.SelectBuilder, filter playbooks.PlaybookHistoryFilter) sq.SelectBuilder {
+	if term, ok := likeTerm(filter.Name); ok {
+		stmt = stmt.Where(sq.Expr("playbooks.name ILIKE ?", term))
+	}
+	if filter.PlaybookID != nil {
+		stmt = stmt.Where(sq.Eq{"playbook_history.playbook_id": *filter.PlaybookID})
+	}
+	if filter.ModuleType != nil || filter.RecordID != nil {
+		sub := sq.Select("1").From("playbook_run_records prr").
+			Where(sq.Expr("prr.playbook_history_id = playbook_history.id"))
+		if filter.ModuleType != nil {
+			sub = sub.Where(sq.Eq{"prr.module_type": *filter.ModuleType})
+		}
+		if filter.RecordID != nil {
+			sub = sub.Where(sq.Eq{"prr.record_id": *filter.RecordID})
+		}
+		stmt = stmt.Where(sq.Expr("EXISTS (?)", sub))
+	}
+	return stmt
 }
 
 // GetPlaybookHistoryById implements playbooks.PlaybookRepository.
@@ -256,7 +323,7 @@ func (w *PlaybookRepositoryImpl) UpdatePlaybook(ctx context.Context, id string, 
 }
 
 // CreatePlaybookHistory implements playbooks.PlaybookRepository.
-func (w *PlaybookRepositoryImpl) CreatePlaybookHistory(ctx context.Context, id string, edges []domain.ResponseEdges) (*domain.PlaybookHistory, error) {
+func (w *PlaybookRepositoryImpl) CreatePlaybookHistory(ctx context.Context, id string, edges []domain.ResponseEdges, run playbooks.RunStamp) (*domain.PlaybookHistory, error) {
 	pgID, err := toPgUUIDFromString(id)
 	if err != nil {
 		return nil, err
@@ -277,9 +344,19 @@ func (w *PlaybookRepositoryImpl) CreatePlaybookHistory(ctx context.Context, id s
 	}
 	edgesJSON, _ := json.Marshal(modifiedEdges)
 
+	var inputJSON json.RawMessage
+	if run.Input != nil {
+		if inputJSON, err = json.Marshal(run.Input); err != nil {
+			return nil, err
+		}
+	}
+
 	row, err := w.queriesFromContext(ctx).CreatePlaybookHistory(ctx, db.CreatePlaybookHistoryParams{
-		PlaybookID: pgID,
-		Edges:      edgesJSON,
+		PlaybookID:  pgID,
+		Edges:       edgesJSON,
+		TriggerType: toNullTriggerTypePtr(run.TriggerType),
+		TriggeredBy: toPgUUIDPtr(run.TriggeredBy),
+		Input:       inputJSON,
 	})
 	if err != nil {
 		return nil, err
@@ -287,6 +364,21 @@ func (w *PlaybookRepositoryImpl) CreatePlaybookHistory(ctx context.Context, id s
 
 	history := toDomainPlaybookHistory(row)
 	return &history, nil
+}
+
+// CreatePlaybookRunRecords implements playbooks.PlaybookRepository.
+func (w *PlaybookRepositoryImpl) CreatePlaybookRunRecords(ctx context.Context, historyID uuid.UUID, moduleType string, recordIDs []uuid.UUID) error {
+	q := w.queriesFromContext(ctx)
+	for _, recordID := range recordIDs {
+		if err := q.CreatePlaybookRunRecord(ctx, db.CreatePlaybookRunRecordParams{
+			PlaybookHistoryID: toPgUUID(historyID),
+			ModuleType:        moduleType,
+			RecordID:          toPgUUID(recordID),
+		}); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // UpdatePlaybookHistory implements playbooks.PlaybookRepository.

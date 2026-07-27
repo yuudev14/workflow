@@ -41,7 +41,7 @@ const FILTERS: { label: string; value?: string }[] = [
 ];
 
 // Global executions across every playbook, in a split modal: left rail lists all
-// runs (with filters), right pane replays the selected run's flow — same detail
+// runs (with filters), right pane replays the selected run's flow - same detail
 // view as the /history route, but selection stays in the modal. The app-wide
 // status socket invalidates ["playbooks-history-all"] on playbook_status, so an
 // open list flips to finished live.

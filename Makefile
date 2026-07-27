@@ -1,4 +1,4 @@
-
+.PHONY: seed-alerts drip-alerts storm-alerts proto
 .PHONY: seed-alerts drip-alerts storm-alerts
 
 rebuild-containers:
@@ -38,7 +38,7 @@ start-debug:
 		npm run dev -- --hostname 0.0.0.0
 
 # Dev/demo alert data. Stdlib python on the HOST, talking to the dev stack over
-# HTTP — see tools/alertgen/README.md. Not shipped, nothing imports it.
+# HTTP - see tools/alertgen/README.md. Not shipped, nothing imports it.
 ALERTGEN := python3 ./tools/alertgen/alertgen.py
 
 # ~40 alerts across all 5 source kinds and all severities, created_at spread
@@ -74,3 +74,11 @@ connector-deps:
 			echo "==> npm: $$id"; \
 			npm install --prefix "$$id" --ignore-scripts --omit=dev --no-audit --no-fund; \
 		done'
+# protoc and the two plugins live in $(go env GOPATH)/bin. Output is
+# gen/connectorruntimepb with paths=source_relative, which is what produced the
+# committed files - regenerating any other way rewrites their package path.
+proto:
+		PATH="$$PATH:$$(go env GOPATH)/bin" protoc -I app/proto \
+			--go_out=app/ytsoar/gen/connectorruntimepb --go_opt=paths=source_relative \
+			--go-grpc_out=app/ytsoar/gen/connectorruntimepb --go-grpc_opt=paths=source_relative \
+			connector_runtime.proto

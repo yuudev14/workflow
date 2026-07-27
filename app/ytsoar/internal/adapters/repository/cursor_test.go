@@ -1,4 +1,4 @@
-// Internal test package: the cursor helpers are unexported by design — nothing
+// Internal test package: the cursor helpers are unexported by design - nothing
 // outside the repository layer should be able to mint a token.
 package repository
 

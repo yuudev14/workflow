@@ -46,18 +46,27 @@ func (q *Queries) CreatePlaybook(ctx context.Context, arg CreatePlaybookParams) 
 }
 
 const createPlaybookHistory = `-- name: CreatePlaybookHistory :one
-INSERT INTO playbook_history (playbook_id, triggered_at, edges)
-VALUES ($1, NOW(), $2)
-RETURNING id, playbook_id, status, error, result, triggered_at, edges
+INSERT INTO playbook_history (playbook_id, triggered_at, edges, trigger_type, triggered_by, input)
+VALUES ($1, NOW(), $2, $3, $4, $5)
+RETURNING id, playbook_id, status, error, result, triggered_at, edges, trigger_type, triggered_by, input
 `
 
 type CreatePlaybookHistoryParams struct {
-	PlaybookID pgtype.UUID `json:"playbook_id"`
-	Edges      []byte      `json:"edges"`
+	PlaybookID  pgtype.UUID     `json:"playbook_id"`
+	Edges       []byte          `json:"edges"`
+	TriggerType NullTriggerType `json:"trigger_type"`
+	TriggeredBy pgtype.UUID     `json:"triggered_by"`
+	Input       []byte          `json:"input"`
 }
 
 func (q *Queries) CreatePlaybookHistory(ctx context.Context, arg CreatePlaybookHistoryParams) (PlaybookHistory, error) {
-	row := q.db.QueryRow(ctx, createPlaybookHistory, arg.PlaybookID, arg.Edges)
+	row := q.db.QueryRow(ctx, createPlaybookHistory,
+		arg.PlaybookID,
+		arg.Edges,
+		arg.TriggerType,
+		arg.TriggeredBy,
+		arg.Input,
+	)
 	var i PlaybookHistory
 	err := row.Scan(
 		&i.ID,
@@ -67,8 +76,28 @@ func (q *Queries) CreatePlaybookHistory(ctx context.Context, arg CreatePlaybookH
 		&i.Result,
 		&i.TriggeredAt,
 		&i.Edges,
+		&i.TriggerType,
+		&i.TriggeredBy,
+		&i.Input,
 	)
 	return i, err
+}
+
+const createPlaybookRunRecord = `-- name: CreatePlaybookRunRecord :exec
+INSERT INTO playbook_run_records (playbook_history_id, module_type, record_id)
+VALUES ($1, $2, $3)
+ON CONFLICT DO NOTHING
+`
+
+type CreatePlaybookRunRecordParams struct {
+	PlaybookHistoryID pgtype.UUID `json:"playbook_history_id"`
+	ModuleType        string      `json:"module_type"`
+	RecordID          pgtype.UUID `json:"record_id"`
+}
+
+func (q *Queries) CreatePlaybookRunRecord(ctx context.Context, arg CreatePlaybookRunRecordParams) error {
+	_, err := q.db.Exec(ctx, createPlaybookRunRecord, arg.PlaybookHistoryID, arg.ModuleType, arg.RecordID)
+	return err
 }
 
 const getPlaybookById = `-- name: GetPlaybookById :one
@@ -132,7 +161,7 @@ func (q *Queries) GetPlaybookGraphById(ctx context.Context, id pgtype.UUID) (Get
 }
 
 const getPlaybookHistoryById = `-- name: GetPlaybookHistoryById :one
-SELECT playbook_history.id, playbook_history.playbook_id, playbook_history.status, playbook_history.error, playbook_history.result, playbook_history.triggered_at, playbook_history.edges, to_jsonb(playbooks) AS playbook_data
+SELECT playbook_history.id, playbook_history.playbook_id, playbook_history.status, playbook_history.error, playbook_history.result, playbook_history.triggered_at, playbook_history.edges, playbook_history.trigger_type, playbook_history.triggered_by, playbook_history.input, to_jsonb(playbooks) AS playbook_data
 FROM playbook_history
 JOIN playbooks ON playbooks.id = playbook_history.playbook_id
 WHERE playbook_history.id = $1
@@ -146,6 +175,9 @@ type GetPlaybookHistoryByIdRow struct {
 	Result       []byte           `json:"result"`
 	TriggeredAt  pgtype.Timestamp `json:"triggered_at"`
 	Edges        []byte           `json:"edges"`
+	TriggerType  NullTriggerType  `json:"trigger_type"`
+	TriggeredBy  pgtype.UUID      `json:"triggered_by"`
+	Input        []byte           `json:"input"`
 	PlaybookData json.RawMessage  `json:"playbook_data"`
 }
 
@@ -160,6 +192,9 @@ func (q *Queries) GetPlaybookHistoryById(ctx context.Context, id pgtype.UUID) (G
 		&i.Result,
 		&i.TriggeredAt,
 		&i.Edges,
+		&i.TriggerType,
+		&i.TriggeredBy,
+		&i.Input,
 		&i.PlaybookData,
 	)
 	return i, err
@@ -239,7 +274,7 @@ SET
     END,
     result = $5
 WHERE id = $6
-RETURNING id, playbook_id, status, error, result, triggered_at, edges
+RETURNING id, playbook_id, status, error, result, triggered_at, edges, trigger_type, triggered_by, input
 `
 
 type UpdatePlaybookHistoryParams struct {
@@ -269,6 +304,9 @@ func (q *Queries) UpdatePlaybookHistory(ctx context.Context, arg UpdatePlaybookH
 		&i.Result,
 		&i.TriggeredAt,
 		&i.Edges,
+		&i.TriggerType,
+		&i.TriggeredBy,
+		&i.Input,
 	)
 	return i, err
 }
@@ -277,7 +315,7 @@ const updatePlaybookHistoryStatus = `-- name: UpdatePlaybookHistoryStatus :one
 UPDATE playbook_history
 SET status = $2
 WHERE id = $1
-RETURNING id, playbook_id, status, error, result, triggered_at, edges
+RETURNING id, playbook_id, status, error, result, triggered_at, edges, trigger_type, triggered_by, input
 `
 
 type UpdatePlaybookHistoryStatusParams struct {
@@ -296,6 +334,9 @@ func (q *Queries) UpdatePlaybookHistoryStatus(ctx context.Context, arg UpdatePla
 		&i.Result,
 		&i.TriggeredAt,
 		&i.Edges,
+		&i.TriggerType,
+		&i.TriggeredBy,
+		&i.Input,
 	)
 	return i, err
 }

@@ -156,6 +156,7 @@ const (
 	EventTypeAttackTag     EventType = "attack_tag"
 	EventTypeLinked        EventType = "linked"
 	EventTypeUnlinked      EventType = "unlinked"
+	EventTypeUpdated       EventType = "updated"
 )
 
 func (e *EventType) Scan(src interface{}) error {
@@ -646,6 +647,15 @@ type PlaybookHistory struct {
 	Result      []byte           `json:"result"`
 	TriggeredAt pgtype.Timestamp `json:"triggered_at"`
 	Edges       []byte           `json:"edges"`
+	TriggerType NullTriggerType  `json:"trigger_type"`
+	TriggeredBy pgtype.UUID      `json:"triggered_by"`
+	Input       []byte           `json:"input"`
+}
+
+type PlaybookRunRecord struct {
+	PlaybookHistoryID pgtype.UUID `json:"playbook_history_id"`
+	ModuleType        string      `json:"module_type"`
+	RecordID          pgtype.UUID `json:"record_id"`
 }
 
 type RefreshToken struct {

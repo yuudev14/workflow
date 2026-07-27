@@ -17,6 +17,12 @@ export interface NavItem {
   title: string;
   url: string;
   icon: LucideIcon;
+  /**
+   * Prefix that lights the item up, when it differs from `url`. Alerts links to
+   * its dashboard but owns the whole `/alerts` subtree, so without this the item
+   * goes dark on the queue and detail pages.
+   */
+  match?: string;
   /** Hide the item unless the user holds this grant. */
   permission?: { module: string; action: string };
 }
@@ -55,7 +61,7 @@ export function NavMain({ sections }: { sections: NavSection[] }) {
                 <SidebarMenuButton
                   asChild
                   tooltip={item.title}
-                  isActive={isActive(pathname, item.url)}
+                  isActive={isActive(pathname, item.match ?? item.url)}
                 >
                   <Link href={item.url}>
                     <item.icon />

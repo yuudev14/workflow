@@ -1,17 +1,18 @@
 // Runs inside a fresh `node --input-type=commonjs-typescript` child spawned
-// by the sandbox — Node strips the types natively, no build step.
+// by the sandbox - Node strips the types natively, no build step.
 // Payload arrives as JSON on stdin, the result leaves as JSON on stdout.
 // Mirrors the Python code node: templates render over params (including the
 // code string itself), the snippet runs with `params`/`steps` in scope and
 // sets `result`, and the output is {"code_output": result}.
 //
-// NOTE: the user snippet itself stays JavaScript — it runs through
+// NOTE: the user snippet itself stays JavaScript - it runs through
 // `new AsyncFunction(...)`, which type stripping does not touch.
 "use strict";
 
 interface CodePayload {
   params?: Record<string, unknown>;
   steps?: Record<string, unknown>;
+  input?: Record<string, unknown>;
 }
 
 function render(value: unknown, variables: Record<string, unknown>): unknown {
@@ -38,7 +39,10 @@ process.stdin.on("data", (chunk: Buffer) => chunks.push(chunk));
 process.stdin.on("end", async () => {
   try {
     const payload: CodePayload = JSON.parse(Buffer.concat(chunks).toString());
-    const variables = { steps: payload.steps || {} };
+    const variables = {
+      steps: payload.steps || {},
+      input: payload.input || { records: [], parameters: {} },
+    };
     const params = render(payload.params || {}, variables) as Record<string, unknown>;
     const code = typeof params.code === "string" ? params.code : "";
 
@@ -54,9 +58,10 @@ process.stdin.on("end", async () => {
     const fn = new AsyncFunction(
       "params",
       "steps",
+      "input",
       `${code}\n;return typeof result === "undefined" ? undefined : result;`
     );
-    const result: unknown = await fn(params, variables.steps);
+    const result: unknown = await fn(params, variables.steps, variables.input);
     // Exit once stdout has flushed. Without this, any snippet that leaves the
     // event loop alive (a timer, an open socket, a fetch keep-alive pool) would
     // keep the process running until the node timeout SIGKILLs it.

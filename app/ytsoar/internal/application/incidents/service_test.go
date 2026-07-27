@@ -19,6 +19,7 @@ import (
 	"github.com/yuudev14/ytsoar/internal/domain"
 	"github.com/yuudev14/ytsoar/internal/domain/apperr"
 	"github.com/yuudev14/ytsoar/internal/logger"
+	"github.com/yuudev14/ytsoar/internal/types"
 )
 
 type publishedEvent struct {
@@ -61,8 +62,16 @@ func setup(t *testing.T) *testEnv {
 		}).
 		AnyTimes()
 
+	// The directory only labels assignee changes; returning nothing keeps the
+	// diff assertions about the diff.
+	users := mock_contracts.NewMockUserDirectory(ctrl)
+	users.EXPECT().
+		UsernamesByIDs(gomock.Any(), gomock.Any()).
+		Return(map[uuid.UUID]string{}, nil).
+		AnyTimes()
+
 	return &testEnv{
-		service:   incidents.NewService(logger.NewNop(), repo, timeline, tx, events),
+		service:   incidents.NewService(logger.NewNop(), repo, timeline, tx, events, users),
 		repo:      repo,
 		timeline:  timeline,
 		published: &published,
@@ -154,6 +163,55 @@ func TestCreateDoesNotPublishWhenLinkFails(t *testing.T) {
 	assert.Empty(t, *env.published)
 }
 
+func TestUpdateWritesFieldDiffToTimeline(t *testing.T) {
+	env := setup(t)
+	id := uuid.New()
+	actor := uuid.New()
+
+	env.repo.EXPECT().GetByID(gomock.Any(), id).
+		Return(domain.Incident{ID: id, Severity: domain.SeverityMedium}, nil)
+	env.repo.EXPECT().Update(gomock.Any(), id, gomock.Any()).
+		Return(domain.Incident{ID: id, Severity: domain.SeverityHigh}, nil)
+	env.repo.EXPECT().
+		AppendEvent(gomock.Any(), gomock.Any()).
+		DoAndReturn(func(_ context.Context, p incidents.AppendEventParams) error {
+			assert.Equal(t, domain.EventTypeUpdated, p.Type)
+			assert.Equal(t, id, p.IncidentID)
+
+			var body struct {
+				Changes []domain.FieldChange `json:"changes"`
+			}
+			require.NoError(t, json.Unmarshal(p.Body, &body))
+			require.Len(t, body.Changes, 1)
+			assert.Equal(t, "severity", body.Changes[0].Field)
+			assert.Equal(t, "medium", body.Changes[0].From)
+			assert.Equal(t, "high", body.Changes[0].To)
+			return nil
+		})
+
+	sev := "high"
+	_, err := env.service.Update(context.Background(), id, incidents.UpdateIncidentPayload{
+		Severity: types.Nullable[string]{Value: &sev, Set: true},
+	}, &actor)
+	require.NoError(t, err)
+}
+
+// A PATCH that changes nothing must not append an event.
+func TestUpdateWithNoActualChangeWritesNoEvent(t *testing.T) {
+	env := setup(t)
+	id := uuid.New()
+	unchanged := domain.Incident{ID: id, Severity: domain.SeverityHigh}
+
+	env.repo.EXPECT().GetByID(gomock.Any(), id).Return(unchanged, nil)
+	env.repo.EXPECT().Update(gomock.Any(), id, gomock.Any()).Return(unchanged, nil)
+
+	sev := "high"
+	_, err := env.service.Update(context.Background(), id, incidents.UpdateIncidentPayload{
+		Severity: types.Nullable[string]{Value: &sev, Set: true},
+	}, nil)
+	require.NoError(t, err)
+}
+
 // The stepper lives in the domain so a bad move is a 400, not a silent write.
 func TestUpdateStatusEnforcesTheTransitionStepper(t *testing.T) {
 	env := setup(t)
@@ -224,7 +282,7 @@ func TestUpdateStatusRejectsUnknownStatus(t *testing.T) {
 }
 
 // Escalation runs inside the alert service's transaction, so it must not open
-// one of its own or publish — the caller announces both entities after commit.
+// one of its own or publish - the caller announces both entities after commit.
 func TestCreateForEscalationDoesNotOpenATransactionOrPublish(t *testing.T) {
 	env := setup(t)
 	incident := domain.Incident{ID: uuid.New(), Title: "Encoded PowerShell execution"}

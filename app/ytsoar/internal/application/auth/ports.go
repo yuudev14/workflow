@@ -21,6 +21,7 @@ type UserRepository interface {
 	TouchLastLogin(ctx context.Context, id uuid.UUID) error
 	CountWithRole(ctx context.Context, roleName string) (int64, error)
 	List(ctx context.Context, offset, limit int, filter UserFilter) ([]domain.UserWithRoles, error)
+	ListAssignable(ctx context.Context) ([]domain.AssignableUser, error)
 	Count(ctx context.Context, filter UserFilter) (int, error)
 	GetWithRoles(ctx context.Context, id uuid.UUID) (domain.UserWithRoles, error)
 }

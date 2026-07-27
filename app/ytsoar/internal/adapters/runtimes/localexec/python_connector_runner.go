@@ -65,6 +65,7 @@ func (r *PythonConnectorRunner) Execute(ctx context.Context, req execution.Execu
 		"config_name":     configName,
 		"params":          params,
 		"steps":           req.Steps,
+		"input":           req.Input.TemplateVars(),
 	})
 	if err != nil {
 		return nil, err

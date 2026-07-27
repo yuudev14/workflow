@@ -29,6 +29,10 @@ func TestAlertRouteGrants(t *testing.T) {
 		{http.MethodPost, "/api/alerts/v1", "alerts.create"},
 		{http.MethodPost, "/api/alerts/v1/batch", "alerts.create"},
 
+		// Running automation is its own grant: alerts:update must not be enough
+		// to execute a playbook, and neither should playbooks:update.
+		{http.MethodPost, "/api/alerts/v1/run", "alerts.execute"},
+
 		{http.MethodPatch, "/api/alerts/v1/abc", "alerts.update"},
 		{http.MethodPatch, "/api/alerts/v1/abc/status", "alerts.update"},
 		{http.MethodPost, "/api/alerts/v1/abc/notes", "alerts.update"},
@@ -64,6 +68,7 @@ func TestIncidentRouteGrants(t *testing.T) {
 		{http.MethodGet, "/api/incidents/v1/abc/notes", "incidents.read"},
 
 		{http.MethodPost, "/api/incidents/v1", "incidents.create"},
+		{http.MethodPost, "/api/incidents/v1/run", "incidents.execute"},
 
 		{http.MethodPatch, "/api/incidents/v1/abc", "incidents.update"},
 		{http.MethodPatch, "/api/incidents/v1/abc/status", "incidents.update"},

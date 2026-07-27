@@ -9,16 +9,20 @@ import (
 	"github.com/yuudev14/ytsoar/internal/adapters/http/middleware"
 	rest "github.com/yuudev14/ytsoar/internal/adapters/http/rests"
 	"github.com/yuudev14/ytsoar/internal/application/alerts"
+	"github.com/yuudev14/ytsoar/internal/application/playbooks"
+	"github.com/yuudev14/ytsoar/internal/domain"
 	"github.com/yuudev14/ytsoar/internal/logger"
+	"github.com/yuudev14/ytsoar/internal/types"
 )
 
 type AlertHandler struct {
 	logger       logger.Logger
 	alertService *alerts.Service
+	orchestrator playbooks.PlaybookApplicationService
 }
 
-func NewAlertHandler(log logger.Logger, alertService *alerts.Service) *AlertHandler {
-	return &AlertHandler{logger: log, alertService: alertService}
+func NewAlertHandler(log logger.Logger, alertService *alerts.Service, orchestrator playbooks.PlaybookApplicationService) *AlertHandler {
+	return &AlertHandler{logger: log, alertService: alertService, orchestrator: orchestrator}
 }
 
 // actorID is optional on ingest: a forwarder posting alerts is authenticated
@@ -44,6 +48,25 @@ func pathUUID(c *gin.Context, param string) (uuid.UUID, bool) {
 	return id, true
 }
 
+// bindRange is shared by every /summary handler: bind the raw bounds, then let
+// Resolve apply the defaults and reject an impossible window.
+func bindRange(c *gin.Context, log logger.Logger) (types.ResolvedRange, bool) {
+	response := rest.Response{C: c}
+
+	var raw types.DateRange
+	if ok, code, err := rest.BindQueryAndValidate(c, &raw); !ok {
+		response.ResponseError(code, err)
+		return types.ResolvedRange{}, false
+	}
+
+	rng, err := raw.Resolve()
+	if err != nil {
+		response.Fail(log, err)
+		return types.ResolvedRange{}, false
+	}
+	return rng, true
+}
+
 func (h *AlertHandler) List(c *gin.Context) {
 	response := rest.Response{C: c}
 
@@ -64,7 +87,12 @@ func (h *AlertHandler) List(c *gin.Context) {
 func (h *AlertHandler) Summary(c *gin.Context) {
 	response := rest.Response{C: c}
 
-	summary, err := h.alertService.Summary(c.Request.Context())
+	rng, ok := bindRange(c, h.logger)
+	if !ok {
+		return
+	}
+
+	summary, err := h.alertService.Summary(c.Request.Context(), rng)
 	if err != nil {
 		response.Fail(h.logger, err)
 		return
@@ -264,4 +292,24 @@ func (h *AlertHandler) DeleteNote(c *gin.Context) {
 		return
 	}
 	c.Status(http.StatusNoContent)
+}
+
+// Run starts one playbook run against the selected alerts. The body carries ids
+// only; the records are hydrated server-side.
+func (h *AlertHandler) Run(c *gin.Context) {
+	response := rest.Response{C: c}
+
+	var payload playbooks.RunPlaybookPayload
+	if ok, code, err := rest.BindFormAndValidate(c, &payload); !ok {
+		response.ResponseError(code, err)
+		return
+	}
+
+	message, err := h.orchestrator.RunPlaybook(
+		c.Request.Context(), payload.PlaybookID, domain.ModuleEventAlert, payload, actorID(c))
+	if err != nil {
+		response.Fail(h.logger, err)
+		return
+	}
+	response.Response(http.StatusAccepted, message)
 }

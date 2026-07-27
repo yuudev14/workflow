@@ -23,7 +23,7 @@ func TestDesiredRoleNamesResolution(t *testing.T) {
 }
 
 func TestDesiredRoleNamesPassthroughOnly(t *testing.T) {
-	// no mapping table at all — every value is a passthrough candidate.
+	// no mapping table at all - every value is a passthrough candidate.
 	got := desiredRoleNames(OIDCConfig{}, []string{"analyst", "analyst"})
 	assert.Equal(t, []string{"analyst"}, got)
 }

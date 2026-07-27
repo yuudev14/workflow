@@ -5,6 +5,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/yuudev14/ytsoar/internal/domain"
+	"github.com/yuudev14/ytsoar/internal/types"
 )
 
 //go:generate mockgen -destination=mocks/repository_mock.go -package=mocks . IncidentRepository
@@ -28,7 +29,7 @@ type IncidentRepository interface {
 	// call is idempotent instead of writing a duplicate timeline entry.
 	LinkAlert(ctx context.Context, incidentID, alertID uuid.UUID, source domain.LinkSource) (linked bool, err error)
 	UnlinkAlert(ctx context.Context, incidentID, alertID uuid.UUID) error
-	Summary(ctx context.Context) (IncidentsSummary, error)
+	Summary(ctx context.Context, rng types.ResolvedRange) (IncidentsSummary, error)
 }
 
 //go:generate mockgen -destination=mocks/alert_timeline_mock.go -package=mocks . AlertTimeline

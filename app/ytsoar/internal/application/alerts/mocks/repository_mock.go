@@ -16,6 +16,7 @@ import (
 	uuid "github.com/google/uuid"
 	alerts "github.com/yuudev14/ytsoar/internal/application/alerts"
 	domain "github.com/yuudev14/ytsoar/internal/domain"
+	types "github.com/yuudev14/ytsoar/internal/types"
 	gomock "go.uber.org/mock/gomock"
 )
 
@@ -178,18 +179,18 @@ func (mr *MockAlertRepositoryMockRecorder) ListNotes(ctx, alertID any) *gomock.C
 }
 
 // Summary mocks base method.
-func (m *MockAlertRepository) Summary(ctx context.Context) (alerts.AlertsSummary, error) {
+func (m *MockAlertRepository) Summary(ctx context.Context, rng types.ResolvedRange) (alerts.AlertsSummary, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Summary", ctx)
+	ret := m.ctrl.Call(m, "Summary", ctx, rng)
 	ret0, _ := ret[0].(alerts.AlertsSummary)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // Summary indicates an expected call of Summary.
-func (mr *MockAlertRepositoryMockRecorder) Summary(ctx any) *gomock.Call {
+func (mr *MockAlertRepositoryMockRecorder) Summary(ctx, rng any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Summary", reflect.TypeOf((*MockAlertRepository)(nil).Summary), ctx)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Summary", reflect.TypeOf((*MockAlertRepository)(nil).Summary), ctx, rng)
 }
 
 // Update mocks base method.

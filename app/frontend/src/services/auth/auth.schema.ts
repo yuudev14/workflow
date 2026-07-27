@@ -16,7 +16,7 @@ export interface LoginPayload {
   password: string;
 }
 
-/** The public per-provider shape for the login screen — never carries a secret. */
+/** The public per-provider shape for the login screen - never carries a secret. */
 export interface AuthProviderSummary {
   id: string;
   name: string;
@@ -26,7 +26,7 @@ export interface AuthProviderSummary {
 
 /**
  * The tokens also arrive as httpOnly cookies, which is what the browser
- * actually authenticates with — these fields exist for clients without a
+ * actually authenticates with - these fields exist for clients without a
  * cookie jar (curl, the CLI) and are unused by the frontend.
  */
 export interface SessionResponse {

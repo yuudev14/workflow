@@ -3,7 +3,7 @@
 // passed inline (`python3 -I -c` / `node -e`); the payload travels over stdin
 // as JSON and the result comes back on stdout as JSON, so nothing is written
 // to disk. Subprocesses give fault isolation (crash/hang/OOM cannot take the
-// worker down) — the worker container remains the security boundary.
+// worker down) - the worker container remains the security boundary.
 package localexec
 
 import (

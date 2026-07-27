@@ -1,5 +1,5 @@
-// The sandbox hosts ALL dynamic code — Python connectors, JS connectors and
-// code snippets — behind the ConnectorRuntime gRPC API. Every run is a fresh
+// The sandbox hosts ALL dynamic code - Python connectors, JS connectors and
+// code snippets - behind the ConnectorRuntime gRPC API. Every run is a fresh
 // subprocess (localexec). It deliberately has no database or message-queue
 // access: deploy it with zero credentials in its environment.
 package main
@@ -30,7 +30,7 @@ func main() {
 
 	// Python connectors are the default: any connector without an explicit
 	// mapping runs through the python connector harness. Connectors whose
-	// info.json declares "runtime": "node" run through the node harness —
+	// info.json declares "runtime": "node" run through the node harness -
 	// checked per request, so connectors uploaded after boot route correctly
 	// without a restart.
 	var defaultRuntime execution.NodeRuntime

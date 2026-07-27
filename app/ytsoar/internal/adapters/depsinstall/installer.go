@@ -1,5 +1,5 @@
 // Package depsinstall vendors a connector's declared dependencies right
-// after upload — the same commands `make connector-deps` runs for the whole
+// after upload - the same commands `make connector-deps` runs for the whole
 // tree. It executes in the API container, whose alpine/musl toolchain
 // matches the sandbox image that will import the packages.
 package depsinstall

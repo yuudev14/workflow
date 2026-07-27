@@ -23,7 +23,7 @@ import { RolePicker } from "../../_components/RolePicker";
 /**
  * Create and edit share this dialog because the fields are the same. They are
  * not the same request, though: creating takes the password and role ids in one
- * body, while editing sends the profile and the roles separately — the api has
+ * body, while editing sends the profile and the roles separately - the api has
  * no endpoint that changes both at once.
  */
 export function UserDialog({
@@ -112,7 +112,7 @@ export function UserDialog({
           <DialogTitle>{editing ? `Edit ${user.username}` : "New user"}</DialogTitle>
           <DialogDescription>
             {editing
-              ? "The username cannot change — it identifies the account in the audit trail."
+              ? "The username cannot change - it identifies the account in the audit trail."
               : "The user signs in with this username and password."}
           </DialogDescription>
         </DialogHeader>

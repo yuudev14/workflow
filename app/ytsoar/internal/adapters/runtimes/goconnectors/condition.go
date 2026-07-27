@@ -13,9 +13,9 @@ import (
 // case that matches wins -> {"result": "<id>"}; none match -> {"result": "else"}.
 // The editor routes each id to an outgoing edge, which the executor then follows.
 // They differ only in how a case is written:
-//   - "switch": simple left/operator/right compare (==, !=, contains, ...) — no
+//   - "switch": simple left/operator/right compare (==, !=, contains, ...) - no
 //     templating to learn.
-//   - "switch_expression": the advanced mode — a full template expression per case,
+//   - "switch_expression": the advanced mode - a full template expression per case,
 //     already rendered by the registry (gonja/jinja2), so {{ ...score > 80 }}
 //     arrives as "True" and is read for truthiness.
 type ConditionConnector struct{}
@@ -137,7 +137,7 @@ func truthy(value any) bool {
 	}
 }
 
-// canonicalNumber matches plainly-formatted numbers ("5", "-3.25") — no
+// canonicalNumber matches plainly-formatted numbers ("5", "-3.25") - no
 // leading zeros, no exponent. Equality coerces to numbers only for these, so
 // "5" == "5.0" holds but id-like values ("0123", "1e3") compare as strings
 // and never collide numerically.

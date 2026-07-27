@@ -149,6 +149,38 @@ func (r *UserRepositoryImpl) Count(ctx context.Context, filter auth.UserFilter) 
 	return CollectOneScalarFromSqlizer[int](ctx, stmt, r.pool, r.logger)
 }
 
+// ListAssignable returns only id and username. Everything else on a user row -
+// email, roles, auth_provider, external_id, last_login_at - stays behind
+// settings:read on the full list route; a colleague's username is ordinary SOC
+// knowledge that any analyst needs in order to fill an assignee picker.
+func (r *UserRepositoryImpl) ListAssignable(ctx context.Context) ([]domain.AssignableUser, error) {
+	stmt := selectUsers("u.id, u.username").
+		Where(sq.Eq{"u.is_active": true}).
+		OrderBy("u.username").
+		Limit(500)
+
+	return CollectRowsFromSqlizer[domain.AssignableUser](ctx, stmt, r.pool, r.logger)
+}
+
+// UsernamesByIDs implements contracts.UserDirectory.
+func (r *UserRepositoryImpl) UsernamesByIDs(ctx context.Context, ids []uuid.UUID) (map[uuid.UUID]string, error) {
+	if len(ids) == 0 {
+		return map[uuid.UUID]string{}, nil
+	}
+
+	rows, err := CollectRowsFromSqlizer[domain.AssignableUser](ctx,
+		selectUsers("u.id, u.username").Where(sq.Eq{"u.id": ids}), r.pool, r.logger)
+	if err != nil {
+		return nil, err
+	}
+
+	names := make(map[uuid.UUID]string, len(rows))
+	for _, row := range rows {
+		names[row.ID] = row.Username
+	}
+	return names, nil
+}
+
 func (r *UserRepositoryImpl) GetWithRoles(ctx context.Context, id uuid.UUID) (domain.UserWithRoles, error) {
 	stmt := selectUsers("u.*, " + rolesAggregate).Where(sq.Eq{"u.id": id})
 

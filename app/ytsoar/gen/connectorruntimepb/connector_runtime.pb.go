@@ -33,8 +33,11 @@ type ExecuteOperationRequest struct {
 	PlaybookHistoryId string `protobuf:"bytes,6,opt,name=playbook_history_id,json=playbookHistoryId,proto3" json:"playbook_history_id,omitempty"`
 	TaskId            string `protobuf:"bytes,7,opt,name=task_id,json=taskId,proto3" json:"task_id,omitempty"`
 	TimeoutMs         uint32 `protobuf:"varint,8,opt,name=timeout_ms,json=timeoutMs,proto3" json:"timeout_ms,omitempty"`
-	unknownFields     protoimpl.UnknownFields
-	sizeCache         protoimpl.SizeCache
+	// trigger data for the run (JSON object: module_type, records, parameters),
+	// exposed to templates as `var.input`
+	InputJson     *string `protobuf:"bytes,9,opt,name=input_json,json=inputJson,proto3,oneof" json:"input_json,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *ExecuteOperationRequest) Reset() {
@@ -121,6 +124,13 @@ func (x *ExecuteOperationRequest) GetTimeoutMs() uint32 {
 		return x.TimeoutMs
 	}
 	return 0
+}
+
+func (x *ExecuteOperationRequest) GetInputJson() string {
+	if x != nil && x.InputJson != nil {
+		return *x.InputJson
+	}
+	return ""
 }
 
 type ExecuteOperationResponse struct {
@@ -260,7 +270,7 @@ var File_connector_runtime_proto protoreflect.FileDescriptor
 
 const file_connector_runtime_proto_rawDesc = "" +
 	"\n" +
-	"\x17connector_runtime.proto\"\xc0\x02\n" +
+	"\x17connector_runtime.proto\"\xf3\x02\n" +
 	"\x17ExecuteOperationRequest\x12!\n" +
 	"\fconnector_id\x18\x01 \x01(\tR\vconnectorId\x12\x1c\n" +
 	"\toperation\x18\x02 \x01(\tR\toperation\x12$\n" +
@@ -272,8 +282,11 @@ const file_connector_runtime_proto_rawDesc = "" +
 	"\x13playbook_history_id\x18\x06 \x01(\tR\x11playbookHistoryId\x12\x17\n" +
 	"\atask_id\x18\a \x01(\tR\x06taskId\x12\x1d\n" +
 	"\n" +
-	"timeout_ms\x18\b \x01(\rR\ttimeoutMsB\x0e\n" +
-	"\f_config_name\"Q\n" +
+	"timeout_ms\x18\b \x01(\rR\ttimeoutMs\x12\"\n" +
+	"\n" +
+	"input_json\x18\t \x01(\tH\x01R\tinputJson\x88\x01\x01B\x0e\n" +
+	"\f_config_nameB\r\n" +
+	"\v_input_json\"Q\n" +
 	"\x18ExecuteOperationResponse\x12\x1f\n" +
 	"\vresult_json\x18\x01 \x01(\tR\n" +
 	"resultJson\x12\x14\n" +

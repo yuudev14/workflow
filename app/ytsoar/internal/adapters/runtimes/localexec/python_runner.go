@@ -39,6 +39,7 @@ func (r *PythonRunner) Execute(ctx context.Context, req execution.ExecutionReque
 	payload, err := json.Marshal(map[string]any{
 		"params": params,
 		"steps":  req.Steps,
+		"input":  req.Input.TemplateVars(),
 	})
 	if err != nil {
 		return nil, err

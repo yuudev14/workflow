@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"time"
 
 	sq "github.com/Masterminds/squirrel"
 	"github.com/google/uuid"
@@ -12,6 +13,7 @@ import (
 	"github.com/yuudev14/ytsoar/internal/application/incidents"
 	"github.com/yuudev14/ytsoar/internal/domain"
 	"github.com/yuudev14/ytsoar/internal/logger"
+	"github.com/yuudev14/ytsoar/internal/types"
 )
 
 type IncidentRepositoryImpl struct {
@@ -33,9 +35,21 @@ func (r *IncidentRepositoryImpl) queriesFromContext(ctx context.Context) db.Quer
 
 const incidentAlertCount = `(SELECT count(*)::int FROM incident_alerts ia WHERE ia.incident_id = i.id) AS alert_count`
 
-// run_count is 0 until module-event triggers (#6) link a playbook run to an
-// incident; the column exists so the response shape does not change then.
-const incidentRunCount = `0::int AS run_count`
+const incidentRunCount = `(SELECT count(*)::int FROM playbook_run_records prr
+    WHERE prr.module_type = 'incident' AND prr.record_id = i.id) AS run_count`
+
+// Timestamps inside the aggregate are cast to UTC because jsonb renders a bare
+// `timestamp` with no offset, which Go's RFC3339 unmarshal then rejects.
+const incidentRunsAggregate = `COALESCE((
+    SELECT jsonb_agg(jsonb_build_object(
+               'playbook_history_id', h.id, 'playbook', p.name, 'status', h.status,
+               'created_at', h.triggered_at AT TIME ZONE 'UTC')
+           ORDER BY h.triggered_at DESC)
+    FROM playbook_run_records prr
+    JOIN playbook_history h ON h.id = prr.playbook_history_id
+    LEFT JOIN playbooks p ON p.id = h.playbook_id
+    WHERE prr.module_type = 'incident' AND prr.record_id = i.id
+), '[]'::jsonb) AS runs`
 
 const incidentListColumns = `i.id, i.title, i.severity, i.status, i.assignee_id,
     u.username AS assignee, i.team_id, i.tags, ` + incidentAlertCount + `, ` + incidentRunCount + `,
@@ -78,6 +92,7 @@ type incidentDetailRow struct {
 	Timeline     json.RawMessage `db:"timeline"`
 	LinkedNotes  json.RawMessage `db:"linked_notes"`
 	LinkedAlerts json.RawMessage `db:"linked_alerts"`
+	Runs         json.RawMessage `db:"runs"`
 }
 
 func selectIncidents(columns string) sq.SelectBuilder {
@@ -87,48 +102,75 @@ func selectIncidents(columns string) sq.SelectBuilder {
 		PlaceholderFormat(sq.Dollar)
 }
 
-func applyIncidentFilter(stmt sq.SelectBuilder, filter incidents.IncidentFilter) sq.SelectBuilder {
+func applyIncidentFilter(stmt sq.SelectBuilder, filter incidents.IncidentFilter) (sq.SelectBuilder, error) {
 	if len(filter.Status) > 0 {
 		stmt = stmt.Where(sq.Eq{"i.status": filter.Status})
 	}
 	if len(filter.Severity) > 0 {
 		stmt = stmt.Where(sq.Eq{"i.severity": filter.Severity})
 	}
-	if filter.AssigneeID != nil {
-		stmt = stmt.Where(sq.Eq{"i.assignee_id": *filter.AssigneeID})
+	if len(filter.SLAState) > 0 {
+		stmt = stmt.Where(sq.Eq{"i.sla_state": filter.SLAState})
 	}
-	if filter.TeamID != nil {
-		stmt = stmt.Where(sq.Eq{"i.team_id": *filter.TeamID})
+	stmt = applyAssigneeFilter(stmt, "i", filter.AssigneeID, filter.Unassigned)
+	if len(filter.TeamID) > 0 {
+		stmt = stmt.Where(sq.Eq{"i.team_id": filter.TeamID})
+	}
+	if len(filter.Tags) > 0 {
+		stmt = stmt.Where(sq.Expr("i.tags && ?", filter.Tags))
 	}
 	if filter.Open != nil && *filter.Open {
 		stmt = stmt.Where(sq.Expr("i.status NOT IN ('resolved', 'closed')"))
 	}
-	if filter.Search != nil {
-		term := fmt.Sprint("%", *filter.Search, "%")
+
+	from, to, err := filter.CreatedRange()
+	if err != nil {
+		return stmt, err
+	}
+	if from != nil {
+		stmt = stmt.Where(sq.GtOrEq{"i.created_at": *from})
+	}
+	if to != nil {
+		stmt = stmt.Where(sq.LtOrEq{"i.created_at": *to})
+	}
+
+	if term, ok := likeTerm(filter.Search); ok {
 		stmt = stmt.Where(sq.Expr("i.title ILIKE ?", term))
 	}
-	return stmt
+	return stmt, nil
 }
 
 func (r *IncidentRepositoryImpl) List(ctx context.Context, filter incidents.IncidentFilter) ([]incidents.IncidentListItem, *string, error) {
-	stmt := applyIncidentFilter(selectIncidents(incidentListColumns), filter)
+	stmt, err := applyIncidentFilter(selectIncidents(incidentListColumns), filter)
+	if err != nil {
+		return nil, nil, err
+	}
 
-	stmt, err := applyKeyset(stmt, "i", filter.Cursor)
+	stmt, err = applyKeyset(stmt, "i", filter.Cursor)
 	if err != nil {
 		return nil, nil, err
 	}
 	stmt = orderKeyset(stmt, "i").Limit(uint64(filter.Limit + 1))
+	if filter.Offset != nil {
+		stmt = stmt.Offset(uint64(*filter.Offset))
+	}
 
 	rows, err := CollectRowsFromSqlizer[incidents.IncidentListItem](ctx, stmt, r.pool, r.logger)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	if len(rows) <= filter.Limit {
+	hasMore := len(rows) > filter.Limit
+	if hasMore {
+		rows = rows[:filter.Limit]
+	}
+
+	// Offset mode returns no cursor: handing back both would invite a client to
+	// interleave the two paging modes on one result set.
+	if !hasMore || filter.Offset != nil {
 		return rows, nil, nil
 	}
 
-	rows = rows[:filter.Limit]
 	last := rows[len(rows)-1]
 	next, err := encodeCursor("created_at", last.CreatedAt, last.ID)
 	if err != nil {
@@ -138,8 +180,11 @@ func (r *IncidentRepositoryImpl) List(ctx context.Context, filter incidents.Inci
 }
 
 func (r *IncidentRepositoryImpl) Count(ctx context.Context, filter incidents.IncidentFilter) (int, error) {
-	stmt := applyIncidentFilter(
+	stmt, err := applyIncidentFilter(
 		sq.Select("count(*)").From("incidents i").PlaceholderFormat(sq.Dollar), filter)
+	if err != nil {
+		return 0, err
+	}
 	return CollectOneScalarFromSqlizer[int](ctx, stmt, r.pool, r.logger)
 }
 
@@ -153,7 +198,8 @@ func (r *IncidentRepositoryImpl) GetByID(ctx context.Context, id uuid.UUID) (dom
 
 func (r *IncidentRepositoryImpl) GetDetail(ctx context.Context, id uuid.UUID) (incidents.IncidentDetail, error) {
 	columns := "i.*, u.username AS assignee, " + incidentAlertCount + ", " + incidentRunCount + ", " +
-		incidentTimelineAggregate + ", " + incidentNotesAggregate + ", " + incidentAlertsAggregate
+		incidentTimelineAggregate + ", " + incidentNotesAggregate + ", " + incidentAlertsAggregate +
+		", " + incidentRunsAggregate
 
 	rows, err := CollectRowsFromSqlizer[incidentDetailRow](
 		ctx, selectIncidents(columns).Where(sq.Eq{"i.id": id}), r.pool, r.logger)
@@ -170,8 +216,10 @@ func (r *IncidentRepositoryImpl) GetDetail(ctx context.Context, id uuid.UUID) (i
 		Assignee:   row.Assignee,
 		AlertCount: row.AlertCount,
 		RunCount:   row.RunCount,
-		Runs:       []incidents.IncidentRun{},
 		IOCs:       []incidents.IOC{},
+	}
+	if err := json.Unmarshal(row.Runs, &detail.Runs); err != nil {
+		return incidents.IncidentDetail{}, err
 	}
 	if err := json.Unmarshal(row.Timeline, &detail.Timeline); err != nil {
 		return incidents.IncidentDetail{}, err
@@ -304,7 +352,7 @@ func (r *IncidentRepositoryImpl) ListNotes(ctx context.Context, incidentID uuid.
 }
 
 // ON CONFLICT DO NOTHING means zero rows affected is a repeat link, not a
-// failure — the caller uses that to skip a duplicate timeline entry.
+// failure - the caller uses that to skip a duplicate timeline entry.
 func (r *IncidentRepositoryImpl) LinkAlert(ctx context.Context, incidentID, alertID uuid.UUID, source domain.LinkSource) (bool, error) {
 	affected, err := r.queriesFromContext(ctx).InsertIncidentAlert(ctx, db.InsertIncidentAlertParams{
 		IncidentID: toPgUUID(incidentID),
@@ -331,12 +379,13 @@ func (r *IncidentRepositoryImpl) UnlinkAlert(ctx context.Context, incidentID, al
 	return nil
 }
 
-func (r *IncidentRepositoryImpl) Summary(ctx context.Context) (incidents.IncidentsSummary, error) {
+func (r *IncidentRepositoryImpl) Summary(ctx context.Context, rng types.ResolvedRange) (incidents.IncidentsSummary, error) {
 	summary := incidents.IncidentsSummary{
 		StatusMix:   []incidents.StatusBucket{},
 		SeverityMix: []incidents.SeverityBucket{},
-		MTTRTrend:   []int{},
+		MTTRTrend:   []incidents.MTTRPoint{},
 		SLAAtRisk:   []incidents.SLARisk{},
+		Range:       rng,
 	}
 
 	openFilter := sq.Expr("i.status NOT IN ('resolved', 'closed')")
@@ -369,7 +418,7 @@ func (r *IncidentRepositoryImpl) Summary(ctx context.Context) (incidents.Inciden
 	}
 	summary.SeverityMix = severityMix
 
-	// SLA deadlines are never stamped yet (#14), so this is empty in practice —
+	// SLA deadlines are never stamped yet (#14), so this is empty in practice -
 	// the query is here so it lights up the day a policy engine sets them.
 	slaAtRisk, err := CollectRowsFromSqlizer[incidents.SLARisk](ctx,
 		sq.Select("i.id, i.title, i.sla_deadline, (i.sla_state = 'breached') AS breached").
@@ -385,50 +434,96 @@ func (r *IncidentRepositoryImpl) Summary(ctx context.Context) (incidents.Inciden
 	}
 	summary.SLAAtRisk = slaAtRisk
 
-	mttr, err := r.mttrTrend(ctx)
+	mttr, err := r.mttrTrend(ctx, rng)
 	if err != nil {
 		return incidents.IncidentsSummary{}, err
 	}
 	summary.MTTRTrend = mttr
 
+	prevFrom, prevTo := rng.Previous()
+	created, err := r.windowCount(ctx, "created_at", rng, prevFrom, prevTo)
+	if err != nil {
+		return incidents.IncidentsSummary{}, err
+	}
+	summary.Created = created
+
+	resolved, err := r.windowCount(ctx, "resolved_at", rng, prevFrom, prevTo)
+	if err != nil {
+		return incidents.IncidentsSummary{}, err
+	}
+	summary.Resolved = resolved
+
+	mttrWindow, err := r.mttrWindow(ctx, rng, prevFrom, prevTo)
+	if err != nil {
+		return incidents.IncidentsSummary{}, err
+	}
+	summary.MTTRSeconds = mttrWindow
+
 	return summary, nil
 }
 
-// Eight weekly points, oldest first, in seconds. A week with no resolutions
-// reports 0 rather than dropping out and shifting every later point left.
-func (r *IncidentRepositoryImpl) mttrTrend(ctx context.Context) ([]int, error) {
+// A bucket with no resolutions reports 0 rather than dropping out and shifting
+// every later point left.
+func (r *IncidentRepositoryImpl) mttrTrend(ctx context.Context, rng types.ResolvedRange) ([]incidents.MTTRPoint, error) {
 	const q = `
-        SELECT COALESCE(c.avg_seconds, 0)::int AS avg_seconds
+        SELECT d.bucket_start AT TIME ZONE 'UTC' AS bucket_start,
+               COALESCE(c.avg_seconds, 0)::int AS avg_seconds
         FROM generate_series(
-            date_trunc('week', CURRENT_DATE) - INTERVAL '7 weeks',
-            date_trunc('week', CURRENT_DATE),
-            INTERVAL '1 week'
-        ) AS d(week)
+                 date_trunc($3, $1::timestamptz), $2::timestamptz, ('1 ' || $3)::interval
+             ) AS d(bucket_start)
         LEFT JOIN (
-            SELECT date_trunc('week', resolved_at) AS week,
+            SELECT date_trunc($3, resolved_at) AS bucket_start,
                    avg(EXTRACT(EPOCH FROM (resolved_at - created_at))) AS avg_seconds
             FROM incidents
-            WHERE resolved_at IS NOT NULL
-              AND resolved_at >= date_trunc('week', CURRENT_DATE) - INTERVAL '7 weeks'
-            GROUP BY date_trunc('week', resolved_at)
-        ) c ON c.week = d.week
-        ORDER BY d.week`
+            WHERE resolved_at IS NOT NULL AND resolved_at >= $1 AND resolved_at <= $2
+            GROUP BY 1
+        ) c ON c.bucket_start = d.bucket_start
+        ORDER BY d.bucket_start`
 
-	rows, err := r.pool.Query(ctx, q)
+	rows, err := r.pool.Query(ctx, q, rng.From, rng.To, rng.Bucket)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 
-	trend := make([]int, 0, 8)
+	points := make([]incidents.MTTRPoint, 0, 32)
 	for rows.Next() {
-		var n int
-		if err := rows.Scan(&n); err != nil {
+		var p incidents.MTTRPoint
+		if err := rows.Scan(&p.BucketStart, &p.AvgSeconds); err != nil {
 			return nil, err
 		}
-		trend = append(trend, n)
+		points = append(points, p)
 	}
-	return trend, rows.Err()
+	return points, rows.Err()
+}
+
+// windowCount counts rows whose column falls in the selected range beside the
+// same count for the preceding range - the only baseline that makes the delta
+// on a KPI card mean anything.
+func (r *IncidentRepositoryImpl) windowCount(ctx context.Context, column string, rng types.ResolvedRange, prevFrom, prevTo time.Time) (types.WindowCount, error) {
+	q := fmt.Sprintf(`
+        SELECT
+            count(*) FILTER (WHERE %[1]s >= $1 AND %[1]s <= $2)::int AS current,
+            count(*) FILTER (WHERE %[1]s >= $3 AND %[1]s < $4)::int AS previous
+        FROM incidents`, column)
+
+	var out types.WindowCount
+	err := r.pool.QueryRow(ctx, q, rng.From, rng.To, prevFrom, prevTo).Scan(&out.Current, &out.Previous)
+	return out, err
+}
+
+func (r *IncidentRepositoryImpl) mttrWindow(ctx context.Context, rng types.ResolvedRange, prevFrom, prevTo time.Time) (types.WindowCount, error) {
+	const q = `
+        SELECT
+            COALESCE(avg(EXTRACT(EPOCH FROM (resolved_at - created_at)))
+                     FILTER (WHERE resolved_at >= $1 AND resolved_at <= $2), 0)::int AS current,
+            COALESCE(avg(EXTRACT(EPOCH FROM (resolved_at - created_at)))
+                     FILTER (WHERE resolved_at >= $3 AND resolved_at < $4), 0)::int AS previous
+        FROM incidents WHERE resolved_at IS NOT NULL`
+
+	var out types.WindowCount
+	err := r.pool.QueryRow(ctx, q, rng.From, rng.To, prevFrom, prevTo).Scan(&out.Current, &out.Previous)
+	return out, err
 }
 
 func toDomainIncident(row db.Incident) domain.Incident {

@@ -14,7 +14,7 @@ import (
 )
 
 // The whole provider object pasted into the config field (a real mistake we hit)
-// must be rejected at create, before any row is written — not stored to fail
+// must be rejected at create, before any row is written - not stored to fail
 // later at login. mockProviders has no Create expectation, so a write fails.
 func TestCreateProviderRejectsWrappedConfig(t *testing.T) {
 	env := setupTest(t)

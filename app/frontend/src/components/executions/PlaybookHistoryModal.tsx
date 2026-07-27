@@ -43,7 +43,7 @@ const FILTERS: { label: string; value?: string }[] = [
 
 // Run history for a single playbook, in a modal. Mirrors the /history route's
 // split view (left rail list + right flow replay), but selection stays in the
-// modal — no navigation. Shares the route's query key so an open Runs view and
+// modal - no navigation. Shares the route's query key so an open Runs view and
 // this modal read the same cache.
 const PlaybookHistoryModal: React.FC<{
   playbookId: string;

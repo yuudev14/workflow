@@ -29,7 +29,7 @@ func adminContext(t *testing.T, actor *domain.AuthUser) (*AdminHandler, *gin.Con
 	return &AdminHandler{logger: logger.NewNop()}, c, recorder
 }
 
-// Deactivating yourself is easy to do by accident and awkward to undo — the
+// Deactivating yourself is easy to do by accident and awkward to undo - the
 // admin who does it may be the only one who could have reversed it.
 func TestDeactivateSelfIsRejected(t *testing.T) {
 	actorID := uuid.New()
@@ -83,7 +83,7 @@ func TestAdminRejectsMalformedPathIDs(t *testing.T) {
 			c.Params = []gin.Param{{Key: tc.param, Value: "not-a-uuid"}}
 
 			// The handler holds a nil service, so reaching it panics. Catching
-			// that here reports the real defect — validation was skipped —
+			// that here reports the real defect - validation was skipped -
 			// instead of killing the binary and hiding the sibling cases.
 			func() {
 				defer func() {

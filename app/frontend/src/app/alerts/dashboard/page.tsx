@@ -16,6 +16,7 @@ import {
   type BarRow,
   type BarTone,
 } from "@/components/soar";
+import { SOURCE_LABEL } from "../_components/alertPresentation";
 
 const SEV_TONE: Record<string, BarTone> = {
   critical: "rose",
@@ -32,11 +33,11 @@ export default function Page() {
   });
 
   const summary = summaryQuery.data;
-  const maxSev = Math.max(...(summary?.bySeverity.map((s) => s.count) ?? [1]));
-  const maxSrc = Math.max(...(summary?.bySource.map((s) => s.count) ?? [1]));
+  const maxSev = Math.max(...(summary?.by_severity.map((s) => s.count) ?? [1]));
+  const maxSrc = Math.max(...(summary?.by_source.map((s) => s.count) ?? [1]));
 
   const sevRows: BarRow[] =
-    summary?.bySeverity.map((s) => ({
+    summary?.by_severity.map((s) => ({
       label: s.severity[0].toUpperCase() + s.severity.slice(1),
       value: s.count / maxSev,
       display: s.count,
@@ -44,19 +45,19 @@ export default function Page() {
     })) ?? [];
 
   const srcRows: BarRow[] =
-    summary?.bySource.map((s) => ({
-      label: s.label,
+    summary?.by_source.map((s) => ({
+      label: SOURCE_LABEL[s.source_kind],
       value: s.count / maxSrc,
       display: s.count,
       tone: "ink" as BarTone,
     })) ?? [];
 
   const pbRows: BarRow[] =
-    summary?.topPlaybooks.map((p) => ({
+    summary?.top_playbooks.map((p) => ({
       label: p.label,
-      value: p.successRate / 100,
-      display: `${p.successRate}%`,
-      tone: (p.successRate >= 80 ? "moss" : "amber") as BarTone,
+      value: p.success_rate / 100,
+      display: `${Math.round(p.success_rate)}%`,
+      tone: (p.success_rate >= 80 ? "moss" : "amber") as BarTone,
     })) ?? [];
 
   return (
@@ -79,7 +80,7 @@ export default function Page() {
 
         <div className="grid grid-cols-1 gap-3 lg:grid-cols-[1.3fr_1fr]">
           <Panel>
-            <PanelTitle aside={`${summary?.total ?? 0} total`}>Volume — last 14 days</PanelTitle>
+            <PanelTitle aside={`${summary?.total ?? 0} total`}>Volume - last 14 days</PanelTitle>
             <TrendChart
               values={summary?.volume ?? []}
               startLabel="14 days ago"

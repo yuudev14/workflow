@@ -51,7 +51,7 @@ func (h *AuthHandler) OIDCStart(c *gin.Context) {
 
 // OIDCCallback verifies state, exchanges the code, provisions/syncs the user,
 // sets the session cookies and returns the browser to the app. On any failure
-// it lands on /login?error=sso — never an error body, since this is a top-level
+// it lands on /login?error=sso - never an error body, since this is a top-level
 // navigation the user sees.
 func (h *AuthHandler) OIDCCallback(c *gin.Context) {
 	frontend := h.authService.FrontendURL()

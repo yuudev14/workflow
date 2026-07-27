@@ -49,6 +49,9 @@ type PlaybookHistory struct {
 	Result      any             `db:"result" json:"result"`
 	TriggeredAt time.Time       `db:"triggered_at" json:"triggered_at"`
 	Edges       json.RawMessage `db:"edges" json:"edges"`
+	TriggerType *string         `db:"trigger_type" json:"trigger_type"`
+	TriggeredBy *uuid.UUID      `db:"triggered_by" json:"triggered_by"`
+	Input       json.RawMessage `db:"input" json:"input"`
 }
 
 type PlaybookGraph struct {
@@ -72,4 +75,7 @@ type PlaybookHistoryResponse struct {
 	Result       *json.RawMessage `db:"result" json:"result"`
 	TriggeredAt  time.Time        `db:"triggered_at" json:"triggered_at"`
 	Edges        json.RawMessage  `db:"edges" json:"edges"`
+	TriggerType  *string          `db:"trigger_type" json:"trigger_type"`
+	TriggeredBy  *uuid.UUID       `db:"triggered_by" json:"triggered_by"`
+	Input        json.RawMessage  `db:"input" json:"input"`
 }

@@ -5,7 +5,7 @@ export const FLOW_SELECT_TRIGGER_ID = "select_trigger"
 // branch ("true"/"false", a switch case id, or "else"), read by the executor.
 export const CONDITION_CONNECTOR_ID = "condition"
 
-// virtual "code snippet" connectors — only info.json exists in the tree, the
+// virtual "code snippet" connectors - only info.json exists in the tree, the
 // sandbox harness IS the implementation. Single-operation, no config.
 export const CODE_SNIPPET_PY_ID = "code_snippet_py"
 export const CODE_SNIPPET_JS_ID = "code_snippet_js"

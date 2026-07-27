@@ -5,6 +5,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/yuudev14/ytsoar/internal/domain"
+	"github.com/yuudev14/ytsoar/internal/types"
 )
 
 //go:generate mockgen -destination=mocks/repository_mock.go -package=mocks . AlertRepository
@@ -18,7 +19,7 @@ type AlertRepository interface {
 	Update(ctx context.Context, id uuid.UUID, params UpdateParams) (domain.Alert, error)
 	UpdateStatus(ctx context.Context, id uuid.UUID, status domain.AlertStatus, closureNote *string) (domain.Alert, error)
 	AppendEvent(ctx context.Context, params AppendEventParams) error
-	Summary(ctx context.Context) (AlertsSummary, error)
+	Summary(ctx context.Context, rng types.ResolvedRange) (AlertsSummary, error)
 
 	AddNote(ctx context.Context, alertID uuid.UUID, authorID *uuid.UUID, body string) (domain.AlertNote, error)
 	GetNote(ctx context.Context, noteID uuid.UUID) (domain.AlertNote, error)

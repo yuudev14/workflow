@@ -46,7 +46,7 @@ func grantFor(t *testing.T, register func(*gin.RouterGroup, middleware.Permissio
 		t.Fatalf("no route registered for %s %s", method, path)
 	}
 	if rec.Code != grantProbeStatus {
-		t.Fatalf("%s %s did not pass through a permission guard (status %d) — route is ungated",
+		t.Fatalf("%s %s did not pass through a permission guard (status %d) - route is ungated",
 			method, path, rec.Code)
 	}
 	return rec.Header().Get("X-Required-Grant")
@@ -189,7 +189,7 @@ func TestNoMutationIsExposedOverGET(t *testing.T) {
 
 // Every grant a route asks for must exist in the domain vocabulary. The
 // columns are TEXT, so a typo like "playbook.read" would not fail at the
-// database — it would silently grant nothing and 403 forever.
+// database - it would silently grant nothing and 403 forever.
 func TestRouteGrantsUseKnownVocabulary(t *testing.T) {
 	registrars := []func(*gin.RouterGroup, middleware.PermissionMiddleware){
 		(&PlaybookHandler{}).RegisterRoutes,
@@ -210,5 +210,5 @@ func TestRouteGrantsUseKnownVocabulary(t *testing.T) {
 		register(gin.New().Group("/api"), recorder)
 	}
 
-	assert.NotEmpty(t, seen, "no grants were declared — the registrars did not run")
+	assert.NotEmpty(t, seen, "no grants were declared - the registrars did not run")
 }

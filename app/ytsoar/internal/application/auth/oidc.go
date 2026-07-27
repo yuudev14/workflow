@@ -24,7 +24,7 @@ const (
 )
 
 // ListProviders returns the enabled providers for the login screen. Secrets
-// never appear here — only what the browser needs to start a redirect.
+// never appear here - only what the browser needs to start a redirect.
 func (s *Service) ListProviders(ctx context.Context) ([]ProviderSummary, error) {
 	rows, err := s.providers.ListEnabled(ctx)
 	if err != nil {
@@ -44,7 +44,7 @@ func (s *Service) ListProviders(ctx context.Context) ([]ProviderSummary, error) 
 
 // StartOIDC builds the redirect to the IdP and the signed state cookie value
 // that the callback checks. The verifier (PKCE) and state live only in that
-// cookie — there is no server-side session store.
+// cookie - there is no server-side session store.
 func (s *Service) StartOIDC(ctx context.Context, providerID uuid.UUID) (redirectURL, stateCookie string, err error) {
 	cfg, err := s.oidcConfigFor(ctx, providerID)
 	if err != nil {
@@ -201,7 +201,7 @@ func (s *Service) uniqueUsername(ctx context.Context, id OIDCIdentity) (string, 
 }
 
 // syncOIDCRoles replaces the user's roles from the groups claim on every login,
-// unless the provider's sync_mode leaves roles to an admin. OIDC users only — a
+// unless the provider's sync_mode leaves roles to an admin. OIDC users only - a
 // local user's manual roles are never touched by this path.
 func (s *Service) syncOIDCRoles(ctx context.Context, userID uuid.UUID, cfg OIDCConfig, groups []string, isNew bool) error {
 	if !cfg.SyncsRoles() {
@@ -210,7 +210,7 @@ func (s *Service) syncOIDCRoles(ctx context.Context, userID uuid.UUID, cfg OIDCC
 		}
 		// A just-provisioned account still needs a starting role, or it signs in
 		// with zero permissions and nobody is told. Only default_role applies
-		// here — in this mode the IdP's groups are never consulted.
+		// here - in this mode the IdP's groups are never consulted.
 		groups = nil
 	}
 
@@ -219,7 +219,7 @@ func (s *Service) syncOIDCRoles(ctx context.Context, userID uuid.UUID, cfg OIDCC
 		role, err := s.roles.GetByName(ctx, name)
 		if err != nil {
 			// A passthrough candidate that isn't a real role (most IdP groups
-			// aren't) is inert — skip it, never fail the login on it.
+			// aren't) is inert - skip it, never fail the login on it.
 			continue
 		}
 		roleIDs = append(roleIDs, role.ID)
@@ -294,7 +294,7 @@ func optionalString(s string) *string {
 // raw value passes through as a candidate, so an IdP that already emits role
 // names (Azure app roles, Okta roles) needs no mapping table. Unknown candidates
 // are filtered by the role lookup in the caller. The default is NOT applied here
-// — that belongs to the caller, decided on resolved roles.
+// - that belongs to the caller, decided on resolved roles.
 func desiredRoleNames(cfg OIDCConfig, groups []string) []string {
 	seen := map[string]bool{}
 	names := make([]string, 0, len(groups))

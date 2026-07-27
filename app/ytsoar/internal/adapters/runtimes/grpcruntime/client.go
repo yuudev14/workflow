@@ -49,6 +49,12 @@ func (c *Client) Execute(ctx context.Context, req execution.ExecutionRequest) (j
 		connectorID = *req.Task.ConnectorID
 	}
 
+	inputJSON, err := json.Marshal(req.Input.Resolved())
+	if err != nil {
+		return nil, err
+	}
+	input := string(inputJSON)
+
 	resp, err := c.client.ExecuteOperation(ctx, &pb.ExecuteOperationRequest{
 		ConnectorId:       connectorID,
 		Operation:         req.Task.Operation,
@@ -58,6 +64,7 @@ func (c *Client) Execute(ctx context.Context, req execution.ExecutionRequest) (j
 		PlaybookHistoryId: req.PlaybookHistoryID.String(),
 		TaskId:            req.Task.ID.String(),
 		TimeoutMs:         uint32(req.Timeout.Milliseconds()),
+		InputJson:         &input,
 	})
 	if err != nil {
 		return nil, err

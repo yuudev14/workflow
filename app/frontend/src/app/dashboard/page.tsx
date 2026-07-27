@@ -20,6 +20,7 @@ import {
   type BarTone,
   type DonutSlice,
 } from "@/components/soar";
+import { humanDuration } from "@/lib/utils";
 
 const SEV_TONE: Record<string, BarTone> = { critical: "rose", high: "amber", medium: "signal", low: "slate" };
 const STATUS_COLOR: Record<string, string> = {
@@ -54,17 +55,19 @@ export default function Page() {
   const aSum = alertsSummary.data;
   const iSum = incidentsSummary.data;
 
-  const maxSev = Math.max(...(aSum?.bySeverity.map((s) => s.count) ?? [1]));
+  const maxSev = Math.max(...(aSum?.by_severity.map((s) => s.count) ?? [1]));
   const sevRows: BarRow[] =
-    aSum?.bySeverity.map((s) => ({
+    aSum?.by_severity.map((s) => ({
       label: s.severity[0].toUpperCase() + s.severity.slice(1),
       value: s.count / maxSev,
       display: s.count,
       tone: SEV_TONE[s.severity],
     })) ?? [];
 
+  const mttr = [...(iSum?.mttr_trend ?? [])].reverse().find((v) => v > 0) ?? 0;
+
   const slices: DonutSlice[] =
-    iSum?.statusMix.map((s) => ({
+    iSum?.status_mix.map((s) => ({
       label: s.status[0].toUpperCase() + s.status.slice(1),
       value: s.count,
       color: STATUS_COLOR[s.status],
@@ -88,7 +91,7 @@ export default function Page() {
         <KpiRow metrics={alertKpis.data} loading={alertKpis.isLoading} />
         <div className="grid grid-cols-1 gap-3 lg:grid-cols-[1.3fr_1fr]">
           <Panel>
-            <PanelTitle aside={`${aSum?.total ?? 0} total`}>Volume — last 14 days</PanelTitle>
+            <PanelTitle aside={`${aSum?.total ?? 0} total`}>Volume - last 14 days</PanelTitle>
             <TrendChart values={aSum?.volume ?? []} startLabel="14 days ago" endLabel="today" />
           </Panel>
           <Panel>
@@ -104,12 +107,12 @@ export default function Page() {
         <KpiRow metrics={incidentKpis.data} loading={incidentKpis.isLoading} />
         <div className="grid grid-cols-1 gap-3 lg:grid-cols-[1.3fr_1fr]">
           <Panel>
-            <PanelTitle aside="2h 14m">Mean time to resolve — last 8 weeks</PanelTitle>
-            <TrendChart values={iSum?.mttrTrend ?? []} startLabel="8 weeks ago" endLabel="this week" />
+            <PanelTitle aside={humanDuration(mttr)}>Mean time to resolve - last 8 weeks</PanelTitle>
+            <TrendChart values={iSum?.mttr_trend ?? []} startLabel="8 weeks ago" endLabel="this week" />
           </Panel>
           <Panel>
             <PanelTitle>Incidents by status</PanelTitle>
-            <Donut slices={slices} centerValue={iSum?.openTotal ?? 0} centerLabel="open" />
+            <Donut slices={slices} centerValue={iSum?.open_total ?? 0} centerLabel="open" />
           </Panel>
         </div>
       </section>

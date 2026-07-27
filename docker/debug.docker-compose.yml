@@ -5,7 +5,7 @@
 #   docker compose -f docker/dev.docker-compose.yml -f docker/debug.docker-compose.yml up
 #
 # Binaries are built with -gcflags 'all=-N -l' (no optimizations/inlining) so
-# breakpoints and variables are reliable. Every air hot-reload restarts dlv —
+# breakpoints and variables are reliable. Every air hot-reload restarts dlv -
 # re-attach with F5 after a rebuild.
 services:
   ytsoar_api:

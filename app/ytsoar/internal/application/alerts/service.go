@@ -22,6 +22,7 @@ type Service struct {
 	incidents IncidentLinker
 	txManager contracts.TxManager
 	events    contracts.ModuleEventPublisher
+	users     contracts.UserDirectory
 }
 
 func NewService(
@@ -30,6 +31,7 @@ func NewService(
 	incidents IncidentLinker,
 	txManager contracts.TxManager,
 	events contracts.ModuleEventPublisher,
+	users contracts.UserDirectory,
 ) *Service {
 	return &Service{
 		logger:    log,
@@ -37,11 +39,15 @@ func NewService(
 		incidents: incidents,
 		txManager: txManager,
 		events:    events,
+		users:     users,
 	}
 }
 
 func (s *Service) List(ctx context.Context, filter AlertFilter) (types.CursorPage[AlertListItem], error) {
-	filter = filter.Normalized()
+	filter, err := filter.Normalized()
+	if err != nil {
+		return types.CursorPage[AlertListItem]{}, err
+	}
 
 	items, next, err := s.repo.List(ctx, filter)
 	if err != nil {
@@ -60,12 +66,12 @@ func (s *Service) GetByID(ctx context.Context, id uuid.UUID) (AlertDetail, error
 	return s.repo.GetDetail(ctx, id)
 }
 
-func (s *Service) Summary(ctx context.Context) (AlertsSummary, error) {
-	return s.repo.Summary(ctx)
+func (s *Service) Summary(ctx context.Context, rng types.ResolvedRange) (AlertsSummary, error) {
+	return s.repo.Summary(ctx, rng)
 }
 
 // A fingerprint collision against a still-open alert is the same finding
-// recurring, so it publishes alert.updated rather than alert.created — otherwise
+// recurring, so it publishes alert.updated rather than alert.created - otherwise
 // a storm fires every on_create playbook once per occurrence.
 func (s *Service) Create(ctx context.Context, payload CreateAlertPayload, actorID *uuid.UUID) (domain.Alert, error) {
 	params, err := s.toUpsertParams(payload)
@@ -132,8 +138,17 @@ func (s *Service) Update(ctx context.Context, id uuid.UUID, payload UpdateAlertP
 
 	var alert domain.Alert
 	err = s.txManager.WithinTransaction(ctx, func(txCtx context.Context) error {
+		before, err := s.repo.GetByID(txCtx, id)
+		if err != nil {
+			return err
+		}
+
 		alert, err = s.repo.Update(txCtx, id, params)
-		return err
+		if err != nil {
+			return err
+		}
+
+		return s.appendUpdateEvent(txCtx, id, before, alert, actorID)
 	})
 	if err != nil {
 		return domain.Alert{}, err
@@ -474,4 +489,73 @@ func mustJSON(v any) json.RawMessage {
 		return json.RawMessage(`{}`)
 	}
 	return raw
+}
+
+// appendUpdateEvent records a field-level edit on the timeline. It returns
+// without writing when nothing actually changed, so a no-op PATCH leaves the
+// audit log alone.
+func (s *Service) appendUpdateEvent(ctx context.Context, id uuid.UUID, before, after domain.Alert, actorID *uuid.UUID) error {
+	changes := domain.DiffAssignable(
+		before.Severity, after.Severity,
+		before.AssigneeID, after.AssigneeID,
+		before.TeamID, after.TeamID,
+		before.Tags, after.Tags,
+	)
+	if len(changes) == 0 {
+		return nil
+	}
+
+	s.labelAssignees(ctx, changes)
+
+	return s.repo.AppendEvent(ctx, AppendEventParams{
+		AlertID: id,
+		Type:    domain.EventTypeUpdated,
+		ActorID: actorID,
+		Body:    mustJSON(map[string]any{"changes": changes}),
+	})
+}
+
+// A missing directory is not worth failing an edit over: the event still records
+// the change, just with uuids instead of names.
+func (s *Service) labelAssignees(ctx context.Context, changes []domain.FieldChange) {
+	if s.users == nil {
+		return
+	}
+
+	ids := make([]uuid.UUID, 0, 2)
+	for _, c := range changes {
+		if c.Field != "assignee_id" {
+			continue
+		}
+		if from, ok := c.From.(uuid.UUID); ok {
+			ids = append(ids, from)
+		}
+		if to, ok := c.To.(uuid.UUID); ok {
+			ids = append(ids, to)
+		}
+	}
+	if len(ids) == 0 {
+		return
+	}
+
+	names, err := s.users.UsernamesByIDs(ctx, ids)
+	if err != nil {
+		s.logger.Warnw("could not resolve usernames for update event", "error", err)
+		return
+	}
+	for i := range changes {
+		if changes[i].Field != "assignee_id" {
+			continue
+		}
+		if from, ok := changes[i].From.(uuid.UUID); ok {
+			if name, found := names[from]; found {
+				changes[i].FromUsername = &name
+			}
+		}
+		if to, ok := changes[i].To.(uuid.UUID); ok {
+			if name, found := names[to]; found {
+				changes[i].ToUsername = &name
+			}
+		}
+	}
 }
