@@ -2,6 +2,7 @@ import settings from "@/settings";
 import apiClient from "../common/client";
 import { EntryResponse } from "../common/schema";
 import {
+  AssignableUser,
   AuditFilter,
   AuditLog,
   AuthProviderAdmin,
@@ -29,6 +30,12 @@ export default class AdminService {
 
   public static listUsers = async (filter: UserFilter = {}): Promise<EntryResponse<UserWithRoles>> => {
     const res = await apiClient.get(`${this.BASE_URL}/users/v1`, { params: filter });
+    return res.data;
+  };
+
+  /** Authenticated but ungated, unlike listUsers - see AssignableUser. */
+  public static listAssignableUsers = async (): Promise<AssignableUser[]> => {
+    const res = await apiClient.get(`${this.BASE_URL}/users/v1/assignable`);
     return res.data;
   };
 

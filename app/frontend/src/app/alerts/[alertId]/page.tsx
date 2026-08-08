@@ -4,11 +4,12 @@ import React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { AlertTriangle, ArrowLeft, Bell, Copy, Tag, Zap } from "lucide-react";
+import { AlertTriangle, ArrowLeft, Bell, Copy, History, Zap } from "lucide-react";
 
 import AlertService from "@/services/alerts/alerts";
 import type { AlertStatus } from "@/services/alerts/alerts.schema";
 import { usePermission } from "@/hooks/usePermission";
+import RecordExecutionsModal from "@/components/executions/RecordExecutionsModal";
 import {
   FieldGrid,
   AssigneeField,
@@ -18,8 +19,10 @@ import {
   Panel,
   PanelTabs,
   PanelTitle,
+  RunPlaybookDialog,
   StatusPill,
   StatusSelect,
+  TagsField,
   Timeline,
   eventEntry,
   type PanelTab,
@@ -38,10 +41,13 @@ const Page: React.FC<{ params: Promise<{ alertId: string }> }> = ({ params }) =>
 
   const canUpdate = usePermission("alerts", "update");
   const canEscalate = usePermission("incidents", "create");
+  const canExecute = usePermission("alerts", "execute");
 
-  const [tab, setTab] = React.useState("timeline");
+  const [tab, setTab] = React.useState("related");
   const [draftStatus, setDraftStatus] = React.useState<AlertStatus | null>(null);
   const [closureNote, setClosureNote] = React.useState("");
+  const [runOpen, setRunOpen] = React.useState(false);
+  const [historyOpen, setHistoryOpen] = React.useState(false);
 
   const alertQuery = useQuery({
     queryKey: ["alert", alertId],
@@ -67,6 +73,11 @@ const Page: React.FC<{ params: Promise<{ alertId: string }> }> = ({ params }) =>
   const assignMutation = useMutation({
     mutationFn: (assigneeId: string | null) =>
       AlertService.updateAlert(alertId, { assignee_id: assigneeId }),
+    onSuccess: invalidate,
+  });
+
+  const tagsMutation = useMutation({
+    mutationFn: (tags: string[]) => AlertService.updateAlert(alertId, { tags }),
     onSuccess: invalidate,
   });
 
@@ -122,6 +133,7 @@ const Page: React.FC<{ params: Promise<{ alertId: string }> }> = ({ params }) =>
   const timeline = alert.timeline ?? [];
   const incidents = alert.linked_incidents ?? [];
   const related = alert.related_alerts ?? [];
+  const runs = alert.runs ?? [];
   const relatedCount = incidents.length + related.length;
 
   const selectedStatus = draftStatus ?? alert.status;
@@ -164,6 +176,17 @@ const Page: React.FC<{ params: Promise<{ alertId: string }> }> = ({ params }) =>
           </div>
           <div className="flex gap-2">
             <button
+              onClick={() => setHistoryOpen(true)}
+              className="inline-flex items-center gap-1.5 rounded-sm border border-line-strong px-3.5 py-2 text-[13.5px] font-semibold text-ink-soft hover:bg-paper-sunken"
+            >
+              <History className="size-3.5" /> Executions
+              {runs.length > 0 && (
+                <span className="rounded-full bg-paper-sunken px-1.5 text-[11.5px] tabular-nums">
+                  {runs.length}
+                </span>
+              )}
+            </button>
+            <button
               onClick={() => escalateMutation.mutate()}
               disabled={!canEscalate || escalateMutation.isPending}
               className="inline-flex items-center gap-1.5 rounded-sm border border-line-strong px-3.5 py-2 text-[13.5px] font-semibold text-ink-soft hover:bg-paper-sunken disabled:opacity-50"
@@ -171,22 +194,16 @@ const Page: React.FC<{ params: Promise<{ alertId: string }> }> = ({ params }) =>
               <AlertTriangle className="size-3.5" />
               {escalateMutation.isPending ? "Escalating…" : "Escalate"}
             </button>
-            {/* Needs the trigger-payload plumbing from module-event triggers. */}
             <button
-              disabled
-              className="inline-flex items-center gap-1.5 rounded-sm bg-primary px-3.5 py-2 text-[13.5px] font-semibold text-primary-foreground disabled:opacity-50"
+              onClick={() => setRunOpen(true)}
+              disabled={!canExecute}
+              title={canExecute ? undefined : "Needs alerts:execute"}
+              className="inline-flex items-center gap-1.5 rounded-sm bg-primary px-3.5 py-2 text-[13.5px] font-semibold text-primary-foreground hover:brightness-110 disabled:opacity-50"
             >
               <Zap className="size-3.5" /> Run playbook
             </button>
           </div>
         </div>
-
-        {alert.closure_note && (
-          <div className="mt-4 rounded-md border border-line bg-paper-sunken px-3.5 py-2.5 text-[13px]">
-            <span className="font-semibold text-ink-soft">Disposition · </span>
-            <span className="text-ink-soft">{alert.closure_note}</span>
-          </div>
-        )}
 
         <div className="mt-6 flex flex-col gap-3 lg:flex-row">
           <div className="flex min-w-0 flex-[1.6] flex-col gap-3">
@@ -194,6 +211,13 @@ const Page: React.FC<{ params: Promise<{ alertId: string }> }> = ({ params }) =>
               <PanelTitle>Alert fields</PanelTitle>
               <FieldGrid items={fields} />
             </Panel>
+
+            {alert.closure_note && (
+              <div className="rounded-md border border-line bg-paper-sunken px-3.5 py-2.5 text-[13px]">
+                <span className="font-semibold text-ink-soft">Closure note · </span>
+                <span className="text-ink-soft">{alert.closure_note}</span>
+              </div>
+            )}
 
             <Panel>
               <PanelTabs tabs={tabs} value={tab} onChange={setTab} className="mb-3.5" />
@@ -294,7 +318,7 @@ const Page: React.FC<{ params: Promise<{ alertId: string }> }> = ({ params }) =>
                   value={closureNote}
                   onChange={(e) => setClosureNote(e.target.value)}
                   rows={3}
-                  placeholder="Disposition - why is this being closed?"
+                  placeholder="Closure note - why is this being closed?"
                   className="mt-1.5 w-full resize-y rounded-sm border border-line-strong bg-background px-2.5 py-2 text-[13px] outline-none placeholder:text-ink-faint focus:border-signal-dot"
                 />
               )}
@@ -335,21 +359,45 @@ const Page: React.FC<{ params: Promise<{ alertId: string }> }> = ({ params }) =>
                 onAssign={(id) => assignMutation.mutate(id)}
               />
             </Field>
-            {alert.tags && alert.tags.length > 0 && (
-              <Field label="Tags">
-                <div className="flex flex-wrap gap-1.5">
-                  {alert.tags.map((t) => (
-                    <LinkChip key={t}>
-                      <Tag />
-                      {t}
-                    </LinkChip>
-                  ))}
-                </div>
-              </Field>
-            )}
+            <Field label="Tags">
+              <TagsField
+                tags={alert.tags ?? []}
+                canEdit={canUpdate}
+                pending={tagsMutation.isPending}
+                onChange={(tags) => tagsMutation.mutate(tags)}
+              />
+            </Field>
           </div>
         </div>
       </div>
+
+      <RunPlaybookDialog
+        open={runOpen}
+        onOpenChange={setRunOpen}
+        moduleType="alert"
+        recordIds={[alertId]}
+        onLaunched={invalidate}
+      />
+
+      <RecordExecutionsModal
+        open={historyOpen}
+        onOpenChange={setHistoryOpen}
+        moduleType="alert"
+        runs={runs}
+        action={
+          canExecute && (
+            <button
+              onClick={() => {
+                setHistoryOpen(false);
+                setRunOpen(true);
+              }}
+              className="inline-flex items-center gap-1.5 rounded-sm bg-primary px-3 py-1.5 text-[12.5px] font-semibold text-primary-foreground hover:brightness-110"
+            >
+              <Zap className="size-3.5" /> Run playbook
+            </button>
+          )
+        }
+      />
     </div>
   );
 };

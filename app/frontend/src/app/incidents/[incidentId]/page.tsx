@@ -3,19 +3,21 @@
 import React from "react";
 import Link from "next/link";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, Bell, Check, Fingerprint, Layers, Tag, X } from "lucide-react";
+import { ArrowLeft, Bell, Check, Fingerprint, History, X, Zap } from "lucide-react";
 
 import IncidentService from "@/services/incidents/incidents";
 import type { IncidentStatus } from "@/services/incidents/incidents.schema";
 import { usePermission } from "@/hooks/usePermission";
+import RecordExecutionsModal from "@/components/executions/RecordExecutionsModal";
 import {
   AssigneeField,
   InitialsAvatar,
-  LinkChip,
   NotesPanel,
   Panel,
   PanelTabs,
+  RunPlaybookDialog,
   StatusPill,
+  TagsField,
   StatusSelect,
   Stepper,
   Timeline,
@@ -40,8 +42,11 @@ const Page: React.FC<{ params: Promise<{ incidentId: string }> }> = ({ params })
   const queryClient = useQueryClient();
 
   const canUpdate = usePermission("incidents", "update");
+  const canExecute = usePermission("incidents", "execute");
 
   const [tab, setTab] = React.useState("timeline");
+  const [runOpen, setRunOpen] = React.useState(false);
+  const [historyOpen, setHistoryOpen] = React.useState(false);
   const [draftStatus, setDraftStatus] = React.useState<IncidentStatus | null>(null);
 
   const incidentQuery = useQuery({
@@ -67,6 +72,11 @@ const Page: React.FC<{ params: Promise<{ incidentId: string }> }> = ({ params })
   const assignMutation = useMutation({
     mutationFn: (assigneeId: string | null) =>
       IncidentService.updateIncident(incidentId, { assignee_id: assigneeId }),
+    onSuccess: invalidate,
+  });
+
+  const tagsMutation = useMutation({
+    mutationFn: (tags: string[]) => IncidentService.updateIncident(incidentId, { tags }),
     onSuccess: invalidate,
   });
 
@@ -110,7 +120,7 @@ const Page: React.FC<{ params: Promise<{ incidentId: string }> }> = ({ params })
   const linked = incident.linked_alerts ?? [];
   const runs = incident.runs ?? [];
   const iocs = incident.iocs ?? [];
-  const relatedCount = linked.length + runs.length + iocs.length;
+  const relatedCount = linked.length + iocs.length;
 
   const selectedStatus = draftStatus ?? incident.status;
   const statusDirty = selectedStatus !== incident.status;
@@ -149,13 +159,34 @@ const Page: React.FC<{ params: Promise<{ incidentId: string }> }> = ({ params })
               </span>
             </div>
           </div>
-          <button
-            onClick={() => statusMutation.mutate("contained")}
-            disabled={!canUpdate || statusMutation.isPending}
-            className="inline-flex h-fit items-center gap-1.5 rounded-sm bg-primary px-3.5 py-2 text-[13.5px] font-semibold text-primary-foreground hover:brightness-110 disabled:opacity-50"
-          >
-            <Check className="size-3.5" /> Mark contained
-          </button>
+          <div className="flex h-fit gap-2">
+            <button
+              onClick={() => setHistoryOpen(true)}
+              className="inline-flex items-center gap-1.5 rounded-sm border border-line-strong px-3.5 py-2 text-[13.5px] font-semibold text-ink-soft hover:bg-paper-sunken"
+            >
+              <History className="size-3.5" /> Executions
+              {runs.length > 0 && (
+                <span className="rounded-full bg-paper-sunken px-1.5 text-[11.5px] tabular-nums">
+                  {runs.length}
+                </span>
+              )}
+            </button>
+            <button
+              onClick={() => setRunOpen(true)}
+              disabled={!canExecute}
+              title={canExecute ? undefined : "Needs incidents:execute"}
+              className="inline-flex items-center gap-1.5 rounded-sm border border-line-strong px-3.5 py-2 text-[13.5px] font-semibold text-ink-soft hover:bg-paper-sunken disabled:opacity-50"
+            >
+              <Zap className="size-3.5" /> Run playbook
+            </button>
+            <button
+              onClick={() => statusMutation.mutate("contained")}
+              disabled={!canUpdate || statusMutation.isPending}
+              className="inline-flex items-center gap-1.5 rounded-sm bg-primary px-3.5 py-2 text-[13.5px] font-semibold text-primary-foreground hover:brightness-110 disabled:opacity-50"
+            >
+              <Check className="size-3.5" /> Mark contained
+            </button>
+          </div>
         </div>
 
         <div className="mt-6">
@@ -229,30 +260,6 @@ const Page: React.FC<{ params: Promise<{ incidentId: string }> }> = ({ params })
                     ))}
                   </RelatedGroup>
 
-                  {/* Populated once module-event triggers link a run to an incident. */}
-                  <RelatedGroup
-                    label="Playbook runs"
-                    count={runs.length}
-                    empty="No runs yet - nothing links a playbook run to an incident."
-                  >
-                    {runs.map((r) => (
-                      <Link
-                        key={r.playbook_history_id}
-                        href="/playbooks/executions"
-                        className="flex items-center gap-2.5 rounded-sm border border-line bg-card px-3 py-2.5 hover:bg-paper-sunken"
-                      >
-                        <Layers className="size-3.5 shrink-0 text-ink-faint" />
-                        <div className="min-w-0 flex-1">
-                          <div className="truncate text-[13px] font-semibold">{r.playbook}</div>
-                          <div className="text-[12px] text-ink-faint">
-                            {relativeAge(r.created_at)} ago
-                          </div>
-                        </div>
-                        <StatusPill variant={r.status === "failed" ? "failed" : "success"} />
-                      </Link>
-                    ))}
-                  </RelatedGroup>
-
                   {/* Populated once IOC extraction ships. */}
                   <RelatedGroup
                     label="Indicators"
@@ -315,21 +322,45 @@ const Page: React.FC<{ params: Promise<{ incidentId: string }> }> = ({ params })
                 onAssign={(id) => assignMutation.mutate(id)}
               />
             </Field>
-            {incident.tags && incident.tags.length > 0 && (
-              <Field label="Tags">
-                <div className="flex flex-wrap gap-1.5">
-                  {incident.tags.map((t) => (
-                    <LinkChip key={t}>
-                      <Tag />
-                      {t}
-                    </LinkChip>
-                  ))}
-                </div>
-              </Field>
-            )}
+            <Field label="Tags">
+              <TagsField
+                tags={incident.tags ?? []}
+                canEdit={canUpdate}
+                pending={tagsMutation.isPending}
+                onChange={(tags) => tagsMutation.mutate(tags)}
+              />
+            </Field>
           </div>
         </div>
       </div>
+
+      <RunPlaybookDialog
+        open={runOpen}
+        onOpenChange={setRunOpen}
+        moduleType="incident"
+        recordIds={[incidentId]}
+        onLaunched={invalidate}
+      />
+
+      <RecordExecutionsModal
+        open={historyOpen}
+        onOpenChange={setHistoryOpen}
+        moduleType="incident"
+        runs={runs}
+        action={
+          canExecute && (
+            <button
+              onClick={() => {
+                setHistoryOpen(false);
+                setRunOpen(true);
+              }}
+              className="inline-flex items-center gap-1.5 rounded-sm bg-primary px-3 py-1.5 text-[12.5px] font-semibold text-primary-foreground hover:brightness-110"
+            >
+              <Zap className="size-3.5" /> Run playbook
+            </button>
+          )
+        }
+      />
     </div>
   );
 };

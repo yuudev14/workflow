@@ -183,11 +183,18 @@ type AlertDetail struct {
 	Runs            []RunRef            `json:"runs"`
 }
 
-// RunRef is one playbook run that acted on this record.
+// RunRef is one playbook run that acted on this record. PlaybookID is what lets
+// the UI deep-link to the run itself rather than the whole executions list; the
+// name is nullable because the playbook may since have been deleted. TriggerType
+// and TriggeredBy are nullable too - runs predating the run-input migration have
+// neither, and a scheduled or event-driven run has no user behind it.
 type RunRef struct {
 	PlaybookHistoryID uuid.UUID `json:"playbook_history_id"`
+	PlaybookID        uuid.UUID `json:"playbook_id"`
 	Playbook          *string   `json:"playbook"`
 	Status            string    `json:"status"`
+	TriggerType       *string   `json:"trigger_type"`
+	TriggeredBy       *string   `json:"triggered_by"`
 	CreatedAt         time.Time `json:"created_at"`
 }
 

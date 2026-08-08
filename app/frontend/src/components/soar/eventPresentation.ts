@@ -1,4 +1,5 @@
 import { relativeAge } from "@/lib/utils";
+import type { FieldChange } from "@/services/alerts/alerts.schema";
 import type { TimelineTone } from "./Timeline";
 
 /**
@@ -19,6 +20,7 @@ export interface SoarEvent {
 
 const TONE: Record<string, TimelineTone> = {
   created: "signal",
+  updated: "signal",
   status_changed: "amber",
   escalated: "rose",
   triage: "signal",
@@ -34,6 +36,33 @@ const str = (body: Record<string, unknown> | null | undefined, key: string): str
   return typeof v === "string" && v.length > 0 ? v : undefined;
 };
 
+const FIELD_LABEL: Record<string, string> = {
+  severity: "Severity",
+  assignee_id: "Assignee",
+  team_id: "Team",
+  tags: "Tags",
+};
+
+/**
+ * Renders one side of a field change. The server resolves assignee uuids to
+ * usernames, so prefer those; an unresolved id is still better than "[object
+ * Object]", and an absent value reads as "unassigned" rather than "null".
+ */
+function changeSide(value: unknown, username?: string | null): string {
+  if (username) return username;
+  if (value === null || value === undefined || value === "") return "none";
+  if (Array.isArray(value)) return value.length ? value.join(", ") : "none";
+  return String(value);
+}
+
+function describeChanges(changes: FieldChange[]): { title: string; detail?: string } {
+  const parts = changes.map((c) => {
+    const label = FIELD_LABEL[c.field] ?? c.field.replace(/_/g, " ");
+    return `${label} ${changeSide(c.from, c.from_username)} → ${changeSide(c.to, c.to_username)}`;
+  });
+  return { title: parts[0], detail: parts.length > 1 ? parts.slice(1).join(" · ") : undefined };
+}
+
 function describe(e: SoarEvent): { title: string; detail?: string } {
   const b = e.body;
   switch (e.type) {
@@ -43,6 +72,11 @@ function describe(e: SoarEvent): { title: string; detail?: string } {
         return { title: "Incident opened", detail: "escalated from an alert" };
       }
       return { title: "Created", detail: reporter ? `reported by ${reporter}` : undefined };
+    }
+    case "updated": {
+      const changes = b?.changes;
+      if (!Array.isArray(changes) || changes.length === 0) return { title: "Updated" };
+      return describeChanges(changes as FieldChange[]);
     }
     case "status_changed": {
       const from = str(b, "from");

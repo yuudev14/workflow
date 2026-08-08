@@ -9,8 +9,10 @@ import {
   PlaybookFilterPayload,
   PlaybookHistory,
   PlaybookHistoryFilter,
+  PlaybooksSummary,
 } from "./playbooks.schema";
 import apiClient from "../common/client";
+import { DateRangeParams } from "../common/range";
 
 export default class PlaybookService {
   private static BASE_URL =
@@ -38,6 +40,13 @@ export default class PlaybookService {
         ...worfklowFilter,
       },
     });
+    return res.data;
+  };
+
+  public static getPlaybooksSummary = async (
+    range: DateRangeParams = {}
+  ): Promise<PlaybooksSummary> => {
+    const res = await apiClient.get(this.BASE_URL + "/summary", { params: range });
     return res.data;
   };
 

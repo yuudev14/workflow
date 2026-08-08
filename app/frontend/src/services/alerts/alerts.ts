@@ -1,6 +1,8 @@
 import settings from "@/settings";
 import apiClient from "../common/client";
 import { CursorPage } from "../common/schema";
+import { DateRangeParams } from "../common/range";
+import { RunPlaybookPayload } from "../playbooks/playbooks.schema";
 import {
   Alert,
   AlertFilter,
@@ -27,8 +29,17 @@ export default class AlertService {
     return res.data;
   };
 
-  public static getAlertsSummary = async (): Promise<AlertsSummary> => {
-    const res = await apiClient.get(`${this.BASE_URL}/summary`);
+  public static getAlertsSummary = async (range: DateRangeParams = {}): Promise<AlertsSummary> => {
+    const res = await apiClient.get(`${this.BASE_URL}/summary`, { params: range });
+    return res.data;
+  };
+
+  /**
+   * Runs a playbook against the given alerts - one run for N records, not N
+   * runs. Returns 202; the run itself lands on the queue.
+   */
+  public static runPlaybook = async (payload: RunPlaybookPayload): Promise<unknown> => {
+    const res = await apiClient.post(`${this.BASE_URL}/run`, payload);
     return res.data;
   };
 

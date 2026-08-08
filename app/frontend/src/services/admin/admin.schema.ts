@@ -4,6 +4,17 @@ export interface UserWithRoles extends AuthUser {
   roles: string[];
 }
 
+/**
+ * What an assignee picker needs and nothing more. `GET /users/v1/assignable`
+ * is authenticated but ungated - colleagues' usernames are ordinary SOC
+ * knowledge, while email, roles and provider details stay behind
+ * `settings:read` on the full user list.
+ */
+export interface AssignableUser {
+  id: string;
+  username: string;
+}
+
 export interface Role {
   id: string;
   name: string;

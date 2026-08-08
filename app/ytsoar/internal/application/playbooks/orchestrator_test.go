@@ -28,6 +28,8 @@ type testEnv struct {
 	mockEdge        *mock_edges.MockEdgeService
 	mockTaskSub     *mock_contracts.MockTaskPublisher
 	mockBroadcaster *mock_contracts.MockStatusBroadcaster
+
+	broadcasts []any
 }
 
 func setupTest(t *testing.T) *testEnv {
@@ -39,7 +41,12 @@ func setupTest(t *testing.T) *testEnv {
 	mockEdge := mock_edges.NewMockEdgeService(ctrl)
 	mockTaskPubSub := mock_contracts.NewMockTaskPublisher(ctrl)
 	mockBroadcaster := mock_contracts.NewMockStatusBroadcaster(ctrl)
-	mockBroadcaster.EXPECT().Broadcast(gomock.Any()).AnyTimes()
+
+	env := &testEnv{}
+	mockBroadcaster.EXPECT().
+		Broadcast(gomock.Any()).
+		Do(func(event any) { env.broadcasts = append(env.broadcasts, event) }).
+		AnyTimes()
 
 	// transactions pass straight through so the closure body runs against the mocks
 	mockTx := mock_contracts.NewMockTxManager(ctrl)
@@ -60,14 +67,14 @@ func setupTest(t *testing.T) *testEnv {
 		StatusBroadcaster: mockBroadcaster,
 	}
 
-	return &testEnv{
-		service:         service,
-		mockPlaybook:    mockPlaybook,
-		mockTask:        mockTask,
-		mockEdge:        mockEdge,
-		mockTaskSub:     mockTaskPubSub,
-		mockBroadcaster: mockBroadcaster,
-	}
+	env.service = service
+	env.mockPlaybook = mockPlaybook
+	env.mockTask = mockTask
+	env.mockEdge = mockEdge
+	env.mockTaskSub = mockTaskPubSub
+	env.mockBroadcaster = mockBroadcaster
+
+	return env
 }
 
 func TestPreparePlaybookMessage(t *testing.T) {
@@ -840,4 +847,50 @@ func TestTriggerPlaybook(t *testing.T) {
 			}
 		})
 	}
+}
+
+// The run-created broadcast must carry the same {event, data} envelope the
+// status consumer emits. Clients route on `event`, so a bare history row is
+// dropped silently and the new run never shows up until a manual refetch.
+func TestTriggerPlaybookBroadcastsStatusEnvelope(t *testing.T) {
+
+	env := setupTest(t)
+
+	playbookID := uuid.New().String()
+	historyID := uuid.New()
+
+	env.mockPlaybook.EXPECT().
+		GetPlaybookById(gomock.Any(), playbookID).
+		Return(&domain.Playbooks{}, nil)
+
+	env.mockTask.EXPECT().
+		GetTasksByPlaybookId(gomock.Any(), playbookID).
+		Return([]domain.Tasks{{ID: uuid.New(), Name: "task1"}}, nil)
+
+	env.mockEdge.EXPECT().
+		GetEdgesByPlaybookId(gomock.Any(), playbookID).
+		Return([]domain.ResponseEdges{}, nil)
+
+	env.mockPlaybook.EXPECT().
+		CreatePlaybookHistory(gomock.Any(), playbookID, gomock.Any(), gomock.Any()).
+		Return(&domain.PlaybookHistory{ID: historyID}, nil)
+
+	env.mockTask.EXPECT().
+		CreateTaskHistory(gomock.Any(), historyID.String(), gomock.Any(), gomock.Any()).
+		Return([]domain.TaskHistory{}, nil)
+
+	env.mockTaskSub.EXPECT().SendMessage(gomock.Any()).Return(nil)
+
+	_, err := env.service.TriggerPlaybook(context.Background(), playbookID)
+	assert.NoError(t, err)
+
+	assert.Len(t, env.broadcasts, 1)
+
+	envelope, ok := env.broadcasts[0].(map[string]any)
+	assert.True(t, ok, "broadcast must be an {event, data} envelope, not a bare history row")
+	assert.Equal(t, "playbook_status", envelope["event"])
+
+	history, ok := envelope["data"].(*domain.PlaybookHistory)
+	assert.True(t, ok, "data must carry the history row")
+	assert.Equal(t, historyID, history.ID)
 }

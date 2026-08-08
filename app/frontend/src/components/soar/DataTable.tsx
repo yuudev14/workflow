@@ -3,6 +3,9 @@
 import * as React from "react";
 import {
   type ColumnDef,
+  type OnChangeFn,
+  type RowSelectionState,
+  type VisibilityState,
   flexRender,
   getCoreRowModel,
   getPaginationRowModel,
@@ -14,6 +17,10 @@ import { PaginationBar } from "./PaginationBar";
 declare module "@tanstack/react-table" {
   interface ColumnMeta<TData, TValue> {
     align?: "left" | "right";
+    /** Human name for the column picker; falls back to the column id. */
+    title?: string;
+    /** Column cannot be hidden (the title cell, the select box). */
+    locked?: boolean;
   }
 }
 
@@ -23,6 +30,11 @@ export function DataTable<TData>({
   getRowId,
   className,
   pageSize,
+  columnVisibility,
+  onColumnVisibilityChange,
+  rowSelection,
+  onRowSelectionChange,
+  onRowClick,
 }: {
   columns: ColumnDef<TData, any>[];
   data: TData[];
@@ -30,6 +42,11 @@ export function DataTable<TData>({
   className?: string;
   /** When set, the table paginates client-side and shows a footer. */
   pageSize?: number;
+  columnVisibility?: VisibilityState;
+  onColumnVisibilityChange?: OnChangeFn<VisibilityState>;
+  rowSelection?: RowSelectionState;
+  onRowSelectionChange?: OnChangeFn<RowSelectionState>;
+  onRowClick?: (row: TData) => void;
 }) {
   const paginated = pageSize != null;
   const table = useReactTable({
@@ -38,7 +55,14 @@ export function DataTable<TData>({
     getCoreRowModel: getCoreRowModel(),
     getPaginationRowModel: paginated ? getPaginationRowModel() : undefined,
     initialState: paginated ? { pagination: { pageSize } } : undefined,
-    getRowId,
+    state: {
+      ...(columnVisibility ? { columnVisibility } : {}),
+      ...(rowSelection ? { rowSelection } : {}),
+    },
+    onColumnVisibilityChange,
+    onRowSelectionChange,
+    enableRowSelection: !!onRowSelectionChange,
+    getRowId: getRowId ? (row) => getRowId(row) : undefined,
   });
 
   return (
@@ -68,7 +92,12 @@ export function DataTable<TData>({
             {table.getRowModel().rows.map((row) => (
               <tr
                 key={row.id}
-                className="border-t border-line transition-colors hover:bg-paper-sunken/60"
+                onClick={onRowClick ? () => onRowClick(row.original) : undefined}
+                className={cn(
+                  "border-t border-line transition-colors hover:bg-paper-sunken/60",
+                  onRowClick && "cursor-pointer",
+                  row.getIsSelected() && "bg-signal-soft/40"
+                )}
               >
                 {row.getVisibleCells().map((cell) => (
                   <td

@@ -1,6 +1,8 @@
 // Alert types - field names match the API wire format exactly (snake_case, no
 // mapper layer), so anything renamed here must be renamed in the Go DTO too.
 
+import type { ResolvedRange, WindowCount } from "@/services/common/range";
+
 export type Severity = "critical" | "high" | "medium" | "low";
 export type AlertStatus = "new" | "investigating" | "resolved" | "falsepos" | "closed";
 export type SourceKind = "edr" | "identity" | "email" | "firewall" | "dlp";
@@ -9,6 +11,7 @@ export type LinkSource = "manual" | "escalate" | "correlation";
 
 export type EventType =
   | "created"
+  | "updated"
   | "status_changed"
   | "escalated"
   | "triage"
@@ -17,6 +20,18 @@ export type EventType =
   | "attack_tag"
   | "linked"
   | "unlinked";
+
+/**
+ * One entry in an `updated` event's `body.changes`. The server fills the
+ * username fields for id-valued fields so the timeline reads as a sentence.
+ */
+export interface FieldChange {
+  field: string;
+  from: unknown;
+  to: unknown;
+  from_username?: string | null;
+  to_username?: string | null;
+}
 
 /** One immutable audit row. `body` is an opaque per-type blob. */
 export interface AlertEvent {
@@ -56,6 +71,21 @@ export interface RelatedAlert {
   created_at: string;
 }
 
+/**
+ * One playbook run that acted on this record. `playbook_id` is what makes the
+ * deep link to the run possible; the name is nullable because the playbook may
+ * since have been deleted, and `triggered_by` is null for runs no user started.
+ */
+export interface RunRef {
+  playbook_history_id: string;
+  playbook_id: string;
+  playbook?: string | null;
+  status: string;
+  trigger_type?: string | null;
+  triggered_by?: string | null;
+  created_at: string;
+}
+
 export interface Alert {
   id: string;
   title: string;
@@ -74,6 +104,7 @@ export interface Alert {
   sla_state: SLAState;
   created_at: string;
   updated_at: string;
+  run_count: number;
   // detail-only
   payload?: Record<string, unknown>;
   closure_note?: string | null;
@@ -82,16 +113,29 @@ export interface Alert {
   notes?: AlertNote[];
   linked_incidents?: IncidentRef[];
   related_alerts?: RelatedAlert[];
+  runs?: RunRef[];
 }
 
 export interface AlertFilter {
   status?: AlertStatus[];
   severity?: Severity[];
   source_kind?: SourceKind[];
-  assignee_id?: string;
-  team_id?: string;
+  sla_state?: SLAState[];
+  assignee_id?: string[];
+  team_id?: string[];
+  /** Unions with assignee_id rather than contradicting it. */
+  unassigned?: boolean;
+  tags?: string[];
+  /** RFC3339 instants with an offset - see services/common/range.ts. */
+  created_from?: string;
+  created_to?: string;
+  /** Only alerts seen at least this many times. */
+  dedup_min?: number;
+  triaged?: boolean;
   q?: string;
+  /** Paging is cursor XOR offset; sending both is a 400. */
   cursor?: string;
+  offset?: number;
   limit?: number;
 }
 
@@ -134,11 +178,32 @@ export interface SourceBucket {
   count: number;
 }
 
+/**
+ * One point on the volume series. It carries its own timestamp because the
+ * range is caller-picked: length, start and bucket width all vary per request,
+ * so the chart cannot derive its own x-axis labels.
+ */
+export interface VolumePoint {
+  bucket_start: string;
+  count: number;
+}
+
+/**
+ * `total`, `by_severity` and `by_source` are all-time-open regardless of the
+ * range - the queue header and its filter counts read them, and range-scoping
+ * would silently turn "47 open" into "opened in the last 14 days". The range
+ * applies to `volume` and the window counts only.
+ */
 export interface AlertsSummary {
   total: number;
   by_severity: SeverityBucket[];
   by_source: SourceBucket[];
+  /** success_rate is a 0..1 fraction, not a percentage. */
   top_playbooks: { label: string; success_rate: number }[];
-  /** 14 daily counts, oldest first. */
-  volume: number[];
+  volume: VolumePoint[];
+  range: ResolvedRange;
+  created: WindowCount;
+  resolved: WindowCount;
+  /** Mean time to triage in seconds: created_at to triaged_at. */
+  mttt_seconds: WindowCount;
 }
