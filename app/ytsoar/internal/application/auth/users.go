@@ -23,6 +23,14 @@ func (s *Service) ListUsers(ctx context.Context, offset, limit int, filter UserF
 	return types.Entries[domain.UserWithRoles]{Entries: users, Total: total}, nil
 }
 
+// ListAssignableUsers backs the assignee pickers. It is deliberately not gated on
+// settings:read: an analyst who can update an alert has to be able to name who
+// they are assigning it to, and this projection carries nothing but id and
+// username.
+func (s *Service) ListAssignableUsers(ctx context.Context) ([]domain.AssignableUser, error) {
+	return s.users.ListAssignable(ctx)
+}
+
 func (s *Service) GetUser(ctx context.Context, id uuid.UUID) (domain.UserWithRoles, error) {
 	return s.users.GetWithRoles(ctx, id)
 }
@@ -73,7 +81,7 @@ func (s *Service) CreateUser(ctx context.Context, actorID uuid.UUID, input Creat
 }
 
 // UpdateUser applies a partial update. Deactivating also kills every live
-// session — without that the user keeps working until their refresh token
+// session - without that the user keeps working until their refresh token
 // expires, which can be a week.
 func (s *Service) UpdateUser(ctx context.Context, actorID, id uuid.UUID, input UpdateUserInput) (domain.UserWithRoles, error) {
 	deactivating := input.IsActive.Set && input.IsActive.Value != nil && !*input.IsActive.Value
@@ -176,7 +184,7 @@ func (s *Service) SetUserPassword(ctx context.Context, actorID, id uuid.UUID, pa
 	return nil
 }
 
-// assignRoles verifies each role exists before granting it — an unknown id
+// assignRoles verifies each role exists before granting it - an unknown id
 // would otherwise fail on the FK with an opaque database error.
 func (s *Service) assignRoles(ctx context.Context, userID uuid.UUID, roleIDs []uuid.UUID) error {
 	for _, roleID := range roleIDs {

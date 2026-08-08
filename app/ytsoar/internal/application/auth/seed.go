@@ -22,7 +22,7 @@ func (s *Service) EnsureAdminUser(ctx context.Context) error {
 	}
 
 	if s.cfg.AdminPassword == "" {
-		s.logger.Warnf("no admin user exists and ADMIN_PASSWORD is unset — nobody can log in")
+		s.logger.Warnf("no admin user exists and ADMIN_PASSWORD is unset - nobody can log in")
 		return nil
 	}
 
@@ -60,6 +60,6 @@ func (s *Service) EnsureAdminUser(ctx context.Context) error {
 		return err
 	}
 
-	s.logger.Infof("seeded admin user %q — change the password after first login", s.cfg.AdminUsername)
+	s.logger.Infof("seeded admin user %q - change the password after first login", s.cfg.AdminUsername)
 	return nil
 }

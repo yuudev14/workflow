@@ -1,14 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 
 /**
- * Presence check only — this is NOT authentication.
+ * Presence check only - this is NOT authentication.
  *
  * The refresh token is signed with a secret that only the Go API holds, so
  * Next has no way to validate it. All this does is skip a flash of the app
  * shell for visitors who obviously have no session. AuthProvider does the real
  * work: it trades the cookie for an access token and redirects if that fails.
  *
- * A forged cookie gets past this and then fails at /refresh, which is fine —
+ * A forged cookie gets past this and then fails at /refresh, which is fine -
  * the redirect happens either way, just a beat later.
  *
  */

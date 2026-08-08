@@ -71,7 +71,7 @@ func TestCompleteOIDCStateMismatchRejected(t *testing.T) {
 	pid := uuid.New()
 	cookie := stateCookie(t, pid, "real-state", "verifier", time.Now().Add(time.Minute))
 
-	// query state differs from the sealed one — the CSRF signal.
+	// query state differs from the sealed one - the CSRF signal.
 	_, err := env.service.CompleteOIDC(context.Background(), pid, "code", "forged-state", cookie)
 	assert.ErrorIs(t, err, auth.ErrOIDCState)
 }
@@ -154,7 +154,7 @@ func TestCompleteOIDCExistingUserSyncsDefaultRole(t *testing.T) {
 	env.mockTokens.EXPECT().Insert(gomock.Any(), existing.ID, gomock.Any(), gomock.Any()).Return(nil)
 	env.mockUsers.EXPECT().TouchLastLogin(gomock.Any(), existing.ID).Return(nil)
 
-	// mockUsers.Create is never set — a match by external_id must not JIT again.
+	// mockUsers.Create is never set - a match by external_id must not JIT again.
 	_, err := env.service.CompleteOIDC(context.Background(), pid, "code", "s", cookie)
 	require.NoError(t, err)
 }
@@ -316,7 +316,7 @@ func TestCompleteOIDCSyncModeAttributesLeavesRoles(t *testing.T) {
 	env.mockOIDC.EXPECT().Exchange(gomock.Any(), gomock.Any(), gomock.Any(), "code", "v").
 		Return(auth.OIDCIdentity{Subject: "kc-sub", Groups: []string{"soc-analysts"}}, nil)
 	env.mockUsers.EXPECT().GetByExternalID(gomock.Any(), domain.AuthProviderOIDC, externalID).Return(existing, nil)
-	// deliberately no mockRoles expectations — any role call fails the test.
+	// deliberately no mockRoles expectations - any role call fails the test.
 	env.mockTokens.EXPECT().Insert(gomock.Any(), existing.ID, gomock.Any(), gomock.Any()).Return(nil)
 	env.mockUsers.EXPECT().TouchLastLogin(gomock.Any(), existing.ID).Return(nil)
 
@@ -325,7 +325,7 @@ func TestCompleteOIDCSyncModeAttributesLeavesRoles(t *testing.T) {
 }
 
 // A lookup that fails for any reason other than "no such user" must not fall
-// through to JIT — re-provisioning an existing account would trip the
+// through to JIT - re-provisioning an existing account would trip the
 // external_id unique index and report a database outage as a bad login.
 func TestCompleteOIDCLookupFailureDoesNotProvision(t *testing.T) {
 	env := setupTest(t)
@@ -400,7 +400,7 @@ func TestCompleteOIDCSyncModeAllPushesAttributes(t *testing.T) {
 	require.NoError(t, err)
 }
 
-// The default mode syncs roles only — a profile edited in YTSoar must survive.
+// The default mode syncs roles only - a profile edited in YTSoar must survive.
 func TestCompleteOIDCDefaultModeDoesNotPushAttributes(t *testing.T) {
 	env := setupTest(t)
 	pid := uuid.New()
@@ -506,7 +506,7 @@ func TestCompleteOIDCJITRoleSyncOffIgnoresGroups(t *testing.T) {
 	env.mockUsers.EXPECT().Create(gomock.Any(), gomock.Any()).Return(created, nil)
 
 	viewer := domain.Role{ID: uuid.New(), Name: "viewer"}
-	// only viewer is looked up — no GetByName("admin") expectation, so the
+	// only viewer is looked up - no GetByName("admin") expectation, so the
 	// mapping firing would fail this test.
 	env.mockRoles.EXPECT().GetByName(gomock.Any(), "viewer").Return(viewer, nil)
 	env.mockRoles.EXPECT().RemoveAllFromUser(gomock.Any(), created.ID).Return(nil)

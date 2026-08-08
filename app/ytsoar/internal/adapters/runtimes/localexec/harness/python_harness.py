@@ -1,6 +1,6 @@
 # Runs inside a fresh `python3 -I` child spawned by the Go worker.
 # Payload arrives as JSON on stdin, the result leaves as JSON on stdout.
-# Parity target: connectors/code_snippet/operation.py python_inline —
+# Parity target: connectors/code_snippet/operation.py python_inline -
 # exec() the code, read the `result` variable, emit {"code_output": result}.
 # Templating parity: connectors/core/connector.py evaluate_params renders
 # every string with jinja2 as Template(value).render(var=variables).
@@ -40,7 +40,10 @@ def render(value, variables):
 def main():
     apply_memory_limit()
     payload = json.load(sys.stdin)
-    variables = {"steps": payload.get("steps") or {}}
+    variables = {
+        "steps": payload.get("steps") or {},
+        "input": payload.get("input") or {"records": [], "parameters": {}},
+    }
     params = render(payload.get("params") or {}, variables)
     code = params.get("code") or ""
 
@@ -53,7 +56,7 @@ def main():
     # names bind into locals but function bodies resolve against globals, so any
     # helper/recursive function or class referencing a top-level name raises
     # NameError. A single dict makes user code behave like a normal module.
-    namespace = {"params": params, "steps": variables["steps"]}
+    namespace = {"params": params, "steps": variables["steps"], "input": variables["input"]}
     exec(compile(code, "user_code", "exec"), namespace)
     print(json.dumps({"code_output": namespace.get("result")}, default=str), file=result_out)
 

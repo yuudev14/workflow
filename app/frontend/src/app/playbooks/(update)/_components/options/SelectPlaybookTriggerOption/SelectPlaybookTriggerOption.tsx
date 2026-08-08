@@ -23,7 +23,7 @@ import {
 import { Glyph, type GlyphTone } from '@/components/soar'
 import { PlaybookOperationContext } from '../../../_providers/PlaybookOperationProvider'
 
-// static trigger catalog for the picker — ids must match the backend enum
+// static trigger catalog for the picker - ids must match the backend enum
 // (see settings/triggers.ts). Module-event triggers open the config sidebar
 // so the module can be chosen right away.
 const TRIGGERS: {
@@ -39,7 +39,7 @@ const TRIGGERS: {
     name: 'Manual',
     icon: MousePointerClick,
     tone: 'slate',
-    description: 'Run on demand from the Playbooks list or the API — no automatic trigger',
+    description: 'Run on demand from the Playbooks list or the API - no automatic trigger',
   },
   {
     id: TRIGGER_WEBHOOK,

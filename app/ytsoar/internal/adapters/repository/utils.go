@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"strings"
 	"time"
 
 	sq "github.com/Masterminds/squirrel"
@@ -14,6 +15,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/yuudev14/ytsoar/db"
+	"github.com/yuudev14/ytsoar/internal/domain"
 	"github.com/yuudev14/ytsoar/internal/logger"
 	"github.com/yuudev14/ytsoar/internal/types"
 )
@@ -96,6 +98,56 @@ func fromPgUUID(id pgtype.UUID) uuid.UUID {
 		return uuid.Nil
 	}
 	return uuid.UUID(id.Bytes)
+}
+
+func toPgUUIDPtr(id *uuid.UUID) pgtype.UUID {
+	if id == nil {
+		return pgtype.UUID{}
+	}
+	return toPgUUID(*id)
+}
+
+func fromPgUUIDPtr(id pgtype.UUID) *uuid.UUID {
+	if !id.Valid {
+		return nil
+	}
+	parsed := uuid.UUID(id.Bytes)
+	return &parsed
+}
+
+func toPgUUIDFromNullable(n types.Nullable[uuid.UUID]) pgtype.UUID {
+	if !n.Set || n.Value == nil {
+		return pgtype.UUID{}
+	}
+	return toPgUUID(*n.Value)
+}
+
+func toPgTimestampPtr(t *time.Time) pgtype.Timestamp {
+	if t == nil {
+		return pgtype.Timestamp{}
+	}
+	return pgtype.Timestamp{Time: *t, Valid: true}
+}
+
+func fromNullableStrings(n types.Nullable[[]string]) []string {
+	if !n.Set || n.Value == nil {
+		return nil
+	}
+	return *n.Value
+}
+
+func toNullAlertSeverity(n types.Nullable[domain.AlertSeverity]) db.NullAlertSeverity {
+	if !n.Set || n.Value == nil {
+		return db.NullAlertSeverity{}
+	}
+	return db.NullAlertSeverity{AlertSeverity: db.AlertSeverity(*n.Value), Valid: true}
+}
+
+func toNullIncidentStatus(n *string) db.NullIncidentStatus {
+	if n == nil {
+		return db.NullIncidentStatus{}
+	}
+	return db.NullIncidentStatus{IncidentStatus: db.IncidentStatus(*n), Valid: true}
 }
 
 func toPgText(s *string) pgtype.Text {
@@ -187,4 +239,35 @@ func fromNullTriggerType(nt db.NullTriggerType) *string {
 	}
 	s := string(nt.TriggerType)
 	return &s
+}
+
+// likeTerm builds an ILIKE pattern, escaping the wildcards so a user searching
+// for a literal "%" or "_" does not get wildcard behaviour. An empty search is
+// not a match-everything pattern - it is no filter at all.
+func likeTerm(search *string) (string, bool) {
+	if search == nil || strings.TrimSpace(*search) == "" {
+		return "", false
+	}
+	escaped := strings.NewReplacer(`\`, `\\`, `%`, `\%`, `_`, `\_`).Replace(*search)
+	return "%" + escaped + "%", true
+}
+
+// applyAssigneeFilter ORs the two controls together rather than ANDing them: a
+// picker offering "Unassigned" beside a list of names has to mean union, and
+// AND would make that selection return nothing.
+func applyAssigneeFilter(stmt sq.SelectBuilder, alias string, ids []string, unassigned *bool) sq.SelectBuilder {
+	col := alias + ".assignee_id"
+	isNull := sq.Expr(col + " IS NULL")
+
+	switch {
+	case len(ids) > 0 && unassigned != nil && *unassigned:
+		return stmt.Where(sq.Or{isNull, sq.Eq{col: ids}})
+	case len(ids) > 0:
+		return stmt.Where(sq.Eq{col: ids})
+	case unassigned != nil && *unassigned:
+		return stmt.Where(isNull)
+	case unassigned != nil:
+		return stmt.Where(sq.Expr(col + " IS NOT NULL"))
+	}
+	return stmt
 }

@@ -15,6 +15,7 @@ func (h *PlaybookHandler) RegisterRoutes(
 		readPlaybooks := requirePermission(domain.ModulePlaybooks, domain.ActionRead)
 
 		r.GET("", readPlaybooks, h.GetPlaybooks)
+		r.GET("/summary", readPlaybooks, h.Summary)
 		r.GET("/history", readPlaybooks, h.GetPlaybookHistory)
 		r.GET("/history/:playbook_history_id/tasks", readPlaybooks, h.GetTaskHistoryByPlaybookHistoryId)
 		r.GET("/:playbook_id", readPlaybooks, h.GetPlaybookGraphById)

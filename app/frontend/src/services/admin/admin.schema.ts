@@ -4,6 +4,17 @@ export interface UserWithRoles extends AuthUser {
   roles: string[];
 }
 
+/**
+ * What an assignee picker needs and nothing more. `GET /users/v1/assignable`
+ * is authenticated but ungated - colleagues' usernames are ordinary SOC
+ * knowledge, while email, roles and provider details stay behind
+ * `settings:read` on the full user list.
+ */
+export interface AssignableUser {
+  id: string;
+  username: string;
+}
+
 export interface Role {
   id: string;
   name: string;
@@ -11,7 +22,7 @@ export interface Role {
   is_builtin: boolean;
   created_at: string;
   updated_at: string;
-  /** {module: [actions]} — replaced wholesale by the matrix editor, never patched. */
+  /** {module: [actions]} - replaced wholesale by the matrix editor, never patched. */
   permissions: Record<string, string[]>;
 }
 
@@ -59,8 +70,8 @@ export interface CreateUserPayload {
 }
 
 /**
- * Partial update. The backend reads absence and presence differently — an
- * omitted key leaves the column alone, an explicit `null` clears it — so never
+ * Partial update. The backend reads absence and presence differently - an
+ * omitted key leaves the column alone, an explicit `null` clears it - so never
  * send a key you did not mean to change.
  */
 export interface UpdateUserPayload {

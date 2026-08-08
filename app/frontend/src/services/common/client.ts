@@ -3,7 +3,7 @@ import settings from "@/settings";
 
 /**
  * Tokens never pass through JavaScript. The API sets both as httpOnly cookies,
- * which the browser attaches to every same-origin request on its own — so
+ * which the browser attaches to every same-origin request on its own - so
  * there is nothing here to store, read, or forward.
  *
  * withCredentials is what makes that work for cross-origin dev setups; behind
@@ -11,6 +11,10 @@ import settings from "@/settings";
  */
 const apiClient = axios.create({
   withCredentials: true,
+  // `indexes: null` serializes arrays as repeated keys (?severity=high&severity=low).
+  // Axios defaults to severity[]=high, which gin's form binding ignores outright -
+  // the filter is then silently dropped and the endpoint returns everything.
+  paramsSerializer: { indexes: null },
 });
 
 const AUTH_BASE = settings.BASE_URL.AUTH_SERVICE_API + "/api/auth/v1";
@@ -26,7 +30,7 @@ type RetriableRequest = InternalAxiosRequestConfig & { _retried?: boolean };
  * Only one refresh runs at a time, process-wide.
  *
  * Refreshing rotates the refresh token, so concurrent calls leave the losers
- * presenting a token the server has already retired — which the backend
+ * presenting a token the server has already retired - which the backend
  * correctly reads as a replayed token. Sharing one promise turns every extra
  * caller into a waiter on the first.
  */

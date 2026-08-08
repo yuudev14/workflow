@@ -113,7 +113,7 @@ func (s *Service) SetTeamMembers(ctx context.Context, actorID, id uuid.UUID, mem
 
 // SetTeamRoles replaces the roles a team grants its members. This escalates
 // privilege for everyone in the team, so it stays behind settings.update and is
-// always audited. Builtin roles may be granted freely — that only *uses* a
+// always audited. Builtin roles may be granted freely - that only *uses* a
 // role; ErrBuiltinRole still guards editing a builtin's own matrix.
 func (s *Service) SetTeamRoles(ctx context.Context, actorID, id uuid.UUID, roleIDStrings []string) (domain.TeamWithMembers, error) {
 	roleIDs, err := parseUUIDs(roleIDStrings, "role_ids")

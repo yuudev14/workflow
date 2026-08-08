@@ -1,4 +1,4 @@
-// Sample JavaScript connector — copy this folder to start a new JS connector.
+// Sample JavaScript connector - copy this folder to start a new JS connector.
 // The JS mirror of connectors/sample/connector.py:
 //   - export a class extending core/connector.js's Connector
 //   - execute(configs, params, operation) receives the parsed TOML config,

@@ -162,7 +162,7 @@ export default function AuditPage() {
       }),
       columnHelper.accessor("entity_id", {
         header: "Entity",
-        cell: ({ getValue }) => <span className="text-ink-faint">{getValue() ?? "—"}</span>,
+        cell: ({ getValue }) => <span className="text-ink-faint">{getValue() ?? "-"}</span>,
       }),
       columnHelper.display({
         id: "detail",

@@ -16,7 +16,7 @@ const has = (matrix: Matrix, module: string, action: string) =>
   matrix[module]?.includes(action) ?? false;
 
 /**
- * The matrix is the whole grant set for a role — it is sent wholesale on save,
+ * The matrix is the whole grant set for a role - it is sent wholesale on save,
  * never patched, so what is on screen is exactly what the role will hold.
  */
 export function PermissionMatrix({

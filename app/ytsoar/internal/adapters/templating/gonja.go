@@ -63,7 +63,7 @@ func (e *GonjaEngine) render(value any, variables map[string]any) (any, error) {
 }
 
 // normalizeNumbers converts whole-number float64s (what encoding/json gives
-// every JSON number) to int64 so templates render "200", not "200.0" — the
+// every JSON number) to int64 so templates render "200", not "200.0" - the
 // python side json.loads keeps ints as ints and jinja2 prints them plain.
 func normalizeNumbers(value any) any {
 	switch v := value.(type) {

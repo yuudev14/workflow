@@ -163,6 +163,21 @@ func (mr *MockUserRepositoryMockRecorder) List(ctx, offset, limit, filter any) *
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "List", reflect.TypeOf((*MockUserRepository)(nil).List), ctx, offset, limit, filter)
 }
 
+// ListAssignable mocks base method.
+func (m *MockUserRepository) ListAssignable(ctx context.Context) ([]domain.AssignableUser, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ListAssignable", ctx)
+	ret0, _ := ret[0].([]domain.AssignableUser)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ListAssignable indicates an expected call of ListAssignable.
+func (mr *MockUserRepositoryMockRecorder) ListAssignable(ctx any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListAssignable", reflect.TypeOf((*MockUserRepository)(nil).ListAssignable), ctx)
+}
+
 // SetPassword mocks base method.
 func (m *MockUserRepository) SetPassword(ctx context.Context, id uuid.UUID, passwordHash string) error {
 	m.ctrl.T.Helper()

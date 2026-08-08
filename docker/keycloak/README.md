@@ -1,4 +1,4 @@
-# Dev Keycloak (M3 — OIDC SSO)
+# Dev Keycloak (M3 - OIDC SSO)
 
 `ytsoar-realm.json` is imported on boot (`start-dev --import-realm`). It creates
 the `ytsoar` realm with a confidential client, a `groups` claim mapper, two
@@ -8,14 +8,14 @@ groups, and two test users.
 |---|---|
 | Realm | `ytsoar` |
 | Client | `ytsoar` (confidential, PKCE S256), secret `ytsoar-dev-secret` |
-| Test user | `kc-admin` / `admin123` — group `soc-admins` |
-| Test user | `kc-analyst` / `analyst123` — group `soc-analysts` |
+| Test user | `kc-admin` / `admin123` - group `soc-admins` |
+| Test user | `kc-analyst` / `analyst123` - group `soc-analysts` |
 
 ## Split-horizon issuer
 
 The browser reaches Keycloak at `http://localhost:8180`; the api reaches it
 in-network at `http://ytsoar_keycloak:8180`. The provider config carries both:
-`issuer` (public — what the id_token `iss` is, and where the browser is
+`issuer` (public - what the id_token `iss` is, and where the browser is
 redirected) and `internal_issuer` (where the api runs discovery). The api pins
 the public issuer via `oidc.InsecureIssuerURLContext`, and Keycloak's
 `KC_HOSTNAME_BACKCHANNEL_DYNAMIC=true` makes the token endpoint resolve to the
@@ -23,7 +23,7 @@ internal host the api actually called. See `adapters/oidcclient`.
 
 ## Seed the provider row
 
-The provider holds the client secret, so it is **not** a migration — create it
+The provider holds the client secret, so it is **not** a migration - create it
 once against a running stack (or via the UI at **Settings → Providers**).
 
 ```bash
@@ -59,12 +59,12 @@ After seeding, the login screen shows **Continue with Keycloak**. Signing in as
 `kc-analyst` JIT-provisions a YTSoar user with the `analyst` role; moving a user
 between Keycloak groups re-syncs their role on their next login.
 
-## Known limitation — one identity cannot span two providers
+## Known limitation - one identity cannot span two providers
 
 `users.email` carries a **global** `UNIQUE` constraint, while `external_id` is
 scoped per provider (`<provider-uuid>|<sub>`). We deliberately never link an
-incoming SSO identity to an existing account by email — an IdP that lets a user
-set an unverified address could otherwise take over someone else's account — so
+incoming SSO identity to an existing account by email - an IdP that lets a user
+set an unverified address could otherwise take over someone else's account - so
 a person who already exists under provider A and signs in through provider B
 cannot be provisioned. Postgres rejects the insert with
 `users_email_key` (SQLSTATE 23505) and the browser lands on `/login?error=sso`
@@ -73,7 +73,7 @@ with nothing explaining why.
 This bites when migrating between IdPs (Keycloak → Okta) or running two
 providers side by side, and it is reproducible today.
 
-**Deferred — needs a schema decision before implementing.** Options:
+**Deferred - needs a schema decision before implementing.** Options:
 
 1. Scope the constraint per provider: `UNIQUE (auth_provider, email)`. Keeps
    email unique where it matters and lets the same human exist once per IdP.
@@ -93,7 +93,7 @@ Option 1 is the likely answer, but it is a migration plus a re-check of every
 
 `--import-realm` only imports when the realm does **not** already exist, so
 editing `ytsoar-realm.json` has no effect on a container that already has the
-realm. A long-lived dev container can therefore disagree with the file — in
+realm. A long-lived dev container can therefore disagree with the file - in
 particular the `ytsoar` client secret may be a Keycloak-generated value rather
 than `ytsoar-dev-secret`. Read the live one with:
 

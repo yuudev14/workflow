@@ -1,6 +1,5 @@
 import * as React from "react";
 import { cn } from "@/lib/utils";
-import type { KpiMetric } from "@/services/metrics/metrics.schema";
 
 export function Sparkline({
   points,
@@ -78,41 +77,6 @@ export function KpiCard({
         )}
       </div>
       {spark && <Sparkline points={spark} tone={sparkTone} />}
-    </div>
-  );
-}
-
-/** Renders a KpiMetric[] as the 4-up dashboard tile row. */
-export function KpiRow({
-  metrics,
-  loading,
-  className,
-}: {
-  metrics?: KpiMetric[];
-  loading?: boolean;
-  className?: string;
-}) {
-  return (
-    <div className={cn("grid grid-cols-2 gap-3 md:grid-cols-4", className)}>
-      {loading || !metrics
-        ? Array.from({ length: 4 }).map((_, i) => (
-            <div
-              key={i}
-              className="h-[92px] animate-pulse rounded-md border border-line bg-paper-sunken"
-            />
-          ))
-        : metrics.map((m) => (
-            <KpiCard
-              key={m.key}
-              label={m.label}
-              value={m.value}
-              delta={m.delta}
-              deltaDirection={m.deltaDirection}
-              deltaNegative={m.deltaNegative}
-              spark={m.spark}
-              sparkTone={m.sparkTone}
-            />
-          ))}
     </div>
   );
 }

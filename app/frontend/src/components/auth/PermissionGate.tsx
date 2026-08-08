@@ -3,7 +3,7 @@
 import * as React from "react";
 import { usePermission } from "@/hooks/usePermission";
 
-/** Renders children only when the user holds the grant. Cosmetic — see usePermission. */
+/** Renders children only when the user holds the grant. Cosmetic - see usePermission. */
 export function PermissionGate({
   module,
   action,

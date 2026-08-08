@@ -17,7 +17,7 @@ import (
 var nodeConnectorHarness string
 
 // nodeConnectorEntries are the implementation files a node connector may
-// ship, in resolution order — TypeScript runs via Node's native type
+// ship, in resolution order - TypeScript runs via Node's native type
 // stripping, so both work without a build step.
 var nodeConnectorEntries = []string{"connector.ts", "connector.js"}
 
@@ -67,6 +67,7 @@ func (r *NodeConnectorRunner) Execute(ctx context.Context, req execution.Executi
 		"config":         config,
 		"params":         params,
 		"steps":          req.Steps,
+		"input":          req.Input.TemplateVars(),
 	})
 	if err != nil {
 		return nil, err

@@ -39,7 +39,7 @@ import {
 } from "@/components/ui/select";
 import { Chip } from "../_components/Chip";
 
-// Per-IdP config presets. The template `kind` is a UI convenience only — it
+// Per-IdP config presets. The template `kind` is a UI convenience only - it
 // seeds the config editor below; the backend stores just type=oidc and runs one
 // generic OIDC engine (see docker/keycloak/README.md). Google's token carries no
 // groups, so it leans on default_role; Azure/Okta emit role names in a claim, so
@@ -298,7 +298,7 @@ function ProviderDialog({
         <DialogHeader className="border-b border-line px-6 pt-6 pb-4">
           <DialogTitle>{editing ? `Edit ${provider.name}` : "New provider"}</DialogTitle>
           <DialogDescription>
-            Secrets are write-only — the stored value is kept if you leave the masked
+            Secrets are write-only - the stored value is kept if you leave the masked
             <code className="px-1">********</code> in place.
           </DialogDescription>
         </DialogHeader>
@@ -336,7 +336,7 @@ function ProviderDialog({
                 checked={enabled}
                 onChange={(e) => setEnabled(e.target.checked)}
               />
-              Enabled — appears on the login screen
+              Enabled - appears on the login screen
             </label>
 
             {!editing && type === "oidc" && (
@@ -355,7 +355,7 @@ function ProviderDialog({
                   </SelectContent>
                 </Select>
                 <span className="text-[12px] text-ink-faint">
-                  Seeds the config below — a starting point you can edit. Backend stores the type only.
+                  Seeds the config below - a starting point you can edit. Backend stores the type only.
                 </span>
               </div>
             )}
@@ -364,7 +364,7 @@ function ProviderDialog({
               <div className="flex items-baseline justify-between">
                 <Label htmlFor="provider_config">Config (JSON)</Label>
                 <span className="text-[12px] text-ink-faint">
-                  Provider settings only — issuer, client_id, … (not name/type)
+                  Provider settings only - issuer, client_id, … (not name/type)
                 </span>
               </div>
               <Textarea

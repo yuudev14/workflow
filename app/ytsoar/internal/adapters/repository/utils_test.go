@@ -19,7 +19,7 @@ func TestMapUniqueViolation(t *testing.T) {
 	// the driver error is often wrapped by the time it reaches a repository.
 	assert.ErrorIs(t, mapUniqueViolation(fmt.Errorf("insert: %w", unique), conflict), conflict)
 
-	// anything else must pass through untouched — a foreign-key breach or a dead
+	// anything else must pass through untouched - a foreign-key breach or a dead
 	// connection is not a conflict and must not be reported as one.
 	fk := &pgconn.PgError{Code: pgerrcode.ForeignKeyViolation}
 	assert.ErrorIs(t, mapUniqueViolation(fk, conflict), fk)

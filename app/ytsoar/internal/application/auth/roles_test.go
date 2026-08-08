@@ -15,7 +15,7 @@ import (
 )
 
 // The columns are TEXT, so the database accepts any string. A typo would be
-// stored happily and then grant nothing, forever — this is the only guard.
+// stored happily and then grant nothing, forever - this is the only guard.
 func TestCreateRoleRejectsUnknownModule(t *testing.T) {
 	env := setupTest(t)
 
@@ -167,7 +167,7 @@ func TestSetRolePermissionsPropagatesRollback(t *testing.T) {
 	assert.Error(t, err)
 }
 
-// An empty matrix is legitimate — a role that grants nothing.
+// An empty matrix is legitimate - a role that grants nothing.
 func TestSetRolePermissionsAcceptsEmptyMatrix(t *testing.T) {
 	env := setupTest(t)
 	roleID := uuid.New()

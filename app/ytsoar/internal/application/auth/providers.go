@@ -66,7 +66,7 @@ func (s *Service) CreateProvider(ctx context.Context, actorID uuid.UUID, input P
 }
 
 // UpdateProvider patches name/enabled/config. A config that arrives with the
-// masked-secret sentinel keeps the stored secret — the admin didn't retype it.
+// masked-secret sentinel keeps the stored secret - the admin didn't retype it.
 func (s *Service) UpdateProvider(ctx context.Context, actorID, id uuid.UUID, input UpdateProviderInput) (AdminProvider, error) {
 	existing, err := s.providers.GetByID(ctx, id)
 	if err != nil {
@@ -102,7 +102,7 @@ func (s *Service) UpdateProvider(ctx context.Context, actorID, id uuid.UUID, inp
 
 // preserveMaskedSecret swaps a masked client_secret back to the stored value so
 // a round-trip through the masked admin view can't wipe the real secret. On any
-// parse trouble it returns the incoming config unchanged — validation downstream
+// parse trouble it returns the incoming config unchanged - validation downstream
 // still catches a genuinely broken config.
 func preserveMaskedSecret(existingConfig, incoming json.RawMessage) json.RawMessage {
 	var next map[string]any

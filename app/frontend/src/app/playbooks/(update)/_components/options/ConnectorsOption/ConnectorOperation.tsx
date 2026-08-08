@@ -118,7 +118,7 @@ const BranchRouter: React.FC<{
         <SelectValue placeholder="Route to…" />
       </SelectTrigger>
       <SelectContent className="bg-popover">
-        <SelectItem value={UNASSIGN}>— none —</SelectItem>
+        <SelectItem value={UNASSIGN}>- none -</SelectItem>
         {outgoing.map((edge) => (
           <SelectItem value={edge.target} key={`route-${edge.id}`}>
             {nodeName(edge.target)}
@@ -340,7 +340,7 @@ const ConnectorOperation: React.FC<{ connector: ConnectorInfo }> = ({
   );
 
   // "code_snippet_py" / "code_snippet_js" / "condition" are single-purpose virtual
-  // connectors — no saved configs, and the operation is implied rather than
+  // connectors - no saved configs, and the operation is implied rather than
   // picked from a list, so their forms skip the config/operation selectors.
   const isCondition = connector.id === CONDITION_CONNECTOR_ID;
   const isJsCode = connector.id === CODE_SNIPPET_JS_ID;
@@ -369,7 +369,7 @@ const ConnectorOperation: React.FC<{ connector: ConnectorInfo }> = ({
   const operationName = taskForm.watch("operation");
   const parameters = taskForm.watch("parameters");
 
-  // Virtual connectors don't ask the user to pick an operation — default to the
+  // Virtual connectors don't ask the user to pick an operation - default to the
   // first one (code snippets have a single op; condition defaults to "switch").
   useEffect(() => {
     if (isVirtual && !operationName && connector.operations[0]) {
@@ -482,7 +482,7 @@ const ConnectorOperation: React.FC<{ connector: ConnectorInfo }> = ({
               <FormItem>
                 <FormLabel className="text-[12px] font-semibold uppercase tracking-wide text-ink-soft">
                   Description
-                  <span className="ml-1 font-medium normal-case text-ink-faint">— optional</span>
+                  <span className="ml-1 font-medium normal-case text-ink-faint">- optional</span>
                 </FormLabel>
                 <FormControl>
                   <Textarea rows={2} placeholder="What this step does…" {...field} />
@@ -530,7 +530,7 @@ const ConnectorOperation: React.FC<{ connector: ConnectorInfo }> = ({
               render={({ field }) => (
                 <FormItem>
                   <FormLabel className="text-[12px] font-semibold uppercase tracking-wide text-ink-soft">
-                    Cases — first match wins
+                    Cases - first match wins
                   </FormLabel>
                   <div className="inline-flex w-fit gap-1 rounded-sm border border-line bg-paper-sunken p-1">
                     {connector.operations.map((op) => (

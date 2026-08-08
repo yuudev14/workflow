@@ -1,65 +1,106 @@
+"use client";
+
 import * as React from "react";
+import {
+  Bar,
+  BarChart,
+  CartesianGrid,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
+import type { Bucket } from "@/services/common/range";
+import { bucketLabel } from "@/lib/delta";
 import { cn } from "@/lib/utils";
 
+export interface TrendPoint {
+  bucket_start: string;
+  value: number;
+}
+
+type Tone = "signal" | "rose" | "moss" | "amber";
+
+// Colours are read as CSS variables rather than hex so the chart follows the
+// light/dark theme the same way everything else does.
+const FILL: Record<Tone, string> = {
+  signal: "var(--signal-dot)",
+  rose: "var(--rose-dot)",
+  moss: "var(--moss-dot)",
+  amber: "var(--amber-dot)",
+};
+
 /**
- * Area + line trend. Values are plotted left→right and normalized to the
- * chart height; the final point gets an end dot.
+ * Bucketed trend. Every point carries the instant it covers, because the range
+ * and the bucket are both caller-picked - the axis cannot be derived from the
+ * array's length, which is what the old hardcoded "14 days ago → today"
+ * captions assumed.
  */
 export function TrendChart({
-  values,
-  startLabel,
-  endLabel,
+  data,
+  bucket,
+  tone = "signal",
+  formatValue,
   className,
 }: {
-  values: number[];
-  startLabel?: string;
-  endLabel?: string;
+  data: TrendPoint[];
+  bucket: Bucket;
+  tone?: Tone;
+  /** e.g. humanDuration for a seconds-valued series */
+  formatValue?: (v: number) => string;
   className?: string;
 }) {
-  const W = 420;
-  const H = 108;
-  const pad = 14;
-
-  // Nothing to plot yet (e.g. data still loading) — render an empty frame
-  // instead of destructuring an out-of-range point.
-  if (!values || values.length === 0) {
-    return <div className={cn("h-[108px]", className)} />;
+  if (!data || data.length === 0) {
+    return (
+      <div
+        className={cn(
+          "flex h-[168px] items-center justify-center text-[12.5px] text-ink-faint",
+          className,
+        )}
+      >
+        No data in this range.
+      </div>
+    );
   }
 
-  const max = Math.max(...values, 1);
-  const min = Math.min(...values, 0);
-  const span = max - min || 1;
-  const step = values.length > 1 ? W / (values.length - 1) : W;
-
-  const pts = values.map((v, i) => {
-    const x = Math.round(i * step);
-    const y = Math.round(pad + (1 - (v - min) / span) * (H - pad * 2));
-    return [x, y] as const;
-  });
-  const line = pts.map(([x, y], i) => `${i === 0 ? "M" : "L"}${x},${y}`).join(" ");
-  const area = `${line} L${W},${H} L0,${H} Z`;
-  const [ex, ey] = pts[pts.length - 1];
+  const show = formatValue ?? ((v: number) => String(v));
 
   return (
-    <div className={className}>
-      <svg
-        viewBox={`0 0 ${W} ${H}`}
-        preserveAspectRatio="none"
-        className="block h-[108px] w-full"
-      >
-        {[18, 54, 90].map((y) => (
-          <line key={y} x1={0} y1={y} x2={W} y2={y} className="stroke-line" strokeWidth={1} />
-        ))}
-        <path d={area} className="fill-signal-dot/15" />
-        <path d={line} className="fill-none stroke-signal-dot" strokeWidth={1.8} />
-        <circle cx={ex} cy={ey} r={3.5} className="fill-signal-dot" />
-      </svg>
-      {(startLabel || endLabel) && (
-        <div className={cn("mt-1 flex justify-between text-[11.5px] text-ink-faint")}>
-          <span>{startLabel}</span>
-          <span>{endLabel}</span>
-        </div>
-      )}
+    <div className={cn("h-[168px] w-full", className)}>
+      <ResponsiveContainer width="100%" height="100%">
+        <BarChart data={data} margin={{ top: 8, right: 4, bottom: 0, left: -8 }}>
+          <CartesianGrid vertical={false} stroke="var(--line)" />
+          <XAxis
+            dataKey="bucket_start"
+            tickFormatter={(v: string) => bucketLabel(v, bucket)}
+            tick={{ fill: "var(--ink-faint)", fontSize: 11 }}
+            tickLine={false}
+            axisLine={{ stroke: "var(--line)" }}
+            minTickGap={16}
+          />
+          <YAxis
+            tickFormatter={show}
+            tick={{ fill: "var(--ink-faint)", fontSize: 11 }}
+            tickLine={false}
+            axisLine={false}
+            width={52}
+            allowDecimals={false}
+          />
+          <Tooltip
+            cursor={{ fill: "var(--line)", fillOpacity: 0.4 }}
+            content={({ active, payload, label }) => {
+              if (!active || !payload?.length) return null;
+              return (
+                <div className="rounded-sm border border-line bg-card px-2.5 py-1.5 text-[12px] shadow-sm">
+                  <div className="font-semibold">{bucketLabel(String(label), bucket)}</div>
+                  <div className="text-ink-soft tnum">{show(Number(payload[0].value))}</div>
+                </div>
+              );
+            }}
+          />
+          <Bar dataKey="value" fill={FILL[tone]} radius={[2, 2, 0, 0]} maxBarSize={38} />
+        </BarChart>
+      </ResponsiveContainer>
     </div>
   );
 }

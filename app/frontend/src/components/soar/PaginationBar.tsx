@@ -8,7 +8,7 @@ import { cn } from "@/lib/utils";
 /**
  * One pagination control for both worlds: client-side tables drive it from the
  * react-table instance, the audit trail drives it from server offsets. Shown
- * whenever there is at least one row — the buttons disable on a single page so
+ * whenever there is at least one row - the buttons disable on a single page so
  * the control stays visible rather than vanishing, which reads as missing.
  */
 export function PaginationBar({

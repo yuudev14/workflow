@@ -86,6 +86,7 @@ services:
       - AIR_POLL=true
       - AIR_WATCH_TMOUT=500ms
       - STATUS_EXCHANGE=playbook.status
+      - MODULE_EVENTS_EXCHANGE=module.events
       - CONNECTORS_DIR=/opt/ytsoar/connectors
       - APP_ENV=development
       # Dev-only secret. APP_ENV=production refuses to start with this value.
@@ -143,6 +144,7 @@ services:
       - MQ_PORT=5672
       - AIR_POLL=true
       - STATUS_EXCHANGE=playbook.status
+      - MODULE_EVENTS_EXCHANGE=module.events
       - SANDBOX_ADDR=ytsoar_sandbox:50052
       - CONNECTORS_DIR=/opt/ytsoar/connectors
     networks:

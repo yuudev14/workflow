@@ -1,7 +1,8 @@
 // Runs inside a fresh `node --input-type=commonjs-typescript` child spawned
-// by the sandbox to execute one JS/TS connector operation — Node strips the
+// by the sandbox to execute one JS/TS connector operation - Node strips the
 // types natively, no build step. Payload: { connectors_dir, connector_id,
-// operation, config, params, steps } — the TOML config is already parsed by Go.
+// operation, config, params, steps, input } - the TOML config is already parsed
+// by Go.
 //
 // Mirror of the python connector harness: the tree's own core
 // (<connectors_dir>/core/connector.ts) provides the Connector base class,
@@ -18,6 +19,7 @@ interface ConnectorPayload {
   config?: Record<string, unknown>;
   params?: Record<string, unknown>;
   steps?: Record<string, unknown>;
+  input?: Record<string, unknown>;
 }
 
 const chunks: Buffer[] = [];
@@ -41,6 +43,7 @@ process.stdin.on("end", async () => {
     );
     const params = core.evaluateParams(payload.params || {}, {
       steps: payload.steps || {},
+      input: payload.input || { records: [], parameters: {} },
     });
     const result: unknown = await connector.execute(
       payload.config || {},

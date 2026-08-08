@@ -58,7 +58,7 @@ export default function RolesPage() {
       toast({
         variant: "success",
         title: "Permissions updated",
-        description: "Applies immediately — no one needs to sign in again.",
+        description: "Applies immediately - no one needs to sign in again.",
       });
       queryClient.invalidateQueries({ queryKey: ["roles"] });
     },
@@ -138,7 +138,7 @@ export default function RolesPage() {
                   <div className="text-[15px] font-semibold">{selected.name}</div>
                   <p className="mt-0.5 text-[12.5px] text-ink-faint">
                     {selected.is_builtin
-                      ? "Builtin roles are read-only — clone the grants into a new role to customise."
+                      ? "Builtin roles are read-only - clone the grants into a new role to customise."
                       : "Click a module name to toggle its whole row."}
                   </p>
                 </div>

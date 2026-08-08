@@ -6,7 +6,7 @@ const BASE_URL = {
 
 // Live status socket. Derived from the page origin so it works behind nginx
 // (ws://host/ws/playbook) without extra config; override with an env var if the
-// api is reached directly. Client-only — only call from effects/hooks.
+// api is reached directly. Client-only - only call from effects/hooks.
 export const getPlaybookWsUrl = (): string => {
   if (process.env.NEXT_PUBLIC_PLAYBOOK_WS_URL) {
     return process.env.NEXT_PUBLIC_PLAYBOOK_WS_URL;

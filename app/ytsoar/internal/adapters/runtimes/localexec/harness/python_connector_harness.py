@@ -56,7 +56,10 @@ def main():
     )
     params = Connector.evaluate_params(
         parameters=payload.get("params"),
-        variables={"steps": payload.get("steps") or {}},
+        variables={
+            "steps": payload.get("steps") or {},
+            "input": payload.get("input") or {"records": [], "parameters": {}},
+        },
     )
     result = connector.execute(
         configs=config, params=params, operation=payload["operation"]

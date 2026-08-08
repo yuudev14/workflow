@@ -26,7 +26,7 @@ func NewAdminHandler(log logger.Logger, authService *auth.Service) *AdminHandler
 }
 
 // actorAndTarget resolves who is acting and which entity they named. Every
-// mutating route needs both, and the id must be validated here — gin's binder
+// mutating route needs both, and the id must be validated here - gin's binder
 // cannot bind a path param to uuid.UUID.
 func (h *AdminHandler) actorAndTarget(c *gin.Context, param string) (uuid.UUID, uuid.UUID, bool) {
 	response := rest.Response{C: c}
@@ -71,6 +71,19 @@ func (h *AdminHandler) ListUsers(c *gin.Context) {
 	}
 
 	users, err := h.authService.ListUsers(c.Request.Context(), query.Offset, query.Limit, filter)
+	if err != nil {
+		response.Fail(h.logger, err)
+		return
+	}
+	response.ResponseSuccess(users)
+}
+
+// ListAssignableUsers is authenticated but ungated - see the service method for
+// why, and note that it must stay a projection of id + username only.
+func (h *AdminHandler) ListAssignableUsers(c *gin.Context) {
+	response := rest.Response{C: c}
+
+	users, err := h.authService.ListAssignableUsers(c.Request.Context())
 	if err != nil {
 		response.Fail(h.logger, err)
 		return

@@ -5,7 +5,7 @@ import * as React from "react";
 import { Label } from "@/components/ui/label";
 import { SearchInput } from "@/components/soar";
 
-/** Structural — satisfied by both `Role` and the lighter `RoleRef`. */
+/** Structural - satisfied by both `Role` and the lighter `RoleRef`. */
 type PickableRole = { id: string; name: string };
 
 /**
@@ -34,7 +34,7 @@ export function RolePicker({
     const q = query.trim().toLowerCase();
     if (!q) return roles;
     // A selected role stays listed even when it doesn't match, so a search can
-    // never hide a grant you already made — or strand it as undeselectable.
+    // never hide a grant you already made - or strand it as undeselectable.
     return roles.filter((r) => r.name.toLowerCase().includes(q) || selected.includes(r.id));
   }, [roles, query, selected]);
 
