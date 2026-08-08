@@ -30,7 +30,7 @@ const (
 
 // reservedIDs cannot be uploaded: "core" is the shared base-class package,
 // the code_snippet pair are virtual connectors implemented by the sandbox,
-// and condition/http_request are Go builtins compiled into the worker — an
+// and condition/http_request are Go builtins compiled into the worker - an
 // upload could never shadow them (the resolver routes builtins first), so
 // reject it instead of confusing anyone.
 var reservedIDs = map[string]bool{
@@ -136,7 +136,7 @@ func (s *ConnectorServiceImpl) DeleteConnector(ctx context.Context, connectorID 
 	if err := s.writer.Remove(ctx, connectorID); err != nil {
 		return err
 	}
-	// built-ins seeded from the repo have no audit row — not an error
+	// built-ins seeded from the repo have no audit row - not an error
 	if err := s.repo.Delete(ctx, connectorID); err != nil && err != ErrConnectorNotFound {
 		return err
 	}

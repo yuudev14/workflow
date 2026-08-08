@@ -44,6 +44,7 @@ func (r *NodeRunner) Execute(ctx context.Context, req execution.ExecutionRequest
 	payload, err := json.Marshal(map[string]any{
 		"params": params,
 		"steps":  req.Steps,
+		"input":  req.Input.TemplateVars(),
 	})
 	if err != nil {
 		return nil, err

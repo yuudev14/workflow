@@ -182,7 +182,7 @@ func TestExecutorDiamondOrderingAndStepsThreading(t *testing.T) {
 			}
 			mu.Unlock()
 			return json.RawMessage(fmt.Sprintf(`{"out":%q}`, req.Task.Name)), nil
-		}).Times(4) // A, B, C, D — start never reaches the runtime
+		}).Times(4) // A, B, C, D - start never reaches the runtime
 
 	err := f.run(t, graph, tasksFor(graph))
 

@@ -138,7 +138,7 @@ func TestSetTeamRolesReplacesWholesaleInTx(t *testing.T) {
 	assert.Greater(t, *env.txCalls, before, "delete-then-insert must not half-apply")
 }
 
-// An empty list clears the grants rather than no-opping — otherwise a team's
+// An empty list clears the grants rather than no-opping - otherwise a team's
 // privileges could never be taken away through the API.
 func TestSetTeamRolesEmptyListClears(t *testing.T) {
 	env := setupTest(t)
@@ -171,7 +171,7 @@ func TestSetTeamRolesRejectsMalformedID(t *testing.T) {
 	assert.Error(t, err)
 }
 
-// A builtin role may be GRANTED to a team — that only uses the role. Only
+// A builtin role may be GRANTED to a team - that only uses the role. Only
 // editing a builtin's own matrix is forbidden.
 func TestSetTeamRolesAllowsBuiltinRole(t *testing.T) {
 	env := setupTest(t)

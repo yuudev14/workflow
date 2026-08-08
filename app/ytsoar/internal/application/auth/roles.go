@@ -136,7 +136,7 @@ func (s *Service) rejectBuiltin(ctx context.Context, id uuid.UUID) error {
 }
 
 // parsePermissionMatrix validates every module and action against the domain
-// vocabulary. The columns are TEXT, so the database accepts anything — a typo
+// vocabulary. The columns are TEXT, so the database accepts anything - a typo
 // would be stored happily and then grant nothing, forever.
 func parsePermissionMatrix(matrix map[string][]string) (domain.PermissionSet, error) {
 	permissions := make(domain.PermissionSet, 0, len(matrix))

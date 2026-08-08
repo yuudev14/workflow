@@ -5,9 +5,10 @@ import { usePathname, useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 
 import CreatePlaybookForm from "../_components/CreatePlaybookForm";
-import MetricsService from "@/services/metrics/metrics";
-import { KpiRow } from "@/components/soar";
+import PlaybookService from "@/services/playbooks/playbooks";
+import { KpiCard } from "@/components/soar";
 import { PermissionGate } from "@/components/auth/PermissionGate";
+import { countDelta, percentDelta } from "@/lib/delta";
 import { cn } from "@/lib/utils";
 
 const tabs = [
@@ -19,10 +20,18 @@ const Layout = ({ children }: Readonly<{ children: React.ReactNode }>) => {
   const router = useRouter();
   const pathname = usePathname();
 
-  const kpiQuery = useQuery({
-    queryKey: ["playbook-kpis"],
-    queryFn: () => MetricsService.getPlaybookKpis(),
+  // No range picker here - this is a header above a list, not a dashboard, so
+  // it takes the server's default window.
+  const summaryQuery = useQuery({
+    queryKey: ["playbooks-summary", {}],
+    queryFn: () => PlaybookService.getPlaybooksSummary(),
   });
+
+  const summary = summaryQuery.data;
+  const playbooks = countDelta(summary?.playbooks);
+  const runs = countDelta(summary?.runs);
+  const failed = countDelta(summary?.failed);
+  const successRate = percentDelta(summary?.success_rate);
 
   return (
     <div className="flex justify-center">
@@ -39,7 +48,33 @@ const Layout = ({ children }: Readonly<{ children: React.ReactNode }>) => {
           </PermissionGate>
         </div>
 
-        <KpiRow metrics={kpiQuery.data} loading={kpiQuery.isLoading} />
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+          <KpiCard
+            label="Playbooks"
+            value={summary?.playbooks.current ?? "-"}
+            delta={playbooks?.label}
+            deltaDirection={playbooks?.direction}
+          />
+          <KpiCard
+            label="Runs"
+            value={summary?.runs.current ?? "-"}
+            delta={runs?.label}
+            deltaDirection={runs?.direction}
+          />
+          <KpiCard
+            label="Failed runs"
+            value={summary?.failed.current ?? "-"}
+            delta={failed?.label}
+            deltaDirection={failed?.direction}
+            deltaNegative
+          />
+          <KpiCard
+            label="Success rate"
+            value={summary ? `${Math.round(summary.success_rate.current * 100)}%` : "-"}
+            delta={successRate?.label}
+            deltaDirection={successRate?.direction}
+          />
+        </div>
 
         <div className="flex w-fit gap-1 rounded-sm border border-line bg-paper-sunken p-[3px]">
           {tabs.map((t) => {

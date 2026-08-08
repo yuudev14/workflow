@@ -14,7 +14,7 @@ export const TASK_OPERATIONS: readonly TaskOperationGroup[] = [
       },
       {
         label: "Code snippet",
-        description: "A quick custom transform between steps — no connector to install",
+        description: "A quick custom transform between steps - no connector to install",
         tone: "moss",
         badge: "python",
         badgeTone: "signal",
@@ -23,7 +23,7 @@ export const TASK_OPERATIONS: readonly TaskOperationGroup[] = [
       },
       {
         label: "Code snippet",
-        description: "Same, in JavaScript. Plain JS only — TypeScript syntax won't run here",
+        description: "Same, in JavaScript. Plain JS only - TypeScript syntax won't run here",
         tone: "amber",
         badge: "node",
         badgeTone: "moss",
@@ -32,7 +32,7 @@ export const TASK_OPERATIONS: readonly TaskOperationGroup[] = [
       },
       {
         label: "Utilities",
-        description: "HTTP Request and other in-worker builtins — no sandbox subprocess",
+        description: "HTTP Request and other in-worker builtins - no sandbox subprocess",
         tone: "slate",
         badge: "in-worker",
         badgeTone: "slate",
@@ -46,7 +46,7 @@ export const TASK_OPERATIONS: readonly TaskOperationGroup[] = [
     options: [
       {
         label: "Condition",
-        description: "If / else if / else — branch the playbook on a compare or expression",
+        description: "If / else if / else - branch the playbook on a compare or expression",
         tone: "rose",
         Icon: GitBranch,
         operation: "decision"

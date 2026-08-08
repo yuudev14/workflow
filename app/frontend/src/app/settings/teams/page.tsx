@@ -117,7 +117,7 @@ export default function TeamsPage() {
         },
       }),
       // Grants are visible at a glance because team membership escalates
-      // privilege — every member inherits these roles.
+      // privilege - every member inherits these roles.
       columnHelper.accessor("roles", {
         header: "Grants",
         cell: ({ getValue }) => {
@@ -232,7 +232,7 @@ function TeamDialog({
   });
   const allRoles = rolesQuery.data ?? [];
 
-  // Server-side search keeps the picker usable with thousands of users — we
+  // Server-side search keeps the picker usable with thousands of users - we
   // never pull the whole directory into the dialog.
   const usersQuery = useQuery({
     queryKey: ["users", "team-picker", memberSearch],
@@ -384,7 +384,7 @@ function TeamDialog({
               )}
               {truncated && (
                 <span className="px-1.5 py-1.5 text-[12px] text-ink-faint">
-                  More users exist — refine your search to find them.
+                  More users exist - refine your search to find them.
                 </span>
               )}
             </div>

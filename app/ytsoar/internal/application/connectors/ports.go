@@ -15,7 +15,7 @@ import (
 var ErrConnectorNotFound = apperr.New(apperr.NotFound, "connector not found")
 
 // ErrInvalidConnector marks upload validation failures (bad zip, missing
-// info.json, unsafe paths, ...) — handlers map it to 400.
+// info.json, unsafe paths, ...) - handlers map it to 400.
 var ErrInvalidConnector = apperr.New(apperr.Invalid, "invalid connector")
 
 // ConnectorStore reads connector metadata from the unified connectors tree.
@@ -42,7 +42,7 @@ type ConnectorRepository interface {
 }
 
 // DepsInstaller vendors a connector's declared dependencies
-// (requirements.txt -> deps/, package.json -> node_modules/) — the same step
+// (requirements.txt -> deps/, package.json -> node_modules/) - the same step
 // `make connector-deps` runs, executed at upload time.
 type DepsInstaller interface {
 	Install(ctx context.Context, connectorID string) error

@@ -102,6 +102,21 @@ func (mr *MockPlaybookApplicationServiceMockRecorder) PreparePlaybookMessage(arg
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PreparePlaybookMessage", reflect.TypeOf((*MockPlaybookApplicationService)(nil).PreparePlaybookMessage), arg0, edges)
 }
 
+// RunPlaybook mocks base method.
+func (m *MockPlaybookApplicationService) RunPlaybook(ctx context.Context, playbookId, moduleType string, payload playbooks.RunPlaybookPayload, actorID *uuid.UUID) (*domain.TaskMessage, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "RunPlaybook", ctx, playbookId, moduleType, payload, actorID)
+	ret0, _ := ret[0].(*domain.TaskMessage)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// RunPlaybook indicates an expected call of RunPlaybook.
+func (mr *MockPlaybookApplicationServiceMockRecorder) RunPlaybook(ctx, playbookId, moduleType, payload, actorID any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RunPlaybook", reflect.TypeOf((*MockPlaybookApplicationService)(nil).RunPlaybook), ctx, playbookId, moduleType, payload, actorID)
+}
+
 // TriggerPlaybook mocks base method.
 func (m *MockPlaybookApplicationService) TriggerPlaybook(ctx context.Context, playbookId string) (*domain.TaskMessage, error) {
 	m.ctrl.T.Helper()

@@ -41,9 +41,14 @@ WHERE id = sqlc.arg('id')
 RETURNING *;
 
 -- name: CreatePlaybookHistory :one
-INSERT INTO playbook_history (playbook_id, triggered_at, edges)
-VALUES ($1, NOW(), $2)
+INSERT INTO playbook_history (playbook_id, triggered_at, edges, trigger_type, triggered_by, input)
+VALUES ($1, NOW(), $2, sqlc.narg('trigger_type'), sqlc.narg('triggered_by'), sqlc.narg('input'))
 RETURNING *;
+
+-- name: CreatePlaybookRunRecord :exec
+INSERT INTO playbook_run_records (playbook_history_id, module_type, record_id)
+VALUES ($1, $2, $3)
+ON CONFLICT DO NOTHING;
 
 -- name: UpdatePlaybookHistoryStatus :one
 UPDATE playbook_history

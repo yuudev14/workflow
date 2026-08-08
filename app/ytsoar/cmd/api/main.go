@@ -16,9 +16,11 @@ import (
 	"github.com/yuudev14/ytsoar/internal/adapters/repository"
 	"github.com/yuudev14/ytsoar/internal/adapters/security"
 	"github.com/yuudev14/ytsoar/internal/adapters/ws"
+	"github.com/yuudev14/ytsoar/internal/application/alerts"
 	"github.com/yuudev14/ytsoar/internal/application/auth"
 	"github.com/yuudev14/ytsoar/internal/application/connectors"
 	"github.com/yuudev14/ytsoar/internal/application/edges"
+	"github.com/yuudev14/ytsoar/internal/application/incidents"
 	"github.com/yuudev14/ytsoar/internal/application/playbooks"
 	"github.com/yuudev14/ytsoar/internal/application/tasks"
 	"github.com/yuudev14/ytsoar/internal/config"
@@ -117,6 +119,9 @@ func main() {
 		log.Fatalf("failed to seed admin user: %v", err)
 	}
 
+	alertRepository := repository.NewAlertRepositoryImpl(appLogger, queries, pool)
+	incidentRepository := repository.NewIncidentRepositoryImpl(appLogger, queries, pool)
+
 	orchestrator := playbooks.NewPlaybookApplicationService(
 		appLogger,
 		playbookService,
@@ -125,6 +130,7 @@ func main() {
 		txManager,
 		taskPublisher,
 		hub,
+		repository.NewRecordResolverImpl(appLogger, alertRepository, incidentRepository),
 	)
 
 	playbookHandler := handlers.NewPlaybookHandler(
@@ -152,6 +158,21 @@ func main() {
 	connectorHandler := handlers.NewConnectorHandler(appLogger, connectorService)
 	adminHandler := handlers.NewAdminHandler(appLogger, authService)
 
+	moduleEventPublisher, err := mq.NewModuleEventPublisher(appLogger, mqConn, cfg.ModuleEventsExchangeName)
+	if err != nil {
+		log.Fatalf("failed to setup module event publisher: %v", err)
+	}
+
+	// The alert repository doubles as incidents.AlertTimeline so linking writes
+	// the other half of the story onto the alert.
+	incidentService := incidents.NewService(
+		appLogger, incidentRepository, alertRepository, txManager, moduleEventPublisher, userRepository)
+	alertService := alerts.NewService(
+		appLogger, alertRepository, incidentService, txManager, moduleEventPublisher, userRepository)
+
+	alertHandler := handlers.NewAlertHandler(appLogger, alertService, orchestrator)
+	incidentHandler := handlers.NewIncidentHandler(appLogger, incidentService, orchestrator)
+
 	routerConfig := api.RouterConfig{
 		CORSOrigins: cfg.CORSOrigins,
 	}
@@ -162,6 +183,8 @@ func main() {
 		connectorHandler,
 		authHandler,
 		adminHandler,
+		alertHandler,
+		incidentHandler,
 		hub,
 		middleware.Auth(appLogger, authService),
 		middleware.AuthFromRefreshCookie(appLogger, authService),

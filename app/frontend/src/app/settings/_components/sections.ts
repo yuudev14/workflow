@@ -5,7 +5,7 @@ import { KeyRound, ScrollText, ShieldCheck, Users, UsersRound, type LucideIcon }
  * an "Admin" block; they live here so operational nav stays about running the
  * platform and administration is somewhere you go on purpose.
  *
- * Every section needs settings.read — the backend is the real boundary, this
+ * Every section needs settings.read - the backend is the real boundary, this
  * only decides what is worth showing.
  */
 export type SettingsSection = {

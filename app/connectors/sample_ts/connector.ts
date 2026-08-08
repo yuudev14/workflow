@@ -1,4 +1,4 @@
-// Sample TypeScript connector — copy this folder to start a new TS connector.
+// Sample TypeScript connector - copy this folder to start a new TS connector.
 // Node runs the file directly by stripping the types (>= 23.6); only erasable
 // TS syntax is allowed (no enums, namespaces or parameter properties).
 //

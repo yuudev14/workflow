@@ -92,6 +92,24 @@ func (w *PlaybookHandler) GetPlaybookGraphById(c *gin.Context) {
 	response.ResponseSuccess(playbook)
 }
 
+// Summary backs the automation KPI row on the dashboards, replacing the
+// hardcoded metrics fixture.
+func (w *PlaybookHandler) Summary(c *gin.Context) {
+	response := rest.Response{C: c}
+
+	rng, ok := bindRange(c, w.logger)
+	if !ok {
+		return
+	}
+
+	summary, err := w.PlaybookService.Summary(c.Request.Context(), rng)
+	if err != nil {
+		response.Fail(w.logger, err)
+		return
+	}
+	response.ResponseSuccess(summary)
+}
+
 func (w *PlaybookHandler) GetPlaybookHistory(c *gin.Context) {
 	var query dto.FilterQuery
 	var filter playbooks.PlaybookHistoryFilter

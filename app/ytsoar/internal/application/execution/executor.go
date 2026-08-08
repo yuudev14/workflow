@@ -196,6 +196,7 @@ func (e *Executor) processNode(ctx context.Context, msg domain.TaskMessage, node
 		Steps:             store.Snapshot(),
 		PlaybookHistoryID: msg.PlaybookHistoryId,
 		Timeout:           e.nodeTimeout,
+		Input:             msg.Input.Resolved(),
 	})
 	if err != nil {
 		if statusErr := e.setTaskStatus(ctx, msg, task, StatusFailed, nil, err); statusErr != nil {
@@ -311,7 +312,7 @@ type edgeKey struct {
 }
 
 // buildEdgeHandles indexes the wire edges' source_handles per (source,
-// destination) pair — two nodes can be linked by several edges ( a
+// destination) pair - two nodes can be linked by several edges ( a
 // condition's true AND false handle both pointing at the same join node).
 func buildEdgeHandles(edges []domain.EdgeRef) map[edgeKey][]*string {
 	handles := map[edgeKey][]*string{}
@@ -348,8 +349,8 @@ func edgeFollowed(handles map[edgeKey][]*string, node string, child string, outp
 }
 
 // conditionResult pulls the branch selector out of a node's output. A condition
-// returns {"result": ...} — a bool for true/false, or a case id / "else" for a
-// switch — which becomes the handle string an edge must match to be followed.
+// returns {"result": ...} - a bool for true/false, or a case id / "else" for a
+// switch - which becomes the handle string an edge must match to be followed.
 //
 // Detection is intentionally shape-based rather than tied to the condition
 // builtin's connector id, so any connector (or code snippet) returning
@@ -376,7 +377,7 @@ func conditionResult(output any) (string, bool) {
 
 // isDirectionalHandle reports whether a source_handle is one of React Flow's
 // positional editor handles (source-top, target-left, ...) rather than a
-// semantic condition branch — positional handles never gate an edge.
+// semantic condition branch - positional handles never gate an edge.
 func isDirectionalHandle(handle string) bool {
 	return strings.HasPrefix(handle, "source-") || strings.HasPrefix(handle, "target-")
 }

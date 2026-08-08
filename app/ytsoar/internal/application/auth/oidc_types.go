@@ -14,7 +14,7 @@ var (
 	ErrProviderNotFound  = apperr.New(apperr.NotFound, "auth provider not found")
 	ErrProviderDisabled  = apperr.New(apperr.Invalid, "auth provider is disabled")
 	ErrProviderNameTaken = apperr.New(apperr.Conflict, "an auth provider with that name already exists")
-	// ErrOIDCState is deliberately vague — a state mismatch is the CSRF signal
+	// ErrOIDCState is deliberately vague - a state mismatch is the CSRF signal
 	// on the one state-changing GET, and the reason must not leak to the caller.
 	ErrOIDCState   = apperr.New(apperr.Unauthorized, "authentication could not be completed")
 	ErrJITDisabled = apperr.New(apperr.Forbidden, "no account for this identity and just-in-time provisioning is off")
@@ -132,7 +132,7 @@ func decodeOIDCConfig(raw json.RawMessage) (OIDCConfig, error) {
 	return cfg, nil
 }
 
-// ProviderSummary is the public login-screen shape — never carries a secret.
+// ProviderSummary is the public login-screen shape - never carries a secret.
 type ProviderSummary struct {
 	ID       string `json:"id"`
 	Name     string `json:"name"`

@@ -20,7 +20,7 @@ import DeleteNodeButton from "./DeleteNodeButton";
 // Routing is chosen in the node's form, which sets each outgoing edge's
 // source_handle to a branch (a switch case id or "else"). React Flow only renders
 // an edge if its source_handle matches a real handle, so we render a hidden handle
-// for every branch the edges reference — otherwise an assigned edge detaches.
+// for every branch the edges reference - otherwise an assigned edge detaches.
 const ConditionNode: React.FC<NodeProps<Node<Tasks>>> = (props) => {
   const branchKey = useStore((s) => {
     const ids: string[] = [];
@@ -37,7 +37,7 @@ const ConditionNode: React.FC<NodeProps<Node<Tasks>>> = (props) => {
   const branchHandles = branchKey ? branchKey.split("|") : [];
 
   // React Flow won't notice handles we add/remove on the fly, so re-measure
-  // whenever the branch set changes — without this a newly routed edge can't
+  // whenever the branch set changes - without this a newly routed edge can't
   // attach and stays disconnected.
   const updateNodeInternals = useUpdateNodeInternals();
   useEffect(() => {

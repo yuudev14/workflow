@@ -1,3 +1,5 @@
+.PHONY: seed-alerts drip-alerts storm-alerts proto
+.PHONY: seed-alerts drip-alerts storm-alerts
 
 rebuild-containers:
 		docker compose -f ./docker/dev.docker-compose.yml up --build -d
@@ -35,6 +37,24 @@ start-debug:
 		cd ./app/frontend && \
 		npm run dev -- --hostname 0.0.0.0
 
+# Dev/demo alert data. Stdlib python on the HOST, talking to the dev stack over
+# HTTP - see tools/alertgen/README.md. Not shipped, nothing imports it.
+ALERTGEN := python3 ./tools/alertgen/alertgen.py
+
+# ~40 alerts across all 5 source kinds and all severities, created_at spread
+# over 14 days so the volume chart has a shape. Also escalates 3 into incidents.
+seed-alerts:
+		$(ALERTGEN) seed --count $(or $(N),40)
+
+# One alert every ~20s until Ctrl-C. Leave running while clicking the UI.
+drip-alerts:
+		$(ALERTGEN) drip
+
+# N byte-identical alerts. Must collapse to ONE row with dedup_count=N; if it
+# does not, alerts_open_fingerprint_idx is wrong.
+storm-alerts:
+		$(ALERTGEN) storm --count $(or $(N),200)
+
 # Install per-connector dependencies declared as <id>/requirements.txt (python,
 # vendored into <id>/deps) or <id>/package.json (node, into <id>/node_modules).
 # Runs INSIDE the api container: it has the RW mount of the tree and its
@@ -54,3 +74,11 @@ connector-deps:
 			echo "==> npm: $$id"; \
 			npm install --prefix "$$id" --ignore-scripts --omit=dev --no-audit --no-fund; \
 		done'
+# protoc and the two plugins live in $(go env GOPATH)/bin. Output is
+# gen/connectorruntimepb with paths=source_relative, which is what produced the
+# committed files - regenerating any other way rewrites their package path.
+proto:
+		PATH="$$PATH:$$(go env GOPATH)/bin" protoc -I app/proto \
+			--go_out=app/ytsoar/gen/connectorruntimepb --go_opt=paths=source_relative \
+			--go-grpc_out=app/ytsoar/gen/connectorruntimepb --go-grpc_opt=paths=source_relative \
+			connector_runtime.proto

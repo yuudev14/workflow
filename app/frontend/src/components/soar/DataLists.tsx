@@ -6,7 +6,7 @@ export interface KV {
   v: React.ReactNode;
 }
 
-/** Dashed key/value rows — parameters, run inputs. */
+/** Dashed key/value rows - parameters, run inputs. */
 export function KVList({ items, className }: { items: KV[]; className?: string }) {
   return (
     <div className={cn("flex flex-col gap-2", className)}>
@@ -23,7 +23,7 @@ export function KVList({ items, className }: { items: KV[]; className?: string }
   );
 }
 
-/** Two-column field grid — record detail (host / user / technique …). */
+/** Two-column field grid - record detail (host / user / technique …). */
 export function FieldGrid({ items, className }: { items: KV[]; className?: string }) {
   return (
     <div className={cn("grid grid-cols-2 gap-x-4 gap-y-2.5", className)}>

@@ -5,7 +5,7 @@
 @custom-variant dark (&:is(.dark *));
 
 /*
-  Design tokens — YTSoar interface refresh.
+  Design tokens - YTSoar interface refresh.
   Raw palette (paper / ink / signal / moss / amber / rose / slate) lives in
   :root and .dark; the shadcn semantic names below reference it so every
   existing ui/* component inherits the new look. Utilities resolve through
@@ -120,7 +120,7 @@
 
   --destructive-foreground: #ffffff;
 
-  /* dark mode inherits :root's mapping — main workspace is the raised surface
+  /* dark mode inherits :root's mapping - main workspace is the raised surface
      (paper-raised) and the nav rail is the darker paper, so the rail reads
      darker than the canvas, matching the artifact. */
 }

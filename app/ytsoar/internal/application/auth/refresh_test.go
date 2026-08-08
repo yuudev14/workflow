@@ -39,7 +39,7 @@ func signRefreshToken(t *testing.T, userID uuid.UUID) string {
 
 // hashOf is the lookup key the service is expected to use. Matching on this
 // instead of gomock.Any() is what proves the raw token never reaches the
-// database — the reason a leaked refresh_tokens table is worthless.
+// database - the reason a leaked refresh_tokens table is worthless.
 func hashOf(rawToken string) string {
 	sum := sha256.Sum256([]byte(rawToken))
 	return hex.EncodeToString(sum[:])
@@ -116,7 +116,7 @@ func TestRefreshReuseOutsideGraceWindowRevokesEverything(t *testing.T) {
 
 // Two tabs refreshing at once both send the same cookie; the loser arrives
 // just after rotation revoked it. That is not theft, so the other tab's
-// session must survive — RevokeAllForUser is deliberately not expected here,
+// session must survive - RevokeAllForUser is deliberately not expected here,
 // so calling it fails this test.
 func TestRefreshReuseInsideGraceWindowKeepsSessions(t *testing.T) {
 	env := setupTest(t)

@@ -28,7 +28,9 @@ type PlaybookService interface {
 	GetPlaybookGraphById(ctx context.Context, id string) (*domain.PlaybookGraph, error)
 	CreatePlaybook(ctx context.Context, playbook PlaybookPayload) (*domain.Playbooks, error)
 	UpdatePlaybook(ctx context.Context, id string, playbook UpdatePlaybookData) (*domain.Playbooks, error)
-	CreatePlaybookHistory(ctx context.Context, id string, edges []domain.ResponseEdges) (*domain.PlaybookHistory, error)
+	CreatePlaybookHistory(ctx context.Context, id string, edges []domain.ResponseEdges, run RunStamp) (*domain.PlaybookHistory, error)
+	CreatePlaybookRunRecords(ctx context.Context, historyID uuid.UUID, moduleType string, recordIDs []uuid.UUID) error
+	Summary(ctx context.Context, rng types.ResolvedRange) (PlaybooksSummary, error)
 	UpdatePlaybookHistory(ctx context.Context, playbookHistoryId string, playbookHistory UpdatePlaybookHistoryData) (*domain.PlaybookHistory, error)
 	UpdatePlaybookHistoryStatus(ctx context.Context, playbookHistoryId string, status string) (*domain.PlaybookHistory, error)
 }
@@ -106,8 +108,18 @@ func (w *PlaybookServiceImpl) GetPlaybooksCount(ctx context.Context, filter Play
 }
 
 // CreatePlaybookHistory implements PlaybookService.
-func (w *PlaybookServiceImpl) CreatePlaybookHistory(ctx context.Context, id string, edges []domain.ResponseEdges) (*domain.PlaybookHistory, error) {
-	return w.PlaybookRepository.CreatePlaybookHistory(ctx, id, edges)
+func (w *PlaybookServiceImpl) CreatePlaybookHistory(ctx context.Context, id string, edges []domain.ResponseEdges, run RunStamp) (*domain.PlaybookHistory, error) {
+	return w.PlaybookRepository.CreatePlaybookHistory(ctx, id, edges, run)
+}
+
+// Summary implements PlaybookService.
+func (w *PlaybookServiceImpl) Summary(ctx context.Context, rng types.ResolvedRange) (PlaybooksSummary, error) {
+	return w.PlaybookRepository.Summary(ctx, rng)
+}
+
+// CreatePlaybookRunRecords implements PlaybookService.
+func (w *PlaybookServiceImpl) CreatePlaybookRunRecords(ctx context.Context, historyID uuid.UUID, moduleType string, recordIDs []uuid.UUID) error {
+	return w.PlaybookRepository.CreatePlaybookRunRecords(ctx, historyID, moduleType, recordIDs)
 }
 
 // GetPlaybookById implements PlaybookService.

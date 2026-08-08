@@ -1,3 +1,5 @@
+import type { ResolvedRange, WindowCount, WindowRate } from "@/services/common/range";
+
 export interface Playbook {
   id: string;
   name: string;
@@ -22,6 +24,42 @@ export interface PlaybookHistory {
   >;
   triggered_at: string;
   edges: Edges[]
+  trigger_type?: string | null;
+  triggered_by?: string | null;
+  /** Trigger data the run was given, reachable in templates as `var.input`. */
+  input?: RunInput | null;
+}
+
+/** What a run's templates see as `var.input`. */
+export interface RunInput {
+  module_type?: string | null;
+  records: Record<string, unknown>[];
+  parameters: Record<string, unknown>;
+}
+
+/**
+ * Body of the module-side run endpoints. The caller sends record *ids* and the
+ * server hydrates them: list queries never select `payload`, which is exactly
+ * what templates read, and a client-supplied record would be spoofable.
+ */
+export interface RunPlaybookPayload {
+  playbook_id: string;
+  /** Capped at 100 server-side - the hydrated payload rides on every node's gRPC call. */
+  record_ids: string[];
+  parameters?: Record<string, unknown>;
+}
+
+/**
+ * Every figure is paired with the immediately preceding window of equal length,
+ * which is what makes a rendered delta mean anything.
+ */
+export interface PlaybooksSummary {
+  range: ResolvedRange;
+  playbooks: WindowCount;
+  runs: WindowCount;
+  failed: WindowCount;
+  /** 0..1 fraction, not a percentage. */
+  success_rate: WindowRate;
 }
 
 // Mirrors the API's actual history query params (PlaybookHistoryFilter in the Go
@@ -47,7 +85,8 @@ export type Tasks = {
   updated_at: string;
 };
 
-export type TaskStatus = "success" | "failed" | "in_progress"
+// `skipped` is what a conditional branch that was not followed records.
+export type TaskStatus = "success" | "failed" | "in_progress" | "skipped"
 
 export type TaskHistory = Pick<
   Tasks,

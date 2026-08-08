@@ -58,7 +58,7 @@ export function PasswordDialog({
         <DialogHeader>
           <DialogTitle>Reset password for {user?.username}</DialogTitle>
           <DialogDescription>
-            This signs the user out everywhere — a reset is usually a response to a compromise.
+            This signs the user out everywhere - a reset is usually a response to a compromise.
           </DialogDescription>
         </DialogHeader>
         <form

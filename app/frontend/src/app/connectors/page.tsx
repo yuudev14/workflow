@@ -44,7 +44,7 @@ function Toggle({ on, onToggle }: { on: boolean; onToggle: () => void }) {
 }
 
 function ConnectorCard({ connector }: { connector: MarketConnector }) {
-  // Local-only enable state — persistence is Phase 2/3 (endpoint not wired yet).
+  // Local-only enable state - persistence is Phase 2/3 (endpoint not wired yet).
   const [enabled, setEnabled] = React.useState(true);
   const g = connectorGlyph(connector.name);
   const badge = runtimeBadge(connector.runtime);
@@ -110,7 +110,7 @@ export default function Page() {
               Drop a connector .zip, or browse
             </div>
             <div className="mt-0.5 text-[12.5px]">
-              Must include info.json + a python/node entry file — max 25 MB
+              Must include info.json + a python/node entry file - max 25 MB
             </div>
           </label>
         </PermissionGate>

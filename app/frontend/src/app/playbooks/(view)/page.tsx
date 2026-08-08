@@ -147,7 +147,7 @@ export default function Page() {
                       </span>
                     </>
                   ) : (
-                    <span className="text-ink-faint">—</span>
+                    <span className="text-ink-faint">-</span>
                   )}
                 </div>
                 <ChevronRight className="size-4 text-ink-faint" />
