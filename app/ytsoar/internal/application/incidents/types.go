@@ -164,10 +164,17 @@ type IncidentDetail struct {
 	IOCs         []IOC                        `json:"iocs"`
 }
 
+// PlaybookID is what lets the UI deep-link to the run itself rather than the
+// whole executions list. TriggerType and TriggeredBy are nullable: runs predating
+// the run-input migration have neither, and a scheduled or event-driven run has
+// no user behind it.
 type IncidentRun struct {
 	PlaybookHistoryID uuid.UUID `json:"playbook_history_id"`
+	PlaybookID        uuid.UUID `json:"playbook_id"`
 	Playbook          string    `json:"playbook"`
 	Status            string    `json:"status"`
+	TriggerType       *string   `json:"trigger_type"`
+	TriggeredBy       *string   `json:"triggered_by"`
 	CreatedAt         time.Time `json:"created_at"`
 }
 

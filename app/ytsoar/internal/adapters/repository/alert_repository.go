@@ -46,12 +46,15 @@ const alertListColumns = `a.id, a.title, a.severity, a.status, a.source_kind, a.
 // `timestamp` with no offset, which Go's RFC3339 unmarshal then rejects.
 const alertRunsAggregate = `COALESCE((
     SELECT jsonb_agg(jsonb_build_object(
-               'playbook_history_id', h.id, 'playbook', p.name, 'status', h.status,
+               'playbook_history_id', h.id, 'playbook_id', h.playbook_id,
+               'playbook', p.name, 'status', h.status,
+               'trigger_type', h.trigger_type, 'triggered_by', tu.username,
                'created_at', h.triggered_at AT TIME ZONE 'UTC')
            ORDER BY h.triggered_at DESC)
     FROM playbook_run_records prr
     JOIN playbook_history h ON h.id = prr.playbook_history_id
     LEFT JOIN playbooks p ON p.id = h.playbook_id
+    LEFT JOIN users tu ON tu.id = h.triggered_by
     WHERE prr.module_type = 'alert' AND prr.record_id = a.id
 ), '[]'::jsonb) AS runs`
 

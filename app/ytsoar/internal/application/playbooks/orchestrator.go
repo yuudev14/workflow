@@ -409,8 +409,13 @@ func (w *PlaybookApplicationServiceImpl) runPlaybook(ctx context.Context, playbo
 	}
 
 	// broadcast only after the tx commits - a rollback must not leak a
-	// phantom history to WS clients, and a slow client must not hold the tx open
-	w.StatusBroadcaster.Broadcast(playbookHistory)
+	// phantom history to WS clients, and a slow client must not hold the tx open.
+	// Same {event, data} envelope the status consumer emits: clients route on
+	// `event`, so a bare row is silently dropped and the new run never appears.
+	w.StatusBroadcaster.Broadcast(map[string]any{
+		"event": "playbook_status",
+		"data":  playbookHistory,
+	})
 
 	body := domain.TaskMessage{
 		Graph:             graph,

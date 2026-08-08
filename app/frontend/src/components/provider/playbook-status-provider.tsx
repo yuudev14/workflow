@@ -86,6 +86,10 @@ const PlaybookStatusProvider: React.FC<{ children: React.ReactNode }> = ({
             });
           }
           queryClient.invalidateQueries({ queryKey: ["playbooks-history-all"] });
+          // The event carries no record linkage - that lives in
+          // playbook_run_records - so refresh any open detail by key prefix.
+          queryClient.invalidateQueries({ queryKey: ["alert"] });
+          queryClient.invalidateQueries({ queryKey: ["incident"] });
         }
       };
 

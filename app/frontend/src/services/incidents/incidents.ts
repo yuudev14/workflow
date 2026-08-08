@@ -1,6 +1,8 @@
 import settings from "@/settings";
 import apiClient from "../common/client";
 import { CursorPage } from "../common/schema";
+import { DateRangeParams } from "../common/range";
+import { RunPlaybookPayload } from "../playbooks/playbooks.schema";
 import {
   CreateIncidentPayload,
   Incident,
@@ -29,8 +31,16 @@ export default class IncidentService {
     return res.data;
   };
 
-  public static getIncidentsSummary = async (): Promise<IncidentsSummary> => {
-    const res = await apiClient.get(`${this.BASE_URL}/summary`);
+  public static getIncidentsSummary = async (
+    range: DateRangeParams = {},
+  ): Promise<IncidentsSummary> => {
+    const res = await apiClient.get(`${this.BASE_URL}/summary`, { params: range });
+    return res.data;
+  };
+
+  /** One run for N records, not N runs. Returns 202. */
+  public static runPlaybook = async (payload: RunPlaybookPayload): Promise<unknown> => {
+    const res = await apiClient.post(`${this.BASE_URL}/run`, payload);
     return res.data;
   };
 
