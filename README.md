@@ -1,3 +1,5 @@
+Initial repo resides here: https://github.com/orgs/yuudev14-workflow/repositories
+
 # YTSoar
 
 A self-hosted SOAR (Security Orchestration, Automation and Response) platform.
