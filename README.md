@@ -90,6 +90,7 @@ The diagrams are in [docs/diagram](docs/diagram):
 Other docs:
 
 - [Worker guide](docs/worker-guide.md): everything the worker does, with examples. Start here.
+- [River guide](docs/river-guide.md): how jobs work here: `RunArgs`, `RunWorker`, `NewRunWorker` and `NewWorkerClient`.
 - [Ports and interfaces](docs/ports-and-interfaces.md): what each interface is, why we made it, and who uses it.
 - [The runtime resolver](docs/runtime-resolver.md): how a node picks where it runs.
 
