@@ -13,7 +13,6 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/riverqueue/river"
 	"github.com/riverqueue/river/riverdriver/riverpgxv5"
-	"github.com/yuudev14/ytsoar/internal/adapters/repository"
 	"github.com/yuudev14/ytsoar/internal/application/execution"
 	"github.com/yuudev14/ytsoar/internal/domain"
 	"github.com/yuudev14/ytsoar/internal/logger"
@@ -94,25 +93,31 @@ func (w *RunWorker) Work(ctx context.Context, job *river.Job[RunArgs]) error {
 // Enqueuer queues runs. It implements contracts.RunEnqueuer.
 type Enqueuer struct {
 	client *river.Client[pgx.Tx]
+	// txFrom finds the transaction a TxManager put in ctx. It is injected, so
+	// this adapter does not import the repository adapter.
+	txFrom func(context.Context) (pgx.Tx, bool)
 }
 
-func NewEnqueuer(client *river.Client[pgx.Tx]) *Enqueuer { return &Enqueuer{client: client} }
+// NewEnqueuer is what the API uses: an insert-only River client that queues
+// runs and works none, since the worker process works them.
+func NewEnqueuer(pool *pgxpool.Pool, txFrom func(context.Context) (pgx.Tx, bool)) (*Enqueuer, error) {
+	client, err := river.NewClient(riverpgxv5.New(pool), &river.Config{})
+	if err != nil {
+		return nil, err
+	}
+	return &Enqueuer{client: client, txFrom: txFrom}, nil
+}
 
 // EnqueueRun joins the transaction in ctx when there is one.
 func (e *Enqueuer) EnqueueRun(ctx context.Context, playbookHistoryID uuid.UUID) error {
 	args := RunArgs{PlaybookHistoryID: playbookHistoryID}
 	var err error
-	if tx, ok := repository.TxFromContext(ctx); ok {
+	if tx, ok := e.txFrom(ctx); ok {
 		_, err = e.client.InsertTx(ctx, tx, args, nil)
 	} else {
 		_, err = e.client.Insert(ctx, args, nil)
 	}
 	return err
-}
-
-// NewInsertClient is what the API uses: it queues jobs and works none.
-func NewInsertClient(pool *pgxpool.Pool) (*river.Client[pgx.Tx], error) {
-	return river.NewClient(riverpgxv5.New(pool), &river.Config{})
 }
 
 // NewWorkerClient works playbook runs, `concurrency` at a time. runTimeout caps
