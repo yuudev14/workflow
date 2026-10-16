@@ -13,21 +13,21 @@ import (
 //go:embed harness/python_harness.py
 var pythonHarness string
 
-// PythonRunner executes code_snippet_py nodes in a fresh `python3 -I` child.
-// It implements execution.NodeRuntime.
-type PythonRunner struct {
+// PythonSnippetRuntime runs a code_snippet_py task in a fresh `python3 -I` process.
+// It runs in the SANDBOX and fits execution.TaskRuntime.
+type PythonSnippetRuntime struct {
 	logger        logger.Logger
 	memoryLimitMB int
 }
 
-func NewPythonRunner(log logger.Logger, memoryLimitMB int) *PythonRunner {
+func NewPythonSnippetRuntime(log logger.Logger, memoryLimitMB int) *PythonSnippetRuntime {
 	if memoryLimitMB <= 0 {
 		memoryLimitMB = defaultPythonMemoryLimitMB
 	}
-	return &PythonRunner{logger: log, memoryLimitMB: memoryLimitMB}
+	return &PythonSnippetRuntime{logger: log, memoryLimitMB: memoryLimitMB}
 }
 
-func (r *PythonRunner) Execute(ctx context.Context, req execution.ExecutionRequest) (json.RawMessage, error) {
+func (r *PythonSnippetRuntime) Execute(ctx context.Context, req execution.ExecutionRequest) (json.RawMessage, error) {
 	params, err := decodeParameters(req.Task.Parameters)
 	if err != nil {
 		return nil, err

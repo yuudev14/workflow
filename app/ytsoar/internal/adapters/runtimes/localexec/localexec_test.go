@@ -95,9 +95,9 @@ func codeOutput(t *testing.T, raw json.RawMessage) any {
 	return decoded["code_output"]
 }
 
-func TestPythonRunnerReturnsResult(t *testing.T) {
+func TestPythonSnippetRuntimeReturnsResult(t *testing.T) {
 	requirePython(t)
-	runner := localexec.NewPythonRunner(logger.NewNop(), config.DefaultPythonMemoryLimitMB)
+	runner := localexec.NewPythonSnippetRuntime(logger.NewNop(), config.DefaultPythonMemoryLimitMB)
 
 	raw, err := runner.Execute(context.Background(),
 		codeRequest(t, "result = params['x'] + len(steps)", map[string]any{"x": 41},
@@ -107,9 +107,9 @@ func TestPythonRunnerReturnsResult(t *testing.T) {
 	assert.Equal(t, float64(42), codeOutput(t, raw))
 }
 
-func TestPythonRunnerTemplating(t *testing.T) {
+func TestPythonSnippetRuntimeTemplating(t *testing.T) {
 	requireJinja2(t)
-	runner := localexec.NewPythonRunner(logger.NewNop(), config.DefaultPythonMemoryLimitMB)
+	runner := localexec.NewPythonSnippetRuntime(logger.NewNop(), config.DefaultPythonMemoryLimitMB)
 
 	raw, err := runner.Execute(context.Background(),
 		codeRequest(t, `result = params["greeting"]`,
@@ -120,9 +120,9 @@ func TestPythonRunnerTemplating(t *testing.T) {
 	assert.Equal(t, "hello", codeOutput(t, raw))
 }
 
-func TestPythonRunnerErrorIncludesTraceback(t *testing.T) {
+func TestPythonSnippetRuntimeErrorIncludesTraceback(t *testing.T) {
 	requirePython(t)
-	runner := localexec.NewPythonRunner(logger.NewNop(), config.DefaultPythonMemoryLimitMB)
+	runner := localexec.NewPythonSnippetRuntime(logger.NewNop(), config.DefaultPythonMemoryLimitMB)
 
 	_, err := runner.Execute(context.Background(),
 		codeRequest(t, "raise Exception('boom')", nil, nil, 10*time.Second))
@@ -130,9 +130,9 @@ func TestPythonRunnerErrorIncludesTraceback(t *testing.T) {
 	assert.ErrorContains(t, err, "boom")
 }
 
-func TestPythonRunnerTimeoutKillsProcess(t *testing.T) {
+func TestPythonSnippetRuntimeTimeoutKillsProcess(t *testing.T) {
 	requirePython(t)
-	runner := localexec.NewPythonRunner(logger.NewNop(), config.DefaultPythonMemoryLimitMB)
+	runner := localexec.NewPythonSnippetRuntime(logger.NewNop(), config.DefaultPythonMemoryLimitMB)
 
 	start := time.Now()
 	_, err := runner.Execute(context.Background(),
@@ -142,10 +142,10 @@ func TestPythonRunnerTimeoutKillsProcess(t *testing.T) {
 	assert.Less(t, time.Since(start), 5*time.Second)
 }
 
-func TestPythonRunnerEnvIsScrubbed(t *testing.T) {
+func TestPythonSnippetRuntimeEnvIsScrubbed(t *testing.T) {
 	requirePython(t)
 	t.Setenv("DB_PASSWORD", "supersecret")
-	runner := localexec.NewPythonRunner(logger.NewNop(), config.DefaultPythonMemoryLimitMB)
+	runner := localexec.NewPythonSnippetRuntime(logger.NewNop(), config.DefaultPythonMemoryLimitMB)
 
 	raw, err := runner.Execute(context.Background(),
 		codeRequest(t, "import os\nresult = os.environ.get('DB_PASSWORD', 'scrubbed')",
@@ -155,8 +155,8 @@ func TestPythonRunnerEnvIsScrubbed(t *testing.T) {
 	assert.Equal(t, "scrubbed", codeOutput(t, raw))
 }
 
-func TestPythonRunnerRequiresCode(t *testing.T) {
-	runner := localexec.NewPythonRunner(logger.NewNop(), config.DefaultPythonMemoryLimitMB)
+func TestPythonSnippetRuntimeRequiresCode(t *testing.T) {
+	runner := localexec.NewPythonSnippetRuntime(logger.NewNop(), config.DefaultPythonMemoryLimitMB)
 	req := codeRequest(t, "", nil, nil, time.Second)
 
 	_, err := runner.Execute(context.Background(), req)
@@ -164,9 +164,9 @@ func TestPythonRunnerRequiresCode(t *testing.T) {
 	assert.ErrorContains(t, err, "code parameter is required")
 }
 
-func TestNodeRunnerReturnsResult(t *testing.T) {
+func TestNodeJSSnippetRuntimeReturnsResult(t *testing.T) {
 	requireTypeScriptNode(t)
-	runner := localexec.NewNodeRunner(logger.NewNop(), config.DefaultNodeMemoryLimitMB)
+	runner := localexec.NewNodeJSSnippetRuntime(logger.NewNop(), config.DefaultNodeMemoryLimitMB)
 
 	raw, err := runner.Execute(context.Background(),
 		codeRequest(t, "const result = await Promise.resolve(params.x * 2);",
@@ -176,9 +176,9 @@ func TestNodeRunnerReturnsResult(t *testing.T) {
 	assert.Equal(t, float64(42), codeOutput(t, raw))
 }
 
-func TestNodeRunnerTemplating(t *testing.T) {
+func TestNodeJSSnippetRuntimeTemplating(t *testing.T) {
 	requireNunjucks(t)
-	runner := localexec.NewNodeRunner(logger.NewNop(), config.DefaultNodeMemoryLimitMB)
+	runner := localexec.NewNodeJSSnippetRuntime(logger.NewNop(), config.DefaultNodeMemoryLimitMB)
 
 	raw, err := runner.Execute(context.Background(),
 		codeRequest(t, "const result = params.greeting;",
@@ -189,9 +189,9 @@ func TestNodeRunnerTemplating(t *testing.T) {
 	assert.Equal(t, "hello", codeOutput(t, raw))
 }
 
-func TestNodeRunnerErrorIsCaptured(t *testing.T) {
+func TestNodeJSSnippetRuntimeErrorIsCaptured(t *testing.T) {
 	requireTypeScriptNode(t)
-	runner := localexec.NewNodeRunner(logger.NewNop(), config.DefaultNodeMemoryLimitMB)
+	runner := localexec.NewNodeJSSnippetRuntime(logger.NewNop(), config.DefaultNodeMemoryLimitMB)
 
 	_, err := runner.Execute(context.Background(),
 		codeRequest(t, "throw new Error('boom');", nil, nil, 10*time.Second))
@@ -199,9 +199,9 @@ func TestNodeRunnerErrorIsCaptured(t *testing.T) {
 	assert.ErrorContains(t, err, "boom")
 }
 
-func TestNodeRunnerTimeoutKillsProcess(t *testing.T) {
+func TestNodeJSSnippetRuntimeTimeoutKillsProcess(t *testing.T) {
 	requireTypeScriptNode(t)
-	runner := localexec.NewNodeRunner(logger.NewNop(), config.DefaultNodeMemoryLimitMB)
+	runner := localexec.NewNodeJSSnippetRuntime(logger.NewNop(), config.DefaultNodeMemoryLimitMB)
 
 	start := time.Now()
 	_, err := runner.Execute(context.Background(),
@@ -292,12 +292,12 @@ module.exports = { EchoTS };`
 	require.NoError(t, os.WriteFile(filepath.Join(connectorDir, "configs", "default.toml"), []byte("key = \"value\"\n"), 0o644))
 }
 
-func TestNodeConnectorRunnerExecutesOperation(t *testing.T) {
+func TestNodeJSConnectorRuntimeExecutesOperation(t *testing.T) {
 	requireTypeScriptNode(t)
 	dir := t.TempDir()
 	writeNodeConnector(t, dir)
 
-	runner, err := localexec.NewNodeConnectorRunner(logger.NewNop(), dir, testDefaultMemoryLimit)
+	runner, err := localexec.NewNodeJSConnectorRuntime(logger.NewNop(), dir, testDefaultMemoryLimit)
 	require.NoError(t, err)
 
 	connectorID := "echo_js"
@@ -323,13 +323,13 @@ func TestNodeConnectorRunnerExecutesOperation(t *testing.T) {
 	assert.Equal(t, "echo", decoded["op"])
 }
 
-func TestNodeConnectorRunnerExecutesTypeScriptConnector(t *testing.T) {
+func TestNodeJSConnectorRuntimeExecutesTypeScriptConnector(t *testing.T) {
 	requireTypeScriptNode(t)
 	dir := t.TempDir()
 	writeCore(t, dir)
 	writeTSConnector(t, dir)
 
-	runner, err := localexec.NewNodeConnectorRunner(logger.NewNop(), dir, testDefaultMemoryLimit)
+	runner, err := localexec.NewNodeJSConnectorRuntime(logger.NewNop(), dir, testDefaultMemoryLimit)
 	require.NoError(t, err)
 
 	connectorID := "echo_ts"
@@ -358,7 +358,7 @@ func TestNodeConnectorRunnerExecutesTypeScriptConnector(t *testing.T) {
 // Vendored per-connector dependencies: <id>/node_modules (populated by `make
 // connector-deps` from <id>/package.json) resolve through Node's standard
 // upward walk from the connector file - no harness involvement.
-func TestNodeConnectorRunnerVendoredDeps(t *testing.T) {
+func TestNodeJSConnectorRuntimeVendoredDeps(t *testing.T) {
 	requireTypeScriptNode(t)
 	dir := t.TempDir()
 	writeCore(t, dir)
@@ -384,7 +384,7 @@ module.exports = { DepConnector };`
 	require.NoError(t, os.WriteFile(filepath.Join(connectorDir, "info.json"),
 		[]byte(`{"id":"dep_js","name":"Dep JS","runtime":"node"}`), 0o644))
 
-	runner, err := localexec.NewNodeConnectorRunner(logger.NewNop(), dir, testDefaultMemoryLimit)
+	runner, err := localexec.NewNodeJSConnectorRuntime(logger.NewNop(), dir, testDefaultMemoryLimit)
 	require.NoError(t, err)
 
 	connectorID := "dep_js"
@@ -406,12 +406,12 @@ module.exports = { DepConnector };`
 	assert.Equal(t, "from-node-modules", decoded["dep"])
 }
 
-func TestNodeConnectorRunnerUnknownOperation(t *testing.T) {
+func TestNodeJSConnectorRuntimeUnknownOperation(t *testing.T) {
 	requireTypeScriptNode(t)
 	dir := t.TempDir()
 	writeNodeConnector(t, dir)
 
-	runner, err := localexec.NewNodeConnectorRunner(logger.NewNop(), dir, testDefaultMemoryLimit)
+	runner, err := localexec.NewNodeJSConnectorRuntime(logger.NewNop(), dir, testDefaultMemoryLimit)
 	require.NoError(t, err)
 
 	connectorID := "echo_js"

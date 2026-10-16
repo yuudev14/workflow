@@ -2,7 +2,7 @@
 // These are OUR code - not user code - so they may run in-process; everything
 // user-authored still goes to the sandbox. Metadata parity: each builtin has
 // an info.json dir in the connectors tree with "runtime": "go" (virtual - the
-// registry is the implementation).
+// BuiltinRuntime is the implementation).
 package goconnectors
 
 import (
@@ -26,37 +26,39 @@ type TemplateEngine interface {
 	Render(value any, variables map[string]any) (any, error)
 }
 
-// Connector is one built-in implementation. configs is the parsed TOML file,
-// params are already templated.
-type Connector interface {
+// BuiltinConnector is one built-in connector (for example http_request or condition).
+// configs is the parsed TOML file. params are already templated.
+type BuiltinConnector interface {
 	Execute(ctx context.Context, configs map[string]any, params map[string]any, operation string) (any, error)
 }
 
-// Registry implements execution.NodeRuntime for connectors registered at the
-// worker's composition root.
-type Registry struct {
+// BuiltinRuntime runs the built-in connectors (http_request, condition). They are our
+// code, not user code, so they run inside the WORKER, with no sandbox. It fits
+// execution.TaskRuntime. The worker's StaticResolver returns it for the connector ids
+// that you Register here.
+type BuiltinRuntime struct {
 	logger     logger.Logger
 	template   TemplateEngine
 	dir        string // connectors tree, for <id>/configs/<name>.toml; "" = no configs
-	connectors map[string]Connector
+	connectors map[string]BuiltinConnector
 }
 
-func NewRegistry(log logger.Logger, template TemplateEngine, dir string) *Registry {
-	return &Registry{
+func NewBuiltinRuntime(log logger.Logger, template TemplateEngine, dir string) *BuiltinRuntime {
+	return &BuiltinRuntime{
 		logger:     log,
 		template:   template,
 		dir:        dir,
-		connectors: map[string]Connector{},
+		connectors: map[string]BuiltinConnector{},
 	}
 }
 
-func (r *Registry) Register(id string, connector Connector) {
+func (r *BuiltinRuntime) Register(id string, connector BuiltinConnector) {
 	r.connectors[id] = connector
 }
 
 // IDs returns the registered connector ids - the composition root maps each
 // of them to this runtime in the resolver.
-func (r *Registry) IDs() []string {
+func (r *BuiltinRuntime) IDs() []string {
 	ids := make([]string, 0, len(r.connectors))
 	for id := range r.connectors {
 		ids = append(ids, id)
@@ -65,7 +67,7 @@ func (r *Registry) IDs() []string {
 	return ids
 }
 
-func (r *Registry) Execute(ctx context.Context, req execution.ExecutionRequest) (json.RawMessage, error) {
+func (r *BuiltinRuntime) Execute(ctx context.Context, req execution.ExecutionRequest) (json.RawMessage, error) {
 	if req.Task.ConnectorID == nil {
 		return nil, fmt.Errorf("connector id is none for %s", req.Task.Name)
 	}
@@ -103,7 +105,7 @@ func (r *Registry) Execute(ctx context.Context, req execution.ExecutionRequest) 
 	return json.Marshal(result)
 }
 
-func (r *Registry) loadConfig(connectorID string, configName *string) (map[string]any, error) {
+func (r *BuiltinRuntime) loadConfig(connectorID string, configName *string) (map[string]any, error) {
 	config := map[string]any{}
 	if r.dir == "" || configName == nil || *configName == "" {
 		return config, nil

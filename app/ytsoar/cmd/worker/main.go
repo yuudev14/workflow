@@ -42,20 +42,20 @@ func main() {
 	playbookService := playbooks.NewPlaybookService(appLogger, playbookRepository)
 	taskService := tasks.NewTaskServiceImpl(taskRepository)
 
-	// The worker never runs user code: every dynamic node (python/js/ts
-	// connectors, code snippets) goes to the credential-free sandbox over
-	// gRPC. Go builtins are OUR code and run in-process via the registry.
-	sandboxRuntime, err := grpcruntime.New(appLogger, cfg.SandboxAddr)
+	// The worker never runs user code. SandboxRuntime sends every other task
+	// (python/js/ts connectors, code snippets) to the sandbox over gRPC. The
+	// built-in connectors are OUR code, so BuiltinRuntime runs them in the worker.
+	sandboxRuntime, err := grpcruntime.NewSandboxRuntime(appLogger, cfg.SandboxAddr)
 	if err != nil {
 		log.Fatalf("failed to setup sandbox runtime client: %v", err)
 	}
 
-	registry := goconnectors.NewRegistry(appLogger, templating.NewGonjaEngine(), cfg.ConnectorsDir)
-	registry.Register("http_request", goconnectors.NewHTTPRequestConnector())
-	registry.Register("condition", goconnectors.NewConditionConnector())
-	byConnector := map[string]execution.NodeRuntime{}
-	for _, id := range registry.IDs() {
-		byConnector[id] = registry
+	builtinRuntime := goconnectors.NewBuiltinRuntime(appLogger, templating.NewGonjaEngine(), cfg.ConnectorsDir)
+	builtinRuntime.Register("http_request", goconnectors.NewHTTPRequestConnector())
+	builtinRuntime.Register("condition", goconnectors.NewConditionConnector())
+	byConnector := map[string]execution.TaskRuntime{}
+	for _, id := range builtinRuntime.IDs() {
+		byConnector[id] = builtinRuntime
 	}
 	resolver := execution.NewStaticResolver(sandboxRuntime, byConnector)
 

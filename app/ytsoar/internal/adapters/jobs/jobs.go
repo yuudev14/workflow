@@ -43,8 +43,8 @@ func (RunArgs) InsertOpts() river.InsertOpts {
 	return river.InsertOpts{Queue: queueName, MaxAttempts: maxAttempts}
 }
 
-// RunLoader builds the message of a queued run. playbooks.RunLoader implements it.
-type RunLoader interface {
+// MessageLoader builds the message of a queued run. playbooks.RunLoader implements it.
+type MessageLoader interface {
 	LoadRunMessage(ctx context.Context, playbookHistoryID uuid.UUID) (domain.TaskMessage, error)
 }
 
@@ -57,11 +57,11 @@ type RunExecutor interface {
 type RunWorker struct {
 	river.WorkerDefaults[RunArgs]
 	logger   logger.Logger
-	loader   RunLoader
+	loader   MessageLoader
 	executor RunExecutor
 }
 
-func NewRunWorker(log logger.Logger, loader RunLoader, executor RunExecutor) *RunWorker {
+func NewRunWorker(log logger.Logger, loader MessageLoader, executor RunExecutor) *RunWorker {
 	return &RunWorker{logger: log, loader: loader, executor: executor}
 }
 
