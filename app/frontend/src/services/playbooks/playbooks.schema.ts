@@ -15,7 +15,7 @@ export interface Playbook {
 export interface PlaybookHistory {
   id: string;
   playbook_id: string;
-  status: "success" | "failed";
+  status: "queued" | "in_progress" | "success" | "failed";
   error: Record<string, any> | null;
   result: Record<string, any>;
   playbook_data: Pick<

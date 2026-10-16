@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/yuudev14/ytsoar/internal/domain/apperr"
 )
 
 // TriggerType says how a playbook starts. The set is static: each value needs
@@ -29,6 +30,44 @@ func IsValidTriggerType(s string) bool {
 		return true
 	}
 	return false
+}
+
+// Run and task statuses. A run is queued -> in_progress -> success|failed, a
+// task is pending -> in_progress -> success|failed (or pending -> skipped).
+const (
+	StatusQueued     = "queued"
+	StatusPending    = "pending"
+	StatusInProgress = "in_progress"
+	StatusSuccess    = "success"
+	StatusFailed     = "failed"
+	StatusSkipped    = "skipped"
+)
+
+// ErrInvalidTransition means a status change was refused: the row is not in a
+// state the target status can be reached from (or the row does not exist).
+var ErrInvalidTransition = apperr.New(apperr.Conflict, "status change is not allowed")
+
+// Transitions maps a target status to the statuses it may be reached from. The
+// repositories hand From(to) to the UPDATE, so the check is atomic: two
+// workers cannot both move the same run from queued to in_progress.
+type Transitions map[string][]string
+
+// From returns the statuses allowed to move to `to`; unknown targets have none.
+func (t Transitions) From(to string) []string { return t[to] }
+
+var RunTransitions = Transitions{
+	StatusInProgress: {StatusQueued},
+	StatusSuccess:    {StatusInProgress},
+	StatusFailed:     {StatusQueued, StatusInProgress},
+}
+
+// A task can fail or succeed straight from pending: the start node never
+// reports in_progress, and a node can fail before it starts.
+var TaskTransitions = Transitions{
+	StatusInProgress: {StatusPending},
+	StatusSuccess:    {StatusPending, StatusInProgress},
+	StatusFailed:     {StatusPending, StatusInProgress},
+	StatusSkipped:    {StatusPending},
 }
 
 type Playbooks struct {

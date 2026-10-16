@@ -3,6 +3,7 @@ package execution
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -16,10 +17,10 @@ import (
 )
 
 const (
-	StatusInProgress = "in_progress"
-	StatusSuccess    = "success"
-	StatusFailed     = "failed"
-	StatusSkipped    = "skipped"
+	StatusInProgress = domain.StatusInProgress
+	StatusSuccess    = domain.StatusSuccess
+	StatusFailed     = domain.StatusFailed
+	StatusSkipped    = domain.StatusSkipped
 
 	// startNode is a no-op node that only reports success, parity with the
 	// Python executor's special case.
@@ -68,6 +69,8 @@ func NewExecutor(
 	}
 }
 
+var errWorkerStopped = errors.New("worker stopped before the run finished")
+
 type nodeResult struct {
 	node    string
 	output  any
@@ -76,6 +79,13 @@ type nodeResult struct {
 }
 
 func (e *Executor) Run(ctx context.Context, msg domain.TaskMessage) error {
+	if _, err := e.setRunStatus(ctx, msg, StatusInProgress, nil, nil); err != nil {
+		if errors.Is(err, domain.ErrInvalidTransition) {
+			return e.recoverRun(ctx, msg)
+		}
+		return err
+	}
+
 	// domain.IsAcyclicGraph returns true when a cycle EXISTS and mutates its
 	// input, so it gets a copy.
 	utils.DebugJSON(e.logger, "TaskMessage", msg, " ")
@@ -278,6 +288,22 @@ func (e *Executor) setTaskStatus(
 	return nil
 }
 
+// recoverRun handles a run the state machine refused to start: it is already
+// in_progress (a worker died mid-run and the queue delivered it again) or
+// already finished. Running it again would repeat connector side effects, so a
+// started run is failed and a finished run is left alone.
+func (e *Executor) recoverRun(ctx context.Context, msg domain.TaskMessage) error {
+	e.logger.Warnw("run was already started, not running it again", "playbook_history_id", msg.PlaybookHistoryId)
+	err := e.finishPlaybook(ctx, msg, StatusFailed, nil, errWorkerStopped)
+	if errors.Is(err, domain.ErrInvalidTransition) {
+		return nil // already finished
+	}
+	if failErr := e.taskService.FailUnfinishedTaskHistory(ctx, msg.PlaybookHistoryId.String(), errWorkerStopped.Error()); failErr != nil {
+		e.logger.Errorw("failed to fail unfinished tasks", "playbook_history_id", msg.PlaybookHistoryId, "error", failErr)
+	}
+	return err
+}
+
 func (e *Executor) finishPlaybook(
 	ctx context.Context,
 	msg domain.TaskMessage,
@@ -285,6 +311,20 @@ func (e *Executor) finishPlaybook(
 	result any,
 	execErr error,
 ) error {
+	if _, err := e.setRunStatus(ctx, msg, status, result, execErr); err != nil {
+		return err
+	}
+	return execErr
+}
+
+// setRunStatus moves the run through the state machine and fans the new row out.
+func (e *Executor) setRunStatus(
+	ctx context.Context,
+	msg domain.TaskMessage,
+	status string,
+	result any,
+	execErr error,
+) (*domain.PlaybookHistory, error) {
 	var errStr *string
 	if execErr != nil {
 		s := execErr.Error()
@@ -297,13 +337,13 @@ func (e *Executor) finishPlaybook(
 			Result: result,
 		})
 	if err != nil {
-		return err
+		return nil, err
 	}
 	if err := e.status.Publish("playbook_status", res); err != nil {
 		e.logger.Errorw("failed to publish playbook status event",
 			"playbook_history_id", msg.PlaybookHistoryId, "error", err)
 	}
-	return execErr
+	return res, nil
 }
 
 type edgeKey struct {
