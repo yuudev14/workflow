@@ -19,7 +19,8 @@
       "directAccessGrantsEnabled": false,
       "serviceAccountsEnabled": false,
       "redirectUris": [
-        "http://localhost:9999/auth-api/api/auth/v1/oidc/*"
+        "http://localhost:9999/auth-api/api/auth/v1/oidc/*",
+        "http://localhost:3000/auth-api/api/auth/v1/oidc/*"
       ],
       "webOrigins": [
         "http://localhost:9999"
