@@ -14,6 +14,7 @@ import (
 	json "encoding/json"
 	reflect "reflect"
 
+	uuid "github.com/google/uuid"
 	execution "github.com/yuudev14/ytsoar/internal/application/execution"
 	domain "github.com/yuudev14/ytsoar/internal/domain"
 	gomock "go.uber.org/mock/gomock"
@@ -122,15 +123,15 @@ func (m *MockStatusPublisher) EXPECT() *MockStatusPublisherMockRecorder {
 }
 
 // Publish mocks base method.
-func (m *MockStatusPublisher) Publish(event string, data any) error {
+func (m *MockStatusPublisher) Publish(ctx context.Context, event string, id uuid.UUID) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Publish", event, data)
+	ret := m.ctrl.Call(m, "Publish", ctx, event, id)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // Publish indicates an expected call of Publish.
-func (mr *MockStatusPublisherMockRecorder) Publish(event, data any) *gomock.Call {
+func (mr *MockStatusPublisherMockRecorder) Publish(ctx, event, id any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Publish", reflect.TypeOf((*MockStatusPublisher)(nil).Publish), event, data)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Publish", reflect.TypeOf((*MockStatusPublisher)(nil).Publish), ctx, event, id)
 }

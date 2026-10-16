@@ -37,9 +37,10 @@ type RuntimeResolver interface {
 	Resolve(task domain.Tasks) (NodeRuntime, error)
 }
 
-// StatusPublisher emits playbook/task status events from the worker to the
-// API process (fanout exchange -> WS hub). data is the updated history row,
-// the same struct the hub broadcasts today.
+// StatusPublisher tells every API replica that a run or task row changed
+// (event is task_status or playbook_status, id the history row). The API loads
+// the row and forwards it to its WS clients, so the payload stays tiny whatever
+// the size of the task result.
 type StatusPublisher interface {
-	Publish(event string, data any) error
+	Publish(ctx context.Context, event string, id uuid.UUID) error
 }

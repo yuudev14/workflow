@@ -104,7 +104,7 @@ func newExecutorFixture(t *testing.T, maxParallel int) *executorFixture {
 			return &domain.PlaybookHistory{}, nil
 		}).AnyTimes()
 
-	f.status.EXPECT().Publish(gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
+	f.status.EXPECT().Publish(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
 
 	f.executor = execution.NewExecutor(
 		logger.NewNop(),
@@ -565,7 +565,7 @@ func TestExecutorAlreadyStartedRunIsFailedNotRerun(t *testing.T) {
 	taskService := taskmocks.NewMockTaskService(ctrl)
 	playbookService := playbookmocks.NewMockPlaybookService(ctrl)
 	status := execmocks.NewMockStatusPublisher(ctrl)
-	status.EXPECT().Publish(gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
+	status.EXPECT().Publish(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
 	var statuses []string
 	playbookService.EXPECT().
 		UpdatePlaybookHistory(gomock.Any(), gomock.Any(), gomock.Any()).

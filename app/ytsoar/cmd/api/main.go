@@ -14,6 +14,7 @@ import (
 	"github.com/yuudev14/ytsoar/internal/adapters/jobs"
 	"github.com/yuudev14/ytsoar/internal/adapters/mq"
 	"github.com/yuudev14/ytsoar/internal/adapters/oidcclient"
+	"github.com/yuudev14/ytsoar/internal/adapters/pgstatus"
 	"github.com/yuudev14/ytsoar/internal/adapters/repository"
 	"github.com/yuudev14/ytsoar/internal/adapters/security"
 	"github.com/yuudev14/ytsoar/internal/adapters/ws"
@@ -67,13 +68,6 @@ func main() {
 		log.Fatalf("failed to setup job queue: %v", err)
 	}
 
-	statusConsumer := mq.NewStatusConsumer(appLogger, mqConn, cfg.StatusExchangeName, hub)
-	go func() {
-		if err := statusConsumer.Start(ctx); err != nil && !errors.Is(err, context.Canceled) {
-			appLogger.Errorf("status consumer stopped: %v", err)
-		}
-	}()
-
 	playbookRepository := repository.NewPlaybookRepository(appLogger, queries, pool)
 	taskRepository := repository.NewTaskRepositoryImpl(appLogger, queries, pool)
 	edgeRepository := repository.NewEdgeRepositoryImpl(appLogger, queries, pool)
@@ -100,6 +94,13 @@ func main() {
 
 	playbookService := playbooks.NewPlaybookService(appLogger, playbookRepository)
 	taskService := tasks.NewTaskServiceImpl(taskRepository)
+
+	statusListener := pgstatus.NewListener(appLogger, pool, playbookService, taskService, hub)
+	go func() {
+		if err := statusListener.Start(ctx); err != nil && !errors.Is(err, context.Canceled) {
+			appLogger.Errorf("status listener stopped: %v", err)
+		}
+	}()
 	edgeService := edges.NewEdgeServiceImpl(edgeRepository)
 	authService := auth.NewService(
 		appLogger,

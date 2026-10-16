@@ -286,6 +286,16 @@ func (t *TaskRepositoryImpl) FailUnfinishedTaskHistory(ctx context.Context, play
 	})
 }
 
+// GetTaskHistoryById implements tasks.TaskRepository.
+func (t *TaskRepositoryImpl) GetTaskHistoryById(ctx context.Context, id uuid.UUID) (*domain.TaskHistory, error) {
+	row, err := t.queriesFromContext(ctx).GetTaskHistoryById(ctx, toPgUUID(id))
+	if err != nil {
+		return nil, err
+	}
+	history := toDomainTaskHistory(row)
+	return &history, nil
+}
+
 // GetTaskHistoryByPlaybookHistoryId implements tasks.TaskRepository.
 func (t *TaskRepositoryImpl) GetTaskHistoryByPlaybookHistoryId(ctx context.Context, id string, filter tasks.TaskHistoryFilter) ([]domain.TaskHistory, error) {
 	pgID, err := toPgUUIDFromString(id)

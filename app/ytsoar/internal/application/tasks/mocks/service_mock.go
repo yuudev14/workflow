@@ -86,6 +86,21 @@ func (mr *MockTaskServiceMockRecorder) FailUnfinishedTaskHistory(ctx, playbookHi
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FailUnfinishedTaskHistory", reflect.TypeOf((*MockTaskService)(nil).FailUnfinishedTaskHistory), ctx, playbookHistoryId, reason)
 }
 
+// GetTaskHistoryById mocks base method.
+func (m *MockTaskService) GetTaskHistoryById(ctx context.Context, id uuid.UUID) (*domain.TaskHistory, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetTaskHistoryById", ctx, id)
+	ret0, _ := ret[0].(*domain.TaskHistory)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetTaskHistoryById indicates an expected call of GetTaskHistoryById.
+func (mr *MockTaskServiceMockRecorder) GetTaskHistoryById(ctx, id any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetTaskHistoryById", reflect.TypeOf((*MockTaskService)(nil).GetTaskHistoryById), ctx, id)
+}
+
 // GetTaskHistoryByPlaybookHistoryId mocks base method.
 func (m *MockTaskService) GetTaskHistoryByPlaybookHistoryId(ctx context.Context, id string, filter tasks.TaskHistoryFilter) ([]domain.TaskHistory, error) {
 	m.ctrl.T.Helper()

@@ -74,6 +74,9 @@ UPDATE task_history
 SET status = 'failed', error = sqlc.arg('error')
 WHERE playbook_history_id = sqlc.arg('playbook_history_id') AND status IN ('pending', 'in_progress');
 
+-- name: GetTaskHistoryById :one
+SELECT * FROM task_history WHERE id = $1;
+
 -- name: GetTaskHistoryByPlaybookHistoryId :many
 SELECT * FROM task_history WHERE playbook_history_id = $1;
 

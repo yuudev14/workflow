@@ -17,6 +17,7 @@ type TaskRepository interface {
 	UpdateTaskStatus(ctx context.Context, playbookHistoryId string, taskId string, status string) (*domain.TaskHistory, error)
 	UpdateTaskHistory(ctx context.Context, playbookHistoryId string, taskId string, taskHistory UpdateTaskHistoryData) (*domain.TaskHistory, error)
 	FailUnfinishedTaskHistory(ctx context.Context, playbookHistoryId string, reason string) error
+	GetTaskHistoryById(ctx context.Context, id uuid.UUID) (*domain.TaskHistory, error)
 	GetTaskHistoryByPlaybookHistoryId(ctx context.Context, id string, filter TaskHistoryFilter) ([]domain.TaskHistory, error)
 	GetTaskHistoryCount(ctx context.Context, filter TaskHistoryFilter) (int, error)
 }

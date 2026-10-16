@@ -50,6 +50,7 @@ type Querier interface {
 	GetRefreshTokenByHash(ctx context.Context, tokenHash string) (RefreshToken, error)
 	GetRoleById(ctx context.Context, id pgtype.UUID) (Role, error)
 	GetRoleByName(ctx context.Context, name string) (Role, error)
+	GetTaskHistoryById(ctx context.Context, id pgtype.UUID) (TaskHistory, error)
 	GetTaskHistoryByPlaybookHistoryId(ctx context.Context, playbookHistoryID pgtype.UUID) ([]TaskHistory, error)
 	GetTasksByPlaybookId(ctx context.Context, playbookID pgtype.UUID) ([]Task, error)
 	GetTeamById(ctx context.Context, id pgtype.UUID) (Team, error)

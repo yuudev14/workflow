@@ -9,7 +9,7 @@ import (
 
 	"github.com/yuudev14/ytsoar/db"
 	"github.com/yuudev14/ytsoar/internal/adapters/jobs"
-	"github.com/yuudev14/ytsoar/internal/adapters/mq"
+	"github.com/yuudev14/ytsoar/internal/adapters/pgstatus"
 	"github.com/yuudev14/ytsoar/internal/adapters/repository"
 	"github.com/yuudev14/ytsoar/internal/adapters/runtimes/goconnectors"
 	"github.com/yuudev14/ytsoar/internal/adapters/runtimes/grpcruntime"
@@ -42,17 +42,6 @@ func main() {
 	playbookService := playbooks.NewPlaybookService(appLogger, playbookRepository)
 	taskService := tasks.NewTaskServiceImpl(taskRepository)
 
-	mqConn, err := mq.Connect(cfg.MQUrl)
-	if err != nil {
-		log.Fatalf("failed to connect to MQ: %v", err)
-	}
-	defer mqConn.Close()
-
-	statusPublisher, err := mq.NewStatusPublisher(appLogger, mqConn, cfg.StatusExchangeName)
-	if err != nil {
-		log.Fatalf("failed to setup status publisher: %v", err)
-	}
-
 	// The worker never runs user code: every dynamic node (python/js/ts
 	// connectors, code snippets) goes to the credential-free sandbox over
 	// gRPC. Go builtins are OUR code and run in-process via the registry.
@@ -75,7 +64,7 @@ func main() {
 		taskService,
 		playbookService,
 		resolver,
-		statusPublisher,
+		pgstatus.NewNotifier(pool),
 		cfg.MaxParallelNodes,
 		cfg.NodeTimeout,
 	)
@@ -95,7 +84,6 @@ func main() {
 	appLogger.Infow("worker started",
 		"concurrency", cfg.PlaybookConcurrency,
 		"sandbox", cfg.SandboxAddr,
-		"status_exchange", cfg.StatusExchangeName,
 	)
 	<-ctx.Done()
 
