@@ -47,6 +47,10 @@ func (m *PgxTxManager) WithinTransaction(
 	return nil
 }
 
+// TxFromContext lets other adapters (the job queue) join the transaction the
+// TxManager put in ctx.
+func TxFromContext(ctx context.Context) (pgx.Tx, bool) { return txFromContext(ctx) }
+
 func txFromContext(ctx context.Context) (pgx.Tx, bool) {
 	tx, ok := ctx.Value(txKey{}).(pgx.Tx)
 	return tx, ok

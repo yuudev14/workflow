@@ -32,14 +32,3 @@ func (c *Connection) Close() {
 	c.Channel.Close()
 	c.Conn.Close()
 }
-
-func (c *Connection) DeclareQueue(name string) (amqp.Queue, error) {
-	return c.Channel.QueueDeclare(
-		name,  // name
-		true,  // durable
-		false, // delete when unused
-		false, // exclusive
-		false, // no-wait
-		nil,   // arguments
-	)
-}

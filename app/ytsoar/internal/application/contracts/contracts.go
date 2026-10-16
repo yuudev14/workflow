@@ -6,11 +6,13 @@ import (
 	"github.com/google/uuid"
 )
 
-//go:generate mockgen -destination=mocks/task_publisher_mock.go -package=mocks . TaskPublisher
+//go:generate mockgen -destination=mocks/run_enqueuer_mock.go -package=mocks . RunEnqueuer
 
-// TaskPublisher publishes a triggered playbook message to the message queue.
-type TaskPublisher interface {
-	SendMessage(message any) error
+// RunEnqueuer queues a playbook run for a worker. It joins the transaction
+// carried in ctx, so the job and the run's history rows commit or roll back
+// together; a run can never be queued without its history, or the other way.
+type RunEnqueuer interface {
+	EnqueueRun(ctx context.Context, playbookHistoryID uuid.UUID) error
 }
 
 //go:generate mockgen -destination=mocks/status_broadcaster_mock.go -package=mocks . StatusBroadcaster

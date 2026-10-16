@@ -20,12 +20,11 @@ const (
 )
 
 type Config struct {
-	DBUrl             string
-	LoggerMode        string
-	MQUrl             string
-	PlaybookQueueName string
-	JWTSecret         string
-	HTTPAddr          string
+	DBUrl      string
+	LoggerMode string
+	MQUrl      string
+	JWTSecret  string
+	HTTPAddr   string
 
 	// AppEnv gates the production safety checks in cmd/api.
 	AppEnv string
@@ -64,9 +63,10 @@ type Config struct {
 	ConnectorsDir string
 
 	// Worker execution tuning.
-	MaxParallelNodes int           // nodes run concurrently within one playbook run
-	PlaybookPrefetch int           // playbook messages one worker runs concurrently (MQ Qos)
-	NodeTimeout      time.Duration // per-node execution timeout (sandbox fallback too)
+	MaxParallelNodes    int           // nodes run concurrently within one playbook run
+	PlaybookConcurrency int           // playbook runs one worker runs concurrently
+	RunTimeout          time.Duration // cap for one whole playbook run
+	NodeTimeout         time.Duration // per-node execution timeout (sandbox fallback too)
 
 	// Sandbox subprocess memory caps. Keep concurrency x cap under the
 	// sandbox container's memory limit.
@@ -89,12 +89,11 @@ func LoadFrom(dest string) Config {
 	}
 
 	return Config{
-		DBUrl:             getDbUrl(),
-		LoggerMode:        getEnvOr("LOGGER_MODE", "DEBUG"),
-		MQUrl:             getMQUrl(),
-		PlaybookQueueName: getEnvOr("PLAYBOOK_QUEUE", "playbook"),
-		JWTSecret:         getEnvOr("JWT_SECRET", DefaultJWTSecret),
-		HTTPAddr:          getEnvOr("HTTP_ADDR", ":8080"),
+		DBUrl:      getDbUrl(),
+		LoggerMode: getEnvOr("LOGGER_MODE", "DEBUG"),
+		MQUrl:      getMQUrl(),
+		JWTSecret:  getEnvOr("JWT_SECRET", DefaultJWTSecret),
+		HTTPAddr:   getEnvOr("HTTP_ADDR", ":8080"),
 
 		AppEnv:          getEnvOr("APP_ENV", "development"),
 		AccessTokenTTL:  time.Duration(getEnvIntOr("ACCESS_TOKEN_TTL_MINUTES", 15)) * time.Minute,
@@ -115,9 +114,10 @@ func LoadFrom(dest string) Config {
 		SandboxListenAddr: getEnvOr("SANDBOX_LISTEN_ADDR", ":50052"),
 		ConnectorsDir:     getEnvOr("CONNECTORS_DIR", ""),
 
-		MaxParallelNodes: getEnvIntOr("MAX_PARALLEL_NODES", 4),
-		PlaybookPrefetch: getEnvIntOr("PLAYBOOK_PREFETCH", 1),
-		NodeTimeout:      time.Duration(getEnvIntOr("NODE_TIMEOUT_SECONDS", 300)) * time.Second,
+		MaxParallelNodes:    getEnvIntOr("MAX_PARALLEL_NODES", 4),
+		PlaybookConcurrency: getEnvIntOr("PLAYBOOK_CONCURRENCY", 1),
+		RunTimeout:          time.Duration(getEnvIntOr("RUN_TIMEOUT_MINUTES", 60)) * time.Minute,
+		NodeTimeout:         time.Duration(getEnvIntOr("NODE_TIMEOUT_SECONDS", 300)) * time.Second,
 
 		NodeMemoryLimitMB:   getEnvIntOr("NODE_MEMORY_LIMIT_MB", DefaultNodeMemoryLimitMB),
 		PythonMemoryLimitMB: getEnvIntOr("PYTHON_MEMORY_LIMIT_MB", DefaultPythonMemoryLimitMB),
