@@ -68,9 +68,12 @@ func main() {
 		cfg.MaxParallelNodes,
 		cfg.NodeTimeout,
 	)
+	playbookRunLoader := playbooks.NewRunLoader(playbookService, taskService)
+	runWorker := jobs.NewRunWorker(appLogger, playbookRunLoader, executor)
 
-	riverClient, err := jobs.NewWorkerClient(pool,
-		jobs.NewRunWorker(appLogger, playbooks.NewRunLoader(playbookService, taskService), executor),
+	riverClient, err := jobs.NewWorkerClient(
+		pool,
+		runWorker,
 		cfg.PlaybookConcurrency, cfg.RunTimeout)
 	if err != nil {
 		log.Fatalf("failed to setup job queue: %v", err)
