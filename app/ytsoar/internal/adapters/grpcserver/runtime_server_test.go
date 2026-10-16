@@ -20,7 +20,7 @@ import (
 
 func TestRuntimeServerExecuteOperation(t *testing.T) {
 	ctrl := gomock.NewController(t)
-	runtime := execmocks.NewMockNodeRuntime(ctrl)
+	runtime := execmocks.NewMockTaskRuntime(ctrl)
 	resolver := execution.NewStaticResolver(runtime, nil)
 	server := grpcserver.NewRuntimeServer(logger.NewNop(), resolver, time.Minute)
 
@@ -51,7 +51,7 @@ func TestRuntimeServerExecuteOperation(t *testing.T) {
 
 func TestRuntimeServerReturnsExecutionErrorInResponse(t *testing.T) {
 	ctrl := gomock.NewController(t)
-	runtime := execmocks.NewMockNodeRuntime(ctrl)
+	runtime := execmocks.NewMockTaskRuntime(ctrl)
 	resolver := execution.NewStaticResolver(runtime, nil)
 	server := grpcserver.NewRuntimeServer(logger.NewNop(), resolver, time.Minute)
 

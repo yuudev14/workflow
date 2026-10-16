@@ -50,7 +50,7 @@ func tasksFor(graph map[string][]string) map[string]domain.Tasks {
 }
 
 type executorFixture struct {
-	runtime         *execmocks.MockNodeRuntime
+	runtime         *execmocks.MockTaskRuntime
 	taskService     *taskmocks.MockTaskService
 	playbookService *playbookmocks.MockPlaybookService
 	status          *execmocks.MockStatusPublisher
@@ -65,7 +65,7 @@ type executorFixture struct {
 func newExecutorFixture(t *testing.T, maxParallel int) *executorFixture {
 	ctrl := gomock.NewController(t)
 	f := &executorFixture{
-		runtime:         execmocks.NewMockNodeRuntime(ctrl),
+		runtime:         execmocks.NewMockTaskRuntime(ctrl),
 		taskService:     taskmocks.NewMockTaskService(ctrl),
 		playbookService: playbookmocks.NewMockPlaybookService(ctrl),
 		status:          execmocks.NewMockStatusPublisher(ctrl),
@@ -104,7 +104,7 @@ func newExecutorFixture(t *testing.T, maxParallel int) *executorFixture {
 			return &domain.PlaybookHistory{}, nil
 		}).AnyTimes()
 
-	f.status.EXPECT().Publish(gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
+	f.status.EXPECT().Publish(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
 
 	f.executor = execution.NewExecutor(
 		logger.NewNop(),
@@ -533,9 +533,9 @@ func TestExecutorDirectionalHandlesAlwaysFollow(t *testing.T) {
 
 func TestStaticResolverRouting(t *testing.T) {
 	ctrl := gomock.NewController(t)
-	defaultRuntime := execmocks.NewMockNodeRuntime(ctrl)
-	special := execmocks.NewMockNodeRuntime(ctrl)
-	resolver := execution.NewStaticResolver(defaultRuntime, map[string]execution.NodeRuntime{
+	defaultRuntime := execmocks.NewMockTaskRuntime(ctrl)
+	special := execmocks.NewMockTaskRuntime(ctrl)
+	resolver := execution.NewStaticResolver(defaultRuntime, map[string]execution.TaskRuntime{
 		"code_snippet_py": special,
 	})
 
@@ -556,4 +556,133 @@ func sampleTaskWithConnector(connectorID string) domain.Tasks {
 	task := sampleTask("node")
 	task.ConnectorID = &connectorID
 	return task
+}
+
+// The state rules refuse to start a run that a worker already started (the worker stopped
+// and the queue delivered the run again). The run must fail. The connectors must not run again.
+func TestExecutorAlreadyStartedRunIsFailedNotRerun(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	taskService := taskmocks.NewMockTaskService(ctrl)
+	playbookService := playbookmocks.NewMockPlaybookService(ctrl)
+	status := execmocks.NewMockStatusPublisher(ctrl)
+	var events []string
+	status.EXPECT().Publish(gomock.Any(), gomock.Any(), gomock.Any()).
+		DoAndReturn(func(_ context.Context, event string, _ uuid.UUID) error {
+			events = append(events, event)
+			return nil
+		}).AnyTimes()
+	var statuses []string
+	playbookService.EXPECT().
+		UpdatePlaybookHistory(gomock.Any(), gomock.Any(), gomock.Any()).
+		DoAndReturn(func(_ context.Context, _ string, data playbooks.UpdatePlaybookHistoryData) (*domain.PlaybookHistory, error) {
+			statuses = append(statuses, *data.Status.Value)
+			if *data.Status.Value == "in_progress" {
+				return nil, domain.ErrInvalidTransition
+			}
+			return &domain.PlaybookHistory{}, nil
+		}).Times(2)
+	taskService.EXPECT().FailUnfinishedTaskHistory(gomock.Any(), gomock.Any(), gomock.Any()).
+		Return([]domain.TaskHistory{{ID: uuid.New()}}, nil)
+	executor := execution.NewExecutor(logger.NewNop(), taskService, playbookService,
+		execution.NewStaticResolver(execmocks.NewMockTaskRuntime(ctrl), nil), status, 1, time.Minute)
+	graph := map[string][]string{"start": {}}
+
+	err := executor.Run(context.Background(), domain.TaskMessage{Graph: graph, Tasks: tasksFor(graph), PlaybookHistoryId: uuid.New()})
+
+	assert.Error(t, err)
+	assert.Equal(t, []string{"in_progress", "failed"}, statuses)
+	// The open pages hear about the task that recoverRun failed.
+	assert.Contains(t, events, "task_status")
+}
+
+// The queue can deliver a run again after it finished. This is a duplicate, so do nothing.
+func TestExecutorFinishedRunIsLeftAlone(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	playbookService := playbookmocks.NewMockPlaybookService(ctrl)
+	playbookService.EXPECT().
+		UpdatePlaybookHistory(gomock.Any(), gomock.Any(), gomock.Any()).
+		Return(nil, domain.ErrInvalidTransition).Times(2)
+	executor := execution.NewExecutor(logger.NewNop(), taskmocks.NewMockTaskService(ctrl), playbookService,
+		execution.NewStaticResolver(execmocks.NewMockTaskRuntime(ctrl), nil), execmocks.NewMockStatusPublisher(ctrl), 1, time.Minute)
+	graph := map[string][]string{"start": {}}
+
+	err := executor.Run(context.Background(), domain.TaskMessage{Graph: graph, Tasks: tasksFor(graph), PlaybookHistoryId: uuid.New()})
+
+	assert.NoError(t, err)
+}
+
+// A short database problem must not leave a finished run in_progress. The executor tries
+// again to save the final status.
+func TestExecutorRetriesTheFinalStatusWrite(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	taskService := taskmocks.NewMockTaskService(ctrl)
+	taskService.EXPECT().UpdateTaskHistory(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(&domain.TaskHistory{}, nil).AnyTimes()
+	status := execmocks.NewMockStatusPublisher(ctrl)
+	status.EXPECT().Publish(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
+	var saved []string
+	failures := 2
+	playbookService := playbookmocks.NewMockPlaybookService(ctrl)
+	playbookService.EXPECT().
+		UpdatePlaybookHistory(gomock.Any(), gomock.Any(), gomock.Any()).
+		DoAndReturn(func(_ context.Context, _ string, data playbooks.UpdatePlaybookHistoryData) (*domain.PlaybookHistory, error) {
+			if *data.Status.Value == "success" && failures > 0 {
+				failures--
+				return nil, errors.New("db down")
+			}
+			saved = append(saved, *data.Status.Value)
+			return &domain.PlaybookHistory{}, nil
+		}).AnyTimes()
+	executor := execution.NewExecutor(logger.NewNop(), taskService, playbookService,
+		execution.NewStaticResolver(execmocks.NewMockTaskRuntime(ctrl), nil), status, 1, time.Minute,
+		execution.WithFinalWriteDelays(time.Millisecond, time.Millisecond, time.Millisecond))
+	graph := map[string][]string{"start": {}}
+
+	err := executor.Run(context.Background(), domain.TaskMessage{Graph: graph, Tasks: tasksFor(graph), PlaybookHistoryId: uuid.New()})
+
+	assert.NoError(t, err)
+	assert.Equal(t, []string{"in_progress", "success"}, saved)
+}
+
+// If every try fails, Run returns ErrNotFinished. The job worker then returns the error to River,
+// and the next attempt marks the run failed.
+func TestExecutorReturnsErrNotFinishedWhenTheFinalWriteKeepsFailing(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	taskService := taskmocks.NewMockTaskService(ctrl)
+	taskService.EXPECT().UpdateTaskHistory(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(&domain.TaskHistory{}, nil).AnyTimes()
+	status := execmocks.NewMockStatusPublisher(ctrl)
+	status.EXPECT().Publish(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
+	playbookService := playbookmocks.NewMockPlaybookService(ctrl)
+	playbookService.EXPECT().
+		UpdatePlaybookHistory(gomock.Any(), gomock.Any(), gomock.Any()).
+		DoAndReturn(func(_ context.Context, _ string, data playbooks.UpdatePlaybookHistoryData) (*domain.PlaybookHistory, error) {
+			if *data.Status.Value == "in_progress" {
+				return &domain.PlaybookHistory{}, nil
+			}
+			return nil, errors.New("db down")
+		}).AnyTimes()
+	executor := execution.NewExecutor(logger.NewNop(), taskService, playbookService,
+		execution.NewStaticResolver(execmocks.NewMockTaskRuntime(ctrl), nil), status, 1, time.Minute,
+		execution.WithFinalWriteDelays(time.Millisecond))
+	graph := map[string][]string{"start": {}}
+
+	err := executor.Run(context.Background(), domain.TaskMessage{Graph: graph, Tasks: tasksFor(graph), PlaybookHistoryId: uuid.New()})
+
+	assert.ErrorIs(t, err, execution.ErrNotFinished)
+}
+
+// A panic in a node must not stop the worker. The node and the run fail, and the status is saved.
+func TestExecutorTurnsANodePanicIntoAFailedRun(t *testing.T) {
+	graph := map[string][]string{"start": {"A"}}
+	f := newExecutorFixture(t, 1)
+	f.runtime.EXPECT().
+		Execute(gomock.Any(), gomock.Any()).
+		DoAndReturn(func(_ context.Context, _ execution.ExecutionRequest) (json.RawMessage, error) {
+			panic("bad template")
+		}).Times(1)
+
+	err := f.run(t, graph, tasksFor(graph))
+
+	assert.ErrorContains(t, err, "panicked")
+	assert.Equal(t, "failed", f.playbookFinal)
+	assert.Equal(t, "failed", f.taskStatuses["A"][len(f.taskStatuses["A"])-1])
 }

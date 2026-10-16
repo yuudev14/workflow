@@ -20,12 +20,10 @@ const (
 )
 
 type Config struct {
-	DBUrl             string
-	LoggerMode        string
-	MQUrl             string
-	PlaybookQueueName string
-	JWTSecret         string
-	HTTPAddr          string
+	DBUrl      string
+	LoggerMode string
+	JWTSecret  string
+	HTTPAddr   string
 
 	// AppEnv gates the production safety checks in cmd/api.
 	AppEnv string
@@ -48,9 +46,6 @@ type Config struct {
 	FrontendURL   string
 	AuthPublicURL string
 
-	StatusExchangeName       string
-	ModuleEventsExchangeName string
-
 	// SandboxAddr is where the worker sends every dynamic node
 	// (ConnectorRuntime gRPC on cmd/sandbox).
 	SandboxAddr string
@@ -64,9 +59,11 @@ type Config struct {
 	ConnectorsDir string
 
 	// Worker execution tuning.
-	MaxParallelNodes int           // nodes run concurrently within one playbook run
-	PlaybookPrefetch int           // playbook messages one worker runs concurrently (MQ Qos)
-	NodeTimeout      time.Duration // per-node execution timeout (sandbox fallback too)
+	MaxParallelNodes    int           // nodes run concurrently within one playbook run
+	PlaybookConcurrency int           // playbook runs one worker runs concurrently
+	RunTimeout          time.Duration // cap for one whole playbook run
+	WorkerStopGrace     time.Duration // time that running playbooks get to finish when the worker stops
+	NodeTimeout         time.Duration // per-node execution timeout (sandbox fallback too)
 
 	// Sandbox subprocess memory caps. Keep concurrency x cap under the
 	// sandbox container's memory limit.
@@ -89,12 +86,10 @@ func LoadFrom(dest string) Config {
 	}
 
 	return Config{
-		DBUrl:             getDbUrl(),
-		LoggerMode:        getEnvOr("LOGGER_MODE", "DEBUG"),
-		MQUrl:             getMQUrl(),
-		PlaybookQueueName: getEnvOr("PLAYBOOK_QUEUE", "playbook"),
-		JWTSecret:         getEnvOr("JWT_SECRET", DefaultJWTSecret),
-		HTTPAddr:          getEnvOr("HTTP_ADDR", ":8080"),
+		DBUrl:      getDbUrl(),
+		LoggerMode: getEnvOr("LOGGER_MODE", "DEBUG"),
+		JWTSecret:  getEnvOr("JWT_SECRET", DefaultJWTSecret),
+		HTTPAddr:   getEnvOr("HTTP_ADDR", ":8080"),
 
 		AppEnv:          getEnvOr("APP_ENV", "development"),
 		AccessTokenTTL:  time.Duration(getEnvIntOr("ACCESS_TOKEN_TTL_MINUTES", 15)) * time.Minute,
@@ -108,16 +103,15 @@ func LoadFrom(dest string) Config {
 		FrontendURL:   getEnvOr("FRONTEND_URL", "http://localhost:9999"),
 		AuthPublicURL: getEnvOr("AUTH_PUBLIC_URL", "http://localhost:9999/auth-api"),
 
-		StatusExchangeName:       getEnvOr("STATUS_EXCHANGE", "playbook.status"),
-		ModuleEventsExchangeName: getEnvOr("MODULE_EVENTS_EXCHANGE", "module.events"),
-
 		SandboxAddr:       getEnvOr("SANDBOX_ADDR", "localhost:50052"),
 		SandboxListenAddr: getEnvOr("SANDBOX_LISTEN_ADDR", ":50052"),
 		ConnectorsDir:     getEnvOr("CONNECTORS_DIR", ""),
 
-		MaxParallelNodes: getEnvIntOr("MAX_PARALLEL_NODES", 4),
-		PlaybookPrefetch: getEnvIntOr("PLAYBOOK_PREFETCH", 1),
-		NodeTimeout:      time.Duration(getEnvIntOr("NODE_TIMEOUT_SECONDS", 300)) * time.Second,
+		MaxParallelNodes:    getEnvIntOr("MAX_PARALLEL_NODES", 4),
+		PlaybookConcurrency: getEnvIntOr("PLAYBOOK_CONCURRENCY", 1),
+		RunTimeout:          time.Duration(getEnvPositiveIntOr("RUN_TIMEOUT_MINUTES", 60)) * time.Minute,
+		WorkerStopGrace:     time.Duration(getEnvPositiveIntOr("WORKER_STOP_GRACE_SECONDS", 20)) * time.Second,
+		NodeTimeout:         time.Duration(getEnvIntOr("NODE_TIMEOUT_SECONDS", 300)) * time.Second,
 
 		NodeMemoryLimitMB:   getEnvIntOr("NODE_MEMORY_LIMIT_MB", DefaultNodeMemoryLimitMB),
 		PythonMemoryLimitMB: getEnvIntOr("PYTHON_MEMORY_LIMIT_MB", DefaultPythonMemoryLimitMB),
@@ -132,16 +126,6 @@ func getDbUrl() string {
 		os.Getenv("DB_HOST"),
 		os.Getenv("DB_PORT"),
 		os.Getenv("DB_NAME"),
-	)
-}
-
-func getMQUrl() string {
-	return fmt.Sprintf(
-		"amqp://%v:%v@%v:%v/",
-		os.Getenv("MQ_USER"),
-		os.Getenv("MQ_PASSWORD"),
-		os.Getenv("MQ_HOST"),
-		os.Getenv("MQ_PORT"),
 	)
 }
 
@@ -163,6 +147,15 @@ func getEnvIntOr(key string, fallback int) int {
 		return fallback
 	}
 	return n
+}
+
+// getEnvPositiveIntOr is for limits. A value of 0 or less would turn the limit into
+// River's own default (1 minute) or into "no limit", so it uses the fallback instead.
+func getEnvPositiveIntOr(key string, fallback int) int {
+	if n := getEnvIntOr(key, fallback); n > 0 {
+		return n
+	}
+	return fallback
 }
 
 func getEnvBoolOr(key string, fallback bool) bool {

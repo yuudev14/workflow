@@ -11,8 +11,9 @@ import (
 	api "github.com/yuudev14/ytsoar/internal/adapters/http"
 	"github.com/yuudev14/ytsoar/internal/adapters/http/handlers"
 	"github.com/yuudev14/ytsoar/internal/adapters/http/middleware"
-	"github.com/yuudev14/ytsoar/internal/adapters/mq"
+	"github.com/yuudev14/ytsoar/internal/adapters/jobs"
 	"github.com/yuudev14/ytsoar/internal/adapters/oidcclient"
+	"github.com/yuudev14/ytsoar/internal/adapters/pgstatus"
 	"github.com/yuudev14/ytsoar/internal/adapters/repository"
 	"github.com/yuudev14/ytsoar/internal/adapters/security"
 	"github.com/yuudev14/ytsoar/internal/adapters/ws"
@@ -54,23 +55,10 @@ func main() {
 	hub := ws.NewHub(cfg.CORSOrigins)
 	go hub.Run()
 
-	mqConn, err := mq.Connect(cfg.MQUrl)
+	runEnqueuer, err := jobs.NewEnqueuer(pool, repository.TxFromContext)
 	if err != nil {
-		log.Fatalf("failed to connect to MQ: %v", err)
+		log.Fatalf("failed to setup job queue: %v", err)
 	}
-	defer mqConn.Close()
-
-	taskPublisher, err := mq.NewTaskPublisher(appLogger, mqConn, cfg.PlaybookQueueName)
-	if err != nil {
-		log.Fatalf("failed to setup task publisher: %v", err)
-	}
-
-	statusConsumer := mq.NewStatusConsumer(appLogger, mqConn, cfg.StatusExchangeName, hub)
-	go func() {
-		if err := statusConsumer.Start(ctx); err != nil && !errors.Is(err, context.Canceled) {
-			appLogger.Errorf("status consumer stopped: %v", err)
-		}
-	}()
 
 	playbookRepository := repository.NewPlaybookRepository(appLogger, queries, pool)
 	taskRepository := repository.NewTaskRepositoryImpl(appLogger, queries, pool)
@@ -98,6 +86,13 @@ func main() {
 
 	playbookService := playbooks.NewPlaybookService(appLogger, playbookRepository)
 	taskService := tasks.NewTaskServiceImpl(taskRepository)
+
+	statusListener := pgstatus.NewListener(appLogger, pool, playbookService, taskService, hub)
+	go func() {
+		if err := statusListener.Start(ctx); err != nil && !errors.Is(err, context.Canceled) {
+			appLogger.Errorf("status listener stopped: %v", err)
+		}
+	}()
 	edgeService := edges.NewEdgeServiceImpl(edgeRepository)
 	authService := auth.NewService(
 		appLogger,
@@ -128,7 +123,7 @@ func main() {
 		taskService,
 		edgeService,
 		txManager,
-		taskPublisher,
+		runEnqueuer,
 		hub,
 		repository.NewRecordResolverImpl(appLogger, alertRepository, incidentRepository),
 	)
@@ -158,10 +153,7 @@ func main() {
 	connectorHandler := handlers.NewConnectorHandler(appLogger, connectorService)
 	adminHandler := handlers.NewAdminHandler(appLogger, authService)
 
-	moduleEventPublisher, err := mq.NewModuleEventPublisher(appLogger, mqConn, cfg.ModuleEventsExchangeName)
-	if err != nil {
-		log.Fatalf("failed to setup module event publisher: %v", err)
-	}
+	moduleEventPublisher := jobs.NewModuleEventLogger(appLogger)
 
 	// The alert repository doubles as incidents.AlertTimeline so linking writes
 	// the other half of the story onto the alert.

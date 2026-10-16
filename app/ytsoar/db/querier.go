@@ -35,6 +35,8 @@ type Querier interface {
 	DeleteTeamMembers(ctx context.Context, teamID pgtype.UUID) error
 	DeleteTeamRoles(ctx context.Context, teamID pgtype.UUID) error
 	DeleteUserRoles(ctx context.Context, userID pgtype.UUID) error
+	// Crash recovery: the tasks of a stopped run never finish.
+	FailUnfinishedTaskHistory(ctx context.Context, arg FailUnfinishedTaskHistoryParams) ([]TaskHistory, error)
 	GetAlertById(ctx context.Context, id pgtype.UUID) (Alert, error)
 	GetAlertNoteById(ctx context.Context, id pgtype.UUID) (AlertNote, error)
 	GetAuthProviderByID(ctx context.Context, id pgtype.UUID) (AuthProvider, error)
@@ -48,6 +50,7 @@ type Querier interface {
 	GetRefreshTokenByHash(ctx context.Context, tokenHash string) (RefreshToken, error)
 	GetRoleById(ctx context.Context, id pgtype.UUID) (Role, error)
 	GetRoleByName(ctx context.Context, name string) (Role, error)
+	GetTaskHistoryById(ctx context.Context, id pgtype.UUID) (TaskHistory, error)
 	GetTaskHistoryByPlaybookHistoryId(ctx context.Context, playbookHistoryID pgtype.UUID) ([]TaskHistory, error)
 	GetTasksByPlaybookId(ctx context.Context, playbookID pgtype.UUID) ([]Task, error)
 	GetTeamById(ctx context.Context, id pgtype.UUID) (Team, error)

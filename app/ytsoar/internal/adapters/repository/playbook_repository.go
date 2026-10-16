@@ -214,6 +214,9 @@ func (w *PlaybookRepositoryImpl) GetPlaybookHistoryById(ctx context.Context, pla
 		Result:       result,
 		TriggeredAt:  row.TriggeredAt.Time,
 		Edges:        row.Edges,
+		TriggerType:  fromNullTriggerType(row.TriggerType),
+		TriggeredBy:  fromPgUUIDPtr(row.TriggeredBy),
+		Input:        row.Input,
 	}, nil
 }
 
@@ -393,16 +396,24 @@ func (w *PlaybookRepositoryImpl) UpdatePlaybookHistory(ctx context.Context, play
 		return nil, err
 	}
 
+	var allowedFrom []string
+	if playbookHistory.Status.Set && playbookHistory.Status.Value != nil {
+		allowedFrom = domain.RunTransitions.From(*playbookHistory.Status.Value)
+	}
 	row, err := w.queriesFromContext(ctx).UpdatePlaybookHistory(ctx, db.UpdatePlaybookHistoryParams{
-		StatusSet: playbookHistory.Status.Set,
-		Status:    toNullPlaybookStatus(playbookHistory.Status),
-		ErrorSet:  playbookHistory.Error.Set,
-		Error:     toPgTextFromNullable(playbookHistory.Error),
-		Result:    jsonData,
-		ID:        pgID,
+		StatusSet:   playbookHistory.Status.Set,
+		Status:      toNullPlaybookStatus(playbookHistory.Status),
+		AllowedFrom: allowedFrom,
+		ErrorSet:    playbookHistory.Error.Set,
+		Error:       toPgTextFromNullable(playbookHistory.Error),
+		Result:      jsonData,
+		ID:          pgID,
 	})
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
+			if playbookHistory.Status.Set {
+				return nil, domain.ErrInvalidTransition
+			}
 			return nil, nil
 		}
 		return nil, err
@@ -420,12 +431,13 @@ func (w *PlaybookRepositoryImpl) UpdatePlaybookHistoryStatus(ctx context.Context
 	}
 
 	row, err := w.queriesFromContext(ctx).UpdatePlaybookHistoryStatus(ctx, db.UpdatePlaybookHistoryStatusParams{
-		ID:     pgID,
-		Status: db.PlaybookStatus(status),
+		ID:          pgID,
+		Status:      db.PlaybookStatus(status),
+		AllowedFrom: domain.RunTransitions.From(status),
 	})
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, nil
+			return nil, domain.ErrInvalidTransition
 		}
 		return nil, err
 	}

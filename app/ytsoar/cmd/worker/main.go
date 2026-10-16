@@ -2,13 +2,14 @@ package main
 
 import (
 	"context"
-	"errors"
 	"log"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"github.com/yuudev14/ytsoar/db"
-	"github.com/yuudev14/ytsoar/internal/adapters/mq"
+	"github.com/yuudev14/ytsoar/internal/adapters/jobs"
+	"github.com/yuudev14/ytsoar/internal/adapters/pgstatus"
 	"github.com/yuudev14/ytsoar/internal/adapters/repository"
 	"github.com/yuudev14/ytsoar/internal/adapters/runtimes/goconnectors"
 	"github.com/yuudev14/ytsoar/internal/adapters/runtimes/grpcruntime"
@@ -41,31 +42,20 @@ func main() {
 	playbookService := playbooks.NewPlaybookService(appLogger, playbookRepository)
 	taskService := tasks.NewTaskServiceImpl(taskRepository)
 
-	mqConn, err := mq.Connect(cfg.MQUrl)
-	if err != nil {
-		log.Fatalf("failed to connect to MQ: %v", err)
-	}
-	defer mqConn.Close()
-
-	statusPublisher, err := mq.NewStatusPublisher(appLogger, mqConn, cfg.StatusExchangeName)
-	if err != nil {
-		log.Fatalf("failed to setup status publisher: %v", err)
-	}
-
-	// The worker never runs user code: every dynamic node (python/js/ts
-	// connectors, code snippets) goes to the credential-free sandbox over
-	// gRPC. Go builtins are OUR code and run in-process via the registry.
-	sandboxRuntime, err := grpcruntime.New(appLogger, cfg.SandboxAddr)
+	// The worker never runs user code. SandboxRuntime sends every other task
+	// (python/js/ts connectors, code snippets) to the sandbox over gRPC. The
+	// built-in connectors are OUR code, so BuiltinRuntime runs them in the worker.
+	sandboxRuntime, err := grpcruntime.NewSandboxRuntime(appLogger, cfg.SandboxAddr)
 	if err != nil {
 		log.Fatalf("failed to setup sandbox runtime client: %v", err)
 	}
 
-	registry := goconnectors.NewRegistry(appLogger, templating.NewGonjaEngine(), cfg.ConnectorsDir)
-	registry.Register("http_request", goconnectors.NewHTTPRequestConnector())
-	registry.Register("condition", goconnectors.NewConditionConnector())
-	byConnector := map[string]execution.NodeRuntime{}
-	for _, id := range registry.IDs() {
-		byConnector[id] = registry
+	builtinRuntime := goconnectors.NewBuiltinRuntime(appLogger, templating.NewGonjaEngine(), cfg.ConnectorsDir)
+	builtinRuntime.Register("http_request", goconnectors.NewHTTPRequestConnector())
+	builtinRuntime.Register("condition", goconnectors.NewConditionConnector())
+	byConnector := map[string]execution.TaskRuntime{}
+	for _, id := range builtinRuntime.IDs() {
+		byConnector[id] = builtinRuntime
 	}
 	resolver := execution.NewStaticResolver(sandboxRuntime, byConnector)
 
@@ -74,23 +64,39 @@ func main() {
 		taskService,
 		playbookService,
 		resolver,
-		statusPublisher,
+		pgstatus.NewNotifier(pool),
 		cfg.MaxParallelNodes,
 		cfg.NodeTimeout,
 	)
+	playbookRunLoader := playbooks.NewRunLoader(playbookService, taskService)
+	runWorker := jobs.NewRunWorker(appLogger, playbookRunLoader, executor)
 
-	consumer, err := mq.NewTaskConsumer(appLogger, mqConn, cfg.PlaybookQueueName, executor, cfg.PlaybookPrefetch)
+	riverClient, err := jobs.NewWorkerClient(
+		pool,
+		runWorker,
+		cfg.PlaybookConcurrency, cfg.RunTimeout, cfg.WorkerStopGrace)
 	if err != nil {
-		log.Fatalf("failed to setup task consumer: %v", err)
+		log.Fatalf("failed to setup job queue: %v", err)
+	}
+	// Do not use ctx here. A SIGTERM cancels ctx and stops the running playbooks.
+	// Stop below lets them finish.
+	if err := riverClient.Start(context.Background()); err != nil {
+		log.Fatalf("failed to start job queue: %v", err)
 	}
 
 	appLogger.Infow("worker started",
-		"queue", cfg.PlaybookQueueName,
+		"concurrency", cfg.PlaybookConcurrency,
 		"sandbox", cfg.SandboxAddr,
-		"status_exchange", cfg.StatusExchangeName,
 	)
-	if err := consumer.Start(ctx); err != nil && !errors.Is(err, context.Canceled) {
-		log.Fatalf("consumer stopped: %v", err)
+	<-ctx.Done()
+
+	// Stop waits WorkerStopGrace for the running playbooks. After that, River cancels
+	// them. A cancelled run is saved as failed, so it does not stay in_progress. The extra
+	// 30 seconds give the cancelled runs time to save their status.
+	stopCtx, cancel := context.WithTimeout(context.Background(), cfg.WorkerStopGrace+30*time.Second)
+	defer cancel()
+	if err := riverClient.Stop(stopCtx); err != nil {
+		appLogger.Errorw("job queue did not stop cleanly", "error", err)
 	}
 	appLogger.Info("worker shut down")
 }

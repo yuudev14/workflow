@@ -3,10 +3,13 @@ package execution
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"runtime/debug"
 	"strings"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/yuudev14/ytsoar/internal/application/playbooks"
 	"github.com/yuudev14/ytsoar/internal/application/tasks"
 	"github.com/yuudev14/ytsoar/internal/domain"
@@ -16,10 +19,10 @@ import (
 )
 
 const (
-	StatusInProgress = "in_progress"
-	StatusSuccess    = "success"
-	StatusFailed     = "failed"
-	StatusSkipped    = "skipped"
+	StatusInProgress = domain.StatusInProgress
+	StatusSuccess    = domain.StatusSuccess
+	StatusFailed     = domain.StatusFailed
+	StatusSkipped    = domain.StatusSkipped
 
 	// startNode is a no-op node that only reports success, parity with the
 	// Python executor's special case.
@@ -38,7 +41,21 @@ type Executor struct {
 	status          StatusPublisher
 	maxParallel     int
 	nodeTimeout     time.Duration
+	// finalWriteDelays is the wait before each new try to save the final status of a run.
+	finalWriteDelays []time.Duration
 }
+
+// Option changes a setting of the Executor.
+type Option func(*Executor)
+
+// WithFinalWriteDelays sets the wait before each new try to save the final status of a
+// run. A test uses short delays.
+func WithFinalWriteDelays(delays ...time.Duration) Option {
+	return func(e *Executor) { e.finalWriteDelays = delays }
+}
+
+// defaultFinalWriteDelays gives the database about 30 seconds to come back.
+var defaultFinalWriteDelays = []time.Duration{time.Second, 2 * time.Second, 4 * time.Second, 8 * time.Second, 15 * time.Second}
 
 func NewExecutor(
 	log logger.Logger,
@@ -48,6 +65,7 @@ func NewExecutor(
 	status StatusPublisher,
 	maxParallel int,
 	nodeTimeout time.Duration,
+	opts ...Option,
 ) *Executor {
 	if maxParallel < 1 {
 		maxParallel = 1
@@ -57,16 +75,42 @@ func NewExecutor(
 	if nodeTimeout <= 0 {
 		nodeTimeout = 5 * time.Minute
 	}
-	return &Executor{
-		logger:          log,
-		taskService:     taskService,
-		playbookService: playbookService,
-		resolver:        resolver,
-		status:          status,
-		maxParallel:     maxParallel,
-		nodeTimeout:     nodeTimeout,
+	e := &Executor{
+		logger:           log,
+		taskService:      taskService,
+		playbookService:  playbookService,
+		resolver:         resolver,
+		status:           status,
+		maxParallel:      maxParallel,
+		nodeTimeout:      nodeTimeout,
+		finalWriteDelays: defaultFinalWriteDelays,
 	}
+	for _, opt := range opts {
+		opt(e)
+	}
+	return e
 }
+
+// statusWriteTimeout is the time limit for one try to save a status.
+const statusWriteTimeout = 10 * time.Second
+
+// detach returns a context that ignores the cancel of ctx (so a stop or a timeout does not
+// block the last status write), but has its own time limit.
+func detach(ctx context.Context) (context.Context, context.CancelFunc) {
+	return context.WithTimeout(context.WithoutCancel(ctx), statusWriteTimeout)
+}
+
+var errWorkerStopped = errors.New("an earlier attempt started this run and did not finish it (the worker may have stopped)")
+
+// ErrNotStarted wraps the error of a run that did not start. The database failed before
+// the run changed to in_progress. This is different from a run that started and then failed.
+// Nothing ran, so the caller can safely mark the run failed.
+var ErrNotStarted = errors.New("run did not start")
+
+// ErrNotFinished wraps the error of a run that ran, but whose final status the database
+// could not save, even after several tries. The run is still in_progress. The queue must
+// give the job to a new attempt, and recoverRun then marks the run failed.
+var ErrNotFinished = errors.New("run status was not saved")
 
 type nodeResult struct {
 	node    string
@@ -76,6 +120,13 @@ type nodeResult struct {
 }
 
 func (e *Executor) Run(ctx context.Context, msg domain.TaskMessage) error {
+	if _, err := e.setRunStatus(ctx, msg, StatusInProgress, nil, nil); err != nil {
+		if errors.Is(err, domain.ErrInvalidTransition) {
+			return e.recoverRun(ctx, msg)
+		}
+		return fmt.Errorf("%w: %w", ErrNotStarted, err)
+	}
+
 	// domain.IsAcyclicGraph returns true when a cycle EXISTS and mutates its
 	// input, so it gets a copy.
 	utils.DebugJSON(e.logger, "TaskMessage", msg, " ")
@@ -107,6 +158,20 @@ func (e *Executor) Run(ctx context.Context, msg domain.TaskMessage) error {
 		go func() {
 			sem <- struct{}{}
 			defer func() { <-sem }()
+			// A panic in a node must not stop the whole worker. River only catches
+			// a panic in the job goroutine, not in this one.
+			defer func() {
+				if r := recover(); r != nil {
+					err := fmt.Errorf("node %s panicked: %v", node, r)
+					e.logger.Errorw("node panicked", "node", node, "panic", fmt.Sprint(r), "stack", string(debug.Stack()))
+					if task, ok := msg.Tasks[node]; ok {
+						if statusErr := e.setTaskStatus(runCtx, msg, task, StatusFailed, nil, err); statusErr != nil {
+							e.logger.Errorw("failed to persist task failure", "node", node, "error", statusErr)
+						}
+					}
+					done <- nodeResult{node: node, err: err}
+				}
+			}()
 			if skip {
 				done <- nodeResult{node: node, skipped: true, err: e.processSkippedNode(runCtx, msg, node)}
 				return
@@ -241,7 +306,8 @@ func (e *Executor) setTaskStatus(
 	// Detach from cancellation: after a fail-fast cancel() the draining nodes
 	// still have to persist their failed status, or they'd sit at in_progress
 	// forever (same reason finishPlaybook receives the parent ctx).
-	ctx = context.WithoutCancel(ctx)
+	ctx, cancel := detach(ctx)
+	defer cancel()
 	var errStr *string
 	if execErr != nil {
 		s := execErr.Error()
@@ -272,10 +338,36 @@ func (e *Executor) setTaskStatus(
 	if err != nil {
 		return err
 	}
-	if err := e.status.Publish("task_status", res); err != nil {
+	if err := e.status.Publish(ctx, "task_status", res.ID); err != nil {
 		e.logger.Errorw("failed to publish task status event", "task", task.Name, "error", err)
 	}
 	return nil
+}
+
+// recoverRun handles a run that the state rules refused to start. The run is already
+// in_progress, or it is finished. In the first case, a worker stopped in the middle of the run,
+// and the queue delivered the run again. A second run would repeat the side effects of the
+// connectors. So the system marks a started run as failed, and it does not touch a finished run.
+func (e *Executor) recoverRun(ctx context.Context, msg domain.TaskMessage) error {
+	e.logger.Warnw("run was already started, not running it again", "playbook_history_id", msg.PlaybookHistoryId)
+	err := e.finishPlaybook(ctx, msg, StatusFailed, nil, errWorkerStopped)
+	if errors.Is(err, domain.ErrInvalidTransition) {
+		return nil // already finished
+	}
+	// Only now, after the state rules accepted the change: a finished run keeps its tasks.
+	writeCtx, cancel := detach(ctx)
+	defer cancel()
+	failed, failErr := e.taskService.FailUnfinishedTaskHistory(writeCtx, msg.PlaybookHistoryId.String(), errWorkerStopped.Error())
+	if failErr != nil {
+		e.logger.Errorw("failed to fail unfinished tasks", "playbook_history_id", msg.PlaybookHistoryId, "error", failErr)
+	}
+	// Tell the open pages about each task, so they do not show it as in_progress.
+	for _, task := range failed {
+		if pubErr := e.status.Publish(writeCtx, "task_status", task.ID); pubErr != nil {
+			e.logger.Errorw("failed to publish task status event", "task", task.Name, "error", pubErr)
+		}
+	}
+	return err
 }
 
 func (e *Executor) finishPlaybook(
@@ -285,6 +377,55 @@ func (e *Executor) finishPlaybook(
 	result any,
 	execErr error,
 ) error {
+	if err := e.saveFinalStatus(ctx, msg, status, result, execErr); err != nil {
+		return err
+	}
+	return execErr
+}
+
+// saveFinalStatus saves the last status of a run. If the database fails, it tries again
+// after each delay in finalWriteDelays (about 30 seconds in all), so a short problem does
+// not leave the run in_progress. If every try fails, it returns an error that wraps
+// ErrNotFinished. A refused change (ErrInvalidTransition) is returned as it is.
+func (e *Executor) saveFinalStatus(ctx context.Context, msg domain.TaskMessage, status string, result any, execErr error) error {
+	var err error
+	for try := 0; ; try++ {
+		_, err = e.setRunStatus(ctx, msg, status, result, execErr)
+		if err == nil || errors.Is(err, domain.ErrInvalidTransition) {
+			return err
+		}
+		if try >= len(e.finalWriteDelays) {
+			return fmt.Errorf("%w: %w", ErrNotFinished, err)
+		}
+		e.logger.Warnw("could not save the run status, trying again",
+			"playbook_history_id", msg.PlaybookHistoryId, "status", status, "error", err, "wait", e.finalWriteDelays[try])
+		time.Sleep(e.finalWriteDelays[try])
+	}
+}
+
+// Abort marks a run as failed when the run cannot start, for example when the system
+// cannot build its message. It does not touch a finished run.
+func (e *Executor) Abort(ctx context.Context, historyID uuid.UUID, cause error) error {
+	err := e.saveFinalStatus(ctx, domain.TaskMessage{PlaybookHistoryId: historyID}, StatusFailed, nil, cause)
+	if errors.Is(err, domain.ErrInvalidTransition) {
+		return nil
+	}
+	return err
+}
+
+// setRunStatus changes the run status through the state rules and sends the new row
+// to the clients.
+func (e *Executor) setRunStatus(
+	ctx context.Context,
+	msg domain.TaskMessage,
+	status string,
+	result any,
+	execErr error,
+) (*domain.PlaybookHistory, error) {
+	// A run can end because of a timeout or a shutdown. The system must still save its status,
+	// but one try must not hang for minutes when the database host drops packets.
+	ctx, cancel := detach(ctx)
+	defer cancel()
 	var errStr *string
 	if execErr != nil {
 		s := execErr.Error()
@@ -297,13 +438,13 @@ func (e *Executor) finishPlaybook(
 			Result: result,
 		})
 	if err != nil {
-		return err
+		return nil, err
 	}
-	if err := e.status.Publish("playbook_status", res); err != nil {
+	if err := e.status.Publish(ctx, "playbook_status", res.ID); err != nil {
 		e.logger.Errorw("failed to publish playbook status event",
 			"playbook_history_id", msg.PlaybookHistoryId, "error", err)
 	}
-	return execErr
+	return res, nil
 }
 
 type edgeKey struct {

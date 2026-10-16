@@ -51,13 +51,13 @@ func request(t *testing.T, connectorID string, operation string, params map[stri
 	}
 }
 
-func TestRegistryTemplatesParamsAndLoadsConfig(t *testing.T) {
+func TestBuiltinRuntimeTemplatesParamsAndLoadsConfig(t *testing.T) {
 	dir := t.TempDir()
 	require.NoError(t, os.MkdirAll(filepath.Join(dir, "echo", "configs"), 0o755))
 	require.NoError(t, os.WriteFile(filepath.Join(dir, "echo", "configs", "default.toml"),
 		[]byte("key = \"value\"\n"), 0o644))
 
-	registry := goconnectors.NewRegistry(logger.NewNop(), templating.NewGonjaEngine(), dir)
+	registry := goconnectors.NewBuiltinRuntime(logger.NewNop(), templating.NewGonjaEngine(), dir)
 	echo := &echoConnector{}
 	registry.Register("echo", echo)
 
@@ -75,8 +75,8 @@ func TestRegistryTemplatesParamsAndLoadsConfig(t *testing.T) {
 	assert.Equal(t, "run", echo.gotOp)
 }
 
-func TestRegistryUnknownConnector(t *testing.T) {
-	registry := goconnectors.NewRegistry(logger.NewNop(), templating.NewGonjaEngine(), "")
+func TestBuiltinRuntimeUnknownConnector(t *testing.T) {
+	registry := goconnectors.NewBuiltinRuntime(logger.NewNop(), templating.NewGonjaEngine(), "")
 
 	_, err := registry.Execute(context.Background(),
 		request(t, "ghost", "run", nil, nil, nil))
@@ -84,8 +84,8 @@ func TestRegistryUnknownConnector(t *testing.T) {
 	assert.ErrorContains(t, err, "ghost")
 }
 
-func TestRegistryIDs(t *testing.T) {
-	registry := goconnectors.NewRegistry(logger.NewNop(), templating.NewGonjaEngine(), "")
+func TestBuiltinRuntimeIDs(t *testing.T) {
+	registry := goconnectors.NewBuiltinRuntime(logger.NewNop(), templating.NewGonjaEngine(), "")
 	registry.Register("http_request", goconnectors.NewHTTPRequestConnector())
 	registry.Register("condition", goconnectors.NewConditionConnector())
 
@@ -235,11 +235,11 @@ func TestConditionConnectorSwitchExpression(t *testing.T) {
 	}
 }
 
-// TestConditionSwitchExpressionThroughRegistry proves the advanced switch end to
+// TestConditionSwitchExpressionThroughBuiltinRuntime proves the advanced switch end to
 // end: case expressions rendered by the real gonja engine pick the first matching
 // branch.
-func TestConditionSwitchExpressionThroughRegistry(t *testing.T) {
-	registry := goconnectors.NewRegistry(logger.NewNop(), templating.NewGonjaEngine(), "")
+func TestConditionSwitchExpressionThroughBuiltinRuntime(t *testing.T) {
+	registry := goconnectors.NewBuiltinRuntime(logger.NewNop(), templating.NewGonjaEngine(), "")
 	registry.Register("condition", goconnectors.NewConditionConnector())
 
 	connectorID := "condition"
@@ -261,10 +261,10 @@ func TestConditionSwitchExpressionThroughRegistry(t *testing.T) {
 	assert.JSONEq(t, `{"result":"med"}`, string(raw))
 }
 
-// TestConditionSwitchThroughRegistry proves the simple switch end to end:
+// TestConditionSwitchThroughBuiltinRuntime proves the simple switch end to end:
 // templated left/right values, structured compare picking the first match.
-func TestConditionSwitchThroughRegistry(t *testing.T) {
-	registry := goconnectors.NewRegistry(logger.NewNop(), templating.NewGonjaEngine(), "")
+func TestConditionSwitchThroughBuiltinRuntime(t *testing.T) {
+	registry := goconnectors.NewBuiltinRuntime(logger.NewNop(), templating.NewGonjaEngine(), "")
 	registry.Register("condition", goconnectors.NewConditionConnector())
 
 	connectorID := "condition"
