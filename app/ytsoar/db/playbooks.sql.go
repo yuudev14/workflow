@@ -275,7 +275,7 @@ SET
     result = $5
 WHERE id = $6
   -- state machine guard: the target status must be reachable from the current one
-  AND (NOT $1::boolean OR status = ANY($7::playbook_status[]))
+  AND (NOT $1::boolean OR status::text = ANY($7::text[]))
 RETURNING id, playbook_id, status, error, result, triggered_at, edges, trigger_type, triggered_by, input
 `
 
@@ -286,7 +286,7 @@ type UpdatePlaybookHistoryParams struct {
 	Error       pgtype.Text        `json:"error"`
 	Result      []byte             `json:"result"`
 	ID          pgtype.UUID        `json:"id"`
-	AllowedFrom []PlaybookStatus   `json:"allowed_from"`
+	AllowedFrom []string           `json:"allowed_from"`
 }
 
 func (q *Queries) UpdatePlaybookHistory(ctx context.Context, arg UpdatePlaybookHistoryParams) (PlaybookHistory, error) {
@@ -318,14 +318,14 @@ func (q *Queries) UpdatePlaybookHistory(ctx context.Context, arg UpdatePlaybookH
 const updatePlaybookHistoryStatus = `-- name: UpdatePlaybookHistoryStatus :one
 UPDATE playbook_history
 SET status = $2
-WHERE id = $1 AND status = ANY($3::playbook_status[])
+WHERE id = $1 AND status::text = ANY($3::text[])
 RETURNING id, playbook_id, status, error, result, triggered_at, edges, trigger_type, triggered_by, input
 `
 
 type UpdatePlaybookHistoryStatusParams struct {
-	ID          pgtype.UUID      `json:"id"`
-	Status      PlaybookStatus   `json:"status"`
-	AllowedFrom []PlaybookStatus `json:"allowed_from"`
+	ID          pgtype.UUID    `json:"id"`
+	Status      PlaybookStatus `json:"status"`
+	AllowedFrom []string       `json:"allowed_from"`
 }
 
 func (q *Queries) UpdatePlaybookHistoryStatus(ctx context.Context, arg UpdatePlaybookHistoryStatusParams) (PlaybookHistory, error) {

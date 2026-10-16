@@ -72,6 +72,11 @@ func NewExecutor(
 
 var errWorkerStopped = errors.New("worker stopped before the run finished")
 
+// ErrNotStarted wraps the error of a run that could not even be moved to
+// in_progress (the database failed), as opposed to a run that started and
+// failed. Nothing ran, so the queue may retry it safely.
+var ErrNotStarted = errors.New("run did not start")
+
 type nodeResult struct {
 	node    string
 	output  any
@@ -84,7 +89,7 @@ func (e *Executor) Run(ctx context.Context, msg domain.TaskMessage) error {
 		if errors.Is(err, domain.ErrInvalidTransition) {
 			return e.recoverRun(ctx, msg)
 		}
-		return err
+		return fmt.Errorf("%w: %w", ErrNotStarted, err)
 	}
 
 	// domain.IsAcyclicGraph returns true when a cycle EXISTS and mutates its

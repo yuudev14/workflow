@@ -200,7 +200,7 @@ func (t *TaskRepositoryImpl) UpdateTaskStatus(ctx context.Context, playbookHisto
 		PlaybookHistoryID: pgHistoryID,
 		TaskID:            pgTaskID,
 		Status:            db.TaskStatus(status),
-		AllowedFrom:       toStatuses[db.TaskStatus](domain.TaskTransitions.From(status)),
+		AllowedFrom:       domain.TaskTransitions.From(status),
 	})
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -234,9 +234,9 @@ func (t *TaskRepositoryImpl) UpdateTaskHistory(ctx context.Context, playbookHist
 		return nil, err
 	}
 
-	var allowedFrom []db.TaskStatus
+	var allowedFrom []string
 	if taskHistory.Status.Set && taskHistory.Status.Value != nil {
-		allowedFrom = toStatuses[db.TaskStatus](domain.TaskTransitions.From(*taskHistory.Status.Value))
+		allowedFrom = domain.TaskTransitions.From(*taskHistory.Status.Value)
 	}
 	row, err := t.queriesFromContext(ctx).UpdateTaskHistory(ctx, db.UpdateTaskHistoryParams{
 		Name:              toPgTextFromString(taskHistory.Name),

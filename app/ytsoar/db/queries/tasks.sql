@@ -30,7 +30,7 @@ RETURNING *;
 -- name: UpdateTaskStatus :one
 UPDATE task_history
 SET status = $3
-WHERE playbook_history_id = $1 AND task_id = $2 AND status = ANY(sqlc.arg('allowed_from')::task_status[])
+WHERE playbook_history_id = $1 AND task_id = $2 AND status::text = ANY(sqlc.arg('allowed_from')::text[])
 RETURNING *;
 
 -- name: UpdateTaskHistory :one
@@ -65,7 +65,7 @@ SET
     END
 WHERE playbook_history_id = sqlc.arg('playbook_history_id') AND task_id = sqlc.arg('task_id')
   -- state machine guard: the target status must be reachable from the current one
-  AND (NOT sqlc.arg('status_set')::boolean OR status = ANY(sqlc.arg('allowed_from')::task_status[]))
+  AND (NOT sqlc.arg('status_set')::boolean OR status::text = ANY(sqlc.arg('allowed_from')::text[]))
 RETURNING *;
 
 -- name: FailUnfinishedTaskHistory :exec

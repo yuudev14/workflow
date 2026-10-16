@@ -393,9 +393,9 @@ func (w *PlaybookRepositoryImpl) UpdatePlaybookHistory(ctx context.Context, play
 		return nil, err
 	}
 
-	var allowedFrom []db.PlaybookStatus
+	var allowedFrom []string
 	if playbookHistory.Status.Set && playbookHistory.Status.Value != nil {
-		allowedFrom = toStatuses[db.PlaybookStatus](domain.RunTransitions.From(*playbookHistory.Status.Value))
+		allowedFrom = domain.RunTransitions.From(*playbookHistory.Status.Value)
 	}
 	row, err := w.queriesFromContext(ctx).UpdatePlaybookHistory(ctx, db.UpdatePlaybookHistoryParams{
 		StatusSet:   playbookHistory.Status.Set,
@@ -430,7 +430,7 @@ func (w *PlaybookRepositoryImpl) UpdatePlaybookHistoryStatus(ctx context.Context
 	row, err := w.queriesFromContext(ctx).UpdatePlaybookHistoryStatus(ctx, db.UpdatePlaybookHistoryStatusParams{
 		ID:          pgID,
 		Status:      db.PlaybookStatus(status),
-		AllowedFrom: toStatuses[db.PlaybookStatus](domain.RunTransitions.From(status)),
+		AllowedFrom: domain.RunTransitions.From(status),
 	})
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
