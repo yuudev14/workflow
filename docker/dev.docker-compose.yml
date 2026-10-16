@@ -92,6 +92,8 @@ services:
       dockerfile: Dockerfile.dev
     image: ytsoar/backend:latest
     container_name: ytsoar_playbook_worker
+    # more than WORKER_STOP_GRACE_SECONDS, so running playbooks can be cancelled and saved before Docker kills the worker
+    stop_grace_period: 60s
     entrypoint:
       [
         "air",

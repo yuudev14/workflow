@@ -9,8 +9,8 @@ import (
 // DynamicResolver chooses a runtime by calling your function each time a task arrives.
 // It runs in the SANDBOX, behind the gRPC server. The worker's SandboxRuntime calls the
 // sandbox over gRPC, and then this resolver picks the runtime that runs the task.
-// The function reads info.json from the disk on every call, so a connector that you
-// upload works with no restart.
+// The sandbox passes a function that reads info.json from the disk on every call, so a
+// connector that you upload works with no restart.
 // Compare StaticResolver, which uses a fixed list and runs in the worker.
 type DynamicResolver func(task domain.Tasks) (TaskRuntime, error)
 
