@@ -336,10 +336,21 @@ After `cancel()`, the context is dead. A normal database call with it would fail
 |---|---|---|
 | One node | `NODE_TIMEOUT_SECONDS` (300) | `context.WithTimeout` in `processNode`. The sandbox gets the same value. |
 | One run | `RUN_TIMEOUT_MINUTES` (60) | River `JobTimeout` in `NewWorkerClient`. |
+| Worker stop | `WORKER_STOP_GRACE_SECONDS` (20) | River `SoftStopTimeout`. After this time, River cancels the running playbooks. |
 
 ### 6.4 The worker stops in the middle of a run
 
-River finds a job that is still `running` after the run timeout plus 5 minutes (at least). It then gives the job to another worker. That worker calls `Run`, and the database refuses `queued → in_progress`. Then `recoverRun` marks the run `failed`. The connectors do not run again. See [job-results.md](diagram/job-results.md).
+**You stop the worker on purpose** (a deploy, Ctrl+C). The running playbooks get `WORKER_STOP_GRACE_SECONDS` (20 seconds) to finish. After that, River cancels them. Each cancelled run is saved as `failed` at once, and the worker exits. See section 8.
+
+**The worker dies** (a crash, or `kill -9`). River finds a job that is still `running` after the run timeout plus 5 minutes (at least). It then gives the job to another worker. That worker calls `Run`, and the database refuses `queued → in_progress`. Then `recoverRun` marks the run `failed`. The connectors do not run again. See [job-results.md](diagram/job-results.md).
+
+### 6.4a A panic in a node
+
+A panic in a node goroutine would stop the whole worker. River catches a panic only in the job goroutine. So each node goroutine in `Run` has a `recover`. The panic becomes an error: the task and the run are saved as `failed`, and the worker keeps running.
+
+### 6.4b The final status cannot be saved
+
+After the last node, the executor saves the final status of the run. If the database fails, it tries again after 1, 2, 4, 8 and 15 seconds (about 30 seconds). If every try fails, `Run` returns `ErrNotFinished`. `Work` returns this error, and River gives the job to attempt 2. Attempt 2 marks the run `failed`.
 
 ### 6.5 What `Work` returns to River
 
@@ -347,7 +358,8 @@ River finds a job that is still `running` after the run timeout plus 5 minutes (
 |---|---|---|
 | Success | `nil` | Marks the job completed. |
 | The run failed (saved) | `nil` | Marks the job completed. A retry would run the connectors again. |
-| The run could not start (database error) | the error | Retries after a delay. On the last attempt, `Abort` marks the run `failed`. |
+| The run could not start (`ErrNotStarted`, or the message could not be built) | `nil` | `Abort` marks the run `failed` at once. No retry. If `Abort` fails, the error goes to River, and attempt 2 tries again. |
+| The final status was not saved (`ErrNotFinished`) | the error | River gives the job to attempt 2. It marks the run `failed`. |
 
 ---
 
@@ -361,8 +373,9 @@ Each time a status changes, the executor calls `Notifier.Publish(ctx, "task_stat
 
 1. You press Ctrl+C, or Docker sends SIGTERM.
 2. `ctx.Done()` ends. `main.go` moves on from `<-ctx.Done()`.
-3. `riverClient.Stop(stopCtx)` stops taking new jobs and waits for the running playbooks to finish. The wait is limited to the run timeout plus one minute.
-4. The worker exits.
+3. `riverClient.Stop(stopCtx)` stops taking new jobs and waits for the running playbooks. The wait is `WORKER_STOP_GRACE_SECONDS` (20 seconds).
+4. After that time, River cancels the running playbooks. Each run is saved as `failed` with a "cancelled" error, and the worker exits.
+5. Docker (`stop_grace_period: 60s`) waits longer than the grace time, so the worker has time to save the statuses before Docker kills it.
 
 River started with `context.Background()`, not with `ctx`. If River used `ctx`, SIGTERM would cancel the running playbooks at once.
 

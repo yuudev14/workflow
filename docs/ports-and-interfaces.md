@@ -299,7 +299,7 @@ type RunExecutor interface {
 - **File:** `internal/adapters/jobs/jobs.go`
 - **Used by:** `jobs.RunWorker.Work`
 - **Fitted by:** `execution.Executor`
-- **Why we made it:** The worker is a thin wrapper that calls two methods. The interface lists exactly these two. A test uses `fakeExecutor` to check the retry rules (success, failed run, `ErrNotStarted`, last attempt) with no real executor.
+- **Why we made it:** The worker is a thin wrapper that calls two methods. The interface lists exactly these two. A test uses `fakeExecutor` to check what `Work` does for each result (success, failed run, `ErrNotStarted`, `ErrNotFinished`, a failed `Abort`) with no real executor.
 
 ### 5.4 `execution.StatusPublisher` (changed)
 

@@ -44,13 +44,13 @@ func (RunArgs) InsertOpts() river.InsertOpts {
 - **The struct** is what River saves in the `args` column as JSON. The `json` tag sets the key name. The saved row is `{"playbook_history_id": "0134..."}`.
 - **Why only the ID:** the table stays small. The worker loads the rest from the history tables.
 - **`Kind()`** is the job name. River saves it in the `kind` column. River uses this name later to find the worker. This is the link between the API and the worker.
-- **`InsertOpts()`** gives default settings for every job of this type: the queue name `playbook`, and a maximum of 5 attempts. You write them one time here, and not at each insert.
+- **`InsertOpts()`** gives default settings for every job of this type: the queue name `playbook`, and a maximum of 2 attempts. The second attempt is only for a job that River takes back (see [job-results.md](diagram/job-results.md)). You write them one time here, and not at each insert.
 
 A row in `river_job` looks like this:
 
 | kind | args | queue | state | max_attempts |
 |---|---|---|---|---|
-| `playbook_run` | `{"playbook_history_id": "0134..."}` | `playbook` | `available` | 5 |
+| `playbook_run` | `{"playbook_history_id": "0134..."}` | `playbook` | `available` | 2 |
 
 ## 3. `RunWorker`: the code that does the job
 
@@ -87,7 +87,7 @@ func (w *RunWorker) Work(ctx context.Context, job *river.Job[RunArgs]) error {
     ...
     err = w.executor.Run(ctx, msg)                 // run it
     ...
-    return nil                                     // nil = completed, an error = River retries
+    return nil                                     // nil = completed, an error = River gives the job to attempt 2
 }
 ```
 
@@ -107,6 +107,7 @@ return river.NewClient(riverpgxv5.New(pool), &river.Config{
     Workers: workers,                                  // the list above
     JobTimeout:           runTimeout,                  // time limit for one job
     RescueStuckJobsAfter: runTimeout + rescueGrace,    // take back a job whose worker died
+    SoftStopTimeout:      stopGrace,                   // on stop: wait this long, then cancel the jobs
 })
 ```
 
@@ -117,6 +118,7 @@ return river.NewClient(riverpgxv5.New(pool), &river.Config{
 | `Workers` | The list that River searches by kind. |
 | `JobTimeout` | The time limit for one job (`RUN_TIMEOUT_MINUTES`). |
 | `RescueStuckJobsAfter` | A job that stays `running` longer than this is given back to the queue. It must be longer than `JobTimeout`. |
+| `SoftStopTimeout` | When the worker stops, River waits this long (`WORKER_STOP_GRACE_SECONDS`). Then it cancels the running jobs. |
 
 `main.go` calls `Start()` on this client. From then on, River runs a loop: fetch an `available` job, find the worker by kind, decode the JSON, call `Work`.
 

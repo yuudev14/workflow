@@ -58,14 +58,14 @@ flowchart TD
 | 9 | `execution.NewStaticResolver(sandbox, byConnector)` | A node with a built-in connector runs in the worker. Every other node goes to the sandbox. |
 | 10 | `execution.NewExecutor(...)` | It gets the services, the resolver, the status notifier and the limits. |
 | 11 | `playbooks.NewRunLoader(...)`, `jobs.NewRunWorker(...)` | The loader builds the message. The worker calls the loader and the executor. |
-| 12 | `jobs.NewWorkerClient(pool, worker, concurrency, runTimeout)` | The River client. It registers the worker for the kind `playbook_run`. |
+| 12 | `jobs.NewWorkerClient(pool, worker, concurrency, runTimeout, stopGrace)` | The River client. It registers the worker for the kind `playbook_run`. |
 | 13 | `riverClient.Start(context.Background())` | Start taking jobs. |
 | 14 | `<-ctx.Done()` | Wait for a stop signal. |
-| 15 | `riverClient.Stop(stopCtx)` | Stop taking jobs. Wait for the running playbooks to finish. |
+| 15 | `riverClient.Stop(stopCtx)` | Stop taking jobs. Wait `WORKER_STOP_GRACE_SECONDS` for the running playbooks. After that, River cancels them and they are saved as `failed`. |
 
 ## Why River starts with `context.Background()`
 
-A SIGTERM cancels `ctx`. If River used `ctx`, it would cancel the running playbooks at once. `Stop` waits for them instead. The wait is limited to the run timeout plus one minute.
+A SIGTERM cancels `ctx`. If River used `ctx`, it would cancel the running playbooks at once. `Stop` waits for them instead. The wait is limited to `WORKER_STOP_GRACE_SECONDS` (20 seconds). After that, River cancels the running playbooks, and each one is saved as `failed`. Docker waits 60 seconds (`stop_grace_period`) before it kills the worker.
 
 ## What the worker does not do
 
@@ -83,4 +83,5 @@ A SIGTERM cancels `ctx`. If River used `ctx`, it would cancel the running playbo
 | `MAX_PARALLEL_NODES` | 4 | Nodes that run at the same time in one run. |
 | `NODE_TIMEOUT_SECONDS` | 300 | Time limit for one node. |
 | `PLAYBOOK_CONCURRENCY` | 1 | Runs that one worker runs at the same time. |
-| `RUN_TIMEOUT_MINUTES` | 60 | Time limit for one run. |
+| `RUN_TIMEOUT_MINUTES` | 60 | Time limit for one run. A value of 0 or less uses 60. |
+| `WORKER_STOP_GRACE_SECONDS` | 20 | Time that running playbooks get to finish when the worker stops. |
