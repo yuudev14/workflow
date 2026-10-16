@@ -1,14 +1,8 @@
 import { expect, test } from "@playwright/test";
-import { api, newAlert, unique } from "./helpers";
+import { api, newAlert, newIncident, unique } from "./helpers";
 
-async function newIncident(page: import("@playwright/test").Page) {
-  const title = unique("incident");
-  const { id } = await api(page.request).post("/incidents/v1", { title, severity: "medium" });
-  return { id: id as string, title };
-}
-
-test.describe("incidents", () => {
-  test("create an incident", async ({ page }) => {
+test.describe("incident list", () => {
+  test("creates an incident", async ({ page }) => {
     const title = unique("incident");
     await page.goto("/incidents");
     await page.getByRole("button", { name: "New incident" }).click();
@@ -22,15 +16,31 @@ test.describe("incidents", () => {
     await expect(page.getByRole("link", { name: title })).toBeVisible();
   });
 
-  test("mark an incident contained", async ({ page }) => {
-    const incident = await newIncident(page);
+  test("shows the open or the resolved incidents", async ({ page }) => {
+    const open = await newIncident(page.request);
+    const resolved = await newIncident(page.request);
+    await api(page.request).patch(`/incidents/v1/${resolved.id}/status`, { status: "resolved" });
+    await page.goto("/incidents");
+    await page.getByRole("button", { name: "Resolved", exact: true }).click();
+    await page.getByPlaceholder("Search incidents…").fill(resolved.title);
+    await expect(page.getByRole("link", { name: resolved.title })).toBeVisible();
+    await page.getByPlaceholder("Search incidents…").fill(open.title);
+    await expect(page.getByRole("link", { name: open.title })).toBeHidden();
+    await page.getByRole("button", { name: "Open", exact: true }).click();
+    await expect(page.getByRole("link", { name: open.title })).toBeVisible();
+  });
+});
+
+test.describe("incident detail", () => {
+  test("marks the incident contained", async ({ page }) => {
+    const incident = await newIncident(page.request);
     await page.goto(`/incidents/${incident.id}`);
     await page.getByRole("button", { name: "Mark contained" }).click();
     await expect.poll(async () => (await api(page.request).get(`/incidents/v1/${incident.id}`)).status).toBe("contained");
   });
 
-  test("add a note", async ({ page }) => {
-    const incident = await newIncident(page);
+  test("adds a note", async ({ page }) => {
+    const incident = await newIncident(page.request);
     await page.goto(`/incidents/${incident.id}`);
     await page.getByRole("tab", { name: /Notes/ }).click();
     await page.getByPlaceholder("Add a note…").fill("isolated the host");
@@ -38,8 +48,8 @@ test.describe("incidents", () => {
     await expect(page.getByText("isolated the host")).toBeVisible();
   });
 
-  test("unlink an alert", async ({ page }) => {
-    const incident = await newIncident(page);
+  test("unlinks an alert", async ({ page }) => {
+    const incident = await newIncident(page.request);
     const alert = await newAlert(page.request);
     await api(page.request).post(`/incidents/v1/${incident.id}/alerts`, { alert_id: alert.id });
     await page.goto(`/incidents/${incident.id}`);
