@@ -151,7 +151,7 @@ func TestEnqueueRunIsTransactional(t *testing.T) {
 	// The test removes only the jobs that it made.
 	rolledBackID, id := uuid.New(), uuid.New()
 	t.Cleanup(func() {
-		pool.Exec(ctx, "DELETE FROM river_job WHERE args->>'playbook_history_id' = ANY($1)", []string{rolledBackID.String(), id.String()})
+		_, _ = pool.Exec(ctx, "DELETE FROM river_job WHERE args->>'playbook_history_id' = ANY($1)", []string{rolledBackID.String(), id.String()})
 	})
 
 	// A rolled back transaction removes its job.
@@ -173,7 +173,7 @@ func TestEnqueueRunIsTransactional(t *testing.T) {
 	workerClient, err := NewWorkerClient(pool, NewRunWorker(logger.NewNop(), fakeLoader{}, exec), 1, time.Minute, time.Second)
 	require.NoError(t, err)
 	require.NoError(t, workerClient.Start(ctx))
-	defer workerClient.Stop(ctx)
+	defer func() { _ = workerClient.Stop(ctx) }()
 	// Other tests can leave queued runs in the same database. The worker works them too.
 	timeout := time.After(10 * time.Second)
 	for {

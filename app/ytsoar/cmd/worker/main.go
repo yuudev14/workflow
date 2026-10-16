@@ -16,7 +16,7 @@ import (
 func main() {
 	cfg := config.Load()
 	appLogger := logger.SetupLogger()
-	defer appLogger.Sync()
+	defer func() { _ = appLogger.Sync() }()
 
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()

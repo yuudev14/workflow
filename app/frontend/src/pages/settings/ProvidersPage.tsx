@@ -173,7 +173,6 @@ export default function ProvidersPage() {
           ),
       }),
     ],
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     [canUpdate]
   );
 

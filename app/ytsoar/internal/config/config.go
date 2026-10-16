@@ -80,9 +80,9 @@ func Load() Config {
 // path falls back to ./.env.
 func LoadFrom(dest string) Config {
 	if dest == "" {
-		godotenv.Load("./.env")
+		_ = godotenv.Load("./.env")
 	} else {
-		godotenv.Load(dest)
+		_ = godotenv.Load(dest)
 	}
 
 	return Config{

@@ -30,7 +30,7 @@ func TestNullableType(t *testing.T) {
 
 	for _, test := range tests {
 		var testVal TestStruct
-		json.Unmarshal([]byte(test.value), &testVal)
+		assert.NoError(t, json.Unmarshal([]byte(test.value), &testVal))
 		assert.Equal(t, test.expected, testVal.Name.Set)
 	}
 }

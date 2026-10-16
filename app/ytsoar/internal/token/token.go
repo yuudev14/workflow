@@ -6,7 +6,6 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 )
 
-
 var ErrInvalidToken = errors.New("invalid token")
 
 func Parse(tokenString string, jwtSecret string) (jwt.MapClaims, error) {

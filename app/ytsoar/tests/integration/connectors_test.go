@@ -22,12 +22,13 @@ func (c *client) upload(t *testing.T, path string, file []byte) (int, any) {
 	form := multipart.NewWriter(&body)
 	part, err := form.CreateFormFile("file", "connector.zip")
 	require.NoError(t, err)
-	part.Write(file)
+	_, err = part.Write(file)
+	require.NoError(t, err)
 	require.NoError(t, form.Close())
 	res := c.send(t, http.MethodPost, path, &body, form.FormDataContentType())
 	defer res.Body.Close()
 	var out any
-	json.NewDecoder(res.Body).Decode(&out)
+	_ = json.NewDecoder(res.Body).Decode(&out)
 	return res.StatusCode, out
 }
 

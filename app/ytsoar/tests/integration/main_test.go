@@ -90,7 +90,7 @@ func run(m *testing.M, dbURL string) int {
 	if err != nil {
 		panic(err)
 	}
-	go sandbox.Serve(runCfg.SandboxAddr)
+	go func() { _ = sandbox.Serve(runCfg.SandboxAddr) }()
 	worker, err := app.NewWorker(runCfg, logger.NewNop(), pool)
 	if err != nil {
 		panic(err)
@@ -98,7 +98,7 @@ func run(m *testing.M, dbURL string) int {
 	if err := worker.Start(ctx); err != nil {
 		panic(err)
 	}
-	defer worker.Stop(context.Background())
+	defer func() { _ = worker.Stop(context.Background()) }()
 
 	return m.Run()
 }
@@ -159,7 +159,7 @@ func (c *client) do(t *testing.T, method, path string, body any) (int, any) {
 	res := c.send(t, method, path, &buf, "application/json")
 	defer res.Body.Close()
 	var out any
-	json.NewDecoder(res.Body).Decode(&out)
+	_ = json.NewDecoder(res.Body).Decode(&out) // some responses have no body
 	return res.StatusCode, out
 }
 
