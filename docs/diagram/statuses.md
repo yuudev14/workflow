@@ -11,7 +11,7 @@ stateDiagram-v2
     queued --> in_progress: worker starts the run
     in_progress --> success: all nodes done
     in_progress --> failed: a node fails, or timeout
-    queued --> failed: cannot start on the last attempt (Abort)
+    queued --> failed: cannot start (Abort, no retry)
     success --> [*]
     failed --> [*]
 ```
@@ -62,7 +62,7 @@ A worker can stop in the middle of a run. Then River gives the job to another wo
 
 1. The new worker tries `queued -> in_progress`. The database refuses, because the run is already `in_progress`.
 2. The executor calls `recoverRun` (`internal/application/execution/executor.go`).
-3. `recoverRun` marks the run `failed` with the message "worker stopped before the run finished".
+3. `recoverRun` marks the run `failed` with the message "an earlier attempt started this run and did not finish it (the worker may have stopped)". The text is general, because the cause is not always a stopped worker. For example, the first status change can commit while its reply is lost.
 4. It also marks the open tasks `failed` (`FailUnfinishedTaskHistory`).
 5. The connectors do not run a second time.
 
