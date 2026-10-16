@@ -6,6 +6,7 @@ package jobs
 import (
 	"context"
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/google/uuid"
@@ -20,11 +21,12 @@ import (
 
 const (
 	queueName = "playbook"
-	// maxAttempts is 2. A run is never started two times, and a run that fails is never
-	// retried. The second attempt has one job: it marks a run failed when River takes a job
-	// back (the worker stopped in the middle of the run, or the final status was not saved).
-	// It does not start the run again. A run that cannot start is not retried. The worker
-	// marks it failed at once.
+	// maxAttempts is 2. A run that fails is never retried, and a run that already started is
+	// never started again. The second attempt is for a job that River takes back: the worker
+	// stopped in the middle of the run, the final status was not saved, or Abort failed. If
+	// the run already started, attempt 2 only marks it failed. If the run never started
+	// (Abort failed on attempt 1), attempt 2 can start it. A run that cannot start is not
+	// retried: the worker marks it failed at once.
 	maxAttempts = 2
 	// rescueGrace is the time after the run timeout. After this time, River decides that the
 	// worker of a running job stopped. It must be longer than the run timeout.
@@ -89,11 +91,22 @@ func (w *RunWorker) Work(ctx context.Context, job *river.Job[RunArgs]) error {
 		}
 	}
 
-	// The system could not build or start the run, and nothing ran. We do not retry:
-	// the worker marks the run failed at once, so the user sees the error. If Abort fails
-	// (the database is down), the error goes to River, and the second attempt tries again.
-	w.logger.Errorw("could not start the run, failing it", "playbook_history_id", id, "error", err)
-	return w.executor.Abort(ctx, id, err)
+	// The worker is stopping (or the job timed out). Return the error without failing the
+	// run. River puts the job back without using an attempt, and a new worker starts the run.
+	if ctx.Err() != nil {
+		return err
+	}
+
+	// The system could not build or start the run. We do not retry: the worker marks the run
+	// failed at once, so the user sees the error. If Abort fails (the database is down), the
+	// error goes to River, and the second attempt tries again. On attempt 2, the first
+	// attempt may have run the playbook already (ErrNotFinished), so the text says so.
+	cause := err
+	if job.Attempt > 1 {
+		cause = fmt.Errorf("an earlier attempt did not finish this run: %w", err)
+	}
+	w.logger.Errorw("could not start the run, failing it", "playbook_history_id", id, "attempt", job.Attempt, "error", err)
+	return w.executor.Abort(ctx, id, cause)
 }
 
 // Enqueuer queues runs. It implements contracts.RunEnqueuer.

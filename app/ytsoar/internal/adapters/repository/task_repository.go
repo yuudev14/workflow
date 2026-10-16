@@ -275,15 +275,23 @@ func (t *TaskRepositoryImpl) UpdateTaskHistory(ctx context.Context, playbookHist
 }
 
 // FailUnfinishedTaskHistory implements tasks.TaskRepository.
-func (t *TaskRepositoryImpl) FailUnfinishedTaskHistory(ctx context.Context, playbookHistoryId string, reason string) error {
+func (t *TaskRepositoryImpl) FailUnfinishedTaskHistory(ctx context.Context, playbookHistoryId string, reason string) ([]domain.TaskHistory, error) {
 	pgID, err := toPgUUIDFromString(playbookHistoryId)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	return t.queriesFromContext(ctx).FailUnfinishedTaskHistory(ctx, db.FailUnfinishedTaskHistoryParams{
+	rows, err := t.queriesFromContext(ctx).FailUnfinishedTaskHistory(ctx, db.FailUnfinishedTaskHistoryParams{
 		PlaybookHistoryID: pgID,
 		Error:             toPgTextFromString(reason),
 	})
+	if err != nil {
+		return nil, err
+	}
+	failed := make([]domain.TaskHistory, 0, len(rows))
+	for _, row := range rows {
+		failed = append(failed, toDomainTaskHistory(row))
+	}
+	return failed, nil
 }
 
 // GetTaskHistoryById implements tasks.TaskRepository.

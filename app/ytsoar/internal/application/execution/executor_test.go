@@ -565,7 +565,12 @@ func TestExecutorAlreadyStartedRunIsFailedNotRerun(t *testing.T) {
 	taskService := taskmocks.NewMockTaskService(ctrl)
 	playbookService := playbookmocks.NewMockPlaybookService(ctrl)
 	status := execmocks.NewMockStatusPublisher(ctrl)
-	status.EXPECT().Publish(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
+	var events []string
+	status.EXPECT().Publish(gomock.Any(), gomock.Any(), gomock.Any()).
+		DoAndReturn(func(_ context.Context, event string, _ uuid.UUID) error {
+			events = append(events, event)
+			return nil
+		}).AnyTimes()
 	var statuses []string
 	playbookService.EXPECT().
 		UpdatePlaybookHistory(gomock.Any(), gomock.Any(), gomock.Any()).
@@ -576,7 +581,8 @@ func TestExecutorAlreadyStartedRunIsFailedNotRerun(t *testing.T) {
 			}
 			return &domain.PlaybookHistory{}, nil
 		}).Times(2)
-	taskService.EXPECT().FailUnfinishedTaskHistory(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil)
+	taskService.EXPECT().FailUnfinishedTaskHistory(gomock.Any(), gomock.Any(), gomock.Any()).
+		Return([]domain.TaskHistory{{ID: uuid.New()}}, nil)
 	executor := execution.NewExecutor(logger.NewNop(), taskService, playbookService,
 		execution.NewStaticResolver(execmocks.NewMockTaskRuntime(ctrl), nil), status, 1, time.Minute)
 	graph := map[string][]string{"start": {}}
@@ -585,6 +591,8 @@ func TestExecutorAlreadyStartedRunIsFailedNotRerun(t *testing.T) {
 
 	assert.Error(t, err)
 	assert.Equal(t, []string{"in_progress", "failed"}, statuses)
+	// The open pages hear about the task that recoverRun failed.
+	assert.Contains(t, events, "task_status")
 }
 
 // The queue can deliver a run again after it finished. This is a duplicate, so do nothing.

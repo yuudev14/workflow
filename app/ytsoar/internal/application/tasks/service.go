@@ -17,8 +17,8 @@ type TaskService interface {
 	UpdateTaskStatus(ctx context.Context, playbookHistoryId string, taskId string, status string) (*domain.TaskHistory, error)
 	UpdateTaskHistory(ctx context.Context, playbookHistoryId string, taskId string, taskHistory UpdateTaskHistoryData) (*domain.TaskHistory, error)
 	// FailUnfinishedTaskHistory fails the pending tasks and the in-progress tasks of a run
-	// that never finishes (crash recovery).
-	FailUnfinishedTaskHistory(ctx context.Context, playbookHistoryId string, reason string) error
+	// that never finishes (crash recovery). It returns the tasks that it changed.
+	FailUnfinishedTaskHistory(ctx context.Context, playbookHistoryId string, reason string) ([]domain.TaskHistory, error)
 	GetTaskHistoryById(ctx context.Context, id uuid.UUID) (*domain.TaskHistory, error)
 	GetTaskHistoryByPlaybookHistoryId(ctx context.Context, id string, filter TaskHistoryFilter) ([]domain.TaskHistory, error)
 	GetTaskHistoryCount(ctx context.Context, filter TaskHistoryFilter) (int, error)
@@ -83,7 +83,7 @@ func (t *TaskServiceImpl) UpdateTaskHistory(ctx context.Context, playbookHistory
 }
 
 // FailUnfinishedTaskHistory implements TaskService.
-func (t *TaskServiceImpl) FailUnfinishedTaskHistory(ctx context.Context, playbookHistoryId string, reason string) error {
+func (t *TaskServiceImpl) FailUnfinishedTaskHistory(ctx context.Context, playbookHistoryId string, reason string) ([]domain.TaskHistory, error) {
 	return t.TaskRepository.FailUnfinishedTaskHistory(ctx, playbookHistoryId, reason)
 }
 
