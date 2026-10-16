@@ -9,7 +9,7 @@ import (
 	"github.com/yuudev14/ytsoar/internal/domain"
 )
 
-//go:generate mockgen -destination=mocks/execution_mock.go -package=mocks . NodeRuntime,RuntimeResolver,StatusPublisher
+//go:generate mockgen -destination=mocks/execution_mock.go -package=mocks . TaskRuntime,RuntimeResolver,StatusPublisher
 
 // ExecutionRequest carries everything a runtime needs to execute one playbook
 // node. Steps is a snapshot of prior node outputs keyed by task name;
@@ -25,16 +25,23 @@ type ExecutionRequest struct {
 	Input *domain.RunInput
 }
 
-// NodeRuntime executes one playbook node and returns its JSON-encoded result.
-// Implementations: grpcruntime (worker side, dials the sandbox), localexec
-// subprocess runners (sandbox side), goconnectors registry (final phase).
-type NodeRuntime interface {
+// TaskRuntime runs one task (one playbook node) and returns its JSON result.
+// Every type that ends with "Runtime" fits it:
+//   - BuiltinRuntime: the built-in connectors. It runs in the WORKER.
+//   - SandboxRuntime: sends the task to the sandbox over gRPC. It runs in the WORKER.
+//   - PythonSnippetRuntime, NodeJSSnippetRuntime, PythonConnectorRuntime,
+//     NodeJSConnectorRuntime: run user code in a new process. They run in the SANDBOX.
+type TaskRuntime interface {
 	Execute(ctx context.Context, req ExecutionRequest) (json.RawMessage, error)
 }
 
-// RuntimeResolver picks the runtime responsible for a task.
+// RuntimeResolver answers one question: "which runtime runs this task?"
+// Two types fit it:
+//   - StaticResolver: a fixed list. It runs in the WORKER.
+//   - DynamicResolver: your function, called each time. It runs in the SANDBOX,
+//     behind the gRPC server.
 type RuntimeResolver interface {
-	Resolve(task domain.Tasks) (NodeRuntime, error)
+	Resolve(task domain.Tasks) (TaskRuntime, error)
 }
 
 // StatusPublisher tells every API replica that a run row or a task row changed.

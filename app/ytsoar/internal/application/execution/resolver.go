@@ -6,25 +6,31 @@ import (
 	"github.com/yuudev14/ytsoar/internal/domain"
 )
 
-// RuntimeResolverFunc adapts a function to the RuntimeResolver port, for
-// resolvers that must decide per request (e.g. the sandbox re-checking the
-// connectors tree so uploads take effect without a restart).
-type RuntimeResolverFunc func(task domain.Tasks) (NodeRuntime, error)
+// DynamicResolver chooses a runtime by calling your function each time a task arrives.
+// It runs in the SANDBOX, behind the gRPC server. The worker's SandboxRuntime calls the
+// sandbox over gRPC, and then this resolver picks the runtime that runs the task.
+// The function reads info.json from the disk on every call, so a connector that you
+// upload works with no restart.
+// Compare StaticResolver, which uses a fixed list and runs in the worker.
+type DynamicResolver func(task domain.Tasks) (TaskRuntime, error)
 
-func (f RuntimeResolverFunc) Resolve(task domain.Tasks) (NodeRuntime, error) {
+func (f DynamicResolver) Resolve(task domain.Tasks) (TaskRuntime, error) {
 	return f(task)
 }
 
-// StaticResolver routes tasks by connector id; connectors without an explicit
-// mapping fall through to the default runtime.
+// StaticResolver chooses a runtime from a fixed list that is made at start-up.
+// It runs in the WORKER. The list holds the built-in connectors (http_request, condition),
+// which run inside the worker (BuiltinRuntime). Every other connector goes to the default
+// runtime, SandboxRuntime, which sends the task to the sandbox over gRPC.
+// Compare DynamicResolver, which runs your code each time and runs in the sandbox.
 type StaticResolver struct {
-	defaultRuntime NodeRuntime
-	byConnector    map[string]NodeRuntime
+	defaultRuntime TaskRuntime
+	byConnector    map[string]TaskRuntime
 }
 
-func NewStaticResolver(defaultRuntime NodeRuntime, byConnector map[string]NodeRuntime) *StaticResolver {
+func NewStaticResolver(defaultRuntime TaskRuntime, byConnector map[string]TaskRuntime) *StaticResolver {
 	if byConnector == nil {
-		byConnector = map[string]NodeRuntime{}
+		byConnector = map[string]TaskRuntime{}
 	}
 	return &StaticResolver{
 		defaultRuntime: defaultRuntime,
@@ -32,7 +38,7 @@ func NewStaticResolver(defaultRuntime NodeRuntime, byConnector map[string]NodeRu
 	}
 }
 
-func (r *StaticResolver) Resolve(task domain.Tasks) (NodeRuntime, error) {
+func (r *StaticResolver) Resolve(task domain.Tasks) (TaskRuntime, error) {
 	if task.ConnectorID != nil {
 		if runtime, ok := r.byConnector[*task.ConnectorID]; ok {
 			return runtime, nil

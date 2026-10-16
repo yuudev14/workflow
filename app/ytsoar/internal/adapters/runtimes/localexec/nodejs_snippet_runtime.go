@@ -13,26 +13,26 @@ import (
 //go:embed harness/node_harness.ts
 var nodeHarness string
 
-// NodeRunner executes code_snippet_js nodes in a fresh `node` child with a
-// capped V8 heap. The harness is TypeScript evaluated through Node's native
-// type stripping (--input-type=commonjs-typescript, Node >= 23.6); the user
-// snippet itself stays JavaScript. It implements execution.NodeRuntime.
-type NodeRunner struct {
+// NodeJSSnippetRuntime runs a code_snippet_js task in a fresh `node` process with a capped
+// V8 heap. It runs in the SANDBOX and fits execution.TaskRuntime. The harness is TypeScript,
+// which Node runs with native type stripping (--input-type=commonjs-typescript, Node >= 23.6).
+// The user snippet itself stays JavaScript.
+type NodeJSSnippetRuntime struct {
 	logger        logger.Logger
 	memoryLimitMB int
 }
 
-func NewNodeRunner(log logger.Logger, memoryLimitMB int) *NodeRunner {
+func NewNodeJSSnippetRuntime(log logger.Logger, memoryLimitMB int) *NodeJSSnippetRuntime {
 	if memoryLimitMB <= 0 {
 		memoryLimitMB = defaultNodeMemoryLimitMB
 	}
-	return &NodeRunner{
+	return &NodeJSSnippetRuntime{
 		logger:        log,
 		memoryLimitMB: memoryLimitMB,
 	}
 }
 
-func (r *NodeRunner) Execute(ctx context.Context, req execution.ExecutionRequest) (json.RawMessage, error) {
+func (r *NodeJSSnippetRuntime) Execute(ctx context.Context, req execution.ExecutionRequest) (json.RawMessage, error) {
 	params, err := decodeParameters(req.Task.Parameters)
 	if err != nil {
 		return nil, err

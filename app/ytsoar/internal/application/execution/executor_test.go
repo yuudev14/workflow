@@ -50,7 +50,7 @@ func tasksFor(graph map[string][]string) map[string]domain.Tasks {
 }
 
 type executorFixture struct {
-	runtime         *execmocks.MockNodeRuntime
+	runtime         *execmocks.MockTaskRuntime
 	taskService     *taskmocks.MockTaskService
 	playbookService *playbookmocks.MockPlaybookService
 	status          *execmocks.MockStatusPublisher
@@ -65,7 +65,7 @@ type executorFixture struct {
 func newExecutorFixture(t *testing.T, maxParallel int) *executorFixture {
 	ctrl := gomock.NewController(t)
 	f := &executorFixture{
-		runtime:         execmocks.NewMockNodeRuntime(ctrl),
+		runtime:         execmocks.NewMockTaskRuntime(ctrl),
 		taskService:     taskmocks.NewMockTaskService(ctrl),
 		playbookService: playbookmocks.NewMockPlaybookService(ctrl),
 		status:          execmocks.NewMockStatusPublisher(ctrl),
@@ -533,9 +533,9 @@ func TestExecutorDirectionalHandlesAlwaysFollow(t *testing.T) {
 
 func TestStaticResolverRouting(t *testing.T) {
 	ctrl := gomock.NewController(t)
-	defaultRuntime := execmocks.NewMockNodeRuntime(ctrl)
-	special := execmocks.NewMockNodeRuntime(ctrl)
-	resolver := execution.NewStaticResolver(defaultRuntime, map[string]execution.NodeRuntime{
+	defaultRuntime := execmocks.NewMockTaskRuntime(ctrl)
+	special := execmocks.NewMockTaskRuntime(ctrl)
+	resolver := execution.NewStaticResolver(defaultRuntime, map[string]execution.TaskRuntime{
 		"code_snippet_py": special,
 	})
 
@@ -578,7 +578,7 @@ func TestExecutorAlreadyStartedRunIsFailedNotRerun(t *testing.T) {
 		}).Times(2)
 	taskService.EXPECT().FailUnfinishedTaskHistory(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil)
 	executor := execution.NewExecutor(logger.NewNop(), taskService, playbookService,
-		execution.NewStaticResolver(execmocks.NewMockNodeRuntime(ctrl), nil), status, 1, time.Minute)
+		execution.NewStaticResolver(execmocks.NewMockTaskRuntime(ctrl), nil), status, 1, time.Minute)
 	graph := map[string][]string{"start": {}}
 
 	err := executor.Run(context.Background(), domain.TaskMessage{Graph: graph, Tasks: tasksFor(graph), PlaybookHistoryId: uuid.New()})
@@ -595,7 +595,7 @@ func TestExecutorFinishedRunIsLeftAlone(t *testing.T) {
 		UpdatePlaybookHistory(gomock.Any(), gomock.Any(), gomock.Any()).
 		Return(nil, domain.ErrInvalidTransition).Times(2)
 	executor := execution.NewExecutor(logger.NewNop(), taskmocks.NewMockTaskService(ctrl), playbookService,
-		execution.NewStaticResolver(execmocks.NewMockNodeRuntime(ctrl), nil), execmocks.NewMockStatusPublisher(ctrl), 1, time.Minute)
+		execution.NewStaticResolver(execmocks.NewMockTaskRuntime(ctrl), nil), execmocks.NewMockStatusPublisher(ctrl), 1, time.Minute)
 	graph := map[string][]string{"start": {}}
 
 	err := executor.Run(context.Background(), domain.TaskMessage{Graph: graph, Tasks: tasksFor(graph), PlaybookHistoryId: uuid.New()})

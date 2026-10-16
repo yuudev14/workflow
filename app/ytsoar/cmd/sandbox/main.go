@@ -23,9 +23,9 @@ func main() {
 
 	// Code nodes are pinned first; connector ids from the unified tree never
 	// override them.
-	byConnector := map[string]execution.NodeRuntime{
-		"code_snippet_py": localexec.NewPythonRunner(appLogger, cfg.PythonMemoryLimitMB),
-		"code_snippet_js": localexec.NewNodeRunner(appLogger, cfg.NodeMemoryLimitMB),
+	byConnector := map[string]execution.TaskRuntime{
+		"code_snippet_py": localexec.NewPythonSnippetRuntime(appLogger, cfg.PythonMemoryLimitMB),
+		"code_snippet_js": localexec.NewNodeJSSnippetRuntime(appLogger, cfg.NodeMemoryLimitMB),
 	}
 
 	// Python connectors are the default: any connector without an explicit
@@ -33,31 +33,34 @@ func main() {
 	// info.json declares "runtime": "node" run through the node harness -
 	// checked per request, so connectors uploaded after boot route correctly
 	// without a restart.
-	var defaultRuntime execution.NodeRuntime
-	var jsConnectorRunner execution.NodeRuntime
+	var defaultRuntime execution.TaskRuntime
+	var nodeJSConnectorRuntime execution.TaskRuntime
 	if cfg.ConnectorsDir != "" {
-		pythonConnectorRunner, err := localexec.NewPythonConnectorRunner(appLogger, cfg.ConnectorsDir, cfg.PythonMemoryLimitMB)
+		pythonConnectorRuntime, err := localexec.NewPythonConnectorRuntime(appLogger, cfg.ConnectorsDir, cfg.PythonMemoryLimitMB)
 		if err != nil {
-			log.Fatalf("failed to setup python connector runner: %v", err)
+			log.Fatalf("failed to setup python connector runtime: %v", err)
 		}
-		defaultRuntime = pythonConnectorRunner
+		defaultRuntime = pythonConnectorRuntime
 
-		nodeConnectorRunner, err := localexec.NewNodeConnectorRunner(appLogger, cfg.ConnectorsDir, cfg.NodeMemoryLimitMB)
+		nodeJSRuntime, err := localexec.NewNodeJSConnectorRuntime(appLogger, cfg.ConnectorsDir, cfg.NodeMemoryLimitMB)
 		if err != nil {
-			log.Fatalf("failed to setup js connector runner: %v", err)
+			log.Fatalf("failed to setup js connector runtime: %v", err)
 		}
-		jsConnectorRunner = nodeConnectorRunner
+		nodeJSConnectorRuntime = nodeJSRuntime
 	} else {
 		appLogger.Warn("CONNECTORS_DIR is empty: connectors are disabled, only code nodes will run")
 	}
 
-	resolver := execution.RuntimeResolverFunc(func(task domain.Tasks) (execution.NodeRuntime, error) {
+	// DynamicResolver runs in the sandbox. It picks the runtime for each task that
+	// the worker sends over gRPC, and it reads info.json on every call, so a
+	// connector that you upload works with no restart.
+	resolver := execution.DynamicResolver(func(task domain.Tasks) (execution.TaskRuntime, error) {
 		if task.ConnectorID != nil {
 			if runtime, ok := byConnector[*task.ConnectorID]; ok {
 				return runtime, nil
 			}
-			if jsConnectorRunner != nil && localexec.IsNodeConnector(cfg.ConnectorsDir, *task.ConnectorID) {
-				return jsConnectorRunner, nil
+			if nodeJSConnectorRuntime != nil && localexec.IsNodeJSConnector(cfg.ConnectorsDir, *task.ConnectorID) {
+				return nodeJSConnectorRuntime, nil
 			}
 		}
 		if defaultRuntime == nil {
