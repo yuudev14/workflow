@@ -37,10 +37,10 @@ type RuntimeResolver interface {
 	Resolve(task domain.Tasks) (NodeRuntime, error)
 }
 
-// StatusPublisher tells every API replica that a run or task row changed
-// (event is task_status or playbook_status, id the history row). The API loads
-// the row and forwards it to its WS clients, so the payload stays tiny whatever
-// the size of the task result.
+// StatusPublisher tells every API replica that a run row or a task row changed.
+// The event is task_status or playbook_status, and id is the history row. The API loads
+// the row and sends it to its WebSocket clients. So the payload stays small, also for
+// a big task result.
 type StatusPublisher interface {
 	Publish(ctx context.Context, event string, id uuid.UUID) error
 }

@@ -404,8 +404,8 @@ func (w *PlaybookApplicationServiceImpl) runPlaybook(ctx context.Context, playbo
 		if _, err := w.TaskService.CreateTaskHistory(ctx, playbookHistory.ID.String(), taskData, GetGraphUUIDS(edges)); err != nil {
 			return err
 		}
-		// Same transaction as the history rows: the run is queued if and only
-		// if its history exists. The worker rebuilds the message from them.
+		// Use the same transaction as the history rows. The run is queued only if its history
+		// exists. The worker builds the message from the history rows.
 		return w.RunEnqueuer.EnqueueRun(ctx, playbookHistory.ID)
 	})
 	if txErr != nil {
@@ -430,10 +430,9 @@ func (w *PlaybookApplicationServiceImpl) runPlaybook(ctx context.Context, playbo
 	}, nil
 }
 
-// RunLoader rebuilds the TaskMessage of a queued run from its history rows
-// (the edges and input stored on playbook_history, the task snapshots in
-// task_history). The queue then carries only the run id instead of a copy of
-// the whole graph.
+// RunLoader builds the TaskMessage of a queued run from its history rows. The edges and
+// the input are on playbook_history. The task snapshots are in task_history. So the queue
+// holds only the run ID, not a copy of the whole graph.
 type RunLoader struct {
 	playbooks PlaybookService
 	tasks     tasks.TaskService
@@ -463,7 +462,7 @@ func (l *RunLoader) LoadRunMessage(ctx context.Context, historyID uuid.UUID) (do
 		}
 	}
 
-	// the edges are stored with nullable handles as plain JSON strings
+	// The system stores the edge handles as plain JSON strings, or null.
 	var stored []struct {
 		SourceTaskName      string  `json:"source_task_name"`
 		DestinationTaskName string  `json:"destination_task_name"`

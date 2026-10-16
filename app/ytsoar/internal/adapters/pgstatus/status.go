@@ -1,7 +1,7 @@
-// Package pgstatus carries playbook and task status events from the worker to
-// every API replica over Postgres LISTEN/NOTIFY, so no message broker is needed.
-// Events are fire and forget, like the WS push they feed: a client that missed
-// one catches up on its next fetch.
+// Package pgstatus sends playbook and task status events from the worker to every API
+// replica. It uses Postgres LISTEN/NOTIFY, so it needs no message broker. The events are
+// fire and forget, like the WebSocket push that they feed. A client that misses an event
+// gets the new status at its next fetch.
 package pgstatus
 
 import (
@@ -19,8 +19,8 @@ import (
 
 const channel = "ytsoar_status"
 
-// event is the NOTIFY payload. It carries the row id only: a NOTIFY payload is
-// capped at 8000 bytes and a task result can be larger.
+// event is the NOTIFY payload. It holds only the row ID. A NOTIFY payload is limited
+// to 8000 bytes, and a task result can be larger.
 type event struct {
 	Event string    `json:"event"`
 	ID    uuid.UUID `json:"id"`
@@ -40,7 +40,7 @@ func (n *Notifier) Publish(ctx context.Context, name string, id uuid.UUID) error
 	return err
 }
 
-// PlaybookReader and TaskReader load the rows an event points at.
+// PlaybookReader and TaskReader load the rows that an event names.
 type PlaybookReader interface {
 	GetPlaybookHistoryById(ctx context.Context, id uuid.UUID) (*domain.PlaybookHistoryResponse, error)
 }
@@ -49,8 +49,8 @@ type TaskReader interface {
 	GetTaskHistoryById(ctx context.Context, id uuid.UUID) (*domain.TaskHistory, error)
 }
 
-// Listener runs in the API: it loads the row of each event and forwards it to
-// the WS hub, in the {event, data} envelope the clients route on.
+// Listener runs in the API. For each event, it loads the row and sends it to the
+// WebSocket hub. It uses the {event, data} envelope that the clients read.
 type Listener struct {
 	logger    logger.Logger
 	pool      *pgxpool.Pool
@@ -63,8 +63,8 @@ func NewListener(log logger.Logger, pool *pgxpool.Pool, playbooks PlaybookReader
 	return &Listener{logger: log, pool: pool, playbooks: playbooks, tasks: tasks, hub: hub}
 }
 
-// Start listens until ctx ends, reconnecting with a growing delay when the
-// connection drops.
+// Start listens until ctx ends. When the connection drops, it reconnects after a
+// growing delay.
 func (l *Listener) Start(ctx context.Context) error {
 	delay := time.Second
 	for ctx.Err() == nil {
@@ -81,8 +81,8 @@ func (l *Listener) Start(ctx context.Context) error {
 }
 
 func (l *Listener) listen(ctx context.Context, onListening func()) error {
-	// A dedicated connection, not one from the pool: it is held for the life of
-	// the process, and a pool with a held connection never finishes closing.
+	// Use a dedicated connection, not one from the pool. The listener holds it for the life
+	// of the process. A pool that has a held connection never finishes closing.
 	conn, err := pgx.ConnectConfig(ctx, l.pool.Config().ConnConfig)
 	if err != nil {
 		return err

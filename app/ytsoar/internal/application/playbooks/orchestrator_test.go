@@ -895,8 +895,8 @@ func TestTriggerPlaybookBroadcastsStatusEnvelope(t *testing.T) {
 	assert.Equal(t, historyID, history.ID)
 }
 
-// The worker rebuilds the message from the history rows, so it must match what
-// PreparePlaybookMessage builds at trigger time, branch handles included.
+// The worker builds the message from the history rows. The message must match the message
+// that PreparePlaybookMessage builds at trigger time, with the branch handles.
 func TestRunLoaderRebuildsMessage(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	playbookSvc := mock_playbooks.NewMockPlaybookService(ctrl)

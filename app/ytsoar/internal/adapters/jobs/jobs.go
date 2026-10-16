@@ -1,6 +1,6 @@
-// Package jobs runs playbook runs on River, a job queue stored in Postgres. A
-// run is queued in the same transaction that creates its history rows, so it
-// can neither be lost nor queued without its history.
+// Package jobs runs playbook runs on River. River is a job queue in Postgres.
+// The API queues a run in the same transaction that creates its history rows.
+// So the system cannot lose the run, and it cannot queue the run without its history.
 package jobs
 
 import (
@@ -20,18 +20,19 @@ import (
 
 const (
 	queueName = "playbook"
-	// maxAttempts only matters when the message cannot be rebuilt (a retry may
-	// help) or a worker died mid-run (the second attempt marks the run failed
-	// instead of running it again). A run that failed is never retried.
+	// maxAttempts matters in two cases. In the first case, the system cannot build the message,
+	// and a retry can help. In the second case, a worker stopped in the middle of a run.
+	// Then the second attempt marks the run failed. It does not start the run again.
+	// The system never retries a run that failed.
 	maxAttempts = 5
-	// rescueGrace is how long past the run timeout a running job may sit before
-	// River decides its worker died. It must exceed the run timeout, or a live
-	// run would be taken from its worker.
+	// rescueGrace is the time after the run timeout. After this time, River decides that the
+	// worker of a running job stopped. It must be longer than the run timeout.
+	// If it is shorter, River takes a live run from its worker.
 	rescueGrace = 5 * time.Minute
 )
 
-// RunArgs is the job payload: only the run id. The worker rebuilds the rest
-// from the history rows, so river_job stays small at high volume.
+// RunArgs is the job payload. It holds only the run ID. The worker builds the rest
+// from the history rows. So river_job stays small at high volume.
 type RunArgs struct {
 	PlaybookHistoryID uuid.UUID `json:"playbook_history_id"`
 }
@@ -42,7 +43,7 @@ func (RunArgs) InsertOpts() river.InsertOpts {
 	return river.InsertOpts{Queue: queueName, MaxAttempts: maxAttempts}
 }
 
-// RunLoader rebuilds the message of a queued run. playbooks.RunLoader implements it.
+// RunLoader builds the message of a queued run. playbooks.RunLoader implements it.
 type RunLoader interface {
 	LoadRunMessage(ctx context.Context, playbookHistoryID uuid.UUID) (domain.TaskMessage, error)
 }
@@ -70,9 +71,8 @@ func (w *RunWorker) Work(ctx context.Context, job *river.Job[RunArgs]) error {
 	if err == nil {
 		err = w.executor.Run(ctx, msg)
 		if !errors.Is(err, execution.ErrNotStarted) {
-			// A failed run is already persisted by the executor, so it is not a
-			// job error: returning it would make River retry and run the
-			// connectors again.
+			// The executor already saved a failed run, so a failed run is not a job error.
+			// If the worker returned the error, River would retry the job and run the connectors again.
 			if err != nil {
 				w.logger.Errorw("playbook run failed", "playbook_history_id", id, "error", err)
 			}
@@ -80,9 +80,9 @@ func (w *RunWorker) Work(ctx context.Context, job *river.Job[RunArgs]) error {
 		}
 	}
 
-	// The run could not be built or started, and nothing ran: River retries
-	// with backoff, and on the last attempt the run is failed, or it would
-	// stay queued forever.
+	// The system could not build or start the run, and nothing ran.
+	// River retries the job after a delay. On the last attempt, the worker marks the run failed.
+	// Without this, the run stays queued forever.
 	if job.Attempt < job.MaxAttempts {
 		return err
 	}
@@ -93,13 +93,13 @@ func (w *RunWorker) Work(ctx context.Context, job *river.Job[RunArgs]) error {
 // Enqueuer queues runs. It implements contracts.RunEnqueuer.
 type Enqueuer struct {
 	client *river.Client[pgx.Tx]
-	// txFrom finds the transaction a TxManager put in ctx. It is injected, so
-	// this adapter does not import the repository adapter.
+	// txFrom finds the transaction that a TxManager put in ctx. main.go injects it,
+	// so this adapter does not import the repository adapter.
 	txFrom func(context.Context) (pgx.Tx, bool)
 }
 
-// NewEnqueuer is what the API uses: an insert-only River client that queues
-// runs and works none, since the worker process works them.
+// NewEnqueuer is for the API. It makes an insert-only River client.
+// The client queues runs and does not work them. The worker process works them.
 func NewEnqueuer(pool *pgxpool.Pool, txFrom func(context.Context) (pgx.Tx, bool)) (*Enqueuer, error) {
 	client, err := river.NewClient(riverpgxv5.New(pool), &river.Config{})
 	if err != nil {
@@ -108,7 +108,7 @@ func NewEnqueuer(pool *pgxpool.Pool, txFrom func(context.Context) (pgx.Tx, bool)
 	return &Enqueuer{client: client, txFrom: txFrom}, nil
 }
 
-// EnqueueRun joins the transaction in ctx when there is one.
+// EnqueueRun joins the transaction in ctx, if ctx has one.
 func (e *Enqueuer) EnqueueRun(ctx context.Context, playbookHistoryID uuid.UUID) error {
 	args := RunArgs{PlaybookHistoryID: playbookHistoryID}
 	var err error
@@ -120,8 +120,8 @@ func (e *Enqueuer) EnqueueRun(ctx context.Context, playbookHistoryID uuid.UUID) 
 	return err
 }
 
-// NewWorkerClient works playbook runs, `concurrency` at a time. runTimeout caps
-// one whole run.
+// NewWorkerClient works playbook runs. It works `concurrency` runs at the same time.
+// runTimeout is the time limit for one run.
 func NewWorkerClient(pool *pgxpool.Pool, worker *RunWorker, concurrency int, runTimeout time.Duration) (*river.Client[pgx.Tx], error) {
 	workers := river.NewWorkers()
 	river.AddWorker(workers, worker)
@@ -133,9 +133,9 @@ func NewWorkerClient(pool *pgxpool.Pool, worker *RunWorker, concurrency int, run
 	})
 }
 
-// ModuleEventLogger implements contracts.ModuleEventPublisher. Nothing reacts
-// to alert and incident events yet, so it only logs them. Event-triggered
-// playbooks (on_create, on_update) will queue their runs from here.
+// ModuleEventLogger implements contracts.ModuleEventPublisher. Nothing uses alert and
+// incident events yet, so it only writes them to the log. Event-triggered playbooks
+// (on_create, on_update) will queue their runs from here.
 type ModuleEventLogger struct{ logger logger.Logger }
 
 func NewModuleEventLogger(log logger.Logger) *ModuleEventLogger {

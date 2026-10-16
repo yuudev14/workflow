@@ -69,7 +69,7 @@ SET
     END,
     result = sqlc.arg('result')
 WHERE id = sqlc.arg('id')
-  -- state machine guard: the target status must be reachable from the current one
+  -- State rule: the new status must be allowed from the current status.
   AND (NOT sqlc.arg('status_set')::boolean OR status::text = ANY(sqlc.arg('allowed_from')::text[]))
 RETURNING *;
 

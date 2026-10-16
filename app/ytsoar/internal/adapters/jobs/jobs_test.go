@@ -55,8 +55,8 @@ func TestWorkRunsTheLoadedMessage(t *testing.T) {
 	assert.Equal(t, id, <-exec.ran)
 }
 
-// A failed run is already persisted by the executor. Returning it would make
-// River retry the job and run the connectors a second time.
+// The executor already saved a failed run. If the worker returned the error,
+// River would retry the job and run the connectors a second time.
 func TestWorkDoesNotRetryAFailedRun(t *testing.T) {
 	exec := &fakeExecutor{runErr: errors.New("connector failed"), ran: make(chan uuid.UUID, 1)}
 	worker := NewRunWorker(logger.NewNop(), fakeLoader{}, exec)
@@ -64,7 +64,7 @@ func TestWorkDoesNotRetryAFailedRun(t *testing.T) {
 	assert.NoError(t, worker.Work(context.Background(), job(uuid.New(), 1)))
 }
 
-// Nothing ran when the run could not even be started, so a retry is safe.
+// Nothing ran when the run could not start, so a retry is safe.
 func TestWorkRetriesARunThatDidNotStart(t *testing.T) {
 	exec := &fakeExecutor{runErr: execution.ErrNotStarted}
 	worker := NewRunWorker(logger.NewNop(), fakeLoader{}, exec)
@@ -85,7 +85,7 @@ func TestWorkRetriesWhenTheMessageCannotBeLoaded(t *testing.T) {
 	assert.Empty(t, exec.aborted)
 }
 
-// On the last attempt the run is failed, or it would stay queued forever.
+// On the last attempt, the worker marks the run failed. Without this, the run stays queued forever.
 func TestWorkFailsTheRunOnTheLastAttempt(t *testing.T) {
 	id, exec := uuid.New(), &fakeExecutor{}
 	worker := NewRunWorker(logger.NewNop(), fakeLoader{err: errors.New("db down")}, exec)
@@ -94,7 +94,7 @@ func TestWorkFailsTheRunOnTheLastAttempt(t *testing.T) {
 	assert.Equal(t, []uuid.UUID{id}, exec.aborted)
 }
 
-// Needs a migrated Postgres: TEST_DATABASE_URL=postgres://... go test ./internal/adapters/jobs
+// This test needs a migrated Postgres: TEST_DATABASE_URL=postgres://... go test ./internal/adapters/jobs
 func TestEnqueueRunIsTransactional(t *testing.T) {
 	url := os.Getenv("TEST_DATABASE_URL")
 	if url == "" {
@@ -115,7 +115,7 @@ func TestEnqueueRunIsTransactional(t *testing.T) {
 		return n
 	}
 
-	// a rolled back transaction takes its job with it
+	// A rolled back transaction removes its job.
 	rollback := errors.New("rollback")
 	err = txManager.WithinTransaction(ctx, func(ctx context.Context) error {
 		require.NoError(t, enqueuer.EnqueueRun(ctx, uuid.New()))
@@ -124,7 +124,7 @@ func TestEnqueueRunIsTransactional(t *testing.T) {
 	require.ErrorIs(t, err, rollback)
 	assert.Equal(t, 0, count())
 
-	// a committed one is worked
+	// A committed transaction keeps its job, and the worker works it.
 	id, exec := uuid.New(), &fakeExecutor{ran: make(chan uuid.UUID, 1)}
 	require.NoError(t, txManager.WithinTransaction(ctx, func(ctx context.Context) error {
 		return enqueuer.EnqueueRun(ctx, id)

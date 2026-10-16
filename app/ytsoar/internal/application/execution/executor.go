@@ -72,9 +72,9 @@ func NewExecutor(
 
 var errWorkerStopped = errors.New("worker stopped before the run finished")
 
-// ErrNotStarted wraps the error of a run that could not even be moved to
-// in_progress (the database failed), as opposed to a run that started and
-// failed. Nothing ran, so the queue may retry it safely.
+// ErrNotStarted wraps the error of a run that did not start. The database failed before
+// the run changed to in_progress. This is different from a run that started and then failed.
+// Nothing ran, so the queue can safely retry the job.
 var ErrNotStarted = errors.New("run did not start")
 
 type nodeResult struct {
@@ -294,10 +294,10 @@ func (e *Executor) setTaskStatus(
 	return nil
 }
 
-// recoverRun handles a run the state machine refused to start: it is already
-// in_progress (a worker died mid-run and the queue delivered it again) or
-// already finished. Running it again would repeat connector side effects, so a
-// started run is failed and a finished run is left alone.
+// recoverRun handles a run that the state rules refused to start. The run is already
+// in_progress, or it is finished. In the first case, a worker stopped in the middle of the run,
+// and the queue delivered the run again. A second run would repeat the side effects of the
+// connectors. So the system marks a started run as failed, and it does not touch a finished run.
 func (e *Executor) recoverRun(ctx context.Context, msg domain.TaskMessage) error {
 	e.logger.Warnw("run was already started, not running it again", "playbook_history_id", msg.PlaybookHistoryId)
 	err := e.finishPlaybook(ctx, msg, StatusFailed, nil, errWorkerStopped)
@@ -323,8 +323,8 @@ func (e *Executor) finishPlaybook(
 	return execErr
 }
 
-// Abort fails a run that cannot be started, for example when its message could
-// not be rebuilt. A run that is already finished is left alone.
+// Abort marks a run as failed when the run cannot start, for example when the system
+// cannot build its message. It does not touch a finished run.
 func (e *Executor) Abort(ctx context.Context, historyID uuid.UUID, cause error) error {
 	_, err := e.setRunStatus(ctx, domain.TaskMessage{PlaybookHistoryId: historyID}, StatusFailed, nil, cause)
 	if errors.Is(err, domain.ErrInvalidTransition) {
@@ -333,7 +333,8 @@ func (e *Executor) Abort(ctx context.Context, historyID uuid.UUID, cause error) 
 	return err
 }
 
-// setRunStatus moves the run through the state machine and fans the new row out.
+// setRunStatus changes the run status through the state rules and sends the new row
+// to the clients.
 func (e *Executor) setRunStatus(
 	ctx context.Context,
 	msg domain.TaskMessage,
@@ -341,7 +342,7 @@ func (e *Executor) setRunStatus(
 	result any,
 	execErr error,
 ) (*domain.PlaybookHistory, error) {
-	// A run that hit its timeout or a shutdown still has to persist its status.
+	// A run can end because of a timeout or a shutdown. The system must still save its status.
 	ctx = context.WithoutCancel(ctx)
 	var errStr *string
 	if execErr != nil {

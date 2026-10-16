@@ -18,7 +18,7 @@ import (
 
 func status(s string) types.Nullable[string] { return types.Nullable[string]{Value: &s, Set: true} }
 
-// The guard lives in SQL, so it needs a migrated Postgres:
+// The guard is in SQL, so this test needs a migrated Postgres:
 // TEST_DATABASE_URL=postgres://... go test ./internal/adapters/repository
 func TestStatusTransitionsAreGuardedInSQL(t *testing.T) {
 	url := os.Getenv("TEST_DATABASE_URL")
@@ -53,11 +53,11 @@ func TestStatusTransitionsAreGuardedInSQL(t *testing.T) {
 		return err
 	}
 
-	// a run starts once: the second worker to claim it is refused
+	// A run starts one time. The second worker that claims it gets a refusal.
 	assert.NoError(t, run(domain.StatusInProgress))
 	assert.ErrorIs(t, run(domain.StatusInProgress), domain.ErrInvalidTransition)
 	assert.NoError(t, run(domain.StatusSuccess))
-	// a finished run does not move again
+	// A finished run does not change again.
 	assert.ErrorIs(t, run(domain.StatusFailed), domain.ErrInvalidTransition)
 	_, err = playbookRepo.UpdatePlaybookHistoryStatus(ctx, historyID.String(), domain.StatusInProgress)
 	assert.ErrorIs(t, err, domain.ErrInvalidTransition)
@@ -66,7 +66,7 @@ func TestStatusTransitionsAreGuardedInSQL(t *testing.T) {
 	assert.NoError(t, task(domain.StatusSuccess))
 	assert.ErrorIs(t, task(domain.StatusFailed), domain.ErrInvalidTransition)
 
-	// crash recovery fails what never finished and leaves what did
+	// Crash recovery fails the tasks that did not finish. It keeps the tasks that did finish.
 	_, err = pool.Exec(ctx, `INSERT INTO task_history (playbook_history_id, task_id, triggered_at, name, description, parameters, operation, status)
 		SELECT $1, $2, NOW(), 'b', '', '{}', 'op', 'in_progress'`, historyID, taskID)
 	require.NoError(t, err)
