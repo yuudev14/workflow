@@ -56,6 +56,12 @@ func TestPlaybooks(t *testing.T) {
 			})
 			assert.Len(t, items(c.get(t, base+"/"+id+"/tasks")), 2)
 		})
+
+		start := J{"name": "start", "operation": "start", "parameters": J{}}
+		c.expectAll(t, []request{
+			{"returns 400 when the start step has no edge", http.MethodPut, base + "/tasks/" + id, J{"nodes": []J{start}, "edges": J{}}, http.StatusBadRequest},
+			{"returns 400 when the start step is missing", http.MethodPut, base + "/tasks/" + id, J{"nodes": []J{}, "edges": J{"start": []string{}}}, http.StatusBadRequest},
+		})
 	})
 
 	t.Run("POST /playbooks/trigger/:id", func(t *testing.T) {
