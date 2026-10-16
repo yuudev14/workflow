@@ -62,6 +62,7 @@ type Config struct {
 	MaxParallelNodes    int           // nodes run concurrently within one playbook run
 	PlaybookConcurrency int           // playbook runs one worker runs concurrently
 	RunTimeout          time.Duration // cap for one whole playbook run
+	WorkerStopGrace     time.Duration // time that running playbooks get to finish when the worker stops
 	NodeTimeout         time.Duration // per-node execution timeout (sandbox fallback too)
 
 	// Sandbox subprocess memory caps. Keep concurrency x cap under the
@@ -108,7 +109,8 @@ func LoadFrom(dest string) Config {
 
 		MaxParallelNodes:    getEnvIntOr("MAX_PARALLEL_NODES", 4),
 		PlaybookConcurrency: getEnvIntOr("PLAYBOOK_CONCURRENCY", 1),
-		RunTimeout:          time.Duration(getEnvIntOr("RUN_TIMEOUT_MINUTES", 60)) * time.Minute,
+		RunTimeout:          time.Duration(getEnvPositiveIntOr("RUN_TIMEOUT_MINUTES", 60)) * time.Minute,
+		WorkerStopGrace:     time.Duration(getEnvPositiveIntOr("WORKER_STOP_GRACE_SECONDS", 20)) * time.Second,
 		NodeTimeout:         time.Duration(getEnvIntOr("NODE_TIMEOUT_SECONDS", 300)) * time.Second,
 
 		NodeMemoryLimitMB:   getEnvIntOr("NODE_MEMORY_LIMIT_MB", DefaultNodeMemoryLimitMB),
@@ -145,6 +147,15 @@ func getEnvIntOr(key string, fallback int) int {
 		return fallback
 	}
 	return n
+}
+
+// getEnvPositiveIntOr is for limits. A value of 0 or less would turn the limit into
+// River's own default (1 minute) or into "no limit", so it uses the fallback instead.
+func getEnvPositiveIntOr(key string, fallback int) int {
+	if n := getEnvIntOr(key, fallback); n > 0 {
+		return n
+	}
+	return fallback
 }
 
 func getEnvBoolOr(key string, fallback bool) bool {

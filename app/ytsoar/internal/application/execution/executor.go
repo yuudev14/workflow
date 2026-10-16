@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"runtime/debug"
 	"strings"
 	"time"
 
@@ -40,7 +41,21 @@ type Executor struct {
 	status          StatusPublisher
 	maxParallel     int
 	nodeTimeout     time.Duration
+	// finalWriteDelays is the wait before each new try to save the final status of a run.
+	finalWriteDelays []time.Duration
 }
+
+// Option changes a setting of the Executor.
+type Option func(*Executor)
+
+// WithFinalWriteDelays sets the wait before each new try to save the final status of a
+// run. A test uses short delays.
+func WithFinalWriteDelays(delays ...time.Duration) Option {
+	return func(e *Executor) { e.finalWriteDelays = delays }
+}
+
+// defaultFinalWriteDelays gives the database about 30 seconds to come back.
+var defaultFinalWriteDelays = []time.Duration{time.Second, 2 * time.Second, 4 * time.Second, 8 * time.Second, 15 * time.Second}
 
 func NewExecutor(
 	log logger.Logger,
@@ -50,6 +65,7 @@ func NewExecutor(
 	status StatusPublisher,
 	maxParallel int,
 	nodeTimeout time.Duration,
+	opts ...Option,
 ) *Executor {
 	if maxParallel < 1 {
 		maxParallel = 1
@@ -59,23 +75,33 @@ func NewExecutor(
 	if nodeTimeout <= 0 {
 		nodeTimeout = 5 * time.Minute
 	}
-	return &Executor{
-		logger:          log,
-		taskService:     taskService,
-		playbookService: playbookService,
-		resolver:        resolver,
-		status:          status,
-		maxParallel:     maxParallel,
-		nodeTimeout:     nodeTimeout,
+	e := &Executor{
+		logger:           log,
+		taskService:      taskService,
+		playbookService:  playbookService,
+		resolver:         resolver,
+		status:           status,
+		maxParallel:      maxParallel,
+		nodeTimeout:      nodeTimeout,
+		finalWriteDelays: defaultFinalWriteDelays,
 	}
+	for _, opt := range opts {
+		opt(e)
+	}
+	return e
 }
 
-var errWorkerStopped = errors.New("worker stopped before the run finished")
+var errWorkerStopped = errors.New("an earlier attempt started this run and did not finish it (the worker may have stopped)")
 
 // ErrNotStarted wraps the error of a run that did not start. The database failed before
 // the run changed to in_progress. This is different from a run that started and then failed.
-// Nothing ran, so the queue can safely retry the job.
+// Nothing ran, so the caller can safely mark the run failed.
 var ErrNotStarted = errors.New("run did not start")
+
+// ErrNotFinished wraps the error of a run that ran, but whose final status the database
+// could not save, even after several tries. The run is still in_progress. The queue must
+// give the job to a new attempt, and recoverRun then marks the run failed.
+var ErrNotFinished = errors.New("run status was not saved")
 
 type nodeResult struct {
 	node    string
@@ -123,6 +149,20 @@ func (e *Executor) Run(ctx context.Context, msg domain.TaskMessage) error {
 		go func() {
 			sem <- struct{}{}
 			defer func() { <-sem }()
+			// A panic in a node must not stop the whole worker. River only catches
+			// a panic in the job goroutine, not in this one.
+			defer func() {
+				if r := recover(); r != nil {
+					err := fmt.Errorf("node %s panicked: %v", node, r)
+					e.logger.Errorw("node panicked", "node", node, "panic", fmt.Sprint(r), "stack", string(debug.Stack()))
+					if task, ok := msg.Tasks[node]; ok {
+						if statusErr := e.setTaskStatus(runCtx, msg, task, StatusFailed, nil, err); statusErr != nil {
+							e.logger.Errorw("failed to persist task failure", "node", node, "error", statusErr)
+						}
+					}
+					done <- nodeResult{node: node, err: err}
+				}
+			}()
 			if skip {
 				done <- nodeResult{node: node, skipped: true, err: e.processSkippedNode(runCtx, msg, node)}
 				return
@@ -317,16 +357,36 @@ func (e *Executor) finishPlaybook(
 	result any,
 	execErr error,
 ) error {
-	if _, err := e.setRunStatus(ctx, msg, status, result, execErr); err != nil {
+	if err := e.saveFinalStatus(ctx, msg, status, result, execErr); err != nil {
 		return err
 	}
 	return execErr
 }
 
+// saveFinalStatus saves the last status of a run. If the database fails, it tries again
+// after each delay in finalWriteDelays (about 30 seconds in all), so a short problem does
+// not leave the run in_progress. If every try fails, it returns an error that wraps
+// ErrNotFinished. A refused change (ErrInvalidTransition) is returned as it is.
+func (e *Executor) saveFinalStatus(ctx context.Context, msg domain.TaskMessage, status string, result any, execErr error) error {
+	var err error
+	for try := 0; ; try++ {
+		_, err = e.setRunStatus(ctx, msg, status, result, execErr)
+		if err == nil || errors.Is(err, domain.ErrInvalidTransition) {
+			return err
+		}
+		if try >= len(e.finalWriteDelays) {
+			return fmt.Errorf("%w: %w", ErrNotFinished, err)
+		}
+		e.logger.Warnw("could not save the run status, trying again",
+			"playbook_history_id", msg.PlaybookHistoryId, "status", status, "error", err, "wait", e.finalWriteDelays[try])
+		time.Sleep(e.finalWriteDelays[try])
+	}
+}
+
 // Abort marks a run as failed when the run cannot start, for example when the system
 // cannot build its message. It does not touch a finished run.
 func (e *Executor) Abort(ctx context.Context, historyID uuid.UUID, cause error) error {
-	_, err := e.setRunStatus(ctx, domain.TaskMessage{PlaybookHistoryId: historyID}, StatusFailed, nil, cause)
+	err := e.saveFinalStatus(ctx, domain.TaskMessage{PlaybookHistoryId: historyID}, StatusFailed, nil, cause)
 	if errors.Is(err, domain.ErrInvalidTransition) {
 		return nil
 	}

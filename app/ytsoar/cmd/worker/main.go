@@ -74,7 +74,7 @@ func main() {
 	riverClient, err := jobs.NewWorkerClient(
 		pool,
 		runWorker,
-		cfg.PlaybookConcurrency, cfg.RunTimeout)
+		cfg.PlaybookConcurrency, cfg.RunTimeout, cfg.WorkerStopGrace)
 	if err != nil {
 		log.Fatalf("failed to setup job queue: %v", err)
 	}
@@ -90,9 +90,10 @@ func main() {
 	)
 	<-ctx.Done()
 
-	// Stop waits for the running playbooks. After the run timeout, River cancels them.
-	// The next worker marks a run that is still running as failed.
-	stopCtx, cancel := context.WithTimeout(context.Background(), cfg.RunTimeout+time.Minute)
+	// Stop waits WorkerStopGrace for the running playbooks. After that, River cancels
+	// them. A cancelled run is saved as failed, so it does not stay in_progress. The extra
+	// 30 seconds give the cancelled runs time to save their status.
+	stopCtx, cancel := context.WithTimeout(context.Background(), cfg.WorkerStopGrace+30*time.Second)
 	defer cancel()
 	if err := riverClient.Stop(stopCtx); err != nil {
 		appLogger.Errorw("job queue did not stop cleanly", "error", err)

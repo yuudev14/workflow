@@ -20,11 +20,12 @@ import (
 
 const (
 	queueName = "playbook"
-	// maxAttempts matters in two cases. In the first case, the system cannot build the message,
-	// and a retry can help. In the second case, a worker stopped in the middle of a run.
-	// Then the second attempt marks the run failed. It does not start the run again.
-	// The system never retries a run that failed.
-	maxAttempts = 5
+	// maxAttempts is 2. A run is never started two times, and a run that fails is never
+	// retried. The second attempt has one job: it marks a run failed when River takes a job
+	// back (the worker stopped in the middle of the run, or the final status was not saved).
+	// It does not start the run again. A run that cannot start is not retried. The worker
+	// marks it failed at once.
+	maxAttempts = 2
 	// rescueGrace is the time after the run timeout. After this time, River decides that the
 	// worker of a running job stopped. It must be longer than the run timeout.
 	// If it is shorter, River takes a live run from its worker.
@@ -70,9 +71,17 @@ func (w *RunWorker) Work(ctx context.Context, job *river.Job[RunArgs]) error {
 	msg, err := w.loader.LoadRunMessage(ctx, id)
 	if err == nil {
 		err = w.executor.Run(ctx, msg)
-		if !errors.Is(err, execution.ErrNotStarted) {
+		switch {
+		case errors.Is(err, execution.ErrNotStarted):
+			// The run could not start. Go to Abort below.
+		case errors.Is(err, execution.ErrNotFinished):
+			// The run ran, but the database did not save its final status. Return the error,
+			// so River gives the job to a new attempt. That attempt marks the run failed.
+			return err
+		default:
 			// The executor already saved a failed run, so a failed run is not a job error.
-			// If the worker returned the error, River would retry the job and run the connectors again.
+			// If the worker returned the error, River would retry the job and run the
+			// connectors again.
 			if err != nil {
 				w.logger.Errorw("playbook run failed", "playbook_history_id", id, "error", err)
 			}
@@ -80,12 +89,9 @@ func (w *RunWorker) Work(ctx context.Context, job *river.Job[RunArgs]) error {
 		}
 	}
 
-	// The system could not build or start the run, and nothing ran.
-	// River retries the job after a delay. On the last attempt, the worker marks the run failed.
-	// Without this, the run stays queued forever.
-	if job.Attempt < job.MaxAttempts {
-		return err
-	}
+	// The system could not build or start the run, and nothing ran. We do not retry:
+	// the worker marks the run failed at once, so the user sees the error. If Abort fails
+	// (the database is down), the error goes to River, and the second attempt tries again.
 	w.logger.Errorw("could not start the run, failing it", "playbook_history_id", id, "error", err)
 	return w.executor.Abort(ctx, id, err)
 }
@@ -121,8 +127,10 @@ func (e *Enqueuer) EnqueueRun(ctx context.Context, playbookHistoryID uuid.UUID) 
 }
 
 // NewWorkerClient works playbook runs. It works `concurrency` runs at the same time.
-// runTimeout is the time limit for one run.
-func NewWorkerClient(pool *pgxpool.Pool, worker *RunWorker, concurrency int, runTimeout time.Duration) (*river.Client[pgx.Tx], error) {
+// runTimeout is the time limit for one run. When the worker stops, River waits stopGrace
+// for the running playbooks to finish. After that, it cancels them. A cancelled run is
+// saved as failed, so it does not stay in_progress.
+func NewWorkerClient(pool *pgxpool.Pool, worker *RunWorker, concurrency int, runTimeout, stopGrace time.Duration) (*river.Client[pgx.Tx], error) {
 	workers := river.NewWorkers()
 	river.AddWorker(workers, worker)
 	return river.NewClient(riverpgxv5.New(pool), &river.Config{
@@ -130,6 +138,7 @@ func NewWorkerClient(pool *pgxpool.Pool, worker *RunWorker, concurrency int, run
 		Workers:              workers,
 		JobTimeout:           runTimeout,
 		RescueStuckJobsAfter: runTimeout + rescueGrace,
+		SoftStopTimeout:      stopGrace,
 	})
 }
 
