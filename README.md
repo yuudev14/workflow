@@ -79,6 +79,20 @@ The system has four parts. Three parts are Go programs. They come from one modul
 3. **Sandbox** (`cmd/sandbox`) - The sandbox runs connectors and code snippets. Each run gets a new `python3` or `node` process. The process has no credentials, a clean environment and a time limit. Untrusted code cannot reach the database or the job queue.
 4. **Frontend** - The visual editor. Next.js serves it behind nginx.
 
+The diagrams are in [docs/diagram](docs/diagram):
+
+- [One playbook run](docs/diagram/run-flow.md), with the files for each step.
+- [Run and task statuses](docs/diagram/statuses.md).
+- [What the worker does with a job](docs/diagram/job-results.md).
+- [How the worker starts](docs/diagram/worker-startup.md).
+- [How the API starts](docs/diagram/api-startup.md).
+
+Other docs:
+
+- [Worker guide](docs/worker-guide.md): everything the worker does, with examples. Start here.
+- [Ports and interfaces](docs/ports-and-interfaces.md): what each interface is, why we made it, and who uses it.
+- [The runtime resolver](docs/runtime-resolver.md): how a node picks where it runs.
+
 ### One run, step by step
 
 1. You trigger a playbook. The API saves the run as `queued` and queues a job. Both happen in one transaction.
