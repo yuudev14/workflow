@@ -159,7 +159,8 @@ stateDiagram-v2
     running --> retryable: Work returns an error
     retryable --> available: after a delay
     retryable --> discarded: no attempts left
-    running --> retryable: worker died, River rescues the job
+    running --> retryable: worker died, River rescues the job (attempt 1)
+    running --> discarded: worker died on the last attempt, River rescues the job
 ```
 
 ## 7. River in general (a small example)

@@ -106,7 +106,7 @@ A job is a task that a worker does later. River stores the jobs in Postgres.
 - A job holds only ids. The worker loads the rest from the database.
 - Queue a job in the same transaction as the rows it needs, never after the commit.
 - A failed run is not a job error. The executor saves the failure, and the worker returns nil. If the worker returns the error, River gives the job to a new attempt.
-- A run that cannot start is not retried. The worker calls `Abort` and the run shows `failed` at once. `maxAttempts` is 2, and the second attempt is only for a job that River takes back (a worker died, or the final status was not saved). That attempt marks the run `failed`. It never starts the run again.
+- A run that cannot start is not retried. The worker calls `Abort` and the run shows `failed` at once. `maxAttempts` is 2. The second attempt is for a job that River takes back (a worker died, the final status was not saved, or `Abort` failed). If the run already started, attempt 2 only marks it `failed`. If it never started, attempt 2 can start it. A run that started is never started again.
 - Every goroutine that you start must have a `recover`. River catches a panic only in the job goroutine.
 - For a task that must repeat, the service method queues the next job with a delay. Do not loop inside a worker.
 - River owns the `river_*` tables and `*_river.sql`. Do not query them or edit them.
