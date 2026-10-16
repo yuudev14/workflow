@@ -112,7 +112,7 @@ func (r *TeamRepositoryImpl) Create(ctx context.Context, name string, descriptio
 		Description: toPgText(description),
 	})
 	if err != nil {
-		return domain.Team{}, err
+		return domain.Team{}, mapUniqueViolation(err, auth.ErrTeamTaken)
 	}
 	return toDomainTeamRow(row), nil
 }
@@ -126,7 +126,7 @@ func (r *TeamRepositoryImpl) Update(ctx context.Context, id uuid.UUID, params au
 		Description:    toPgTextFromNullable(params.Description),
 	})
 	if err != nil {
-		return domain.Team{}, mapNoRows(err, auth.ErrTeamNotFound)
+		return domain.Team{}, mapUniqueViolation(mapNoRows(err, auth.ErrTeamNotFound), auth.ErrTeamTaken)
 	}
 	return toDomainTeamRow(row), nil
 }
