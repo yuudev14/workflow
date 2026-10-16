@@ -4,13 +4,6 @@ YTSoar is a SOAR app. A user builds a **playbook** (a graph of steps) in a visua
 
 The backend is Go (`app/ytsoar`). It has three programs: `api`, `worker` and `sandbox`. The frontend is Next.js (`app/frontend`). Postgres is the only data service.
 
-## How a playbook run works
-
-1. The user triggers a playbook. The `api` saves the run as `queued` and queues a job. Both go in one transaction.
-2. The `worker` takes the job. It sets the run to `in_progress`.
-3. The worker runs each step. User code runs in the `sandbox`, which has no credentials.
-4. The worker saves each status (`success` or `failed`) and sends an event with Postgres `LISTEN/NOTIFY`.
-5. The `api` gets the event and sends it to the browser over WebSocket.
 
 ## Where things are
 
@@ -38,9 +31,10 @@ The backend is Go (`app/ytsoar`). It has three programs: `api`, `worker` and `sa
 The backend has three layers. Each layer knows only the layer inside it.
 
 ```
-adapters  ->  application  ->  domain
-(talk to      (business        (plain types
- the world)    logic)           and rules)
+adapters  ->     application     ->    domain
+(talk to the     (business             (plain types
+ world http      logic, service)       and rules)
+ grpc etc)
 ```
 
 - `domain`: plain Go types and rules, for example the `Playbook` type and the run status rules. It imports nothing from the other layers.
