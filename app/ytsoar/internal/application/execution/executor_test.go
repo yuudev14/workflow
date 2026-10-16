@@ -557,3 +557,48 @@ func sampleTaskWithConnector(connectorID string) domain.Tasks {
 	task.ConnectorID = &connectorID
 	return task
 }
+
+// A run the state machine refuses to start was already started (a worker died
+// and the queue redelivered it): it must fail, never run the connectors again.
+func TestExecutorAlreadyStartedRunIsFailedNotRerun(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	taskService := taskmocks.NewMockTaskService(ctrl)
+	playbookService := playbookmocks.NewMockPlaybookService(ctrl)
+	status := execmocks.NewMockStatusPublisher(ctrl)
+	status.EXPECT().Publish(gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
+	var statuses []string
+	playbookService.EXPECT().
+		UpdatePlaybookHistory(gomock.Any(), gomock.Any(), gomock.Any()).
+		DoAndReturn(func(_ context.Context, _ string, data playbooks.UpdatePlaybookHistoryData) (*domain.PlaybookHistory, error) {
+			statuses = append(statuses, *data.Status.Value)
+			if *data.Status.Value == "in_progress" {
+				return nil, domain.ErrInvalidTransition
+			}
+			return &domain.PlaybookHistory{}, nil
+		}).Times(2)
+	taskService.EXPECT().FailUnfinishedTaskHistory(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil)
+	executor := execution.NewExecutor(logger.NewNop(), taskService, playbookService,
+		execution.NewStaticResolver(execmocks.NewMockNodeRuntime(ctrl), nil), status, 1, time.Minute)
+	graph := map[string][]string{"start": {}}
+
+	err := executor.Run(context.Background(), domain.TaskMessage{Graph: graph, Tasks: tasksFor(graph), PlaybookHistoryId: uuid.New()})
+
+	assert.Error(t, err)
+	assert.Equal(t, []string{"in_progress", "failed"}, statuses)
+}
+
+// A redelivery of a run that already finished is a duplicate: do nothing.
+func TestExecutorFinishedRunIsLeftAlone(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	playbookService := playbookmocks.NewMockPlaybookService(ctrl)
+	playbookService.EXPECT().
+		UpdatePlaybookHistory(gomock.Any(), gomock.Any(), gomock.Any()).
+		Return(nil, domain.ErrInvalidTransition).Times(2)
+	executor := execution.NewExecutor(logger.NewNop(), taskmocks.NewMockTaskService(ctrl), playbookService,
+		execution.NewStaticResolver(execmocks.NewMockNodeRuntime(ctrl), nil), execmocks.NewMockStatusPublisher(ctrl), 1, time.Minute)
+	graph := map[string][]string{"start": {}}
+
+	err := executor.Run(context.Background(), domain.TaskMessage{Graph: graph, Tasks: tasksFor(graph), PlaybookHistoryId: uuid.New()})
+
+	assert.NoError(t, err)
+}

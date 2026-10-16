@@ -16,6 +16,7 @@ import { usePlaybookStatusConnection } from "@/components/provider/playbook-stat
 const STATUS_PILL: Record<string, PillVariant> = {
   success: "success",
   failed: "failed",
+  queued: "queued",
   in_progress: "running",
   skipped: "skipped",
 };

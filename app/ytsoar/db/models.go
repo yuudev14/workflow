@@ -285,6 +285,7 @@ func (ns NullLinkSource) Value() (driver.Value, error) {
 type PlaybookStatus string
 
 const (
+	PlaybookStatusQueued     PlaybookStatus = "queued"
 	PlaybookStatusInProgress PlaybookStatus = "in_progress"
 	PlaybookStatusSuccess    PlaybookStatus = "success"
 	PlaybookStatusFailed     PlaybookStatus = "failed"

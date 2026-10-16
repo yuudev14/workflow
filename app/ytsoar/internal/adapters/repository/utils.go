@@ -271,3 +271,12 @@ func applyAssigneeFilter(stmt sq.SelectBuilder, alias string, ids []string, unas
 	}
 	return stmt
 }
+
+// toStatuses converts a transition's source statuses to a pg enum array.
+func toStatuses[T ~string](from []string) []T {
+	out := make([]T, len(from))
+	for i, s := range from {
+		out[i] = T(s)
+	}
+	return out
+}
