@@ -49,12 +49,12 @@ Ports: API `:8080`, Postgres `:5433`, nginx `:9999`.
 
 ## How it works
 
-The system has four parts. Three parts are Go programs. They come from one module (`github.com/yuudev14/ytsoar`). The fourth part is the Next.js frontend.
+The system has four parts. Three parts are Go programs. They come from one module (`github.com/yuudev14/ytsoar`). The fourth part is the React frontend (Vite).
 
 ```
 ┌──────────┐   REST + WS    ┌─────────────┐   sqlc/pgx   ┌──────────────┐
 │ Frontend │ ─────────────> │ Playbook API│ ───────────> │  PostgreSQL  │
-│ Next.js  │ <──── WS ───── │  cmd/api    │ <─ LISTEN ── │ history +    │
+│ Vite app │ <──── WS ───── │  cmd/api    │ <─ LISTEN ── │ history +    │
 └──────────┘    (nginx)     └─────────────┘   /NOTIFY    │ River jobs   │
                                                           └──────┬───────┘
                                                                  │ work job
@@ -77,7 +77,7 @@ The system has four parts. Three parts are Go programs. They come from one modul
 1. **Playbook API** (`cmd/api`) - The API gives the REST and WebSocket interfaces. It saves playbooks. When a user triggers a playbook, the API queues a run in Postgres (River). The API sends status updates to the browser.
 2. **Worker** (`cmd/worker`) - The worker takes queued runs and runs the graph node by node. It runs independent nodes at the same time. For most nodes, the worker sends the work to the sandbox over gRPC and saves the result. Two first-party connectors (`http_request` and `condition`) are trusted. The worker runs them directly.
 3. **Sandbox** (`cmd/sandbox`) - The sandbox runs connectors and code snippets. Each run gets a new `python3` or `node` process. The process has no credentials, a clean environment and a time limit. Untrusted code cannot reach the database or the job queue.
-4. **Frontend** - The visual editor. Next.js serves it behind nginx.
+4. **Frontend** - The visual editor. The Vite dev server serves it behind nginx.
 
 The diagrams are in [docs/diagram](docs/diagram):
 
@@ -196,7 +196,7 @@ Then press F5 in VS Code. Choose one of the `Attach to …` configurations in `.
 ```
 app/ytsoar/        Go backend - cmd/{api,worker,sandbox}, internal/, db/
 app/connectors/    connector tree (python + js/ts + code-node metadata)
-app/frontend/      Next.js visual editor
+app/frontend/      Vite + React visual editor
 app/nginx/         reverse proxy (:9999)
 app/proto/         connector_runtime.proto (worker <-> sandbox contract)
 docker/            dev compose stack
