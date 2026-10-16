@@ -70,7 +70,9 @@ func TestStatusTransitionsAreGuardedInSQL(t *testing.T) {
 	_, err = pool.Exec(ctx, `INSERT INTO task_history (playbook_history_id, task_id, triggered_at, name, description, parameters, operation, status)
 		SELECT $1, $2, NOW(), 'b', '', '{}', 'op', 'in_progress'`, historyID, taskID)
 	require.NoError(t, err)
-	require.NoError(t, taskRepo.FailUnfinishedTaskHistory(ctx, historyID.String(), "worker stopped"))
+	failed, err := taskRepo.FailUnfinishedTaskHistory(ctx, historyID.String(), "worker stopped")
+	require.NoError(t, err)
+	assert.Len(t, failed, 1, "it returns the tasks that it changed, so the caller can send the events")
 	var statuses []string
 	rows, err := pool.Query(ctx, `SELECT status::text FROM task_history WHERE playbook_history_id = $1 ORDER BY name`, historyID)
 	require.NoError(t, err)
@@ -80,4 +82,32 @@ func TestStatusTransitionsAreGuardedInSQL(t *testing.T) {
 		statuses = append(statuses, s)
 	}
 	assert.Equal(t, []string{"success", "failed"}, statuses)
+}
+
+// The worker builds the message of a run from this row. It needs the trigger input.
+func TestGetPlaybookHistoryByIdReturnsTheTriggerInput(t *testing.T) {
+	url := os.Getenv("TEST_DATABASE_URL")
+	if url == "" {
+		t.Skip("TEST_DATABASE_URL is not set")
+	}
+	ctx := context.Background()
+	pool, err := db.NewPool(ctx, url)
+	require.NoError(t, err)
+	defer pool.Close()
+	playbookRepo := NewPlaybookRepository(logger.NewNop(), db.New(pool), pool)
+
+	var playbookID, historyID uuid.UUID
+	require.NoError(t, pool.QueryRow(ctx, `INSERT INTO playbooks (name) VALUES ('input') RETURNING id`).Scan(&playbookID))
+	t.Cleanup(func() { pool.Exec(ctx, `DELETE FROM playbooks WHERE id = $1`, playbookID) })
+	require.NoError(t, pool.QueryRow(ctx,
+		`INSERT INTO playbook_history (playbook_id, triggered_at, edges, status, trigger_type, input)
+		 VALUES ($1, NOW(), '[]', 'queued', 'manual', '{"module_type":"alert","records":[{"id":"r1"}]}') RETURNING id`, playbookID).Scan(&historyID))
+
+	history, err := playbookRepo.GetPlaybookHistoryById(ctx, historyID)
+
+	require.NoError(t, err)
+	assert.JSONEq(t, `{"module_type":"alert","records":[{"id":"r1"}]}`, string(history.Input))
+	if assert.NotNil(t, history.TriggerType) {
+		assert.Equal(t, "manual", *history.TriggerType)
+	}
 }

@@ -91,6 +91,15 @@ func NewExecutor(
 	return e
 }
 
+// statusWriteTimeout is the time limit for one try to save a status.
+const statusWriteTimeout = 10 * time.Second
+
+// detach returns a context that ignores the cancel of ctx (so a stop or a timeout does not
+// block the last status write), but has its own time limit.
+func detach(ctx context.Context) (context.Context, context.CancelFunc) {
+	return context.WithTimeout(context.WithoutCancel(ctx), statusWriteTimeout)
+}
+
 var errWorkerStopped = errors.New("an earlier attempt started this run and did not finish it (the worker may have stopped)")
 
 // ErrNotStarted wraps the error of a run that did not start. The database failed before
@@ -297,7 +306,8 @@ func (e *Executor) setTaskStatus(
 	// Detach from cancellation: after a fail-fast cancel() the draining nodes
 	// still have to persist their failed status, or they'd sit at in_progress
 	// forever (same reason finishPlaybook receives the parent ctx).
-	ctx = context.WithoutCancel(ctx)
+	ctx, cancel := detach(ctx)
+	defer cancel()
 	var errStr *string
 	if execErr != nil {
 		s := execErr.Error()
@@ -344,8 +354,18 @@ func (e *Executor) recoverRun(ctx context.Context, msg domain.TaskMessage) error
 	if errors.Is(err, domain.ErrInvalidTransition) {
 		return nil // already finished
 	}
-	if failErr := e.taskService.FailUnfinishedTaskHistory(ctx, msg.PlaybookHistoryId.String(), errWorkerStopped.Error()); failErr != nil {
+	// Only now, after the state rules accepted the change: a finished run keeps its tasks.
+	writeCtx, cancel := detach(ctx)
+	defer cancel()
+	failed, failErr := e.taskService.FailUnfinishedTaskHistory(writeCtx, msg.PlaybookHistoryId.String(), errWorkerStopped.Error())
+	if failErr != nil {
 		e.logger.Errorw("failed to fail unfinished tasks", "playbook_history_id", msg.PlaybookHistoryId, "error", failErr)
+	}
+	// Tell the open pages about each task, so they do not show it as in_progress.
+	for _, task := range failed {
+		if pubErr := e.status.Publish(writeCtx, "task_status", task.ID); pubErr != nil {
+			e.logger.Errorw("failed to publish task status event", "task", task.Name, "error", pubErr)
+		}
 	}
 	return err
 }
@@ -402,8 +422,10 @@ func (e *Executor) setRunStatus(
 	result any,
 	execErr error,
 ) (*domain.PlaybookHistory, error) {
-	// A run can end because of a timeout or a shutdown. The system must still save its status.
-	ctx = context.WithoutCancel(ctx)
+	// A run can end because of a timeout or a shutdown. The system must still save its status,
+	// but one try must not hang for minutes when the database host drops packets.
+	ctx, cancel := detach(ctx)
+	defer cancel()
 	var errStr *string
 	if execErr != nil {
 		s := execErr.Error()

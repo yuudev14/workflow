@@ -82,10 +82,11 @@ func (q *Queries) DeleteTasks(ctx context.Context, ids []pgtype.UUID) error {
 	return err
 }
 
-const failUnfinishedTaskHistory = `-- name: FailUnfinishedTaskHistory :exec
+const failUnfinishedTaskHistory = `-- name: FailUnfinishedTaskHistory :many
 UPDATE task_history
 SET status = 'failed', error = $1
 WHERE playbook_history_id = $2 AND status IN ('pending', 'in_progress')
+RETURNING id, playbook_history_id, task_id, name, description, parameters, config, x, y, connector_name, connector_id, operation, status, destination_ids, error, result, triggered_at
 `
 
 type FailUnfinishedTaskHistoryParams struct {
@@ -94,9 +95,42 @@ type FailUnfinishedTaskHistoryParams struct {
 }
 
 // Crash recovery: the tasks of a stopped run never finish.
-func (q *Queries) FailUnfinishedTaskHistory(ctx context.Context, arg FailUnfinishedTaskHistoryParams) error {
-	_, err := q.db.Exec(ctx, failUnfinishedTaskHistory, arg.Error, arg.PlaybookHistoryID)
-	return err
+func (q *Queries) FailUnfinishedTaskHistory(ctx context.Context, arg FailUnfinishedTaskHistoryParams) ([]TaskHistory, error) {
+	rows, err := q.db.Query(ctx, failUnfinishedTaskHistory, arg.Error, arg.PlaybookHistoryID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []TaskHistory
+	for rows.Next() {
+		var i TaskHistory
+		if err := rows.Scan(
+			&i.ID,
+			&i.PlaybookHistoryID,
+			&i.TaskID,
+			&i.Name,
+			&i.Description,
+			&i.Parameters,
+			&i.Config,
+			&i.X,
+			&i.Y,
+			&i.ConnectorName,
+			&i.ConnectorID,
+			&i.Operation,
+			&i.Status,
+			&i.DestinationIds,
+			&i.Error,
+			&i.Result,
+			&i.TriggeredAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const getTaskHistoryById = `-- name: GetTaskHistoryById :one

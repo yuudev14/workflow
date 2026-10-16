@@ -214,6 +214,9 @@ func (w *PlaybookRepositoryImpl) GetPlaybookHistoryById(ctx context.Context, pla
 		Result:       result,
 		TriggeredAt:  row.TriggeredAt.Time,
 		Edges:        row.Edges,
+		TriggerType:  fromNullTriggerType(row.TriggerType),
+		TriggeredBy:  fromPgUUIDPtr(row.TriggeredBy),
+		Input:        row.Input,
 	}, nil
 }
 

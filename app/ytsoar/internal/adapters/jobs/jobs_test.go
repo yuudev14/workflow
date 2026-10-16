@@ -26,10 +26,11 @@ func (f fakeLoader) LoadRunMessage(_ context.Context, id uuid.UUID) (domain.Task
 }
 
 type fakeExecutor struct {
-	runErr   error
-	abortErr error
-	ran      chan uuid.UUID
-	aborted  []uuid.UUID
+	runErr      error
+	abortErr    error
+	ran         chan uuid.UUID
+	aborted     []uuid.UUID
+	abortCauses []error
 }
 
 func (f *fakeExecutor) Run(_ context.Context, msg domain.TaskMessage) error {
@@ -39,8 +40,9 @@ func (f *fakeExecutor) Run(_ context.Context, msg domain.TaskMessage) error {
 	return f.runErr
 }
 
-func (f *fakeExecutor) Abort(_ context.Context, id uuid.UUID, _ error) error {
+func (f *fakeExecutor) Abort(_ context.Context, id uuid.UUID, cause error) error {
 	f.aborted = append(f.aborted, id)
+	f.abortCauses = append(f.abortCauses, cause)
 	return f.abortErr
 }
 
@@ -81,6 +83,31 @@ func TestWorkFailsTheRunWhenTheMessageCannotBeLoaded(t *testing.T) {
 
 	assert.NoError(t, worker.Work(context.Background(), job(id, 1)))
 	assert.Equal(t, []uuid.UUID{id}, exec.aborted)
+}
+
+// On attempt 2, the first attempt may have run the playbook already. The error text of the run
+// must not say that the run could not start.
+func TestWorkSaysAnEarlierAttemptDidNotFinishOnAttempt2(t *testing.T) {
+	exec := &fakeExecutor{}
+	worker := NewRunWorker(logger.NewNop(), fakeLoader{err: errors.New("connection refused")}, exec)
+
+	assert.NoError(t, worker.Work(context.Background(), job(uuid.New(), 2)))
+	if assert.Len(t, exec.abortCauses, 1) {
+		assert.ErrorContains(t, exec.abortCauses[0], "an earlier attempt did not finish this run")
+		assert.ErrorContains(t, exec.abortCauses[0], "connection refused")
+	}
+}
+
+// The worker is stopping. The run must not be failed: River puts the job back, and a new worker
+// starts the run.
+func TestWorkDoesNotFailTheRunWhenTheContextIsCancelled(t *testing.T) {
+	exec := &fakeExecutor{}
+	worker := NewRunWorker(logger.NewNop(), fakeLoader{err: context.Canceled}, exec)
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	assert.Error(t, worker.Work(ctx, job(uuid.New(), 1)))
+	assert.Empty(t, exec.aborted)
 }
 
 // If Abort fails too (the database is down), the error goes to River, so the second attempt tries again.

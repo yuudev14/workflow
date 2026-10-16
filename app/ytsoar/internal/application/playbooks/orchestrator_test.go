@@ -895,6 +895,18 @@ func TestTriggerPlaybookBroadcastsStatusEnvelope(t *testing.T) {
 	assert.Equal(t, historyID, history.ID)
 }
 
+// The repository returns nil when the row is gone. The loader must return an error and not panic.
+func TestRunLoaderReturnsAnErrorWhenTheRunIsGone(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	playbookSvc := mock_playbooks.NewMockPlaybookService(ctrl)
+	historyID := uuid.New()
+	playbookSvc.EXPECT().GetPlaybookHistoryById(gomock.Any(), historyID).Return(nil, nil)
+
+	_, err := playbooks.NewRunLoader(playbookSvc, mock_tasks.NewMockTaskService(ctrl)).LoadRunMessage(context.Background(), historyID)
+
+	assert.ErrorContains(t, err, "does not exist")
+}
+
 // The worker builds the message from the history rows. The message must match the message
 // that PreparePlaybookMessage builds at trigger time, with the branch handles.
 func TestRunLoaderRebuildsMessage(t *testing.T) {

@@ -447,6 +447,9 @@ func (l *RunLoader) LoadRunMessage(ctx context.Context, historyID uuid.UUID) (do
 	if err != nil {
 		return domain.TaskMessage{}, err
 	}
+	if history == nil { // the repository returns nil when the row is gone
+		return domain.TaskMessage{}, fmt.Errorf("run %s does not exist", historyID)
+	}
 	taskRows, err := l.tasks.GetTaskHistoryByPlaybookHistoryId(ctx, historyID.String(), tasks.TaskHistoryFilter{})
 	if err != nil {
 		return domain.TaskMessage{}, err

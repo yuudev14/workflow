@@ -68,11 +68,12 @@ WHERE playbook_history_id = sqlc.arg('playbook_history_id') AND task_id = sqlc.a
   AND (NOT sqlc.arg('status_set')::boolean OR status::text = ANY(sqlc.arg('allowed_from')::text[]))
 RETURNING *;
 
--- name: FailUnfinishedTaskHistory :exec
+-- name: FailUnfinishedTaskHistory :many
 -- Crash recovery: the tasks of a stopped run never finish.
 UPDATE task_history
 SET status = 'failed', error = sqlc.arg('error')
-WHERE playbook_history_id = sqlc.arg('playbook_history_id') AND status IN ('pending', 'in_progress');
+WHERE playbook_history_id = sqlc.arg('playbook_history_id') AND status IN ('pending', 'in_progress')
+RETURNING *;
 
 -- name: GetTaskHistoryById :one
 SELECT * FROM task_history WHERE id = $1;

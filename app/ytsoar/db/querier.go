@@ -36,7 +36,7 @@ type Querier interface {
 	DeleteTeamRoles(ctx context.Context, teamID pgtype.UUID) error
 	DeleteUserRoles(ctx context.Context, userID pgtype.UUID) error
 	// Crash recovery: the tasks of a stopped run never finish.
-	FailUnfinishedTaskHistory(ctx context.Context, arg FailUnfinishedTaskHistoryParams) error
+	FailUnfinishedTaskHistory(ctx context.Context, arg FailUnfinishedTaskHistoryParams) ([]TaskHistory, error)
 	GetAlertById(ctx context.Context, id pgtype.UUID) (Alert, error)
 	GetAlertNoteById(ctx context.Context, id pgtype.UUID) (AlertNote, error)
 	GetAuthProviderByID(ctx context.Context, id pgtype.UUID) (AuthProvider, error)

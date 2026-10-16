@@ -73,11 +73,12 @@ func (mr *MockTaskRepositoryMockRecorder) DeleteTasks(ctx, taskIds any) *gomock.
 }
 
 // FailUnfinishedTaskHistory mocks base method.
-func (m *MockTaskRepository) FailUnfinishedTaskHistory(ctx context.Context, playbookHistoryId, reason string) error {
+func (m *MockTaskRepository) FailUnfinishedTaskHistory(ctx context.Context, playbookHistoryId, reason string) ([]domain.TaskHistory, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "FailUnfinishedTaskHistory", ctx, playbookHistoryId, reason)
-	ret0, _ := ret[0].(error)
-	return ret0
+	ret0, _ := ret[0].([]domain.TaskHistory)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
 }
 
 // FailUnfinishedTaskHistory indicates an expected call of FailUnfinishedTaskHistory.
