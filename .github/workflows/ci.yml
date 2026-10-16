@@ -16,8 +16,8 @@ jobs:
       run:
         working-directory: app/ytsoar
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@v5
+      - uses: actions/setup-go@v6
         with:
           go-version-file: app/ytsoar/go.mod
           cache-dependency-path: app/ytsoar/go.sum
@@ -42,12 +42,12 @@ jobs:
           POSTGRES_DB: ytsoar_test
         ports: ["5432:5432"]
         options: >-
-          --health-cmd pg_isready --health-interval 5s --health-timeout 5s --health-retries 10
+          --health-cmd "pg_isready -U postgres" --health-interval 5s --health-timeout 5s --health-retries 10
     env:
       TEST_DATABASE_URL: postgres://postgres:postgres@localhost:5432/ytsoar_test?sslmode=disable
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@v5
+      - uses: actions/setup-go@v6
         with:
           go-version-file: app/ytsoar/go.mod
           cache-dependency-path: app/ytsoar/go.sum
@@ -63,8 +63,8 @@ jobs:
       run:
         working-directory: app/frontend
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: 24
           cache: npm
@@ -86,9 +86,9 @@ jobs:
           POSTGRES_DB: ytsoar_e2e
         ports: ["5432:5432"]
         options: >-
-          --health-cmd pg_isready --health-interval 5s --health-timeout 5s --health-retries 10
+          --health-cmd "pg_isready -U postgres" --health-interval 5s --health-timeout 5s --health-retries 10
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Start Keycloak
         working-directory: .
         run: |
@@ -96,7 +96,7 @@ jobs:
             -e KC_BOOTSTRAP_ADMIN_USERNAME=admin -e KC_BOOTSTRAP_ADMIN_PASSWORD=admin \
             -v "$PWD/docker/keycloak:/opt/keycloak/data/import:ro" \
             quay.io/keycloak/keycloak:26.2 start-dev --import-realm --http-port=8180
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v6
         with:
           go-version-file: app/ytsoar/go.mod
           cache-dependency-path: app/ytsoar/go.sum
@@ -111,7 +111,7 @@ jobs:
       - run: npx playwright test
         env:
           CI: "1"
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v5
         if: failure()
         with:
           name: playwright-report
