@@ -1,4 +1,3 @@
-"use client"
 
 import { CheckCircle2, Info, XCircle } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"

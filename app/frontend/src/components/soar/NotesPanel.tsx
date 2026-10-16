@@ -1,4 +1,3 @@
-"use client";
 
 import * as React from "react";
 import { Pencil, Trash2 } from "lucide-react";

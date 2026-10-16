@@ -1,5 +1,4 @@
-"use client";
-
+import { Link } from "react-router";
 import * as React from "react";
 import {
   AlertTriangle,
@@ -8,7 +7,7 @@ import {
   Layers,
   LayoutGrid,
 } from "lucide-react";
-import Link from "next/link";
+
 
 import { NavMain, type NavSection } from "@/components/sidebar/nav-main";
 import { NavUser } from "@/components/sidebar/nav-user";
@@ -64,7 +63,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton asChild size="lg" tooltip="YTSoar">
-              <Link href="/playbooks">
+              <Link to="/playbooks">
                 <span className="flex aspect-square size-8 items-center justify-center rounded-md bg-foreground text-[14px] font-bold text-background">
                   Y
                 </span>

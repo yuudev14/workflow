@@ -1,7 +1,5 @@
-"use client";
-
+import { useLocation } from "react-router";
 import React from "react";
-import { usePathname } from "next/navigation";
 
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/sidebar/app-sidebar";
@@ -11,7 +9,7 @@ import PlaybookStatusProvider from "./playbook-status-provider";
 
 
 const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const pathname = usePathname();
+  const pathname = useLocation().pathname;
 
   if (isPublicRoute(pathname)) {
     return <>{children}</>;
