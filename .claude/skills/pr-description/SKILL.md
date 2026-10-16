@@ -13,7 +13,7 @@ This skill is for this project only. The user asked for Simplified Technical Eng
 2. Read the diff only when the commits and the file list do not make the change clear.
 3. Write the six sections below. Skip a section only when it is empty, except Problem and Solution.
 4. Show the text in one fenced block, so the user can copy it.
-5. Add `Fixes #<n>` on its own line if the branch name has an issue number.
+5. Add `Fixes #<n>` on its own line if the branch name has an issue number. If the issue needs a backend PR and a frontend PR, use `Refs #<n>` in the backend PR and `Fixes #<n>` in the frontend PR. Name the other PR in the text.
 6. If the change alters the UI, add this line after the last section: "Add a before and after screenshot."
 
 ## Sections

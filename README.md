@@ -2,14 +2,54 @@ Initial repo resides here: https://github.com/orgs/yuudev14-workflow/repositorie
 
 # YTSoar
 
-A self-hosted SOAR (Security Orchestration, Automation and Response) platform.
-Build **playbooks** - graphs of connector operations and code snippets - in a
-visual editor, trigger them, and watch them run live.
+YTSoar is a self-hosted SOAR platform. You draw a playbook, press run and watch it work.
 
-## Architecture
+**Contents:** [What is YTSoar?](#what-is-ytsoar) · [Quickstart](#quickstart) · [How it works](#how-it-works) · [Writing connectors](#writing-connectors) · [Branching](#branching) · [Development](#development) · [Repository layout](#repository-layout) · [Roadmap](#roadmap)
 
-There are four pieces. The first three are Go binaries built from one module
-(`github.com/yuudev14/ytsoar`); the fourth is the Next.js frontend.
+## What is YTSoar?
+
+SOAR means Security Orchestration, Automation and Response. Security teams do the same steps again and again. For example, they check an IP address, block it and send a message. YTSoar does these steps for you.
+
+You build a **playbook** in a visual editor. A playbook is a graph of steps. You trigger the playbook and watch each step run live.
+
+Example playbook:
+
+```
+Alert arrives  ->  Check the IP address  ->  Is the IP bad?  --yes-->  Block the IP  ->  Send a message
+                                                  |
+                                                  +----no---->  Close the alert
+```
+
+### Key words
+
+| Word | Meaning |
+|---|---|
+| Playbook | A graph of steps that you build in the editor. |
+| Node | One step in a playbook. |
+| Connector | A small program that a node calls. It talks to a tool, or it runs your code. |
+| Run | One execution of a playbook. A run has a status: `queued`, `in_progress`, `success` or `failed`. |
+| Worker | The program that runs the nodes of a run. |
+| Sandbox | A locked box where user code runs. It has no credentials. |
+
+## Quickstart
+
+You need Docker and Node.js.
+
+```bash
+# backend stack (postgres, api, worker, sandbox, nginx)
+make rebuild-containers
+
+# frontend (dev server on :3000, proxied by nginx on :9999)
+cd app/frontend && npm install && npm run dev
+```
+
+Open http://localhost:9999. Create a playbook, add nodes and trigger it. The statuses appear live.
+
+Ports: API `:8080`, Postgres `:5433`, nginx `:9999`.
+
+## How it works
+
+The system has four parts. Three parts are Go programs. They come from one module (`github.com/yuudev14/ytsoar`). The fourth part is the Next.js frontend.
 
 ```
 ┌──────────┐   REST + WS    ┌─────────────┐   sqlc/pgx   ┌──────────────┐
@@ -34,47 +74,30 @@ There are four pieces. The first three are Go binaries built from one module
                                                   └────────────────────┘
 ```
 
-1. **Playbook API** (`cmd/api`) - the REST and WebSocket front door. Saves
-   playbooks, queues a run in Postgres (River) when triggered, and streams status
-   updates back to the browser.
-2. **Worker** (`cmd/worker`) - picks up queued runs and executes the graph,
-   node by node, running independent nodes in parallel. For most nodes it
-   hands the work to the sandbox over gRPC and saves the result. Two
-   first-party connectors (`http_request`, `condition`) are trusted enough to
-   run directly in the worker instead.
-3. **Sandbox** (`cmd/sandbox`) - actually runs connectors and code snippets.
-   Every run gets a brand-new `python3` or `node` process with no credentials,
-   a clean environment, and a timeout, so untrusted code can't touch the
-   database or job queue.
-4. **Frontend** - the visual editor, served by Next.js behind nginx.
+1. **Playbook API** (`cmd/api`) - The API gives the REST and WebSocket interfaces. It saves playbooks. When a user triggers a playbook, the API queues a run in Postgres (River). The API sends status updates to the browser.
+2. **Worker** (`cmd/worker`) - The worker takes queued runs and runs the graph node by node. It runs independent nodes at the same time. For most nodes, the worker sends the work to the sandbox over gRPC and saves the result. Two first-party connectors (`http_request` and `condition`) are trusted. The worker runs them directly.
+3. **Sandbox** (`cmd/sandbox`) - The sandbox runs connectors and code snippets. Each run gets a new `python3` or `node` process. The process has no credentials, a clean environment and a time limit. Untrusted code cannot reach the database or the job queue.
+4. **Frontend** - The visual editor. Next.js serves it behind nginx.
 
-The split is about **trust, not language**: anything that touches credentials
-lives in Go outside the sandbox; anything that runs user-supplied code lives
-inside it.
+### One run, step by step
 
-## Quickstart
+1. You trigger a playbook. The API saves the run as `queued` and queues a job. Both happen in one transaction.
+2. The worker takes the job and sets the run to `in_progress`.
+3. The worker runs the nodes. A node with user code goes to the sandbox.
+4. The worker saves the status of each node and of the run. It sends an event with Postgres `LISTEN/NOTIFY`.
+5. The API gets the event and sends it to your browser over WebSocket.
 
-```bash
-# backend stack (postgres, api, worker, sandbox, nginx)
-make rebuild-containers
+### Why three programs?
 
-# frontend (dev server on :3000, proxied by nginx on :9999)
-cd app/frontend && npm install && npm run dev
-```
-
-Open http://localhost:9999 - create a playbook, add nodes, trigger it, and
-watch the statuses stream in.
-
-Ports: API `:8080`, Postgres `:5433`, nginx `:9999`.
+The split is about trust, not language. Code that uses credentials runs in Go, outside the sandbox. Code that users supply runs inside the sandbox.
 
 ## Writing connectors
 
-Connectors live in `app/connectors/<id>/`. New connectors work on the next
-run - no restart needed.
+Connectors are in `app/connectors/<id>/`. A new connector works on the next run. You do not need to restart.
 
 ```
 app/connectors/my_connector/
-├── info.json          # editor metadata; "runtime": "python" | "node"
+├── info.json          # editor data; "runtime": "python" | "node"
 ├── connector.py       # python …
 │   # from connectors.core.connector import Connector
 │   # class MyConnector(Connector):
@@ -85,85 +108,73 @@ app/connectors/my_connector/
 │   #   async execute(configs, params, operation) { ... }
 │   # }
 │   # module.exports = { MyConnector };
-├── connector.ts       # … or typescript (Node strips the types natively -
-│   # no build step; require the core with an explicit .ts extension)
+├── connector.ts       # … or typescript (Node removes the types, so no build step
+│   # is needed. Use the .ts extension in the require call)
 │   # const { Connector } = require("../core/connector.ts");
 │   # class MyConnector extends Connector {
 │   #   async execute(configs: Configs, params: Params, operation: string) { ... }
 │   # }
 │   # module.exports = { MyConnector };
-└── configs/prod.toml  # named TOML configs, selectable per task
+└── configs/prod.toml  # named TOML configs, one for each task
 ```
 
-Every language follows the same shape: a class that extends the base class in
-`core/` and implements one method, `execute(configs, params, operation)`.
+Each language uses the same shape. Write a class that extends the base class in `core/`. The class has one method: `execute(configs, params, operation)`.
 
-- `configs` - the parsed TOML config
-- `params` - the task's parameters, already templated
-- `operation` - the operation name from `info.json`
+- `configs` - The parsed TOML config.
+- `params` - The parameters of the task. The system already applied the templates.
+- `operation` - The operation name from `info.json`.
 
-If a connector ships both `connector.ts` and `connector.js`, the `.ts` one
-wins. TypeScript is limited to erasable syntax (no enums, namespaces, or
-parameter properties) - check with `npx tsc --noEmit` in `app/connectors`.
+If a connector has both `connector.ts` and `connector.js`, the system uses the `.ts` file. TypeScript must use only erasable syntax. Do not use enums, namespaces or parameter properties. To check the syntax, run `npx tsc --noEmit` in `app/connectors`.
 
-**To start a new connector**, copy a template: `app/connectors/sample`
-(Python), `sample_js` (JavaScript), or `sample_ts` (TypeScript). You can also
-upload one as a zip via `POST /api/connectors/v1` (multipart field `file`) -
-the API validates it, installs its dependencies, and records an audit row.
-`DELETE /api/connectors/v1/<id>` removes it.
+**To start a new connector**, copy a template: `app/connectors/sample` (Python), `sample_js` (JavaScript) or `sample_ts` (TypeScript). You can also upload a zip file with `POST /api/connectors/v1` (multipart field `file`). The API validates the zip file, installs its dependencies and records an audit row. `DELETE /api/connectors/v1/<id>` removes the connector.
 
-Params can reference earlier node outputs with `{{ var.steps["node name"] }}`.
+A parameter can use the output of an earlier node: `{{ var.steps["node name"] }}`.
 
-For quick one-off logic without writing a full connector, use the two
-built-in code nodes: `code_snippet_py` (set `result = ...`) and
-`code_snippet_js` (`const result = ...`, `await` works). They need no files
-of their own - the sandbox implements them directly. Snippets only accept
-plain Python/JavaScript, not TypeScript.
+For quick logic, use the two built-in code nodes. They do not need a full connector. Use `code_snippet_py` (set `result = ...`) or `code_snippet_js` (`const result = ...`, and `await` works). These nodes need no files. The sandbox implements them directly. Snippets accept plain Python and JavaScript only. They do not accept TypeScript.
 
 ### Connector dependencies
 
 A connector can declare its own libraries:
 
-- Python: `<id>/requirements.txt` → installed into `<id>/deps/`
-- JS/TS: `<id>/package.json` → installed into `<id>/node_modules/`
+- Python: `<id>/requirements.txt`. The system installs the libraries into `<id>/deps/`.
+- JS/TS: `<id>/package.json`. The system installs the libraries into `<id>/node_modules/`.
 
-Run `make connector-deps` to install them (the stack must already be
-running - this runs pip/npm inside the api container so compiled packages
-match the sandbox image). Each connector's dependencies are vendored
-separately, so two connectors can pin different versions of the same library
-without conflicting. Code snippets can't declare dependencies - they only get
-the image's baseline packages (extend `app/ytsoar/Dockerfile.dev` to add
-more).
+Run `make connector-deps` to install the libraries. The stack must already run. The command runs pip and npm inside the api container. In this way, the compiled packages match the sandbox image. The system keeps the libraries of each connector separate. Two connectors can use different versions of the same library. Code snippets cannot declare dependencies. They get only the base packages of the image. To add more packages, change `app/ytsoar/Dockerfile.dev`.
+
+## Branching
+
+The `condition` built-in works like a switch statement. It checks an ordered list of cases. It takes the first case that matches. If no case matches, it takes **else**. It has two modes:
+
+- **Switch** - Each case is a simple comparison: left value, operator (`==`, `!=`, `>`, `contains` and others) and right value. You do not need templates.
+- **Switch (advanced expression)** - Each case is a full template expression, for example `{{ var.steps["scan"].score > 90 }}`. The system takes the case when the expression is true.
+
+In the editor, connect the condition node to its destination nodes. Then choose the destination node for each case and for **else**. At run time, only the matching branch runs. The system marks the nodes on the other branches as `skipped`. The skip continues to all nodes below them. A node with several input branches still runs when at least one branch is taken.
 
 ## Development
 
+Rules for the code (layers, jobs, database, tests) are in [CLAUDE.md](CLAUDE.md). Read it before you change the backend.
+
 ```bash
 cd app/ytsoar
-go build ./... && go vet ./...     # three binaries: api, worker, sandbox
-go test ./... -count=1             # localexec tests run real python3/node
-go generate ./...                  # regenerate mocks
+go build ./... && go vet ./...     # three programs: api, worker, sandbox
+go test ./... -count=1             # the localexec tests run real python3 and node
+go generate ./...                  # make the mocks again
 
-make migrate                       # goose migrations
-sqlc generate                      # after editing db/queries/*.sql
+make migrate                       # run the goose migrations
+make sqlc                          # run after you change db/queries/*.sql
 ```
 
-Conventions: sqlc + pgx, goose date-stamped migrations, squirrel for dynamic
-list queries, `types.Nullable[T]` for partial updates, mockgen on every port,
-logger injected everywhere.
+Conventions: The code uses sqlc and pgx. Migrations are goose files with a date in the name. Squirrel builds the dynamic list queries. `types.Nullable[T]` supports partial updates. Every port has a mockgen mock. Each part gets the logger from its caller.
 
 ### Debugging in Docker
 
-Start the stack with the debug override - it rebuilds each Go binary without
-optimizations and runs it under a headless [Delve](https://github.com/go-delve/delve):
+Start the stack with the debug override. It builds each Go program without optimizations. It runs each program under a headless [Delve](https://github.com/go-delve/delve):
 
 ```bash
 docker compose -f docker/dev.docker-compose.yml -f docker/debug.docker-compose.yml up -d
 ```
 
-Then hit F5 in VS Code with one of the `Attach to …` configs in
-`.vscode/launch.json` (api :2345, worker :2346, sandbox :2347) and set
-breakpoints. Air still hot-reloads on save; each reload restarts Delve, so
-re-attach after a rebuild.
+Then press F5 in VS Code. Choose one of the `Attach to …` configurations in `.vscode/launch.json` (api :2345, worker :2346, sandbox :2347). Set breakpoints. Air still reloads the program when you save. Each reload restarts Delve. Attach again after a rebuild.
 
 ## Repository layout
 
@@ -176,24 +187,7 @@ app/proto/         connector_runtime.proto (worker <-> sandbox contract)
 docker/            dev compose stack
 ```
 
-## Branching
-
-The `condition` builtin works like a switch statement: it checks an ordered
-list of cases and takes the first one that matches, or falls to **else** if
-none do. Two modes:
-
-- **Switch** - a simple comparison per case: left value, operator (`==`,
-  `!=`, `>`, `contains`, …), right value. No templating needed.
-- **Switch (advanced expression)** - a full template expression per case,
-  e.g. `{{ var.steps["scan"].score > 90 }}`, taken when it's truthy.
-
-In the editor, connect the condition node to its destination nodes, then pick
-which node each case (and **else**) routes to. At run time, only the matching
-branch runs - nodes on branches that weren't taken are marked `skipped`, and
-that skip cascades down their subtree. A node fed by multiple branches still
-runs as long as at least one of them was taken.
-
 ## Roadmap
 
-- More built-in Go connectors (transforms, enrichment)
-- Alerts and incidents alongside playbooks
+- More built-in Go connectors (transforms and enrichment)
+- Alerts and incidents together with playbooks
