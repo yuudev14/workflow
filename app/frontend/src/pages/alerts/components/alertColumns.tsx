@@ -1,11 +1,10 @@
 import { Link } from "react-router";
 import * as React from "react";
 
-import type { ColumnDef } from "@tanstack/react-table";
 import { Copy } from "lucide-react";
 
 import type { Alert } from "@/services/alerts/alerts.schema";
-import { Glyph, InitialsAvatar, LinkChip, StatusPill } from "@/components/soar";
+import { type Column, Glyph, InitialsAvatar, LinkChip, StatusPill } from "@/components/soar";
 import { cn, readableDate, relativeAge } from "@/lib/utils";
 import { SEV_STRIPE, SOURCE_LABEL, sourceGlyph } from "./alertPresentation";
 
@@ -19,7 +18,7 @@ export const ALERT_COLUMN_DEFAULTS = {
   run_count: false,
 };
 
-export const selectColumn = <T,>(): ColumnDef<T, any> => ({
+export const selectColumn = <T,>(): Column<T> => ({
   id: "select",
   meta: { locked: true },
   header: ({ table }) => (
@@ -47,7 +46,7 @@ export const selectColumn = <T,>(): ColumnDef<T, any> => ({
   ),
 });
 
-export function alertColumns(): ColumnDef<Alert, any>[] {
+export function alertColumns(): Column<Alert>[] {
   return [
     selectColumn<Alert>(),
     {

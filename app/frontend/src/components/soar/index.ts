@@ -27,7 +27,7 @@ export { SearchInput } from "./SearchInput";
 export { Glyph, connectorGlyph, type GlyphTone } from "./Glyph";
 export { KVList, FieldGrid, type KV } from "./DataLists";
 export { PageShell } from "./PageShell";
-export { DataTable } from "./DataTable";
+export { DataTable, type Column } from "./DataTable";
 export { ColumnPicker, useColumnVisibility } from "./ColumnPicker";
 export { RunPlaybookDialog } from "./RunPlaybookDialog";
 export { PaginationBar } from "./PaginationBar";

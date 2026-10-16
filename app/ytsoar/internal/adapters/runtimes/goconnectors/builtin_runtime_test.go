@@ -96,7 +96,7 @@ func TestHTTPRequestConnector(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, "yes", r.Header.Get("X-Custom"))
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(`{"items": [1, 2]}`))
+		_, _ = w.Write([]byte(`{"items": [1, 2]}`))
 	}))
 	defer server.Close()
 

@@ -50,7 +50,7 @@ func toDomainPlaybook(row db.Playbook) domain.Playbooks {
 func toDomainPlaybookHistory(row db.PlaybookHistory) domain.PlaybookHistory {
 	var result any
 	if len(row.Result) > 0 {
-		json.Unmarshal(row.Result, &result)
+		_ = json.Unmarshal(row.Result, &result)
 	}
 	return domain.PlaybookHistory{
 		ID:          fromPgUUID(row.ID),

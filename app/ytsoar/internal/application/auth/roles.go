@@ -54,10 +54,7 @@ func (s *Service) UpdateRole(ctx context.Context, actorID, id uuid.UUID, input U
 		return domain.RoleWithPermissions{}, err
 	}
 
-	if _, err := s.roles.Update(ctx, id, UpdateRoleParams{
-		Name:        input.Name,
-		Description: input.Description,
-	}); err != nil {
+	if _, err := s.roles.Update(ctx, id, UpdateRoleParams(input)); err != nil {
 		return domain.RoleWithPermissions{}, err
 	}
 

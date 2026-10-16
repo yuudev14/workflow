@@ -121,6 +121,7 @@ A job is a task that a worker does later. River stores the jobs in Postgres.
 ## Tests
 
 - After each change, run this in `app/ytsoar`: `go build ./... && go vet ./... && go test ./...`
+- CI (`.github/workflows/ci.yml`) runs on each PR: golangci-lint, the Go tests with Postgres, ESLint, `tsc` and the Playwright tests with Postgres and Keycloak. Run `golangci-lint run` in `app/ytsoar` and `npm run lint` in `app/frontend` before a push.
 - Some tests need a real Postgres (the SQL status rules, the job queue and the status events). They skip unless `TEST_DATABASE_URL` is set. Mocks hide SQL type errors, so run these tests when you change a query.
 - Integration tests are in `tests/integration`, one file for each area. `TestMain` starts the api, the worker and the sandbox (`app.NewAPI`, `app.NewWorker`, `app.NewSandbox`) with a real Postgres. The tests send real HTTP requests and sign in as the seeded admin. `runs_test.go` runs playbooks through the worker and the sandbox. Use a new, empty database: the admin seed does nothing when an admin already exists. Run them with `TEST_DATABASE_URL=... go test -p 1 ./...`, because the job queue tests share the queue.
 - Name the tests in describe/it style with nested `t.Run`: the outer name is the route or the area (`POST /alerts`), the inner name says what it does (`returns 400 when the title is missing`). Use table cases (`expectAll`) for request and status checks. Put a new test in the file of its area.

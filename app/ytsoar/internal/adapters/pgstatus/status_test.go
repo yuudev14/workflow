@@ -41,7 +41,7 @@ func TestNotifierReachesTheListenersHub(t *testing.T) {
 	defer pool.Close()
 
 	hub := make(fakeHub, 2)
-	go NewListener(logger.NewNop(), pool, fakeReaders{}, fakeReaders{}, hub).Start(ctx)
+	go func() { _ = NewListener(logger.NewNop(), pool, fakeReaders{}, fakeReaders{}, hub).Start(ctx) }()
 	time.Sleep(500 * time.Millisecond) // let it LISTEN before the first NOTIFY
 
 	taskID, runID := uuid.New(), uuid.New()

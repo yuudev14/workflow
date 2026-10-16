@@ -6,7 +6,6 @@ import (
 	"github.com/alexedwards/argon2id"
 )
 
-
 type Argon2Hasher struct {
 	params *argon2id.Params
 }
