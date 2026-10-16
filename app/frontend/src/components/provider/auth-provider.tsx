@@ -1,13 +1,10 @@
-"use client";
-
+import { useLocation, useNavigate } from "react-router";
 import React, { createContext, useCallback, useContext, useMemo } from "react";
-import { useRouter } from "next/navigation";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 import AuthService from "@/services/auth/auth";
 import { AuthUser, Me } from "@/services/auth/auth.schema";
 import { isPublicRoute } from "@/settings/routes";
-import { usePathname } from "next/navigation";
 
 export const ME_QUERY_KEY = ["auth", "me"];
 
@@ -37,8 +34,8 @@ const NO_PERMISSIONS: Record<string, string[]> = {};
 const NO_ROLES: string[] = [];
 
 const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const pathname = usePathname();
-  const router = useRouter();
+  const pathname = useLocation().pathname;
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
 
   const isPublic = isPublicRoute(pathname);
@@ -69,9 +66,9 @@ const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
       // Clear the cache before leaving: another user signing in on this
       // browser must never see the previous one's data.
       queryClient.clear();
-      router.replace("/login");
+      navigate("/login", { replace: true });
     }
-  }, [queryClient, router]);
+  }, [queryClient, navigate]);
 
   const permissions = data?.permissions ?? NO_PERMISSIONS;
 
@@ -110,7 +107,7 @@ const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
   // /me failed even after the interceptor's refresh attempt: no usable session.
   if (isError || !data) {
     if (typeof window !== "undefined" && window.location.pathname !== "/login") {
-      router.replace("/login");
+      navigate("/login", { replace: true });
     }
     return null;
   }

@@ -1,8 +1,6 @@
-"use client";
-
+import { Link, useLocation } from "react-router";
 import React from "react";
-import { usePathname } from "next/navigation";
-import Link from "next/link";
+
 
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Separator } from "@/components/ui/separator";
@@ -41,7 +39,7 @@ function label(seg: string) {
 }
 
 const Header = () => {
-  const pathname = usePathname();
+  const pathname = useLocation().pathname;
   const segments = pathname.split("/").filter(Boolean);
 
   const crumbs = segments.map((seg, i) => ({
@@ -69,7 +67,7 @@ const Header = () => {
                     <BreadcrumbPage>{c.label}</BreadcrumbPage>
                   ) : (
                     <BreadcrumbLink asChild>
-                      <Link href={c.href}>{c.label}</Link>
+                      <Link to={c.href}>{c.label}</Link>
                     </BreadcrumbLink>
                   )}
                 </BreadcrumbItem>

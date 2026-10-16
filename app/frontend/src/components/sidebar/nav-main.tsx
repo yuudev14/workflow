@@ -1,8 +1,6 @@
-"use client";
-
+import { Link, useLocation } from "react-router";
 import { type LucideIcon } from "lucide-react";
-import Link from "next/link";
-import { usePathname } from "next/navigation";
+
 
 import {
   SidebarGroup,
@@ -38,7 +36,7 @@ function isActive(pathname: string, url: string) {
 }
 
 export function NavMain({ sections }: { sections: NavSection[] }) {
-  const pathname = usePathname();
+  const pathname = useLocation().pathname;
   const { hasPermission } = useAuth();
 
   const visible = sections
@@ -63,7 +61,7 @@ export function NavMain({ sections }: { sections: NavSection[] }) {
                   tooltip={item.title}
                   isActive={isActive(pathname, item.match ?? item.url)}
                 >
-                  <Link href={item.url}>
+                  <Link to={item.url}>
                     <item.icon />
                     <span>{item.title}</span>
                   </Link>

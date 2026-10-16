@@ -1,4 +1,3 @@
-"use client";
 
 import * as React from "react";
 import { Columns3 } from "lucide-react";

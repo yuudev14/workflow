@@ -13,11 +13,11 @@ rebuild-playbook-service:
 start-dev:
 		docker compose -f ./docker/dev.docker-compose.yml up -d && \
 		cd ./app/frontend && \
-		npm run dev -- --hostname 0.0.0.0
+		npm run dev -- --host 0.0.0.0
 
 start-frontend:
 		cd ./app/frontend && \
-		npm run dev -- --hostname 0.0.0.0
+		npm run dev -- --host 0.0.0.0
 
 lint:
 		cd ./app/frontend && \
@@ -35,7 +35,7 @@ show-logs:
 start-debug:
 		docker compose -f ./docker/dev.docker-compose.yml -f ./docker/debug.docker-compose.yml up -d && \
 		cd ./app/frontend && \
-		npm run dev -- --hostname 0.0.0.0
+		npm run dev -- --host 0.0.0.0
 
 # Dev/demo alert data. Stdlib python on the HOST, talking to the dev stack over
 # HTTP - see tools/alertgen/README.md. Not shipped, nothing imports it.
