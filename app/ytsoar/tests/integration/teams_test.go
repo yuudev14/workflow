@@ -14,42 +14,54 @@ func TestTeams(t *testing.T) {
 	name := unique("blue")
 	id := c.create(t, base, J{"name": name})["id"].(string)
 
-	t.Run("create", func(t *testing.T) {
+	t.Run("POST /teams", func(t *testing.T) {
 		c.expectAll(t, []request{
-			{"no name", http.MethodPost, base, J{}, http.StatusBadRequest},
-			{"name in use", http.MethodPost, base, J{"name": name}, http.StatusConflict},
-			{"bad member id", http.MethodPost, base, J{"name": unique("t"), "member_ids": []string{"x"}}, http.StatusBadRequest},
+			{"returns 400 when the name is missing", http.MethodPost, base, J{}, http.StatusBadRequest},
+			{"returns 409 when the name is in use", http.MethodPost, base, J{"name": name}, http.StatusConflict},
+			{"returns 400 when a member id is not a uuid", http.MethodPost, base, J{"name": unique("t"), "member_ids": []string{"x"}}, http.StatusBadRequest},
 		})
 	})
 
-	t.Run("read", func(t *testing.T) {
-		c.get(t, base+"/"+id)
-		assert.Contains(t, ids(c.get(t, base)), id)
-		c.expect(t, http.StatusNotFound, http.MethodGet, base+"/"+uuid.NewString(), nil)
-	})
-
-	t.Run("update", func(t *testing.T) {
-		c.expectAll(t, []request{
-			{"description", http.MethodPut, base + "/" + id, J{"description": "the blue team"}, http.StatusOK},
-			{"unknown team", http.MethodPut, base + "/" + uuid.NewString(), J{"description": "x"}, http.StatusNotFound},
+	t.Run("GET /teams", func(t *testing.T) {
+		t.Run("lists the team", func(t *testing.T) {
+			assert.Contains(t, ids(c.get(t, base)), id)
+		})
+		t.Run("returns the team", func(t *testing.T) {
+			c.get(t, base+"/"+id)
+		})
+		t.Run("returns 404 when the team does not exist", func(t *testing.T) {
+			c.expect(t, http.StatusNotFound, http.MethodGet, base+"/"+uuid.NewString(), nil)
 		})
 	})
 
-	t.Run("a team gives its roles to its members", func(t *testing.T) {
+	t.Run("PUT /teams/:id", func(t *testing.T) {
+		c.expectAll(t, []request{
+			{"changes the description", http.MethodPut, base + "/" + id, J{"description": "the blue team"}, http.StatusOK},
+			{"returns 404 when the team does not exist", http.MethodPut, base + "/" + uuid.NewString(), J{"description": "x"}, http.StatusNotFound},
+		})
+	})
+
+	t.Run("PUT /teams/:id/members and /roles", func(t *testing.T) {
 		roleID := c.create(t, "/api/roles/v1", J{"name": unique("reader"), "permissions": J{"alerts": []string{"read"}}})["id"].(string)
 		userID, user := newUser(t)
 		user.expect(t, http.StatusForbidden, http.MethodGet, "/api/alerts/v1", nil)
-
-		c.expect(t, http.StatusOK, http.MethodPut, base+"/"+id+"/members", J{"member_ids": []string{userID}})
 		c.expect(t, http.StatusOK, http.MethodPut, base+"/"+id+"/roles", J{"role_ids": []string{roleID}})
-		user.get(t, "/api/alerts/v1")
 
-		c.expect(t, http.StatusOK, http.MethodPut, base+"/"+id+"/members", J{"member_ids": []string{}})
-		user.expect(t, http.StatusForbidden, http.MethodGet, "/api/alerts/v1", nil)
+		t.Run("gives the team roles to a new member", func(t *testing.T) {
+			c.expect(t, http.StatusOK, http.MethodPut, base+"/"+id+"/members", J{"member_ids": []string{userID}})
+			user.get(t, "/api/alerts/v1")
+		})
+
+		t.Run("takes the team roles from a removed member", func(t *testing.T) {
+			c.expect(t, http.StatusOK, http.MethodPut, base+"/"+id+"/members", J{"member_ids": []string{}})
+			user.expect(t, http.StatusForbidden, http.MethodGet, "/api/alerts/v1", nil)
+		})
 	})
 
-	t.Run("delete", func(t *testing.T) {
-		c.expect(t, http.StatusNoContent, http.MethodDelete, base+"/"+id, nil)
-		c.expect(t, http.StatusNotFound, http.MethodGet, base+"/"+id, nil)
+	t.Run("DELETE /teams/:id", func(t *testing.T) {
+		t.Run("deletes the team", func(t *testing.T) {
+			c.expect(t, http.StatusNoContent, http.MethodDelete, base+"/"+id, nil)
+			c.expect(t, http.StatusNotFound, http.MethodGet, base+"/"+id, nil)
+		})
 	})
 }

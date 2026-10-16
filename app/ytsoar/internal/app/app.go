@@ -6,11 +6,14 @@ import (
 	"fmt"
 
 	"github.com/gin-gonic/gin"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/riverqueue/river"
 
 	"github.com/yuudev14/ytsoar/db"
 	"github.com/yuudev14/ytsoar/internal/adapters/connectorstore"
 	"github.com/yuudev14/ytsoar/internal/adapters/depsinstall"
+	"github.com/yuudev14/ytsoar/internal/adapters/grpcserver"
 	api "github.com/yuudev14/ytsoar/internal/adapters/http"
 	"github.com/yuudev14/ytsoar/internal/adapters/http/handlers"
 	"github.com/yuudev14/ytsoar/internal/adapters/http/middleware"
@@ -18,16 +21,22 @@ import (
 	"github.com/yuudev14/ytsoar/internal/adapters/oidcclient"
 	"github.com/yuudev14/ytsoar/internal/adapters/pgstatus"
 	"github.com/yuudev14/ytsoar/internal/adapters/repository"
+	"github.com/yuudev14/ytsoar/internal/adapters/runtimes/goconnectors"
+	"github.com/yuudev14/ytsoar/internal/adapters/runtimes/grpcruntime"
+	"github.com/yuudev14/ytsoar/internal/adapters/runtimes/localexec"
 	"github.com/yuudev14/ytsoar/internal/adapters/security"
+	"github.com/yuudev14/ytsoar/internal/adapters/templating"
 	"github.com/yuudev14/ytsoar/internal/adapters/ws"
 	"github.com/yuudev14/ytsoar/internal/application/alerts"
 	"github.com/yuudev14/ytsoar/internal/application/auth"
 	"github.com/yuudev14/ytsoar/internal/application/connectors"
 	"github.com/yuudev14/ytsoar/internal/application/edges"
+	"github.com/yuudev14/ytsoar/internal/application/execution"
 	"github.com/yuudev14/ytsoar/internal/application/incidents"
 	"github.com/yuudev14/ytsoar/internal/application/playbooks"
 	"github.com/yuudev14/ytsoar/internal/application/tasks"
 	"github.com/yuudev14/ytsoar/internal/config"
+	"github.com/yuudev14/ytsoar/internal/domain"
 	"github.com/yuudev14/ytsoar/internal/logger"
 )
 
@@ -168,4 +177,104 @@ func NewAPI(ctx context.Context, cfg config.Config, appLogger logger.Logger, poo
 		middleware.AuthFromRefreshCookie(appLogger, authService),
 		middleware.NewPermissionMiddleware(appLogger, authService),
 	), nil
+}
+
+// NewWorker connects the parts of the worker program and returns its job
+// queue client. The caller starts and stops it.
+func NewWorker(cfg config.Config, appLogger logger.Logger, pool *pgxpool.Pool) (*river.Client[pgx.Tx], error) {
+	queries := db.New(pool)
+
+	playbookRepository := repository.NewPlaybookRepository(appLogger, queries, pool)
+	taskRepository := repository.NewTaskRepositoryImpl(appLogger, queries, pool)
+
+	playbookService := playbooks.NewPlaybookService(appLogger, playbookRepository)
+	taskService := tasks.NewTaskServiceImpl(taskRepository)
+
+	// The worker never runs user code. SandboxRuntime sends every other task
+	// (python/js/ts connectors, code snippets) to the sandbox over gRPC. The
+	// built-in connectors are OUR code, so BuiltinRuntime runs them in the worker.
+	sandboxRuntime, err := grpcruntime.NewSandboxRuntime(appLogger, cfg.SandboxAddr)
+	if err != nil {
+		return nil, fmt.Errorf("failed to setup sandbox runtime client: %w", err)
+	}
+
+	builtinRuntime := goconnectors.NewBuiltinRuntime(appLogger, templating.NewGonjaEngine(), cfg.ConnectorsDir)
+	builtinRuntime.Register("http_request", goconnectors.NewHTTPRequestConnector())
+	builtinRuntime.Register("condition", goconnectors.NewConditionConnector())
+	byConnector := map[string]execution.TaskRuntime{}
+	for _, id := range builtinRuntime.IDs() {
+		byConnector[id] = builtinRuntime
+	}
+	resolver := execution.NewStaticResolver(sandboxRuntime, byConnector)
+
+	executor := execution.NewExecutor(
+		appLogger,
+		taskService,
+		playbookService,
+		resolver,
+		pgstatus.NewNotifier(pool),
+		cfg.MaxParallelNodes,
+		cfg.NodeTimeout,
+	)
+	playbookRunLoader := playbooks.NewRunLoader(playbookService, taskService)
+	runWorker := jobs.NewRunWorker(appLogger, playbookRunLoader, executor)
+
+	return jobs.NewWorkerClient(
+		pool,
+		runWorker,
+		cfg.PlaybookConcurrency, cfg.RunTimeout, cfg.WorkerStopGrace)
+}
+
+// NewSandbox connects the parts of the sandbox program and returns its gRPC
+// server. The sandbox has no database access.
+func NewSandbox(cfg config.Config, appLogger logger.Logger) (*grpcserver.RuntimeServer, error) {
+	// Code nodes are pinned first; connector ids from the unified tree never
+	// override them.
+	byConnector := map[string]execution.TaskRuntime{
+		"code_snippet_py": localexec.NewPythonSnippetRuntime(appLogger, cfg.PythonMemoryLimitMB),
+		"code_snippet_js": localexec.NewNodeJSSnippetRuntime(appLogger, cfg.NodeMemoryLimitMB),
+	}
+
+	// Python connectors are the default: any connector without an explicit
+	// mapping runs through the python connector harness. Connectors whose
+	// info.json declares "runtime": "node" run through the node harness -
+	// checked per request, so connectors uploaded after boot route correctly
+	// without a restart.
+	var defaultRuntime execution.TaskRuntime
+	var nodeJSConnectorRuntime execution.TaskRuntime
+	if cfg.ConnectorsDir != "" {
+		pythonConnectorRuntime, err := localexec.NewPythonConnectorRuntime(appLogger, cfg.ConnectorsDir, cfg.PythonMemoryLimitMB)
+		if err != nil {
+			return nil, fmt.Errorf("failed to setup python connector runtime: %w", err)
+		}
+		defaultRuntime = pythonConnectorRuntime
+
+		nodeJSRuntime, err := localexec.NewNodeJSConnectorRuntime(appLogger, cfg.ConnectorsDir, cfg.NodeMemoryLimitMB)
+		if err != nil {
+			return nil, fmt.Errorf("failed to setup js connector runtime: %w", err)
+		}
+		nodeJSConnectorRuntime = nodeJSRuntime
+	} else {
+		appLogger.Warn("CONNECTORS_DIR is empty: connectors are disabled, only code nodes will run")
+	}
+
+	// DynamicResolver runs in the sandbox. It picks the runtime for each task that
+	// the worker sends over gRPC, and it reads info.json on every call, so a
+	// connector that you upload works with no restart.
+	resolver := execution.DynamicResolver(func(task domain.Tasks) (execution.TaskRuntime, error) {
+		if task.ConnectorID != nil {
+			if runtime, ok := byConnector[*task.ConnectorID]; ok {
+				return runtime, nil
+			}
+			if nodeJSConnectorRuntime != nil && localexec.IsNodeJSConnector(cfg.ConnectorsDir, *task.ConnectorID) {
+				return nodeJSConnectorRuntime, nil
+			}
+		}
+		if defaultRuntime == nil {
+			return nil, fmt.Errorf("no runtime registered for connector %v", task.ConnectorID)
+		}
+		return defaultRuntime, nil
+	})
+	return grpcserver.NewRuntimeServer(appLogger, resolver, cfg.NodeTimeout), nil
+
 }

@@ -15,24 +15,29 @@ func TestAuthProviders(t *testing.T) {
 	name := unique("keycloak")
 	id := c.create(t, base, J{"type": "oidc", "name": name, "enabled": true, "config": config})["id"].(string)
 
-	t.Run("create", func(t *testing.T) {
+	t.Run("POST /auth-providers", func(t *testing.T) {
 		c.expectAll(t, []request{
-			{"no name", http.MethodPost, base, J{"type": "oidc"}, http.StatusBadRequest},
-			{"name in use", http.MethodPost, base, J{"type": "oidc", "name": name, "config": config}, http.StatusConflict},
+			{"returns 400 when the name is missing", http.MethodPost, base, J{"type": "oidc"}, http.StatusBadRequest},
+			{"returns 409 when the name is in use", http.MethodPost, base, J{"type": "oidc", "name": name, "config": config}, http.StatusConflict},
 		})
 	})
 
-	t.Run("read", func(t *testing.T) {
-		assert.Contains(t, ids(c.get(t, base)), id)
-		// An enabled provider is on the login page.
-		assert.Contains(t, ids(anonymous(t).get(t, "/api/auth/v1/providers")), id)
+	t.Run("GET /auth-providers", func(t *testing.T) {
+		t.Run("lists the provider", func(t *testing.T) {
+			assert.Contains(t, ids(c.get(t, base)), id)
+		})
+		t.Run("shows an enabled provider on the login page", func(t *testing.T) {
+			assert.Contains(t, ids(anonymous(t).get(t, "/api/auth/v1/providers")), id)
+		})
 	})
 
-	t.Run("update", func(t *testing.T) {
+	t.Run("PUT /auth-providers/:id", func(t *testing.T) {
 		c.expectAll(t, []request{
-			{"disable", http.MethodPut, base + "/" + id, J{"enabled": false}, http.StatusOK},
-			{"unknown provider", http.MethodPut, base + "/" + uuid.NewString(), J{"name": "x"}, http.StatusNotFound},
+			{"returns 404 when the provider does not exist", http.MethodPut, base + "/" + uuid.NewString(), J{"name": "x"}, http.StatusNotFound},
+			{"disables the provider", http.MethodPut, base + "/" + id, J{"enabled": false}, http.StatusOK},
 		})
-		assert.NotContains(t, ids(anonymous(t).get(t, "/api/auth/v1/providers")), id)
+		t.Run("removes a disabled provider from the login page", func(t *testing.T) {
+			assert.NotContains(t, ids(anonymous(t).get(t, "/api/auth/v1/providers")), id)
+		})
 	})
 }

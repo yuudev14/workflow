@@ -1,10 +1,13 @@
-// Package integration holds the API integration tests, like Rails request
-// specs. They send real HTTP requests through the production router, the
-// services and a migrated Postgres. Each file tests one area of the API.
+// Package integration holds the integration tests. TestMain starts the api,
+// the worker and the sandbox in this process, with a migrated Postgres. The
+// tests send real HTTP requests, and the worker runs the playbooks in the
+// sandbox. Each file tests one area.
 //
 // Use a new, empty database:
 //
-//	TEST_DATABASE_URL=postgres://... go test ./tests/integration
+//	TEST_DATABASE_URL=postgres://... go test -p 1 ./...
+//
+// Use -p 1: the job queue tests in another package use the same queue.
 package integration
 
 import (
@@ -12,10 +15,12 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net"
 	"net/http"
 	"net/http/cookiejar"
 	"net/http/httptest"
 	"os"
+	"path/filepath"
 	"regexp"
 	"strings"
 	"testing"
@@ -75,6 +80,26 @@ func run(m *testing.M, dbURL string) int {
 	server := httptest.NewServer(router)
 	defer server.Close()
 	serverURL, routes = server.URL, router.Routes()
+
+	// The worker and the sandbox use the connectors of the repository.
+	runCfg := cfg
+	runCfg.ConnectorsDir = must(filepath.Abs("../../../connectors"))
+	runCfg.SandboxAddr = freeAddr()
+	runCfg.NodeTimeout = stepTimeout
+	sandbox, err := app.NewSandbox(runCfg, logger.NewNop())
+	if err != nil {
+		panic(err)
+	}
+	go sandbox.Serve(runCfg.SandboxAddr)
+	worker, err := app.NewWorker(runCfg, logger.NewNop(), pool)
+	if err != nil {
+		panic(err)
+	}
+	if err := worker.Start(ctx); err != nil {
+		panic(err)
+	}
+	defer worker.Stop(context.Background())
+
 	return m.Run()
 }
 
@@ -172,6 +197,22 @@ func (c *client) expectAll(t *testing.T, requests []request) {
 		t.Run(r.name, func(t *testing.T) { c.expect(t, r.want, r.method, r.path, r.body) })
 	}
 }
+
+// freeAddr returns a local address with a free port.
+func freeAddr() string {
+	l := must(net.Listen("tcp", "127.0.0.1:0"))
+	defer l.Close()
+	return l.Addr().String()
+}
+
+func must[T any](v T, err error) T {
+	if err != nil {
+		panic(err)
+	}
+	return v
+}
+
+func toJSON(v any) string { return string(must(json.Marshal(v))) }
 
 func unique(name string) string { return name + "-" + uuid.NewString()[:8] }
 

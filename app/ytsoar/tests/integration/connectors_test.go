@@ -59,24 +59,39 @@ func TestConnectors(t *testing.T) {
 	const base = "/api/connectors/v1"
 	c := admin(t)
 
-	t.Run("upload", func(t *testing.T) {
-		c.expect(t, http.StatusBadRequest, http.MethodPost, base, nil)
-		code, _ := c.upload(t, base, []byte("not a zip"))
-		assert.Equal(t, http.StatusBadRequest, code, "not a zip")
-
-		code, out := c.upload(t, base, zipDir(t, "../../../connectors/sample_js"))
-		require.Equal(t, http.StatusCreated, code, out)
+	t.Run("POST /connectors", func(t *testing.T) {
+		t.Run("returns 400 when the file is missing", func(t *testing.T) {
+			c.expect(t, http.StatusBadRequest, http.MethodPost, base, nil)
+		})
+		t.Run("returns 400 when the file is not a zip", func(t *testing.T) {
+			code, _ := c.upload(t, base, []byte("not a zip"))
+			assert.Equal(t, http.StatusBadRequest, code)
+		})
+		t.Run("installs a connector from a zip", func(t *testing.T) {
+			code, out := c.upload(t, base, zipDir(t, "../../../connectors/sample_js"))
+			require.Equal(t, http.StatusCreated, code, out)
+		})
 	})
 
-	t.Run("read", func(t *testing.T) {
-		assert.Contains(t, ids(c.get(t, base)), "sample_js")
-		c.get(t, base+"/sample_js")
-		c.expect(t, http.StatusNotFound, http.MethodGet, base+"/unknown", nil)
+	t.Run("GET /connectors", func(t *testing.T) {
+		t.Run("lists the connector", func(t *testing.T) {
+			assert.Contains(t, ids(c.get(t, base)), "sample_js")
+		})
+		t.Run("returns the connector", func(t *testing.T) {
+			c.get(t, base+"/sample_js")
+		})
+		t.Run("returns 404 when the connector does not exist", func(t *testing.T) {
+			c.expect(t, http.StatusNotFound, http.MethodGet, base+"/unknown", nil)
+		})
 	})
 
-	t.Run("delete", func(t *testing.T) {
-		c.expect(t, http.StatusNoContent, http.MethodDelete, base+"/sample_js", nil)
-		c.expect(t, http.StatusNotFound, http.MethodGet, base+"/sample_js", nil)
-		c.expect(t, http.StatusNotFound, http.MethodDelete, base+"/sample_js", nil)
+	t.Run("DELETE /connectors/:id", func(t *testing.T) {
+		t.Run("deletes the connector", func(t *testing.T) {
+			c.expect(t, http.StatusNoContent, http.MethodDelete, base+"/sample_js", nil)
+			c.expect(t, http.StatusNotFound, http.MethodGet, base+"/sample_js", nil)
+		})
+		t.Run("returns 404 when the connector does not exist", func(t *testing.T) {
+			c.expect(t, http.StatusNotFound, http.MethodDelete, base+"/sample_js", nil)
+		})
 	})
 }

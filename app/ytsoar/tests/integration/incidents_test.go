@@ -13,32 +13,41 @@ func TestIncidents(t *testing.T) {
 	c := admin(t)
 	id := c.create(t, base, J{"title": unique("incident"), "severity": "medium"})["id"].(string)
 
-	t.Run("create", func(t *testing.T) {
+	t.Run("POST /incidents", func(t *testing.T) {
 		c.expectAll(t, []request{
-			{"no severity", http.MethodPost, base, J{"title": "x"}, http.StatusBadRequest},
-			{"unknown status", http.MethodPost, base, J{"title": "x", "severity": "low", "status": "done"}, http.StatusBadRequest},
-			{"bad alert id", http.MethodPost, base, J{"title": "x", "severity": "low", "alert_ids": []string{"x"}}, http.StatusBadRequest},
-			{"with an alert", http.MethodPost, base, J{"title": unique("i"), "severity": "low", "alert_ids": []string{newAlert(t, c)}}, http.StatusCreated},
+			{"returns 400 when the severity is missing", http.MethodPost, base, J{"title": "x"}, http.StatusBadRequest},
+			{"returns 400 when the status is unknown", http.MethodPost, base, J{"title": "x", "severity": "low", "status": "done"}, http.StatusBadRequest},
+			{"returns 400 when an alert id is not a uuid", http.MethodPost, base, J{"title": "x", "severity": "low", "alert_ids": []string{"x"}}, http.StatusBadRequest},
+			{"creates an incident with an alert", http.MethodPost, base, J{"title": unique("i"), "severity": "low", "alert_ids": []string{newAlert(t, c)}}, http.StatusCreated},
 		})
 	})
 
-	t.Run("read", func(t *testing.T) {
-		incident := c.get(t, base+"/"+id).(J)
-		assert.Equal(t, "medium", incident["severity"])
-		assert.Equal(t, []any{id}, ids(c.get(t, base+"?q="+incident["title"].(string))))
-		c.get(t, base+"/summary")
+	t.Run("GET /incidents", func(t *testing.T) {
+		t.Run("finds an incident by its title", func(t *testing.T) {
+			title := c.get(t, base+"/"+id).(J)["title"].(string)
+			assert.Equal(t, []any{id}, ids(c.get(t, base+"?q="+title)))
+		})
 		c.expectAll(t, []request{
-			{"unknown incident", http.MethodGet, base + "/" + uuid.NewString(), nil, http.StatusNotFound},
-			{"open only", http.MethodGet, base + "?open=true", nil, http.StatusOK},
-			{"unknown status filter", http.MethodGet, base + "?status=done", nil, http.StatusBadRequest},
+			{"lists only the open incidents", http.MethodGet, base + "?open=true", nil, http.StatusOK},
+			{"returns 400 when the status filter is unknown", http.MethodGet, base + "?status=done", nil, http.StatusBadRequest},
+			{"returns the summary", http.MethodGet, base + "/summary", nil, http.StatusOK},
 		})
 	})
 
-	t.Run("update", func(t *testing.T) {
+	t.Run("GET /incidents/:id", func(t *testing.T) {
+		t.Run("returns the incident", func(t *testing.T) {
+			assert.Equal(t, "medium", c.get(t, base+"/"+id).(J)["severity"])
+		})
+		t.Run("returns 404 when the incident does not exist", func(t *testing.T) {
+			c.expect(t, http.StatusNotFound, http.MethodGet, base+"/"+uuid.NewString(), nil)
+		})
+	})
+
+	t.Run("PATCH /incidents/:id", func(t *testing.T) {
 		c.expectAll(t, []request{
-			{"severity", http.MethodPatch, base + "/" + id, J{"severity": "high"}, http.StatusOK},
-			{"unknown status", http.MethodPatch, base + "/" + id + "/status", J{"status": "done"}, http.StatusBadRequest},
-			{"status", http.MethodPatch, base + "/" + id + "/status", J{"status": "contained"}, http.StatusOK},
+			{"changes the severity", http.MethodPatch, base + "/" + id, J{"severity": "high"}, http.StatusOK},
+			{"returns 400 when the status is unknown", http.MethodPatch, base + "/" + id + "/status", J{"status": "done"}, http.StatusBadRequest},
+			{"changes the status", http.MethodPatch, base + "/" + id + "/status", J{"status": "contained"}, http.StatusOK},
 		})
 		incident := c.get(t, base+"/"+id).(J)
 		assert.Equal(t, "high", incident["severity"])
@@ -46,24 +55,31 @@ func TestIncidents(t *testing.T) {
 	})
 
 	t.Run("notes", func(t *testing.T) {
-		noteID := c.create(t, base+"/"+id+"/notes", J{"body": "first"})["id"].(string)
-		c.expect(t, http.StatusOK, http.MethodPatch, base+"/"+id+"/notes/"+noteID, J{"body": "changed"})
-		assert.Len(t, items(c.get(t, base+"/"+id+"/notes")), 1)
-		c.expect(t, http.StatusNoContent, http.MethodDelete, base+"/"+id+"/notes/"+noteID, nil)
-	})
-
-	t.Run("link alerts", func(t *testing.T) {
-		alertID := newAlert(t, c)
-		c.expectAll(t, []request{
-			{"bad alert id", http.MethodPost, base + "/" + id + "/alerts", J{"alert_id": "x"}, http.StatusBadRequest},
-			{"link", http.MethodPost, base + "/" + id + "/alerts", J{"alert_id": alertID}, http.StatusNoContent},
+		t.Run("adds, changes and deletes a note", func(t *testing.T) {
+			noteID := c.create(t, base+"/"+id+"/notes", J{"body": "first"})["id"].(string)
+			c.expect(t, http.StatusOK, http.MethodPatch, base+"/"+id+"/notes/"+noteID, J{"body": "changed"})
+			assert.Len(t, items(c.get(t, base+"/"+id+"/notes")), 1)
+			c.expect(t, http.StatusNoContent, http.MethodDelete, base+"/"+id+"/notes/"+noteID, nil)
 		})
-		assert.Contains(t, ids(c.get(t, base+"/"+id).(J)["linked_alerts"]), alertID)
-		c.expect(t, http.StatusNoContent, http.MethodDelete, base+"/"+id+"/alerts/"+alertID, nil)
-		assert.NotContains(t, ids(c.get(t, base+"/"+id).(J)["linked_alerts"]), alertID)
 	})
 
-	t.Run("run a playbook", func(t *testing.T) {
-		c.expect(t, http.StatusAccepted, http.MethodPost, base+"/run", J{"playbook_id": newPlaybook(t, c), "record_ids": []string{id}})
+	t.Run("linked alerts", func(t *testing.T) {
+		t.Run("returns 400 when the alert id is not a uuid", func(t *testing.T) {
+			c.expect(t, http.StatusBadRequest, http.MethodPost, base+"/"+id+"/alerts", J{"alert_id": "x"})
+		})
+
+		t.Run("links and unlinks an alert", func(t *testing.T) {
+			alertID := newAlert(t, c)
+			c.expect(t, http.StatusNoContent, http.MethodPost, base+"/"+id+"/alerts", J{"alert_id": alertID})
+			assert.Contains(t, ids(c.get(t, base+"/"+id).(J)["linked_alerts"]), alertID)
+			c.expect(t, http.StatusNoContent, http.MethodDelete, base+"/"+id+"/alerts/"+alertID, nil)
+			assert.NotContains(t, ids(c.get(t, base+"/"+id).(J)["linked_alerts"]), alertID)
+		})
+	})
+
+	t.Run("POST /incidents/run", func(t *testing.T) {
+		t.Run("queues a run for the incident", func(t *testing.T) {
+			c.expect(t, http.StatusAccepted, http.MethodPost, base+"/run", J{"playbook_id": newPlaybook(t, c), "record_ids": []string{id}})
+		})
 	})
 }

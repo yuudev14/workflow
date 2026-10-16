@@ -8,15 +8,7 @@ import (
 	"time"
 
 	"github.com/yuudev14/ytsoar/db"
-	"github.com/yuudev14/ytsoar/internal/adapters/jobs"
-	"github.com/yuudev14/ytsoar/internal/adapters/pgstatus"
-	"github.com/yuudev14/ytsoar/internal/adapters/repository"
-	"github.com/yuudev14/ytsoar/internal/adapters/runtimes/goconnectors"
-	"github.com/yuudev14/ytsoar/internal/adapters/runtimes/grpcruntime"
-	"github.com/yuudev14/ytsoar/internal/adapters/templating"
-	"github.com/yuudev14/ytsoar/internal/application/execution"
-	"github.com/yuudev14/ytsoar/internal/application/playbooks"
-	"github.com/yuudev14/ytsoar/internal/application/tasks"
+	"github.com/yuudev14/ytsoar/internal/app"
 	"github.com/yuudev14/ytsoar/internal/config"
 	"github.com/yuudev14/ytsoar/internal/logger"
 )
@@ -34,49 +26,9 @@ func main() {
 		log.Fatalf("failed to setup DB: %v", err)
 	}
 	defer pool.Close()
-	queries := db.New(pool)
-
-	playbookRepository := repository.NewPlaybookRepository(appLogger, queries, pool)
-	taskRepository := repository.NewTaskRepositoryImpl(appLogger, queries, pool)
-
-	playbookService := playbooks.NewPlaybookService(appLogger, playbookRepository)
-	taskService := tasks.NewTaskServiceImpl(taskRepository)
-
-	// The worker never runs user code. SandboxRuntime sends every other task
-	// (python/js/ts connectors, code snippets) to the sandbox over gRPC. The
-	// built-in connectors are OUR code, so BuiltinRuntime runs them in the worker.
-	sandboxRuntime, err := grpcruntime.NewSandboxRuntime(appLogger, cfg.SandboxAddr)
+	riverClient, err := app.NewWorker(cfg, appLogger, pool)
 	if err != nil {
-		log.Fatalf("failed to setup sandbox runtime client: %v", err)
-	}
-
-	builtinRuntime := goconnectors.NewBuiltinRuntime(appLogger, templating.NewGonjaEngine(), cfg.ConnectorsDir)
-	builtinRuntime.Register("http_request", goconnectors.NewHTTPRequestConnector())
-	builtinRuntime.Register("condition", goconnectors.NewConditionConnector())
-	byConnector := map[string]execution.TaskRuntime{}
-	for _, id := range builtinRuntime.IDs() {
-		byConnector[id] = builtinRuntime
-	}
-	resolver := execution.NewStaticResolver(sandboxRuntime, byConnector)
-
-	executor := execution.NewExecutor(
-		appLogger,
-		taskService,
-		playbookService,
-		resolver,
-		pgstatus.NewNotifier(pool),
-		cfg.MaxParallelNodes,
-		cfg.NodeTimeout,
-	)
-	playbookRunLoader := playbooks.NewRunLoader(playbookService, taskService)
-	runWorker := jobs.NewRunWorker(appLogger, playbookRunLoader, executor)
-
-	riverClient, err := jobs.NewWorkerClient(
-		pool,
-		runWorker,
-		cfg.PlaybookConcurrency, cfg.RunTimeout, cfg.WorkerStopGrace)
-	if err != nil {
-		log.Fatalf("failed to setup job queue: %v", err)
+		log.Fatal(err)
 	}
 	// Do not use ctx here. A SIGTERM cancels ctx and stops the running playbooks.
 	// Stop below lets them finish.

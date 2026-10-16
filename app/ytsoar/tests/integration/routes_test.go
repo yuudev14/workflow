@@ -9,7 +9,7 @@ import (
 
 // These tests read the routes from the router, so a new route is tested too.
 func TestRoutes(t *testing.T) {
-	t.Run("every route that is not public needs a session", func(t *testing.T) {
+	t.Run("returns 401 on every private route without a session", func(t *testing.T) {
 		c := anonymous(t)
 		for _, r := range routes {
 			if public(r.Path) {
@@ -20,7 +20,7 @@ func TestRoutes(t *testing.T) {
 		}
 	})
 
-	t.Run("every route with a grant refuses a user with no role", func(t *testing.T) {
+	t.Run("returns 403 on every route with a grant for a user with no role", func(t *testing.T) {
 		_, user := newUser(t)
 		// Every user can read their own profile and the list of assignable users.
 		// The WebSocket uses the refresh cookie, not the token, so this test skips it.
