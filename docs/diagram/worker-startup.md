@@ -65,7 +65,7 @@ flowchart TD
 
 ## Why River starts with `context.Background()`
 
-A SIGTERM cancels `ctx`. If River used `ctx`, it would cancel the running playbooks at once. `Stop` waits for them instead. The wait is limited to `WORKER_STOP_GRACE_SECONDS` (20 seconds). After that, River cancels the running playbooks, and each one is saved as `failed`. Docker waits 60 seconds (`stop_grace_period`) before it kills the worker.
+A SIGTERM cancels `ctx`. If River used `ctx`, it would cancel the running playbooks at once. `Stop` waits for them instead. The wait is limited to `WORKER_STOP_GRACE_SECONDS` (20 seconds). After that, River cancels the running playbooks, and each one is saved as `failed`. The compose file sets `stop_grace_period: 60s`. Note: in dev, the worker runs under `air`, and we have not checked that `air` passes the stop signal to the worker.
 
 ## What the worker does not do
 

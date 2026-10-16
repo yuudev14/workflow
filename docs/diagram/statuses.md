@@ -63,7 +63,7 @@ A worker can stop in the middle of a run. Then River gives the job to another wo
 1. The new worker tries `queued -> in_progress`. The database refuses, because the run is already `in_progress`.
 2. The executor calls `recoverRun` (`internal/application/execution/executor.go`).
 3. `recoverRun` marks the run `failed` with the message "an earlier attempt started this run and did not finish it (the worker may have stopped)". The text is general, because the cause is not always a stopped worker. For example, the first status change can commit while its reply is lost.
-4. It also marks the open tasks `failed` (`FailUnfinishedTaskHistory`).
+4. It also marks the open tasks `failed` (`FailUnfinishedTaskHistory`), and it sends a `task_status` event for each one, so an open page does not show them as `in_progress`. It does this only after the state rules accepted the change, so a finished run keeps its tasks.
 5. The connectors do not run a second time.
 
 If the run is already finished, the executor does nothing.

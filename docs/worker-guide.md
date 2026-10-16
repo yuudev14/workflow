@@ -375,7 +375,7 @@ Each time a status changes, the executor calls `Notifier.Publish(ctx, "task_stat
 2. `ctx.Done()` ends. `main.go` moves on from `<-ctx.Done()`.
 3. `riverClient.Stop(stopCtx)` stops taking new jobs and waits for the running playbooks. The wait is `WORKER_STOP_GRACE_SECONDS` (20 seconds).
 4. After that time, River cancels the running playbooks. Each run is saved as `failed` with a "cancelled" error, and the worker exits.
-5. Docker (`stop_grace_period: 60s`) waits longer than the grace time, so the worker has time to save the statuses before Docker kills it.
+5. In the compose file, `stop_grace_period: 60s` is longer than the grace time, so the worker has time to save the statuses before Docker kills it. Note: in dev, the worker runs under `air`. We have not checked that `air` passes the stop signal to the worker. If it does not, the grace time does not work in dev, and the runs stay `in_progress` until River rescues the job.
 
 River started with `context.Background()`, not with `ctx`. If River used `ctx`, SIGTERM would cancel the running playbooks at once.
 

@@ -24,9 +24,11 @@ The executor saves a failed run in the database. If `Work` returned that error, 
 
 ## A run that cannot start is not retried
 
-"Cannot start" means the worker could not build the message (`LoadRunMessage` failed), or it could not set the run to `in_progress` (`ErrNotStarted`). Nothing ran. The worker calls `Abort` at once. `Abort` marks the run `failed` with the error text, and the user sees the problem right away.
+"Cannot start" means the worker could not build the message (`LoadRunMessage` failed), or it could not set the run to `in_progress` (`ErrNotStarted`). On attempt 1, nothing ran. The worker calls `Abort` at once. `Abort` marks the run `failed` with the error text, and the user sees the problem right away.
 
-We do not retry for now. A retry hides the problem for about 6 minutes (River waits 1, 16, 81 and 256 seconds), and it helps only with a short database problem.
+On attempt 2, the first attempt may have run the playbook already (it returned `ErrNotFinished`). So the error text starts with "an earlier attempt did not finish this run". The worker does not call `Abort` when the job context is cancelled (the worker is stopping). River then puts the job back without using an attempt, and a new worker starts the run.
+
+We do not retry for now. A retry hides the problem for several minutes. (The River default policy for 5 attempts waits about 1, 16, 81 and 256 seconds.) It helps only with a short database problem.
 
 If `Abort` also fails (the database is down), `Work` returns that error. River then runs attempt 2, which tries again.
 
