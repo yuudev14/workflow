@@ -8,9 +8,11 @@ The backend is Go (`app/ytsoar`). It has three programs: `api`, `worker` and `sa
 ## Where things are
 
 - `app/ytsoar/cmd/*/main.go`: starts each program and connects the parts.
+- `app/ytsoar/internal/app`: connects the parts of the `api` program (`NewAPI`). `cmd/api/main.go` and the integration tests call it.
 - `app/ytsoar/internal/domain`: types and rules.
 - `app/ytsoar/internal/application`: services (the business logic).
 - `app/ytsoar/internal/adapters`: code that talks to the outside (Postgres, HTTP, River, WebSocket).
+- `app/ytsoar/tests/integration`: API integration tests with a real Postgres.
 - `app/ytsoar/db`: SQL queries (`queries/`), migrations (`migrations/`) and the generated code.
 - `app/connectors`: connectors that playbook steps call.
 
@@ -120,7 +122,7 @@ A job is a task that a worker does later. River stores the jobs in Postgres.
 
 - After each change, run this in `app/ytsoar`: `go build ./... && go vet ./... && go test ./...`
 - Some tests need a real Postgres (the SQL status rules, the job queue and the status events). They skip unless `TEST_DATABASE_URL` is set. Mocks hide SQL type errors, so run these tests when you change a query.
-- API tests (like Rails request specs) are in `cmd/api/api_test.go`. They send real HTTP requests through `newRouter` with a real Postgres and sign in as the seeded admin. Use a new, empty database: the admin seed does nothing when an admin already exists. Add a new API test to this file.
+- API integration tests (like Rails request specs) are in `tests/integration`, one file for each API area, with `t.Run` sections and table cases. They send real HTTP requests through `app.NewAPI` with a real Postgres and sign in as the seeded admin. Use a new, empty database: the admin seed does nothing when an admin already exists. Put a new test in the file of its area.
 - Write few test cases. Put them in the existing test file and reuse the existing fixtures.
 
 ## Gotchas
