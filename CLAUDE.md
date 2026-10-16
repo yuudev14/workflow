@@ -10,6 +10,8 @@ In general less files is better than more. Do not create a new file or package w
 
 Never commit or push unless asked. The user reviews, tests and commits.
 
+Write each PR description with the `/pr-description` skill.
+
 ## Architecture
 
 Follow the dependency rule. Dependencies point inward only, and each layer sees only types it owns.
