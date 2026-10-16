@@ -12,9 +12,9 @@ require (
 	github.com/jackc/pgx/v5 v5.11.0
 	github.com/nikolalohinski/gonja/v2 v2.8.0
 	github.com/pelletier/go-toml/v2 v2.2.3
-	github.com/rabbitmq/amqp091-go v1.12.0
 	github.com/riverqueue/river v0.49.0
 	github.com/riverqueue/river/riverdriver/riverpgxv5 v0.49.0
+	github.com/riverqueue/river/rivertype v0.49.0
 	github.com/swaggo/files v1.0.1
 	github.com/swaggo/swag v1.16.3
 	go.uber.org/mock v0.6.0
@@ -58,7 +58,6 @@ require (
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/riverqueue/river/riverdriver v0.49.0 // indirect
 	github.com/riverqueue/river/rivershared v0.49.0 // indirect
-	github.com/riverqueue/river/rivertype v0.49.0 // indirect
 	github.com/shiena/ansicolor v0.0.0-20151119151921-a422bbe96644 // indirect
 	github.com/sirupsen/logrus v1.9.3 // indirect
 	github.com/tidwall/gjson v1.19.0 // indirect

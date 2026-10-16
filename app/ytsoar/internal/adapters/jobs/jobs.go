@@ -117,3 +117,15 @@ func NewWorkerClient(pool *pgxpool.Pool, worker *RunWorker, concurrency int, run
 		RescueStuckJobsAfter: runTimeout + rescueGrace,
 	})
 }
+
+// ModuleEventLogger implements contracts.ModuleEventPublisher. Nothing reacts
+// to alert and incident events yet, so it only logs them. Event-triggered
+// playbooks (on_create, on_update) will queue their runs from here.
+type ModuleEventLogger struct{ logger logger.Logger }
+
+func NewModuleEventLogger(log logger.Logger) *ModuleEventLogger { return &ModuleEventLogger{logger: log} }
+
+func (l *ModuleEventLogger) Publish(module, event string, _ any) error {
+	l.logger.Debugw("module event", "module", module, "event", event)
+	return nil
+}
