@@ -1,6 +1,4 @@
-"use client"
-
-import Link from "next/link"
+import { Link } from "react-router";
 import {
   ChevronsUpDown,
   LogOut,
@@ -92,7 +90,7 @@ export function NavUser({
             {canAdminister && (
               <>
                 <DropdownMenuItem asChild>
-                  <Link href="/settings">
+                  <Link to="/settings">
                     <Settings />
                     Settings
                   </Link>

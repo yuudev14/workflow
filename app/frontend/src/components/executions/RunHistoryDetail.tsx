@@ -1,4 +1,3 @@
-"use client";
 import React, { useMemo, useState } from "react";
 import ReactFlowPlayground from "@/components/react-flow/ReactFlowPlayground";
 

@@ -1,4 +1,3 @@
-"use client";
 
 import { useAuth } from "@/components/provider/auth-provider";
 
