@@ -55,8 +55,7 @@ func main() {
 	hub := ws.NewHub(cfg.CORSOrigins)
 	go hub.Run()
 
-	// insert-only: the API queues runs, the worker process works them
-	riverClient, err := jobs.NewInsertClient(pool)
+	runEnqueuer, err := jobs.NewEnqueuer(pool, repository.TxFromContext)
 	if err != nil {
 		log.Fatalf("failed to setup job queue: %v", err)
 	}
@@ -124,7 +123,7 @@ func main() {
 		taskService,
 		edgeService,
 		txManager,
-		jobs.NewEnqueuer(riverClient),
+		runEnqueuer,
 		hub,
 		repository.NewRecordResolverImpl(appLogger, alertRepository, incidentRepository),
 	)

@@ -107,9 +107,9 @@ func TestEnqueueRunIsTransactional(t *testing.T) {
 	_, err = pool.Exec(ctx, "TRUNCATE river_job")
 	require.NoError(t, err)
 
-	insertClient, err := NewInsertClient(pool)
+	enqueuer, err := NewEnqueuer(pool, repository.TxFromContext)
 	require.NoError(t, err)
-	enqueuer, txManager := NewEnqueuer(insertClient), repository.NewPgxTxManager(pool)
+	txManager := repository.NewPgxTxManager(pool)
 	count := func() (n int) {
 		require.NoError(t, pool.QueryRow(ctx, "SELECT count(*) FROM river_job").Scan(&n))
 		return n
