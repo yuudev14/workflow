@@ -3,7 +3,11 @@ package main
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log"
+
+	"github.com/gin-gonic/gin"
+	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/yuudev14/ytsoar/db"
 	"github.com/yuudev14/ytsoar/internal/adapters/connectorstore"
@@ -49,6 +53,19 @@ func main() {
 		log.Fatalf("failed to setup DB: %v", err)
 	}
 	defer pool.Close()
+
+	app, err := newRouter(ctx, cfg, appLogger, pool)
+	if err != nil {
+		log.Fatal(err)
+	}
+	if err := app.Run(cfg.HTTPAddr); err != nil {
+		log.Fatalf("http server: %v", err)
+	}
+}
+
+// newRouter connects every adapter and service and returns the HTTP router.
+// The API tests call it too, so they test the same wiring as production.
+func newRouter(ctx context.Context, cfg config.Config, appLogger logger.Logger, pool *pgxpool.Pool) (*gin.Engine, error) {
 	queries := db.New(pool)
 	txManager := repository.NewPgxTxManager(pool)
 
@@ -57,7 +74,7 @@ func main() {
 
 	runEnqueuer, err := jobs.NewEnqueuer(pool, repository.TxFromContext)
 	if err != nil {
-		log.Fatalf("failed to setup job queue: %v", err)
+		return nil, fmt.Errorf("failed to setup job queue: %w", err)
 	}
 
 	playbookRepository := repository.NewPlaybookRepository(appLogger, queries, pool)
@@ -111,7 +128,7 @@ func main() {
 	// Without this a fresh database has roles but no users, so nobody could
 	// sign in. It is a no-op once someone holds the admin role.
 	if err := authService.EnsureAdminUser(ctx); err != nil {
-		log.Fatalf("failed to seed admin user: %v", err)
+		return nil, fmt.Errorf("failed to seed admin user: %w", err)
 	}
 
 	alertRepository := repository.NewAlertRepositoryImpl(appLogger, queries, pool)
@@ -169,7 +186,7 @@ func main() {
 		CORSOrigins: cfg.CORSOrigins,
 	}
 
-	app := api.NewRouter(
+	return api.NewRouter(
 		routerConfig,
 		playbookHandler,
 		connectorHandler,
@@ -181,8 +198,5 @@ func main() {
 		middleware.Auth(appLogger, authService),
 		middleware.AuthFromRefreshCookie(appLogger, authService),
 		middleware.NewPermissionMiddleware(appLogger, authService),
-	)
-	if err := app.Run(cfg.HTTPAddr); err != nil {
-		log.Fatalf("http server: %v", err)
-	}
+	), nil
 }

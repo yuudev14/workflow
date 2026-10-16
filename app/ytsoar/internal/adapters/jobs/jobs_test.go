@@ -174,10 +174,16 @@ func TestEnqueueRunIsTransactional(t *testing.T) {
 	require.NoError(t, err)
 	require.NoError(t, workerClient.Start(ctx))
 	defer workerClient.Stop(ctx)
-	select {
-	case got := <-exec.ran:
-		assert.Equal(t, id, got)
-	case <-time.After(10 * time.Second):
-		t.Fatal("the committed run was never worked")
+	// Other tests can leave queued runs in the same database. The worker works them too.
+	timeout := time.After(10 * time.Second)
+	for {
+		select {
+		case got := <-exec.ran:
+			if got == id {
+				return
+			}
+		case <-timeout:
+			t.Fatal("the committed run was never worked")
+		}
 	}
 }

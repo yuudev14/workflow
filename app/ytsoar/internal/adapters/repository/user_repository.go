@@ -70,7 +70,7 @@ func (r *UserRepositoryImpl) Create(ctx context.Context, params auth.CreateUserP
 		IsActive:     true,
 	})
 	if err != nil {
-		return domain.User{}, err
+		return domain.User{}, mapUniqueViolation(err, auth.ErrUserTaken)
 	}
 	return toDomainUser(row), nil
 }
@@ -90,7 +90,7 @@ func (r *UserRepositoryImpl) Update(ctx context.Context, id uuid.UUID, params au
 	if err != nil {
 		// UPDATE … RETURNING yields no row for an unknown id, which is a 404
 		// rather than a database failure.
-		return domain.User{}, mapNoRows(err, auth.ErrUserNotFound)
+		return domain.User{}, mapUniqueViolation(mapNoRows(err, auth.ErrUserNotFound), auth.ErrUserTaken)
 	}
 	return toDomainUser(row), nil
 }

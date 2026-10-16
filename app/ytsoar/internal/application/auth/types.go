@@ -11,7 +11,9 @@ import (
 var (
 	ErrInvalidCredentials = apperr.New(apperr.Unauthorized, "invalid credentials")
 	ErrUserNotFound       = apperr.New(apperr.NotFound, "user not found")
+	ErrUserTaken          = apperr.New(apperr.Conflict, "a user with that username or email already exists")
 	ErrRoleNotFound       = apperr.New(apperr.NotFound, "role not found")
+	ErrRoleTaken          = apperr.New(apperr.Conflict, "a role with that name already exists")
 	ErrTokenNotFound      = apperr.New(apperr.NotFound, "refresh token not found")
 	ErrValidation         = apperr.New(apperr.Invalid, "invalid input")
 )

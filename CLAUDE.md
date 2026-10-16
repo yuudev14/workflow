@@ -120,6 +120,7 @@ A job is a task that a worker does later. River stores the jobs in Postgres.
 
 - After each change, run this in `app/ytsoar`: `go build ./... && go vet ./... && go test ./...`
 - Some tests need a real Postgres (the SQL status rules, the job queue and the status events). They skip unless `TEST_DATABASE_URL` is set. Mocks hide SQL type errors, so run these tests when you change a query.
+- API tests (like Rails request specs) are in `cmd/api/api_test.go`. They send real HTTP requests through `newRouter` with a real Postgres and sign in as the seeded admin. Use a new, empty database: the admin seed does nothing when an admin already exists. Add a new API test to this file.
 - Write few test cases. Put them in the existing test file and reuse the existing fixtures.
 
 ## Gotchas
