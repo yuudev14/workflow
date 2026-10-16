@@ -17,6 +17,9 @@ coverage.out
 
 # testing
 /coverage
+/app/frontend/test-results/
+/app/frontend/playwright-report/
+/app/frontend/e2e/.auth/
 
 # next.js
 /.next/
