@@ -82,6 +82,86 @@ func (q *Queries) DeleteTasks(ctx context.Context, ids []pgtype.UUID) error {
 	return err
 }
 
+const failUnfinishedTaskHistory = `-- name: FailUnfinishedTaskHistory :many
+UPDATE task_history
+SET status = 'failed', error = $1
+WHERE playbook_history_id = $2 AND status IN ('pending', 'in_progress')
+RETURNING id, playbook_history_id, task_id, name, description, parameters, config, x, y, connector_name, connector_id, operation, status, destination_ids, error, result, triggered_at
+`
+
+type FailUnfinishedTaskHistoryParams struct {
+	Error             pgtype.Text `json:"error"`
+	PlaybookHistoryID pgtype.UUID `json:"playbook_history_id"`
+}
+
+// Crash recovery: the tasks of a stopped run never finish.
+func (q *Queries) FailUnfinishedTaskHistory(ctx context.Context, arg FailUnfinishedTaskHistoryParams) ([]TaskHistory, error) {
+	rows, err := q.db.Query(ctx, failUnfinishedTaskHistory, arg.Error, arg.PlaybookHistoryID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []TaskHistory
+	for rows.Next() {
+		var i TaskHistory
+		if err := rows.Scan(
+			&i.ID,
+			&i.PlaybookHistoryID,
+			&i.TaskID,
+			&i.Name,
+			&i.Description,
+			&i.Parameters,
+			&i.Config,
+			&i.X,
+			&i.Y,
+			&i.ConnectorName,
+			&i.ConnectorID,
+			&i.Operation,
+			&i.Status,
+			&i.DestinationIds,
+			&i.Error,
+			&i.Result,
+			&i.TriggeredAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getTaskHistoryById = `-- name: GetTaskHistoryById :one
+SELECT id, playbook_history_id, task_id, name, description, parameters, config, x, y, connector_name, connector_id, operation, status, destination_ids, error, result, triggered_at FROM task_history WHERE id = $1
+`
+
+func (q *Queries) GetTaskHistoryById(ctx context.Context, id pgtype.UUID) (TaskHistory, error) {
+	row := q.db.QueryRow(ctx, getTaskHistoryById, id)
+	var i TaskHistory
+	err := row.Scan(
+		&i.ID,
+		&i.PlaybookHistoryID,
+		&i.TaskID,
+		&i.Name,
+		&i.Description,
+		&i.Parameters,
+		&i.Config,
+		&i.X,
+		&i.Y,
+		&i.ConnectorName,
+		&i.ConnectorID,
+		&i.Operation,
+		&i.Status,
+		&i.DestinationIds,
+		&i.Error,
+		&i.Result,
+		&i.TriggeredAt,
+	)
+	return i, err
+}
+
 const getTaskHistoryByPlaybookHistoryId = `-- name: GetTaskHistoryByPlaybookHistoryId :many
 SELECT id, playbook_history_id, task_id, name, description, parameters, config, x, y, connector_name, connector_id, operation, status, destination_ids, error, result, triggered_at FROM task_history WHERE playbook_history_id = $1
 `
@@ -193,6 +273,8 @@ SET
         ELSE config
     END
 WHERE playbook_history_id = $18 AND task_id = $19
+  -- State rule: the new status must be allowed from the current status.
+  AND (NOT $8::boolean OR status::text = ANY($20::text[]))
 RETURNING id, playbook_history_id, task_id, name, description, parameters, config, x, y, connector_name, connector_id, operation, status, destination_ids, error, result, triggered_at
 `
 
@@ -216,6 +298,7 @@ type UpdateTaskHistoryParams struct {
 	Config            pgtype.Text    `json:"config"`
 	PlaybookHistoryID pgtype.UUID    `json:"playbook_history_id"`
 	TaskID            pgtype.UUID    `json:"task_id"`
+	AllowedFrom       []string       `json:"allowed_from"`
 }
 
 func (q *Queries) UpdateTaskHistory(ctx context.Context, arg UpdateTaskHistoryParams) (TaskHistory, error) {
@@ -239,6 +322,7 @@ func (q *Queries) UpdateTaskHistory(ctx context.Context, arg UpdateTaskHistoryPa
 		arg.Config,
 		arg.PlaybookHistoryID,
 		arg.TaskID,
+		arg.AllowedFrom,
 	)
 	var i TaskHistory
 	err := row.Scan(
@@ -266,7 +350,7 @@ func (q *Queries) UpdateTaskHistory(ctx context.Context, arg UpdateTaskHistoryPa
 const updateTaskStatus = `-- name: UpdateTaskStatus :one
 UPDATE task_history
 SET status = $3
-WHERE playbook_history_id = $1 AND task_id = $2
+WHERE playbook_history_id = $1 AND task_id = $2 AND status::text = ANY($4::text[])
 RETURNING id, playbook_history_id, task_id, name, description, parameters, config, x, y, connector_name, connector_id, operation, status, destination_ids, error, result, triggered_at
 `
 
@@ -274,10 +358,16 @@ type UpdateTaskStatusParams struct {
 	PlaybookHistoryID pgtype.UUID `json:"playbook_history_id"`
 	TaskID            pgtype.UUID `json:"task_id"`
 	Status            TaskStatus  `json:"status"`
+	AllowedFrom       []string    `json:"allowed_from"`
 }
 
 func (q *Queries) UpdateTaskStatus(ctx context.Context, arg UpdateTaskStatusParams) (TaskHistory, error) {
-	row := q.db.QueryRow(ctx, updateTaskStatus, arg.PlaybookHistoryID, arg.TaskID, arg.Status)
+	row := q.db.QueryRow(ctx, updateTaskStatus,
+		arg.PlaybookHistoryID,
+		arg.TaskID,
+		arg.Status,
+		arg.AllowedFrom,
+	)
 	var i TaskHistory
 	err := row.Scan(
 		&i.ID,

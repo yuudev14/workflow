@@ -2,6 +2,7 @@ package playbooks
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/google/uuid"
@@ -167,6 +168,9 @@ func (w *PlaybookServiceImpl) UpdatePlaybook(ctx context.Context, id string, pla
 func (w *PlaybookServiceImpl) UpdatePlaybookHistoryStatus(ctx context.Context, playbookHistoryId string, status string) (*domain.PlaybookHistory, error) {
 	res, err := w.PlaybookRepository.UpdatePlaybookHistoryStatus(ctx, playbookHistoryId, status)
 	if err != nil {
+		if errors.Is(err, domain.ErrInvalidTransition) {
+			return nil, err
+		}
 		w.logger.Error(fmt.Sprintf("error updating status of playbookHistoryId by id: %s, error: %v", playbookHistoryId, err))
 		return nil, fmt.Errorf("error updating playbookHistoryId by id: %s", playbookHistoryId)
 	}
@@ -182,6 +186,9 @@ func (w *PlaybookServiceImpl) UpdatePlaybookHistoryStatus(ctx context.Context, p
 func (w *PlaybookServiceImpl) UpdatePlaybookHistory(ctx context.Context, playbookHistoryId string, playbookHistory UpdatePlaybookHistoryData) (*domain.PlaybookHistory, error) {
 	res, err := w.PlaybookRepository.UpdatePlaybookHistory(ctx, playbookHistoryId, playbookHistory)
 	if err != nil {
+		if errors.Is(err, domain.ErrInvalidTransition) {
+			return nil, err
+		}
 		w.logger.Error(fmt.Sprintf("error updating playbookHistoryId by id: %s, error: %v", playbookHistoryId, err))
 		return nil, fmt.Errorf("error updating playbookHistoryId by id: %s", playbookHistoryId)
 	}

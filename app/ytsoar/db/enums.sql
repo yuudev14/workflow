@@ -1,6 +1,7 @@
 -- put you enums here as it cannot be retrived from the migration file because of DO clause
 
 CREATE TYPE playbook_status AS ENUM (
+    'queued',
     'in_progress',
     'success',
     'failed'

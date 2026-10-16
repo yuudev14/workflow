@@ -14,19 +14,18 @@ import (
 //go:embed harness/python_connector_harness.py
 var pythonConnectorHarness string
 
-// PythonConnectorRunner executes Python connectors in a fresh `python3 -I`
-// child, reusing connectors/core/connector.py inside the harness so importlib
-// loading, TOML configs and jinja2 templating behave exactly like before.
-// treeDir is the unified connectors tree; it must literally be named
-// "connectors" because the harness imports `connectors.<id>.connector`, so
-// the tree's parent goes on sys.path. It implements execution.NodeRuntime.
-type PythonConnectorRunner struct {
+// PythonConnectorRuntime runs a Python connector in a fresh `python3 -I` process. It runs in
+// the SANDBOX and fits execution.TaskRuntime. The harness reuses connectors/core/connector.py,
+// so importlib loading, TOML configs and jinja2 templating work as before. treeDir is the
+// connectors tree. It must be a directory named "connectors", because the harness imports
+// `connectors.<id>.connector`, so the parent of the tree goes on sys.path.
+type PythonConnectorRuntime struct {
 	logger        logger.Logger
 	root          string
 	memoryLimitMB int
 }
 
-func NewPythonConnectorRunner(log logger.Logger, treeDir string, memoryLimitMB int) (*PythonConnectorRunner, error) {
+func NewPythonConnectorRuntime(log logger.Logger, treeDir string, memoryLimitMB int) (*PythonConnectorRuntime, error) {
 	absTree, err := filepath.Abs(treeDir)
 	if err != nil {
 		return nil, err
@@ -38,14 +37,14 @@ func NewPythonConnectorRunner(log logger.Logger, treeDir string, memoryLimitMB i
 	if memoryLimitMB <= 0 {
 		memoryLimitMB = defaultPythonMemoryLimitMB
 	}
-	return &PythonConnectorRunner{
+	return &PythonConnectorRuntime{
 		logger:        log,
 		root:          filepath.Dir(absTree),
 		memoryLimitMB: memoryLimitMB,
 	}, nil
 }
 
-func (r *PythonConnectorRunner) Execute(ctx context.Context, req execution.ExecutionRequest) (json.RawMessage, error) {
+func (r *PythonConnectorRuntime) Execute(ctx context.Context, req execution.ExecutionRequest) (json.RawMessage, error) {
 	if req.Task.ConnectorID == nil {
 		return nil, fmt.Errorf("connector id is none for %s", req.Task.Name)
 	}

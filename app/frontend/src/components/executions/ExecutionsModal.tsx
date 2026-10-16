@@ -19,6 +19,7 @@ import RunHistoryDetail from "./RunHistoryDetail";
 const STATUS_PILL: Record<string, PillVariant> = {
   success: "success",
   failed: "failed",
+  queued: "queued",
   in_progress: "running",
   skipped: "skipped",
 };
@@ -37,6 +38,7 @@ const FILTERS: { label: string; value?: string }[] = [
   { label: "All" },
   { label: "Success", value: "success" },
   { label: "Failed", value: "failed" },
+  { label: "Queued", value: "queued" },
   { label: "Running", value: "in_progress" },
 ];
 

@@ -21,18 +21,17 @@ var nodeConnectorHarness string
 // stripping, so both work without a build step.
 var nodeConnectorEntries = []string{"connector.ts", "connector.js"}
 
-// NodeConnectorRunner executes JS/TS connectors from
-// <tree>/<id>/connector.{ts,js} in a fresh `node` child. The connector's
-// TOML config is parsed here in Go (same layout as the Python tree:
-// <id>/configs/<name>.toml) and passed to the harness as JSON. It implements
-// execution.NodeRuntime.
-type NodeConnectorRunner struct {
+// NodeJSConnectorRuntime runs a JS or TS connector from <tree>/<id>/connector.{ts,js} in a
+// fresh `node` process. It runs in the SANDBOX and fits execution.TaskRuntime. The connector's
+// TOML config is parsed here in Go (same layout as the Python tree: <id>/configs/<name>.toml)
+// and passed to the harness as JSON.
+type NodeJSConnectorRuntime struct {
 	logger        logger.Logger
 	dir           string
 	memoryLimitMB int
 }
 
-func NewNodeConnectorRunner(log logger.Logger, dir string, memoryLimitMB int) (*NodeConnectorRunner, error) {
+func NewNodeJSConnectorRuntime(log logger.Logger, dir string, memoryLimitMB int) (*NodeJSConnectorRuntime, error) {
 	absDir, err := filepath.Abs(dir)
 	if err != nil {
 		return nil, err
@@ -40,14 +39,14 @@ func NewNodeConnectorRunner(log logger.Logger, dir string, memoryLimitMB int) (*
 	if memoryLimitMB <= 0 {
 		memoryLimitMB = defaultNodeMemoryLimitMB
 	}
-	return &NodeConnectorRunner{
+	return &NodeJSConnectorRuntime{
 		logger:        log,
 		dir:           absDir,
 		memoryLimitMB: memoryLimitMB,
 	}, nil
 }
 
-func (r *NodeConnectorRunner) Execute(ctx context.Context, req execution.ExecutionRequest) (json.RawMessage, error) {
+func (r *NodeJSConnectorRuntime) Execute(ctx context.Context, req execution.ExecutionRequest) (json.RawMessage, error) {
 	if req.Task.ConnectorID == nil {
 		return nil, fmt.Errorf("connector id is none for %s", req.Task.Name)
 	}
@@ -84,7 +83,7 @@ func (r *NodeConnectorRunner) Execute(ctx context.Context, req execution.Executi
 	return json.RawMessage(out), nil
 }
 
-func (r *NodeConnectorRunner) loadConfig(connectorID string, configName *string) (map[string]any, error) {
+func (r *NodeJSConnectorRuntime) loadConfig(connectorID string, configName *string) (map[string]any, error) {
 	config := map[string]any{}
 	if configName == nil || *configName == "" {
 		return config, nil
@@ -100,10 +99,10 @@ func (r *NodeConnectorRunner) loadConfig(connectorID string, configName *string)
 	return config, nil
 }
 
-// IsNodeConnector reports whether the connector's info.json declares
+// IsNodeJSConnector reports whether the connector's info.json declares
 // "runtime": "node" and it ships a connector.ts or connector.js. Checked per
 // request so connectors uploaded after boot route correctly without a restart.
-func IsNodeConnector(dir, id string) bool {
+func IsNodeJSConnector(dir, id string) bool {
 	raw, err := os.ReadFile(filepath.Join(dir, id, "info.json"))
 	if err != nil {
 		return false
@@ -123,7 +122,7 @@ func IsNodeConnector(dir, id string) bool {
 }
 
 // ListNodeConnectors returns the connector ids in the unified tree that
-// IsNodeConnector accepts.
+// IsNodeJSConnector accepts.
 func ListNodeConnectors(dir string) ([]string, error) {
 	entries, err := os.ReadDir(dir)
 	if err != nil {
@@ -131,7 +130,7 @@ func ListNodeConnectors(dir string) ([]string, error) {
 	}
 	var ids []string
 	for _, entry := range entries {
-		if entry.IsDir() && IsNodeConnector(dir, entry.Name()) {
+		if entry.IsDir() && IsNodeJSConnector(dir, entry.Name()) {
 			ids = append(ids, entry.Name())
 		}
 	}

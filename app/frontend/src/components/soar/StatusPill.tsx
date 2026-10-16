@@ -7,6 +7,7 @@ export type PillVariant =
   | "success"
   | "failed"
   | "running"
+  | "queued"
   | "skipped"
   | "new"
   | "investigating"
@@ -36,6 +37,7 @@ const FAMILY: Record<PillVariant, FamilyStyle> = {
   medium: { wrap: "bg-signal-soft text-signal-text", dot: "bg-signal-dot" },
   contained: { wrap: "bg-signal-soft text-signal-text", dot: "bg-signal-dot" },
   escalated: { wrap: "bg-signal-soft text-signal-text", dot: "bg-signal-dot" },
+  queued: { wrap: "bg-slate-soft text-slate-text", dot: "bg-slate-dot", pulse: true },
   skipped: { wrap: "bg-slate-soft text-slate-text", dot: "bg-slate-dot" },
   low: { wrap: "bg-slate-soft text-slate-text", dot: "bg-slate-dot" },
   new: { wrap: "bg-slate-soft text-slate-text", dot: "bg-slate-dot" },

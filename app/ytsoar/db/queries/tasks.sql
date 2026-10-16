@@ -30,7 +30,7 @@ RETURNING *;
 -- name: UpdateTaskStatus :one
 UPDATE task_history
 SET status = $3
-WHERE playbook_history_id = $1 AND task_id = $2
+WHERE playbook_history_id = $1 AND task_id = $2 AND status::text = ANY(sqlc.arg('allowed_from')::text[])
 RETURNING *;
 
 -- name: UpdateTaskHistory :one
@@ -64,7 +64,19 @@ SET
         ELSE config
     END
 WHERE playbook_history_id = sqlc.arg('playbook_history_id') AND task_id = sqlc.arg('task_id')
+  -- State rule: the new status must be allowed from the current status.
+  AND (NOT sqlc.arg('status_set')::boolean OR status::text = ANY(sqlc.arg('allowed_from')::text[]))
 RETURNING *;
+
+-- name: FailUnfinishedTaskHistory :many
+-- Crash recovery: the tasks of a stopped run never finish.
+UPDATE task_history
+SET status = 'failed', error = sqlc.arg('error')
+WHERE playbook_history_id = sqlc.arg('playbook_history_id') AND status IN ('pending', 'in_progress')
+RETURNING *;
+
+-- name: GetTaskHistoryById :one
+SELECT * FROM task_history WHERE id = $1;
 
 -- name: GetTaskHistoryByPlaybookHistoryId :many
 SELECT * FROM task_history WHERE playbook_history_id = $1;

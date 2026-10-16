@@ -46,8 +46,8 @@ func (q *Queries) CreatePlaybook(ctx context.Context, arg CreatePlaybookParams) 
 }
 
 const createPlaybookHistory = `-- name: CreatePlaybookHistory :one
-INSERT INTO playbook_history (playbook_id, triggered_at, edges, trigger_type, triggered_by, input)
-VALUES ($1, NOW(), $2, $3, $4, $5)
+INSERT INTO playbook_history (playbook_id, triggered_at, edges, trigger_type, triggered_by, input, status)
+VALUES ($1, NOW(), $2, $3, $4, $5, 'queued')
 RETURNING id, playbook_id, status, error, result, triggered_at, edges, trigger_type, triggered_by, input
 `
 
@@ -274,16 +274,19 @@ SET
     END,
     result = $5
 WHERE id = $6
+  -- State rule: the new status must be allowed from the current status.
+  AND (NOT $1::boolean OR status::text = ANY($7::text[]))
 RETURNING id, playbook_id, status, error, result, triggered_at, edges, trigger_type, triggered_by, input
 `
 
 type UpdatePlaybookHistoryParams struct {
-	StatusSet bool               `json:"status_set"`
-	Status    NullPlaybookStatus `json:"status"`
-	ErrorSet  bool               `json:"error_set"`
-	Error     pgtype.Text        `json:"error"`
-	Result    []byte             `json:"result"`
-	ID        pgtype.UUID        `json:"id"`
+	StatusSet   bool               `json:"status_set"`
+	Status      NullPlaybookStatus `json:"status"`
+	ErrorSet    bool               `json:"error_set"`
+	Error       pgtype.Text        `json:"error"`
+	Result      []byte             `json:"result"`
+	ID          pgtype.UUID        `json:"id"`
+	AllowedFrom []string           `json:"allowed_from"`
 }
 
 func (q *Queries) UpdatePlaybookHistory(ctx context.Context, arg UpdatePlaybookHistoryParams) (PlaybookHistory, error) {
@@ -294,6 +297,7 @@ func (q *Queries) UpdatePlaybookHistory(ctx context.Context, arg UpdatePlaybookH
 		arg.Error,
 		arg.Result,
 		arg.ID,
+		arg.AllowedFrom,
 	)
 	var i PlaybookHistory
 	err := row.Scan(
@@ -314,17 +318,18 @@ func (q *Queries) UpdatePlaybookHistory(ctx context.Context, arg UpdatePlaybookH
 const updatePlaybookHistoryStatus = `-- name: UpdatePlaybookHistoryStatus :one
 UPDATE playbook_history
 SET status = $2
-WHERE id = $1
+WHERE id = $1 AND status::text = ANY($3::text[])
 RETURNING id, playbook_id, status, error, result, triggered_at, edges, trigger_type, triggered_by, input
 `
 
 type UpdatePlaybookHistoryStatusParams struct {
-	ID     pgtype.UUID    `json:"id"`
-	Status PlaybookStatus `json:"status"`
+	ID          pgtype.UUID    `json:"id"`
+	Status      PlaybookStatus `json:"status"`
+	AllowedFrom []string       `json:"allowed_from"`
 }
 
 func (q *Queries) UpdatePlaybookHistoryStatus(ctx context.Context, arg UpdatePlaybookHistoryStatusParams) (PlaybookHistory, error) {
-	row := q.db.QueryRow(ctx, updatePlaybookHistoryStatus, arg.ID, arg.Status)
+	row := q.db.QueryRow(ctx, updatePlaybookHistoryStatus, arg.ID, arg.Status, arg.AllowedFrom)
 	var i PlaybookHistory
 	err := row.Scan(
 		&i.ID,

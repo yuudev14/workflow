@@ -41,8 +41,8 @@ WHERE id = sqlc.arg('id')
 RETURNING *;
 
 -- name: CreatePlaybookHistory :one
-INSERT INTO playbook_history (playbook_id, triggered_at, edges, trigger_type, triggered_by, input)
-VALUES ($1, NOW(), $2, sqlc.narg('trigger_type'), sqlc.narg('triggered_by'), sqlc.narg('input'))
+INSERT INTO playbook_history (playbook_id, triggered_at, edges, trigger_type, triggered_by, input, status)
+VALUES ($1, NOW(), $2, sqlc.narg('trigger_type'), sqlc.narg('triggered_by'), sqlc.narg('input'), 'queued')
 RETURNING *;
 
 -- name: CreatePlaybookRunRecord :exec
@@ -53,7 +53,7 @@ ON CONFLICT DO NOTHING;
 -- name: UpdatePlaybookHistoryStatus :one
 UPDATE playbook_history
 SET status = $2
-WHERE id = $1
+WHERE id = $1 AND status::text = ANY(sqlc.arg('allowed_from')::text[])
 RETURNING *;
 
 -- name: UpdatePlaybookHistory :one
@@ -69,6 +69,8 @@ SET
     END,
     result = sqlc.arg('result')
 WHERE id = sqlc.arg('id')
+  -- State rule: the new status must be allowed from the current status.
+  AND (NOT sqlc.arg('status_set')::boolean OR status::text = ANY(sqlc.arg('allowed_from')::text[]))
 RETURNING *;
 
 -- name: GetPlaybookHistoryById :one

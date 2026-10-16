@@ -200,10 +200,11 @@ func (t *TaskRepositoryImpl) UpdateTaskStatus(ctx context.Context, playbookHisto
 		PlaybookHistoryID: pgHistoryID,
 		TaskID:            pgTaskID,
 		Status:            db.TaskStatus(status),
+		AllowedFrom:       domain.TaskTransitions.From(status),
 	})
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, nil
+			return nil, domain.ErrInvalidTransition
 		}
 		return nil, err
 	}
@@ -233,6 +234,10 @@ func (t *TaskRepositoryImpl) UpdateTaskHistory(ctx context.Context, playbookHist
 		return nil, err
 	}
 
+	var allowedFrom []string
+	if taskHistory.Status.Set && taskHistory.Status.Value != nil {
+		allowedFrom = domain.TaskTransitions.From(*taskHistory.Status.Value)
+	}
 	row, err := t.queriesFromContext(ctx).UpdateTaskHistory(ctx, db.UpdateTaskHistoryParams{
 		Name:              toPgTextFromString(taskHistory.Name),
 		Description:       toPgTextFromString(taskHistory.Description),
@@ -243,6 +248,7 @@ func (t *TaskRepositoryImpl) UpdateTaskHistory(ctx context.Context, playbookHist
 		Operation:         toPgTextFromString(taskHistory.Operation),
 		StatusSet:         taskHistory.Status.Set,
 		Status:            toNullTaskStatus(taskHistory.Status),
+		AllowedFrom:       allowedFrom,
 		ErrorSet:          taskHistory.Error.Set,
 		Error:             toPgTextFromNullable(taskHistory.Error),
 		ConnectorNameSet:  taskHistory.ConnectorName.Set,
@@ -256,11 +262,44 @@ func (t *TaskRepositoryImpl) UpdateTaskHistory(ctx context.Context, playbookHist
 	})
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
+			if taskHistory.Status.Set {
+				return nil, domain.ErrInvalidTransition
+			}
 			return nil, nil
 		}
 		return nil, err
 	}
 
+	history := toDomainTaskHistory(row)
+	return &history, nil
+}
+
+// FailUnfinishedTaskHistory implements tasks.TaskRepository.
+func (t *TaskRepositoryImpl) FailUnfinishedTaskHistory(ctx context.Context, playbookHistoryId string, reason string) ([]domain.TaskHistory, error) {
+	pgID, err := toPgUUIDFromString(playbookHistoryId)
+	if err != nil {
+		return nil, err
+	}
+	rows, err := t.queriesFromContext(ctx).FailUnfinishedTaskHistory(ctx, db.FailUnfinishedTaskHistoryParams{
+		PlaybookHistoryID: pgID,
+		Error:             toPgTextFromString(reason),
+	})
+	if err != nil {
+		return nil, err
+	}
+	failed := make([]domain.TaskHistory, 0, len(rows))
+	for _, row := range rows {
+		failed = append(failed, toDomainTaskHistory(row))
+	}
+	return failed, nil
+}
+
+// GetTaskHistoryById implements tasks.TaskRepository.
+func (t *TaskRepositoryImpl) GetTaskHistoryById(ctx context.Context, id uuid.UUID) (*domain.TaskHistory, error) {
+	row, err := t.queriesFromContext(ctx).GetTaskHistoryById(ctx, toPgUUID(id))
+	if err != nil {
+		return nil, err
+	}
 	history := toDomainTaskHistory(row)
 	return &history, nil
 }

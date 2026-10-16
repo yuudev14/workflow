@@ -34,7 +34,7 @@ type PlaybookApplicationServiceImpl struct {
 	TaskService       tasks.TaskService
 	EdgeService       edges.EdgeService
 	Tx                contracts.TxManager
-	TaskPublisher     contracts.TaskPublisher
+	RunEnqueuer       contracts.RunEnqueuer
 	StatusBroadcaster contracts.StatusBroadcaster
 	Records           RecordResolver
 }
@@ -45,7 +45,7 @@ func NewPlaybookApplicationService(
 	taskService tasks.TaskService,
 	edgeService edges.EdgeService,
 	tx contracts.TxManager,
-	taskPublisher contracts.TaskPublisher,
+	runEnqueuer contracts.RunEnqueuer,
 	statusBroadcaster contracts.StatusBroadcaster,
 	records RecordResolver,
 ) PlaybookApplicationService {
@@ -55,7 +55,7 @@ func NewPlaybookApplicationService(
 		TaskService:       taskService,
 		EdgeService:       edgeService,
 		Tx:                tx,
-		TaskPublisher:     taskPublisher,
+		RunEnqueuer:       runEnqueuer,
 		StatusBroadcaster: statusBroadcaster,
 		Records:           records,
 	}
@@ -401,8 +401,12 @@ func (w *PlaybookApplicationServiceImpl) runPlaybook(ctx context.Context, playbo
 		}
 
 		w.Logger.Infof("Created playbook history with ID: %v", playbookHistory.ID)
-		_, createTaskHistoryErr := w.TaskService.CreateTaskHistory(ctx, playbookHistory.ID.String(), taskData, GetGraphUUIDS(edges))
-		return createTaskHistoryErr
+		if _, err := w.TaskService.CreateTaskHistory(ctx, playbookHistory.ID.String(), taskData, GetGraphUUIDS(edges)); err != nil {
+			return err
+		}
+		// Use the same transaction as the history rows. The run is queued only if its history
+		// exists. The worker builds the message from the history rows.
+		return w.RunEnqueuer.EnqueueRun(ctx, playbookHistory.ID)
 	})
 	if txErr != nil {
 		return nil, txErr
@@ -417,24 +421,86 @@ func (w *PlaybookApplicationServiceImpl) runPlaybook(ctx context.Context, playbo
 		"data":  playbookHistory,
 	})
 
-	body := domain.TaskMessage{
+	return &domain.TaskMessage{
 		Graph:             graph,
 		Tasks:             tasksMap,
 		PlaybookHistoryId: playbookHistory.ID,
 		Edges:             edgeRefs,
 		Input:             run.Input.Resolved(),
+	}, nil
+}
+
+// RunLoader builds the TaskMessage of a queued run from its history rows. The edges and
+// the input are on playbook_history. The task snapshots are in task_history. So the queue
+// holds only the run ID, not a copy of the whole graph.
+type RunLoader struct {
+	playbooks PlaybookService
+	tasks     tasks.TaskService
+}
+
+func NewRunLoader(playbookService PlaybookService, taskService tasks.TaskService) *RunLoader {
+	return &RunLoader{playbooks: playbookService, tasks: taskService}
+}
+
+func (l *RunLoader) LoadRunMessage(ctx context.Context, historyID uuid.UUID) (domain.TaskMessage, error) {
+	history, err := l.playbooks.GetPlaybookHistoryById(ctx, historyID)
+	if err != nil {
+		return domain.TaskMessage{}, err
+	}
+	if history == nil { // the repository returns nil when the row is gone
+		return domain.TaskMessage{}, fmt.Errorf("run %s does not exist", historyID)
+	}
+	taskRows, err := l.tasks.GetTaskHistoryByPlaybookHistoryId(ctx, historyID.String(), tasks.TaskHistoryFilter{})
+	if err != nil {
+		return domain.TaskMessage{}, err
 	}
 
-	// The history row is already committed, so a publish failure is an upstream
-	// problem the caller can retry - not a bad request.
-	if mqErr := w.TaskPublisher.SendMessage(body); mqErr != nil {
-		return nil, apperr.Wrap(apperr.Unavailable, "could not queue the playbook run", mqErr)
+	taskList := make([]domain.Tasks, len(taskRows))
+	for i, row := range taskRows {
+		taskList[i] = domain.Tasks{
+			ID: row.TaskID, PlaybookID: history.PlaybookID.String(), Name: row.Name,
+			Config: row.Config, ConnectorName: row.ConnectorName, ConnectorID: row.ConnectorID,
+			Operation: row.Operation, Description: row.Description, Parameters: row.Parameters,
+			X: row.X, Y: row.Y,
+		}
 	}
-	return &body, nil
+
+	// The system stores the edge handles as plain JSON strings, or null.
+	var stored []struct {
+		SourceTaskName      string  `json:"source_task_name"`
+		DestinationTaskName string  `json:"destination_task_name"`
+		SourceHandle        *string `json:"source_handle"`
+	}
+	if err := json.Unmarshal(history.Edges, &stored); err != nil {
+		return domain.TaskMessage{}, fmt.Errorf("could not decode the stored edges: %w", err)
+	}
+	responseEdges := make([]domain.ResponseEdges, len(stored))
+	for i, edge := range stored {
+		responseEdges[i] = domain.ResponseEdges{SourceTaskName: edge.SourceTaskName, DestinationTaskName: edge.DestinationTaskName}
+		if edge.SourceHandle != nil {
+			responseEdges[i].SourceHandle = sql.NullString{String: *edge.SourceHandle, Valid: true}
+		}
+	}
+
+	var input *domain.RunInput
+	if len(history.Input) > 0 {
+		if err := json.Unmarshal(history.Input, &input); err != nil {
+			return domain.TaskMessage{}, fmt.Errorf("could not decode the stored input: %w", err)
+		}
+	}
+
+	tasksMap, graph, edgeRefs := prepareMessage(taskList, responseEdges)
+	return domain.TaskMessage{
+		Graph: graph, Tasks: tasksMap, PlaybookHistoryId: historyID, Edges: edgeRefs, Input: input.Resolved(),
+	}, nil
 }
 
 // PreparePlaybookMessage implements PlaybookApplicationService.
 func (w *PlaybookApplicationServiceImpl) PreparePlaybookMessage(tasksData []domain.Tasks, edges []domain.ResponseEdges) (map[string]domain.Tasks, map[string][]string, []domain.EdgeRef) {
+	return prepareMessage(tasksData, edges)
+}
+
+func prepareMessage(tasksData []domain.Tasks, edges []domain.ResponseEdges) (map[string]domain.Tasks, map[string][]string, []domain.EdgeRef) {
 	tasksMap := make(map[string]domain.Tasks)
 	graph := map[string][]string{}
 	edgeRefs := make([]domain.EdgeRef, 0, len(edges))
