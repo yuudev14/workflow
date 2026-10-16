@@ -26,7 +26,7 @@ type testEnv struct {
 	mockPlaybook    *mock_playbooks.MockPlaybookService
 	mockTask        *mock_tasks.MockTaskService
 	mockEdge        *mock_edges.MockEdgeService
-	mockTaskSub     *mock_contracts.MockTaskPublisher
+	mockEnqueuer    *mock_contracts.MockRunEnqueuer
 	mockBroadcaster *mock_contracts.MockStatusBroadcaster
 
 	broadcasts []any
@@ -39,7 +39,7 @@ func setupTest(t *testing.T) *testEnv {
 	mockPlaybook := mock_playbooks.NewMockPlaybookService(ctrl)
 	mockTask := mock_tasks.NewMockTaskService(ctrl)
 	mockEdge := mock_edges.NewMockEdgeService(ctrl)
-	mockTaskPubSub := mock_contracts.NewMockTaskPublisher(ctrl)
+	mockEnqueuer := mock_contracts.NewMockRunEnqueuer(ctrl)
 	mockBroadcaster := mock_contracts.NewMockStatusBroadcaster(ctrl)
 
 	env := &testEnv{}
@@ -63,7 +63,7 @@ func setupTest(t *testing.T) *testEnv {
 		TaskService:       mockTask,
 		EdgeService:       mockEdge,
 		Tx:                mockTx,
-		TaskPublisher:     mockTaskPubSub,
+		RunEnqueuer:       mockEnqueuer,
 		StatusBroadcaster: mockBroadcaster,
 	}
 
@@ -71,7 +71,7 @@ func setupTest(t *testing.T) *testEnv {
 	env.mockPlaybook = mockPlaybook
 	env.mockTask = mockTask
 	env.mockEdge = mockEdge
-	env.mockTaskSub = mockTaskPubSub
+	env.mockEnqueuer = mockEnqueuer
 	env.mockBroadcaster = mockBroadcaster
 
 	return env
@@ -747,7 +747,7 @@ func TestTriggerPlaybook(t *testing.T) {
 			},
 		},
 		{
-			name:      "mq error",
+			name:      "enqueue error",
 			withError: true,
 			mockSetup: func(env *testEnv, playbookID string) {
 
@@ -780,10 +780,10 @@ func TestTriggerPlaybook(t *testing.T) {
 					CreateTaskHistory(gomock.Any(), historyID.String(), gomock.Any(), gomock.Any()).
 					Return([]domain.TaskHistory{}, nil)
 
-				env.mockTaskSub.
+				env.mockEnqueuer.
 					EXPECT().
-					SendMessage(gomock.Any()).
-					Return(fmt.Errorf("mq error"))
+					EnqueueRun(gomock.Any(), historyID).
+					Return(fmt.Errorf("queue error"))
 			},
 		},
 		{
@@ -820,9 +820,9 @@ func TestTriggerPlaybook(t *testing.T) {
 					CreateTaskHistory(gomock.Any(), historyID.String(), gomock.Any(), gomock.Any()).
 					Return([]domain.TaskHistory{}, nil)
 
-				env.mockTaskSub.
+				env.mockEnqueuer.
 					EXPECT().
-					SendMessage(gomock.Any()).
+					EnqueueRun(gomock.Any(), historyID).
 					Return(nil)
 			},
 		},
@@ -879,7 +879,7 @@ func TestTriggerPlaybookBroadcastsStatusEnvelope(t *testing.T) {
 		CreateTaskHistory(gomock.Any(), historyID.String(), gomock.Any(), gomock.Any()).
 		Return([]domain.TaskHistory{}, nil)
 
-	env.mockTaskSub.EXPECT().SendMessage(gomock.Any()).Return(nil)
+	env.mockEnqueuer.EXPECT().EnqueueRun(gomock.Any(), historyID).Return(nil)
 
 	_, err := env.service.TriggerPlaybook(context.Background(), playbookID)
 	assert.NoError(t, err)
@@ -893,4 +893,37 @@ func TestTriggerPlaybookBroadcastsStatusEnvelope(t *testing.T) {
 	history, ok := envelope["data"].(*domain.PlaybookHistory)
 	assert.True(t, ok, "data must carry the history row")
 	assert.Equal(t, historyID, history.ID)
+}
+
+// The worker rebuilds the message from the history rows, so it must match what
+// PreparePlaybookMessage builds at trigger time, branch handles included.
+func TestRunLoaderRebuildsMessage(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	playbookSvc := mock_playbooks.NewMockPlaybookService(ctrl)
+	taskSvc := mock_tasks.NewMockTaskService(ctrl)
+	historyID, playbookID, taskA, taskB := uuid.New(), uuid.New(), uuid.New(), uuid.New()
+
+	playbookSvc.EXPECT().GetPlaybookHistoryById(gomock.Any(), historyID).Return(&domain.PlaybookHistoryResponse{
+		ID: historyID, PlaybookID: playbookID,
+		Edges: []byte(`[{"source_task_name":"a","destination_task_name":"b","source_handle":"true"}]`),
+		Input: []byte(`{"module_type":"alert","records":[{"id":"r1"}],"parameters":null}`),
+	}, nil)
+	taskSvc.EXPECT().GetTaskHistoryByPlaybookHistoryId(gomock.Any(), historyID.String(), gomock.Any()).Return([]domain.TaskHistory{
+		{TaskID: taskA, Name: "a", Operation: "op"},
+		{TaskID: taskB, Name: "b", Operation: "op"},
+	}, nil)
+
+	msg, err := playbooks.NewRunLoader(playbookSvc, taskSvc).LoadRunMessage(context.Background(), historyID)
+
+	assert.NoError(t, err)
+	assert.Equal(t, historyID, msg.PlaybookHistoryId)
+	assert.Equal(t, map[string][]string{"a": {"b"}, "b": {}}, msg.Graph)
+	assert.Equal(t, taskA, msg.Tasks["a"].ID)
+	assert.Equal(t, playbookID.String(), msg.Tasks["a"].PlaybookID)
+	if assert.Len(t, msg.Edges, 1) {
+		assert.Equal(t, "true", *msg.Edges[0].SourceHandle)
+	}
+	assert.Equal(t, "alert", *msg.Input.ModuleType)
+	assert.Len(t, msg.Input.Records, 1)
+	assert.NotNil(t, msg.Input.Parameters, "a null parameters map is filled in")
 }

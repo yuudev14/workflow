@@ -2,12 +2,13 @@ package main
 
 import (
 	"context"
-	"errors"
 	"log"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"github.com/yuudev14/ytsoar/db"
+	"github.com/yuudev14/ytsoar/internal/adapters/jobs"
 	"github.com/yuudev14/ytsoar/internal/adapters/mq"
 	"github.com/yuudev14/ytsoar/internal/adapters/repository"
 	"github.com/yuudev14/ytsoar/internal/adapters/runtimes/goconnectors"
@@ -79,18 +80,31 @@ func main() {
 		cfg.NodeTimeout,
 	)
 
-	consumer, err := mq.NewTaskConsumer(appLogger, mqConn, cfg.PlaybookQueueName, executor, cfg.PlaybookPrefetch)
+	riverClient, err := jobs.NewWorkerClient(pool,
+		jobs.NewRunWorker(appLogger, playbooks.NewRunLoader(playbookService, taskService), executor),
+		cfg.PlaybookConcurrency, cfg.RunTimeout)
 	if err != nil {
-		log.Fatalf("failed to setup task consumer: %v", err)
+		log.Fatalf("failed to setup job queue: %v", err)
+	}
+	// Not ctx: cancelling it on SIGTERM would cancel the running playbooks,
+	// and Stop below lets them finish instead.
+	if err := riverClient.Start(context.Background()); err != nil {
+		log.Fatalf("failed to start job queue: %v", err)
 	}
 
 	appLogger.Infow("worker started",
-		"queue", cfg.PlaybookQueueName,
+		"concurrency", cfg.PlaybookConcurrency,
 		"sandbox", cfg.SandboxAddr,
 		"status_exchange", cfg.StatusExchangeName,
 	)
-	if err := consumer.Start(ctx); err != nil && !errors.Is(err, context.Canceled) {
-		log.Fatalf("consumer stopped: %v", err)
+	<-ctx.Done()
+
+	// Stop waits for the running playbooks. Past the run timeout they are
+	// cancelled, and a run still left running is failed by the next worker.
+	stopCtx, cancel := context.WithTimeout(context.Background(), cfg.RunTimeout+time.Minute)
+	defer cancel()
+	if err := riverClient.Stop(stopCtx); err != nil {
+		appLogger.Errorw("job queue did not stop cleanly", "error", err)
 	}
 	appLogger.Info("worker shut down")
 }

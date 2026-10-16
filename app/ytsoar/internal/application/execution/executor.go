@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/yuudev14/ytsoar/internal/application/playbooks"
 	"github.com/yuudev14/ytsoar/internal/application/tasks"
 	"github.com/yuudev14/ytsoar/internal/domain"
@@ -317,6 +318,16 @@ func (e *Executor) finishPlaybook(
 	return execErr
 }
 
+// Abort fails a run that cannot be started, for example when its message could
+// not be rebuilt. A run that is already finished is left alone.
+func (e *Executor) Abort(ctx context.Context, historyID uuid.UUID, cause error) error {
+	_, err := e.setRunStatus(ctx, domain.TaskMessage{PlaybookHistoryId: historyID}, StatusFailed, nil, cause)
+	if errors.Is(err, domain.ErrInvalidTransition) {
+		return nil
+	}
+	return err
+}
+
 // setRunStatus moves the run through the state machine and fans the new row out.
 func (e *Executor) setRunStatus(
 	ctx context.Context,
@@ -325,6 +336,8 @@ func (e *Executor) setRunStatus(
 	result any,
 	execErr error,
 ) (*domain.PlaybookHistory, error) {
+	// A run that hit its timeout or a shutdown still has to persist its status.
+	ctx = context.WithoutCancel(ctx)
 	var errStr *string
 	if execErr != nil {
 		s := execErr.Error()

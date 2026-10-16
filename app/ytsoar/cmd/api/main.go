@@ -11,6 +11,7 @@ import (
 	api "github.com/yuudev14/ytsoar/internal/adapters/http"
 	"github.com/yuudev14/ytsoar/internal/adapters/http/handlers"
 	"github.com/yuudev14/ytsoar/internal/adapters/http/middleware"
+	"github.com/yuudev14/ytsoar/internal/adapters/jobs"
 	"github.com/yuudev14/ytsoar/internal/adapters/mq"
 	"github.com/yuudev14/ytsoar/internal/adapters/oidcclient"
 	"github.com/yuudev14/ytsoar/internal/adapters/repository"
@@ -60,9 +61,10 @@ func main() {
 	}
 	defer mqConn.Close()
 
-	taskPublisher, err := mq.NewTaskPublisher(appLogger, mqConn, cfg.PlaybookQueueName)
+	// insert-only: the API queues runs, the worker process works them
+	riverClient, err := jobs.NewInsertClient(pool)
 	if err != nil {
-		log.Fatalf("failed to setup task publisher: %v", err)
+		log.Fatalf("failed to setup job queue: %v", err)
 	}
 
 	statusConsumer := mq.NewStatusConsumer(appLogger, mqConn, cfg.StatusExchangeName, hub)
@@ -128,7 +130,7 @@ func main() {
 		taskService,
 		edgeService,
 		txManager,
-		taskPublisher,
+		jobs.NewEnqueuer(riverClient),
 		hub,
 		repository.NewRecordResolverImpl(appLogger, alertRepository, incidentRepository),
 	)
