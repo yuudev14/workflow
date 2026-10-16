@@ -32,7 +32,7 @@ func (r *RoleRepositoryImpl) queriesFromContext(ctx context.Context) db.Querier 
 func (r *RoleRepositoryImpl) GetByID(ctx context.Context, id uuid.UUID) (domain.Role, error) {
 	row, err := r.queriesFromContext(ctx).GetRoleById(ctx, toPgUUID(id))
 	if err != nil {
-		return domain.Role{}, mapNoRows(err, auth.ErrRoleNotFound)
+		return domain.Role{}, mapUniqueViolation(mapNoRows(err, auth.ErrRoleNotFound), auth.ErrRoleTaken)
 	}
 	return toDomainRole(row), nil
 }
@@ -121,7 +121,7 @@ func (r *RoleRepositoryImpl) Create(ctx context.Context, name string, descriptio
 		Description: toPgText(description),
 	})
 	if err != nil {
-		return domain.Role{}, err
+		return domain.Role{}, mapUniqueViolation(err, auth.ErrRoleTaken)
 	}
 	return toDomainRole(row), nil
 }

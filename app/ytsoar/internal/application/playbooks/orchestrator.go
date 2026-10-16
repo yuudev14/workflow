@@ -240,7 +240,7 @@ func (w *PlaybookApplicationServiceImpl) DeleteEdges(
 func validatePlaybookTaskPayload(body UpdatePlaybookTasksPayload) error {
 	_, ok := body.Edges["start"]
 	if !ok {
-		return fmt.Errorf("'Start' doesnt exist in edges")
+		return apperr.New(apperr.Invalid, "the start step must connect to a step")
 	}
 
 	for _, node := range body.Nodes {
@@ -249,7 +249,7 @@ func validatePlaybookTaskPayload(body UpdatePlaybookTasksPayload) error {
 		}
 	}
 
-	return fmt.Errorf("'Start' doesnt exist in nodes")
+	return apperr.New(apperr.Invalid, "the playbook must have a start step")
 }
 
 func (w *PlaybookApplicationServiceImpl) UpdatePlaybookTasks(

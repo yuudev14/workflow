@@ -9,7 +9,10 @@ import (
 	"github.com/yuudev14/ytsoar/internal/types"
 )
 
-var ErrTeamNotFound = apperr.New(apperr.NotFound, "team not found")
+var (
+	ErrTeamNotFound = apperr.New(apperr.NotFound, "team not found")
+	ErrTeamTaken    = apperr.New(apperr.Conflict, "a team with that name already exists")
+)
 
 func (s *Service) ListTeams(ctx context.Context, offset, limit int, filter TeamFilter) (types.Entries[domain.TeamWithMembers], error) {
 	teams, err := s.teams.List(ctx, offset, limit, filter)
