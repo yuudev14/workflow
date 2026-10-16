@@ -16,8 +16,8 @@ type TaskService interface {
 	CreateTaskHistory(ctx context.Context, playbookHistoryId string, tasks []domain.Tasks, graph map[uuid.UUID][]uuid.UUID) ([]domain.TaskHistory, error)
 	UpdateTaskStatus(ctx context.Context, playbookHistoryId string, taskId string, status string) (*domain.TaskHistory, error)
 	UpdateTaskHistory(ctx context.Context, playbookHistoryId string, taskId string, taskHistory UpdateTaskHistoryData) (*domain.TaskHistory, error)
-	// FailUnfinishedTaskHistory fails the pending and in-progress tasks of a run
-	// that will never finish (crash recovery).
+	// FailUnfinishedTaskHistory fails the pending tasks and the in-progress tasks of a run
+	// that never finishes (crash recovery).
 	FailUnfinishedTaskHistory(ctx context.Context, playbookHistoryId string, reason string) error
 	GetTaskHistoryById(ctx context.Context, id uuid.UUID) (*domain.TaskHistory, error)
 	GetTaskHistoryByPlaybookHistoryId(ctx context.Context, id string, filter TaskHistoryFilter) ([]domain.TaskHistory, error)

@@ -28,7 +28,7 @@ type fakeHub chan any
 
 func (h fakeHub) Broadcast(data any) { h <- data }
 
-// Needs a Postgres: TEST_DATABASE_URL=postgres://... go test ./internal/adapters/pgstatus
+// This test needs a Postgres: TEST_DATABASE_URL=postgres://... go test ./internal/adapters/pgstatus
 func TestNotifierReachesTheListenersHub(t *testing.T) {
 	url := os.Getenv("TEST_DATABASE_URL")
 	if url == "" {

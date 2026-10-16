@@ -274,7 +274,7 @@ SET
     END,
     result = $5
 WHERE id = $6
-  -- state machine guard: the target status must be reachable from the current one
+  -- State rule: the new status must be allowed from the current status.
   AND (NOT $1::boolean OR status::text = ANY($7::text[]))
 RETURNING id, playbook_id, status, error, result, triggered_at, edges, trigger_type, triggered_by, input
 `

@@ -558,8 +558,8 @@ func sampleTaskWithConnector(connectorID string) domain.Tasks {
 	return task
 }
 
-// A run the state machine refuses to start was already started (a worker died
-// and the queue redelivered it): it must fail, never run the connectors again.
+// The state rules refuse to start a run that a worker already started (the worker stopped
+// and the queue delivered the run again). The run must fail. The connectors must not run again.
 func TestExecutorAlreadyStartedRunIsFailedNotRerun(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	taskService := taskmocks.NewMockTaskService(ctrl)
@@ -587,7 +587,7 @@ func TestExecutorAlreadyStartedRunIsFailedNotRerun(t *testing.T) {
 	assert.Equal(t, []string{"in_progress", "failed"}, statuses)
 }
 
-// A redelivery of a run that already finished is a duplicate: do nothing.
+// The queue can deliver a run again after it finished. This is a duplicate, so do nothing.
 func TestExecutorFinishedRunIsLeftAlone(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	playbookService := playbookmocks.NewMockPlaybookService(ctrl)

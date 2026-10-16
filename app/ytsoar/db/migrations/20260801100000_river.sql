@@ -1,6 +1,6 @@
--- Generated with: river migrate-get --all --up|--down (river v0.49.0). Do not edit by hand.
--- NO TRANSACTION: River's migrations run one transaction each, and a later one
--- uses an enum value ('pending') that an earlier one adds.
+-- Made with: river migrate-get --all --up|--down (river v0.49.0). Do not change it by hand.
+-- NO TRANSACTION: River runs each of its migrations in its own transaction.
+-- A later migration uses the enum value 'pending' that an earlier migration adds.
 -- +goose NO TRANSACTION
 -- +goose Up
 -- +goose StatementBegin

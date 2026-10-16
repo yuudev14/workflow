@@ -47,7 +47,7 @@ func (m *PgxTxManager) WithinTransaction(
 	return nil
 }
 
-// TxFromContext lets other adapters (the job queue) join the transaction the
+// TxFromContext lets other adapters (the job queue) join the transaction that the
 // TxManager put in ctx.
 func TxFromContext(ctx context.Context) (pgx.Tx, bool) { return txFromContext(ctx) }
 

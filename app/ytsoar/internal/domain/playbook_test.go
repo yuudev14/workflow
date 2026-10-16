@@ -7,7 +7,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-// Finished statuses must never be a source: nothing moves a finished row.
+// A finished status must never be a source status. Nothing changes a finished row.
 func TestTransitionsAreForwardOnly(t *testing.T) {
 	finished := []string{StatusSuccess, StatusFailed, StatusSkipped}
 	for name, table := range map[string]Transitions{"run": RunTransitions, "task": TaskTransitions} {

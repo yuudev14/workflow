@@ -147,7 +147,7 @@ services:
       - ../app/ytsoar:/app
       # unified connectors tree, read-only: the sandbox only executes from it
       - ../app/connectors:/opt/ytsoar/connectors:ro
-    # deliberately NO DB_* env: the sandbox holds zero credentials
+    # The sandbox has no DB_* settings. It holds no credentials.
     environment:
       - AIR_POLL=true
       - SANDBOX_LISTEN_ADDR=:50052

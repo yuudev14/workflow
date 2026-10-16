@@ -93,7 +93,7 @@ type FailUnfinishedTaskHistoryParams struct {
 	PlaybookHistoryID pgtype.UUID `json:"playbook_history_id"`
 }
 
-// crash recovery: tasks of a dead run will never finish
+// Crash recovery: the tasks of a stopped run never finish.
 func (q *Queries) FailUnfinishedTaskHistory(ctx context.Context, arg FailUnfinishedTaskHistoryParams) error {
 	_, err := q.db.Exec(ctx, failUnfinishedTaskHistory, arg.Error, arg.PlaybookHistoryID)
 	return err
@@ -239,7 +239,7 @@ SET
         ELSE config
     END
 WHERE playbook_history_id = $18 AND task_id = $19
-  -- state machine guard: the target status must be reachable from the current one
+  -- State rule: the new status must be allowed from the current status.
   AND (NOT $8::boolean OR status::text = ANY($20::text[]))
 RETURNING id, playbook_history_id, task_id, name, description, parameters, config, x, y, connector_name, connector_id, operation, status, destination_ids, error, result, triggered_at
 `

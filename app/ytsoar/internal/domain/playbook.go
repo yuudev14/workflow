@@ -32,8 +32,9 @@ func IsValidTriggerType(s string) bool {
 	return false
 }
 
-// Run and task statuses. A run is queued -> in_progress -> success|failed, a
-// task is pending -> in_progress -> success|failed (or pending -> skipped).
+// Run and task statuses. A run goes from queued to in_progress to success or failed.
+// A task goes from pending to in_progress to success or failed. A task can also go
+// from pending to skipped.
 const (
 	StatusQueued     = "queued"
 	StatusPending    = "pending"
@@ -43,16 +44,16 @@ const (
 	StatusSkipped    = "skipped"
 )
 
-// ErrInvalidTransition means a status change was refused: the row is not in a
-// state the target status can be reached from (or the row does not exist).
+// ErrInvalidTransition means the system refused a status change. The row is not in a
+// status that allows the new status, or the row does not exist.
 var ErrInvalidTransition = apperr.New(apperr.Conflict, "status change is not allowed")
 
-// Transitions maps a target status to the statuses it may be reached from. The
-// repositories hand From(to) to the UPDATE, so the check is atomic: two
-// workers cannot both move the same run from queued to in_progress.
+// Transitions maps a new status to the statuses that allow it. The repositories pass
+// From(to) to the UPDATE, so the check is atomic. Two workers cannot both change the
+// same run from queued to in_progress.
 type Transitions map[string][]string
 
-// From returns the statuses allowed to move to `to`; unknown targets have none.
+// From returns the statuses that allow a change to `to`. An unknown status has none.
 func (t Transitions) From(to string) []string { return t[to] }
 
 var RunTransitions = Transitions{
@@ -61,8 +62,8 @@ var RunTransitions = Transitions{
 	StatusFailed:     {StatusQueued, StatusInProgress},
 }
 
-// A task can fail or succeed straight from pending: the start node never
-// reports in_progress, and a node can fail before it starts.
+// A task can succeed or fail directly from pending. The start node never reports
+// in_progress, and a node can fail before it starts.
 var TaskTransitions = Transitions{
 	StatusInProgress: {StatusPending},
 	StatusSuccess:    {StatusPending, StatusInProgress},
