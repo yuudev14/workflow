@@ -3,24 +3,6 @@ name: ytsoar
 networks:
   ytsoar:
 services:
-  ytsoar_rabbitmq:
-    image: rabbitmq:3-management
-    container_name: ytsoar_rabbitmq
-    ports:
-      - "5673:5672"
-      - "15673:15672"
-    environment:
-      - RABBITMQ_DEFAULT_USER=guest
-      - RABBITMQ_DEFAULT_PASS=guest
-    healthcheck:
-      test: ["CMD", "rabbitmq-diagnostics", "ping"]
-      interval: 5s
-      timeout: 3s
-      retries: 5
-    networks:
-      - ytsoar
-    volumes:
-      - rabbitmq_data:/var/lib/rabbitmq
   ytsoar_postgres:
     image: postgres:15
     container_name: ytsoar_postgres
@@ -79,14 +61,8 @@ services:
       - DB_HOST=ytsoar_postgres
       - DB_PORT=5432
       - DB_NAME=ytsoar
-      - MQ_USER=guest
-      - MQ_PASSWORD=guest
-      - MQ_HOST=ytsoar_rabbitmq
-      - MQ_PORT=5672
       - AIR_POLL=true
       - AIR_WATCH_TMOUT=500ms
-      - STATUS_EXCHANGE=playbook.status
-      - MODULE_EVENTS_EXCHANGE=module.events
       - CONNECTORS_DIR=/opt/ytsoar/connectors
       - APP_ENV=development
       # Dev-only secret. APP_ENV=production refuses to start with this value.
@@ -109,8 +85,6 @@ services:
       - ytsoar
     depends_on:
       ytsoar_postgres:
-        condition: service_healthy
-      ytsoar_rabbitmq:
         condition: service_healthy
   ytsoar_playbook_worker:
     build:
@@ -138,21 +112,13 @@ services:
       - DB_HOST=ytsoar_postgres
       - DB_PORT=5432
       - DB_NAME=ytsoar
-      - MQ_USER=guest
-      - MQ_PASSWORD=guest
-      - MQ_HOST=ytsoar_rabbitmq
-      - MQ_PORT=5672
       - AIR_POLL=true
-      - STATUS_EXCHANGE=playbook.status
-      - MODULE_EVENTS_EXCHANGE=module.events
       - SANDBOX_ADDR=ytsoar_sandbox:50052
       - CONNECTORS_DIR=/opt/ytsoar/connectors
     networks:
       - ytsoar
     depends_on:
       ytsoar_postgres:
-        condition: service_healthy
-      ytsoar_rabbitmq:
         condition: service_healthy
       ytsoar_sandbox:
         condition: service_started
@@ -181,7 +147,7 @@ services:
       - ../app/ytsoar:/app
       # unified connectors tree, read-only: the sandbox only executes from it
       - ../app/connectors:/opt/ytsoar/connectors:ro
-    # deliberately NO DB_*/MQ_* env: the sandbox holds zero credentials
+    # deliberately NO DB_* env: the sandbox holds zero credentials
     environment:
       - AIR_POLL=true
       - SANDBOX_LISTEN_ADDR=:50052
@@ -202,4 +168,3 @@ services:
       - ytsoar
 volumes:
   postgres_data:
-  rabbitmq_data:

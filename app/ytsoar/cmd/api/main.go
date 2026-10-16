@@ -12,7 +12,6 @@ import (
 	"github.com/yuudev14/ytsoar/internal/adapters/http/handlers"
 	"github.com/yuudev14/ytsoar/internal/adapters/http/middleware"
 	"github.com/yuudev14/ytsoar/internal/adapters/jobs"
-	"github.com/yuudev14/ytsoar/internal/adapters/mq"
 	"github.com/yuudev14/ytsoar/internal/adapters/oidcclient"
 	"github.com/yuudev14/ytsoar/internal/adapters/pgstatus"
 	"github.com/yuudev14/ytsoar/internal/adapters/repository"
@@ -55,12 +54,6 @@ func main() {
 
 	hub := ws.NewHub(cfg.CORSOrigins)
 	go hub.Run()
-
-	mqConn, err := mq.Connect(cfg.MQUrl)
-	if err != nil {
-		log.Fatalf("failed to connect to MQ: %v", err)
-	}
-	defer mqConn.Close()
 
 	// insert-only: the API queues runs, the worker process works them
 	riverClient, err := jobs.NewInsertClient(pool)
@@ -161,10 +154,7 @@ func main() {
 	connectorHandler := handlers.NewConnectorHandler(appLogger, connectorService)
 	adminHandler := handlers.NewAdminHandler(appLogger, authService)
 
-	moduleEventPublisher, err := mq.NewModuleEventPublisher(appLogger, mqConn, cfg.ModuleEventsExchangeName)
-	if err != nil {
-		log.Fatalf("failed to setup module event publisher: %v", err)
-	}
+	moduleEventPublisher := jobs.NewModuleEventLogger(appLogger)
 
 	// The alert repository doubles as incidents.AlertTimeline so linking writes
 	// the other half of the story onto the alert.

@@ -22,7 +22,6 @@ const (
 type Config struct {
 	DBUrl      string
 	LoggerMode string
-	MQUrl      string
 	JWTSecret  string
 	HTTPAddr   string
 
@@ -46,9 +45,6 @@ type Config struct {
 	// redirects back to (nginx strips /auth-api/ before it reaches the api).
 	FrontendURL   string
 	AuthPublicURL string
-
-	StatusExchangeName       string
-	ModuleEventsExchangeName string
 
 	// SandboxAddr is where the worker sends every dynamic node
 	// (ConnectorRuntime gRPC on cmd/sandbox).
@@ -91,7 +87,6 @@ func LoadFrom(dest string) Config {
 	return Config{
 		DBUrl:      getDbUrl(),
 		LoggerMode: getEnvOr("LOGGER_MODE", "DEBUG"),
-		MQUrl:      getMQUrl(),
 		JWTSecret:  getEnvOr("JWT_SECRET", DefaultJWTSecret),
 		HTTPAddr:   getEnvOr("HTTP_ADDR", ":8080"),
 
@@ -106,9 +101,6 @@ func LoadFrom(dest string) Config {
 
 		FrontendURL:   getEnvOr("FRONTEND_URL", "http://localhost:9999"),
 		AuthPublicURL: getEnvOr("AUTH_PUBLIC_URL", "http://localhost:9999/auth-api"),
-
-		StatusExchangeName:       getEnvOr("STATUS_EXCHANGE", "playbook.status"),
-		ModuleEventsExchangeName: getEnvOr("MODULE_EVENTS_EXCHANGE", "module.events"),
 
 		SandboxAddr:       getEnvOr("SANDBOX_ADDR", "localhost:50052"),
 		SandboxListenAddr: getEnvOr("SANDBOX_LISTEN_ADDR", ":50052"),
@@ -132,16 +124,6 @@ func getDbUrl() string {
 		os.Getenv("DB_HOST"),
 		os.Getenv("DB_PORT"),
 		os.Getenv("DB_NAME"),
-	)
-}
-
-func getMQUrl() string {
-	return fmt.Sprintf(
-		"amqp://%v:%v@%v:%v/",
-		os.Getenv("MQ_USER"),
-		os.Getenv("MQ_PASSWORD"),
-		os.Getenv("MQ_HOST"),
-		os.Getenv("MQ_PORT"),
 	)
 }
 

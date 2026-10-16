@@ -12,15 +12,16 @@ There are four pieces. The first three are Go binaries built from one module
 (`github.com/yuudev14/ytsoar`); the fourth is the Next.js frontend.
 
 ```
-┌──────────┐   REST + WS    ┌─────────────┐  trigger   ┌──────────┐
-│ Frontend │ ─────────────> │ Playbook API│ ─────────> │ RabbitMQ │
-│ Next.js  │ <──── WS ───── │  cmd/api    │ <─ status ─│          │
-└──────────┘    (nginx)     └──────┬──────┘   fanout   └────┬─────┘
-                                   │ sqlc/pgx               │ consume
-                            ┌──────┴──────┐            ┌────┴─────┐
-                            │  PostgreSQL │ <──────────│  Worker  │
-                            └─────────────┘  history   │cmd/worker│
-                                                       └────┬─────┘
+┌──────────┐   REST + WS    ┌─────────────┐   sqlc/pgx   ┌──────────────┐
+│ Frontend │ ─────────────> │ Playbook API│ ───────────> │  PostgreSQL  │
+│ Next.js  │ <──── WS ───── │  cmd/api    │ <─ LISTEN ── │ history +    │
+└──────────┘    (nginx)     └─────────────┘   /NOTIFY    │ River jobs   │
+                                                          └──────┬───────┘
+                                                                 │ work job
+                                                           ┌─────┴────┐
+                                                           │  Worker  │
+                                                           │cmd/worker│
+                                                           └────┬─────┘
                                        gRPC ExecuteOperation│ per node
                                                   ┌─────────┴──────────┐
                                                   │      Sandbox       │
@@ -34,7 +35,7 @@ There are four pieces. The first three are Go binaries built from one module
 ```
 
 1. **Playbook API** (`cmd/api`) - the REST and WebSocket front door. Saves
-   playbooks, queues a run to RabbitMQ when triggered, and streams status
+   playbooks, queues a run in Postgres (River) when triggered, and streams status
    updates back to the browser.
 2. **Worker** (`cmd/worker`) - picks up queued runs and executes the graph,
    node by node, running independent nodes in parallel. For most nodes it
@@ -44,7 +45,7 @@ There are four pieces. The first three are Go binaries built from one module
 3. **Sandbox** (`cmd/sandbox`) - actually runs connectors and code snippets.
    Every run gets a brand-new `python3` or `node` process with no credentials,
    a clean environment, and a timeout, so untrusted code can't touch the
-   database or queue.
+   database or job queue.
 4. **Frontend** - the visual editor, served by Next.js behind nginx.
 
 The split is about **trust, not language**: anything that touches credentials
@@ -54,7 +55,7 @@ inside it.
 ## Quickstart
 
 ```bash
-# backend stack (postgres, rabbitmq, api, worker, sandbox, nginx)
+# backend stack (postgres, api, worker, sandbox, nginx)
 make rebuild-containers
 
 # frontend (dev server on :3000, proxied by nginx on :9999)
@@ -64,7 +65,7 @@ cd app/frontend && npm install && npm run dev
 Open http://localhost:9999 - create a playbook, add nodes, trigger it, and
 watch the statuses stream in.
 
-Ports: API `:8080`, RabbitMQ UI `:15673`, Postgres `:5433`, nginx `:9999`.
+Ports: API `:8080`, Postgres `:5433`, nginx `:9999`.
 
 ## Writing connectors
 
