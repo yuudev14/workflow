@@ -53,7 +53,7 @@ ON CONFLICT DO NOTHING;
 -- name: UpdatePlaybookHistoryStatus :one
 UPDATE playbook_history
 SET status = $2
-WHERE id = $1 AND status = ANY(sqlc.arg('allowed_from')::playbook_status[])
+WHERE id = $1 AND status::text = ANY(sqlc.arg('allowed_from')::text[])
 RETURNING *;
 
 -- name: UpdatePlaybookHistory :one
@@ -70,7 +70,7 @@ SET
     result = sqlc.arg('result')
 WHERE id = sqlc.arg('id')
   -- state machine guard: the target status must be reachable from the current one
-  AND (NOT sqlc.arg('status_set')::boolean OR status = ANY(sqlc.arg('allowed_from')::playbook_status[]))
+  AND (NOT sqlc.arg('status_set')::boolean OR status::text = ANY(sqlc.arg('allowed_from')::text[]))
 RETURNING *;
 
 -- name: GetPlaybookHistoryById :one

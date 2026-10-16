@@ -14,6 +14,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/yuudev14/ytsoar/db"
 	"github.com/yuudev14/ytsoar/internal/adapters/repository"
+	"github.com/yuudev14/ytsoar/internal/application/execution"
 	"github.com/yuudev14/ytsoar/internal/domain"
 	"github.com/yuudev14/ytsoar/internal/logger"
 )
@@ -61,6 +62,19 @@ func TestWorkDoesNotRetryAFailedRun(t *testing.T) {
 	worker := NewRunWorker(logger.NewNop(), fakeLoader{}, exec)
 
 	assert.NoError(t, worker.Work(context.Background(), job(uuid.New(), 1)))
+}
+
+// Nothing ran when the run could not even be started, so a retry is safe.
+func TestWorkRetriesARunThatDidNotStart(t *testing.T) {
+	exec := &fakeExecutor{runErr: execution.ErrNotStarted}
+	worker := NewRunWorker(logger.NewNop(), fakeLoader{}, exec)
+
+	assert.Error(t, worker.Work(context.Background(), job(uuid.New(), 1)))
+	assert.Empty(t, exec.aborted)
+
+	id := uuid.New()
+	assert.NoError(t, worker.Work(context.Background(), job(id, maxAttempts)))
+	assert.Equal(t, []uuid.UUID{id}, exec.aborted)
 }
 
 func TestWorkRetriesWhenTheMessageCannotBeLoaded(t *testing.T) {

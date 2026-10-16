@@ -5,6 +5,7 @@ package jobs
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"github.com/google/uuid"
@@ -13,6 +14,7 @@ import (
 	"github.com/riverqueue/river"
 	"github.com/riverqueue/river/riverdriver/riverpgxv5"
 	"github.com/yuudev14/ytsoar/internal/adapters/repository"
+	"github.com/yuudev14/ytsoar/internal/application/execution"
 	"github.com/yuudev14/ytsoar/internal/domain"
 	"github.com/yuudev14/ytsoar/internal/logger"
 )
@@ -66,19 +68,27 @@ func NewRunWorker(log logger.Logger, loader RunLoader, executor RunExecutor) *Ru
 func (w *RunWorker) Work(ctx context.Context, job *river.Job[RunArgs]) error {
 	id := job.Args.PlaybookHistoryID
 	msg, err := w.loader.LoadRunMessage(ctx, id)
-	if err != nil {
-		if job.Attempt < job.MaxAttempts {
-			return err // River retries with backoff
+	if err == nil {
+		err = w.executor.Run(ctx, msg)
+		if !errors.Is(err, execution.ErrNotStarted) {
+			// A failed run is already persisted by the executor, so it is not a
+			// job error: returning it would make River retry and run the
+			// connectors again.
+			if err != nil {
+				w.logger.Errorw("playbook run failed", "playbook_history_id", id, "error", err)
+			}
+			return nil
 		}
-		w.logger.Errorw("could not rebuild the run, failing it", "playbook_history_id", id, "error", err)
-		return w.executor.Abort(ctx, id, err)
 	}
-	// A failed run is already persisted by the executor, so it is not a job
-	// error: returning it would make River retry and run the connectors again.
-	if err := w.executor.Run(ctx, msg); err != nil {
-		w.logger.Errorw("playbook run failed", "playbook_history_id", id, "error", err)
+
+	// The run could not be built or started, and nothing ran: River retries
+	// with backoff, and on the last attempt the run is failed, or it would
+	// stay queued forever.
+	if job.Attempt < job.MaxAttempts {
+		return err
 	}
-	return nil
+	w.logger.Errorw("could not start the run, failing it", "playbook_history_id", id, "error", err)
+	return w.executor.Abort(ctx, id, err)
 }
 
 // Enqueuer queues runs. It implements contracts.RunEnqueuer.
@@ -123,7 +133,9 @@ func NewWorkerClient(pool *pgxpool.Pool, worker *RunWorker, concurrency int, run
 // playbooks (on_create, on_update) will queue their runs from here.
 type ModuleEventLogger struct{ logger logger.Logger }
 
-func NewModuleEventLogger(log logger.Logger) *ModuleEventLogger { return &ModuleEventLogger{logger: log} }
+func NewModuleEventLogger(log logger.Logger) *ModuleEventLogger {
+	return &ModuleEventLogger{logger: log}
+}
 
 func (l *ModuleEventLogger) Publish(module, event string, _ any) error {
 	l.logger.Debugw("module event", "module", module, "event", event)

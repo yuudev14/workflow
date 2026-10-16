@@ -1,0 +1,83 @@
+package repository
+
+import (
+	"context"
+	"os"
+	"testing"
+
+	"github.com/google/uuid"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"github.com/yuudev14/ytsoar/db"
+	"github.com/yuudev14/ytsoar/internal/application/playbooks"
+	"github.com/yuudev14/ytsoar/internal/application/tasks"
+	"github.com/yuudev14/ytsoar/internal/domain"
+	"github.com/yuudev14/ytsoar/internal/logger"
+	"github.com/yuudev14/ytsoar/internal/types"
+)
+
+func status(s string) types.Nullable[string] { return types.Nullable[string]{Value: &s, Set: true} }
+
+// The guard lives in SQL, so it needs a migrated Postgres:
+// TEST_DATABASE_URL=postgres://... go test ./internal/adapters/repository
+func TestStatusTransitionsAreGuardedInSQL(t *testing.T) {
+	url := os.Getenv("TEST_DATABASE_URL")
+	if url == "" {
+		t.Skip("TEST_DATABASE_URL is not set")
+	}
+	ctx := context.Background()
+	pool, err := db.NewPool(ctx, url)
+	require.NoError(t, err)
+	defer pool.Close()
+	queries := db.New(pool)
+	playbookRepo := NewPlaybookRepository(logger.NewNop(), queries, pool)
+	taskRepo := NewTaskRepositoryImpl(logger.NewNop(), queries, pool)
+
+	var playbookID, taskID, historyID uuid.UUID
+	require.NoError(t, pool.QueryRow(ctx, `INSERT INTO playbooks (name) VALUES ('transitions') RETURNING id`).Scan(&playbookID))
+	t.Cleanup(func() { pool.Exec(ctx, `DELETE FROM playbooks WHERE id = $1`, playbookID) })
+	require.NoError(t, pool.QueryRow(ctx,
+		`INSERT INTO tasks (playbook_id, name, description, parameters, operation) VALUES ($1, 'a', '', '{}', 'op') RETURNING id`, playbookID).Scan(&taskID))
+	require.NoError(t, pool.QueryRow(ctx,
+		`INSERT INTO playbook_history (playbook_id, triggered_at, edges, status) VALUES ($1, NOW(), '[]', 'queued') RETURNING id`, playbookID).Scan(&historyID))
+	_, err = pool.Exec(ctx,
+		`INSERT INTO task_history (playbook_history_id, task_id, triggered_at, name, description, parameters, operation) VALUES ($1, $2, NOW(), 'a', '', '{}', 'op')`, historyID, taskID)
+	require.NoError(t, err)
+
+	run := func(to string) error {
+		_, err := playbookRepo.UpdatePlaybookHistory(ctx, historyID.String(), playbooks.UpdatePlaybookHistoryData{Status: status(to)})
+		return err
+	}
+	task := func(to string) error {
+		_, err := taskRepo.UpdateTaskHistory(ctx, historyID.String(), taskID.String(), tasks.UpdateTaskHistoryData{Name: "a", Operation: "op", Status: status(to)})
+		return err
+	}
+
+	// a run starts once: the second worker to claim it is refused
+	assert.NoError(t, run(domain.StatusInProgress))
+	assert.ErrorIs(t, run(domain.StatusInProgress), domain.ErrInvalidTransition)
+	assert.NoError(t, run(domain.StatusSuccess))
+	// a finished run does not move again
+	assert.ErrorIs(t, run(domain.StatusFailed), domain.ErrInvalidTransition)
+	_, err = playbookRepo.UpdatePlaybookHistoryStatus(ctx, historyID.String(), domain.StatusInProgress)
+	assert.ErrorIs(t, err, domain.ErrInvalidTransition)
+
+	assert.NoError(t, task(domain.StatusInProgress))
+	assert.NoError(t, task(domain.StatusSuccess))
+	assert.ErrorIs(t, task(domain.StatusFailed), domain.ErrInvalidTransition)
+
+	// crash recovery fails what never finished and leaves what did
+	_, err = pool.Exec(ctx, `INSERT INTO task_history (playbook_history_id, task_id, triggered_at, name, description, parameters, operation, status)
+		SELECT $1, $2, NOW(), 'b', '', '{}', 'op', 'in_progress'`, historyID, taskID)
+	require.NoError(t, err)
+	require.NoError(t, taskRepo.FailUnfinishedTaskHistory(ctx, historyID.String(), "worker stopped"))
+	var statuses []string
+	rows, err := pool.Query(ctx, `SELECT status::text FROM task_history WHERE playbook_history_id = $1 ORDER BY name`, historyID)
+	require.NoError(t, err)
+	for rows.Next() {
+		var s string
+		require.NoError(t, rows.Scan(&s))
+		statuses = append(statuses, s)
+	}
+	assert.Equal(t, []string{"success", "failed"}, statuses)
+}

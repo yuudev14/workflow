@@ -240,7 +240,7 @@ SET
     END
 WHERE playbook_history_id = $18 AND task_id = $19
   -- state machine guard: the target status must be reachable from the current one
-  AND (NOT $8::boolean OR status = ANY($20::task_status[]))
+  AND (NOT $8::boolean OR status::text = ANY($20::text[]))
 RETURNING id, playbook_history_id, task_id, name, description, parameters, config, x, y, connector_name, connector_id, operation, status, destination_ids, error, result, triggered_at
 `
 
@@ -264,7 +264,7 @@ type UpdateTaskHistoryParams struct {
 	Config            pgtype.Text    `json:"config"`
 	PlaybookHistoryID pgtype.UUID    `json:"playbook_history_id"`
 	TaskID            pgtype.UUID    `json:"task_id"`
-	AllowedFrom       []TaskStatus   `json:"allowed_from"`
+	AllowedFrom       []string       `json:"allowed_from"`
 }
 
 func (q *Queries) UpdateTaskHistory(ctx context.Context, arg UpdateTaskHistoryParams) (TaskHistory, error) {
@@ -316,15 +316,15 @@ func (q *Queries) UpdateTaskHistory(ctx context.Context, arg UpdateTaskHistoryPa
 const updateTaskStatus = `-- name: UpdateTaskStatus :one
 UPDATE task_history
 SET status = $3
-WHERE playbook_history_id = $1 AND task_id = $2 AND status = ANY($4::task_status[])
+WHERE playbook_history_id = $1 AND task_id = $2 AND status::text = ANY($4::text[])
 RETURNING id, playbook_history_id, task_id, name, description, parameters, config, x, y, connector_name, connector_id, operation, status, destination_ids, error, result, triggered_at
 `
 
 type UpdateTaskStatusParams struct {
-	PlaybookHistoryID pgtype.UUID  `json:"playbook_history_id"`
-	TaskID            pgtype.UUID  `json:"task_id"`
-	Status            TaskStatus   `json:"status"`
-	AllowedFrom       []TaskStatus `json:"allowed_from"`
+	PlaybookHistoryID pgtype.UUID `json:"playbook_history_id"`
+	TaskID            pgtype.UUID `json:"task_id"`
+	Status            TaskStatus  `json:"status"`
+	AllowedFrom       []string    `json:"allowed_from"`
 }
 
 func (q *Queries) UpdateTaskStatus(ctx context.Context, arg UpdateTaskStatusParams) (TaskHistory, error) {
