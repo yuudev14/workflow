@@ -3,13 +3,13 @@ description: Python and Node with the packages that the sandbox needs, as in Doc
 runs:
   using: composite
   steps:
-    - uses: actions/setup-node@v4
+    - uses: actions/setup-node@v5
       with:
         node-version: 24
     # The sandbox runs `python3 -I`, which ignores the user site, so the
     # packages go in the system site.
     - shell: bash
-      run: sudo python3 -m pip install --break-system-packages jinja2 requests colorlog pydantic-settings
+      run: sudo python3 -m pip install --break-system-packages --ignore-installed jinja2 requests colorlog pydantic-settings
     - shell: bash
       run: |
         npm install --prefix "$RUNNER_TEMP/harness" nunjucks@3
