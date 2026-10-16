@@ -283,7 +283,7 @@ func (e *Executor) setTaskStatus(
 	if err != nil {
 		return err
 	}
-	if err := e.status.Publish("task_status", res); err != nil {
+	if err := e.status.Publish(ctx, "task_status", res.ID); err != nil {
 		e.logger.Errorw("failed to publish task status event", "task", task.Name, "error", err)
 	}
 	return nil
@@ -352,7 +352,7 @@ func (e *Executor) setRunStatus(
 	if err != nil {
 		return nil, err
 	}
-	if err := e.status.Publish("playbook_status", res); err != nil {
+	if err := e.status.Publish(ctx, "playbook_status", res.ID); err != nil {
 		e.logger.Errorw("failed to publish playbook status event",
 			"playbook_history_id", msg.PlaybookHistoryId, "error", err)
 	}

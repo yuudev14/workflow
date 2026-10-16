@@ -99,6 +99,35 @@ func (q *Queries) FailUnfinishedTaskHistory(ctx context.Context, arg FailUnfinis
 	return err
 }
 
+const getTaskHistoryById = `-- name: GetTaskHistoryById :one
+SELECT id, playbook_history_id, task_id, name, description, parameters, config, x, y, connector_name, connector_id, operation, status, destination_ids, error, result, triggered_at FROM task_history WHERE id = $1
+`
+
+func (q *Queries) GetTaskHistoryById(ctx context.Context, id pgtype.UUID) (TaskHistory, error) {
+	row := q.db.QueryRow(ctx, getTaskHistoryById, id)
+	var i TaskHistory
+	err := row.Scan(
+		&i.ID,
+		&i.PlaybookHistoryID,
+		&i.TaskID,
+		&i.Name,
+		&i.Description,
+		&i.Parameters,
+		&i.Config,
+		&i.X,
+		&i.Y,
+		&i.ConnectorName,
+		&i.ConnectorID,
+		&i.Operation,
+		&i.Status,
+		&i.DestinationIds,
+		&i.Error,
+		&i.Result,
+		&i.TriggeredAt,
+	)
+	return i, err
+}
+
 const getTaskHistoryByPlaybookHistoryId = `-- name: GetTaskHistoryByPlaybookHistoryId :many
 SELECT id, playbook_history_id, task_id, name, description, parameters, config, x, y, connector_name, connector_id, operation, status, destination_ids, error, result, triggered_at FROM task_history WHERE playbook_history_id = $1
 `
