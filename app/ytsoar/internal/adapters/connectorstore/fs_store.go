@@ -1,7 +1,5 @@
 // Package connectorstore reads connector metadata from the unified connectors tree:
-// <dir>/<id>/{info.json, configs/*.toml}. It implements connectors.ConnectorStore like the
-// old FastAPI GET /connectors/ endpoint (skip "core", skip broken entries, add the config
-// stems as "configs").
+// <dir>/<id>/{info.json, configs/*.toml}.
 package connectorstore
 
 import (
@@ -44,7 +42,6 @@ func (s *FSStore) List(ctx context.Context) ([]domain.ConnectorInfo, error) {
 		}
 		info, err := s.readInfo(entry.Name())
 		if err != nil {
-			// like FastAPI: a broken connector never breaks the list
 			s.logger.Warnw("skipping connector with unreadable info.json",
 				"connector", entry.Name(), "error", err)
 			continue
