@@ -24,15 +24,12 @@ const (
 	StatusFailed     = domain.StatusFailed
 	StatusSkipped    = domain.StatusSkipped
 
-	// startNode is a no-op node that only reports success, parity with the
-	// Python executor's special case.
+	// startNode only reports success.
 	startNode = "start"
 )
 
-// Executor walks a playbook graph with Kahn's algorithm: nodes whose
-// dependencies completed run concurrently (bounded by maxParallel), each node
-// is dispatched to its runtime, outputs accumulate in a StepStore, and any
-// failure cancels the remaining run (parity with the Python executor).
+// Executor runs a playbook graph (Kahn's algorithm). Ready nodes run in parallel,
+// and one failure cancels the run.
 type Executor struct {
 	logger          logger.Logger
 	taskService     tasks.TaskService
@@ -41,20 +38,19 @@ type Executor struct {
 	status          StatusPublisher
 	maxParallel     int
 	nodeTimeout     time.Duration
-	// finalWriteDelays is the wait before each new try to save the final status of a run.
+	// wait before each retry to save the final status
 	finalWriteDelays []time.Duration
 }
 
 // Option changes a setting of the Executor.
 type Option func(*Executor)
 
-// WithFinalWriteDelays sets the wait before each new try to save the final status of a
-// run. A test uses short delays.
+// WithFinalWriteDelays sets the waits between final status saves. Tests use short ones.
 func WithFinalWriteDelays(delays ...time.Duration) Option {
 	return func(e *Executor) { e.finalWriteDelays = delays }
 }
 
-// defaultFinalWriteDelays gives the database about 30 seconds to come back.
+// defaultFinalWriteDelays: about 30 seconds in total.
 var defaultFinalWriteDelays = []time.Duration{time.Second, 2 * time.Second, 4 * time.Second, 8 * time.Second, 15 * time.Second}
 
 func NewExecutor(
@@ -70,8 +66,7 @@ func NewExecutor(
 	if maxParallel < 1 {
 		maxParallel = 1
 	}
-	// A zero/negative timeout makes context.WithTimeout fire immediately, so
-	// every node would time out before it runs; fall back to a sane default.
+	// zero or negative would time out every node, so use the default
 	if nodeTimeout <= 0 {
 		nodeTimeout = 5 * time.Minute
 	}
@@ -91,25 +86,23 @@ func NewExecutor(
 	return e
 }
 
-// statusWriteTimeout is the time limit for one try to save a status.
+// statusWriteTimeout limits one try to save a status.
 const statusWriteTimeout = 10 * time.Second
 
-// detach returns a context that ignores the cancel of ctx (so a stop or a timeout does not
-// block the last status write), but has its own time limit.
+// detach keeps the values of ctx but ignores its cancel, so the last status write
+// still runs. It has its own time limit.
 func detach(ctx context.Context) (context.Context, context.CancelFunc) {
 	return context.WithTimeout(context.WithoutCancel(ctx), statusWriteTimeout)
 }
 
 var errWorkerStopped = errors.New("an earlier attempt started this run and did not finish it (the worker may have stopped)")
 
-// ErrNotStarted wraps the error of a run that did not start. The database failed before
-// the run changed to in_progress. This is different from a run that started and then failed.
-// Nothing ran, so the caller can safely mark the run failed.
+// ErrNotStarted: the database failed before the run became in_progress. Nothing ran,
+// so it is safe to mark the run failed.
 var ErrNotStarted = errors.New("run did not start")
 
-// ErrNotFinished wraps the error of a run that ran, but whose final status the database
-// could not save, even after several tries. The run is still in_progress. The queue must
-// give the job to a new attempt, and recoverRun then marks the run failed.
+// ErrNotFinished: the run ran, but the final status was not saved after several tries.
+// The run stays in_progress, so the queue retries and recoverRun marks it failed.
 var ErrNotFinished = errors.New("run status was not saved")
 
 type nodeResult struct {
@@ -127,24 +120,20 @@ func (e *Executor) Run(ctx context.Context, msg domain.TaskMessage) error {
 		return fmt.Errorf("%w: %w", ErrNotStarted, err)
 	}
 
-	// domain.IsAcyclicGraph returns true when a cycle EXISTS and mutates its
-	// input, so it gets a copy.
+	// IsAcyclicGraph returns true when a cycle exists and changes its input, so pass a copy
 	utils.DebugJSON(e.logger, "TaskMessage", msg, " ")
 	if domain.IsAcyclicGraph(copyGraph(msg.Graph)) {
 		return e.finishPlaybook(ctx, msg, StatusFailed, nil, fmt.Errorf("graph contains a cycle"))
 	}
 
-	// An empty graph means nothing would run; succeeding would hide a broken
-	// producer (the message builder seeds even edgeless tasks into the graph).
+	// an empty graph would succeed and hide a broken message builder
 	if len(msg.Graph) == 0 {
 		return e.finishPlaybook(ctx, msg, StatusFailed, nil, fmt.Errorf("playbook message has no graph nodes"))
 	}
 
 	indegree, children := buildIndegree(msg.Graph)
 	handles := buildEdgeHandles(msg.Edges)
-	// followedCount counts, per node, how many completed incoming edges chose
-	// to follow it. A node whose dependencies all completed without a single
-	// follow is skipped (and propagates the skip).
+	// per node: how many finished parents chose to follow it. Zero means skipped.
 	followedCount := map[string]int{}
 
 	runCtx, cancel := context.WithCancel(ctx)
@@ -158,8 +147,7 @@ func (e *Executor) Run(ctx context.Context, msg domain.TaskMessage) error {
 		go func() {
 			sem <- struct{}{}
 			defer func() { <-sem }()
-			// A panic in a node must not stop the whole worker. River only catches
-			// a panic in the job goroutine, not in this one.
+			// recover here, River catches panics only in the job goroutine
 			defer func() {
 				if r := recover(); r != nil {
 					err := fmt.Errorf("node %s panicked: %v", node, r)
@@ -216,7 +204,7 @@ func (e *Executor) Run(ctx context.Context, msg domain.TaskMessage) error {
 	}
 
 	if runErr != nil {
-		// ctx, not the cancelled runCtx: the final status must still persist.
+		// use ctx, not the cancelled runCtx, so the final status still saves
 		return e.finishPlaybook(ctx, msg, StatusFailed, nil, runErr)
 	}
 	return e.finishPlaybook(ctx, msg, StatusSuccess, store.Snapshot(), nil)
@@ -281,8 +269,7 @@ func (e *Executor) processNode(ctx context.Context, msg domain.TaskMessage, node
 	return decoded, e.setTaskStatus(ctx, msg, task, StatusSuccess, decoded, nil)
 }
 
-// processSkippedNode completes a node without executing it: no incoming edge
-// chose to follow it (condition branch not taken, or all parents skipped).
+// processSkippedNode finishes a node without running it, because no parent followed it.
 func (e *Executor) processSkippedNode(ctx context.Context, msg domain.TaskMessage, node string) error {
 	e.logger.Infow("skipping playbook node", "node", node, "playbook_history_id", msg.PlaybookHistoryId)
 
@@ -293,8 +280,7 @@ func (e *Executor) processSkippedNode(ctx context.Context, msg domain.TaskMessag
 	return e.setTaskStatus(ctx, msg, task, StatusSkipped, nil, nil)
 }
 
-// setTaskStatus persists the task history row and fans it out to the API's WS
-// hub, replacing the Python send_task_status -> gRPC HandleTask path.
+// setTaskStatus saves the task row and sends it to the WS hub.
 func (e *Executor) setTaskStatus(
 	ctx context.Context,
 	msg domain.TaskMessage,
@@ -303,9 +289,8 @@ func (e *Executor) setTaskStatus(
 	result any,
 	execErr error,
 ) error {
-	// Detach from cancellation: after a fail-fast cancel() the draining nodes
-	// still have to persist their failed status, or they'd sit at in_progress
-	// forever (same reason finishPlaybook receives the parent ctx).
+	// detach from the cancel: after a fail-fast, the draining nodes must still save failed,
+	// or they stay in_progress
 	ctx, cancel := detach(ctx)
 	defer cancel()
 	var errStr *string
@@ -344,24 +329,23 @@ func (e *Executor) setTaskStatus(
 	return nil
 }
 
-// recoverRun handles a run that the state rules refused to start. The run is already
-// in_progress, or it is finished. In the first case, a worker stopped in the middle of the run,
-// and the queue delivered the run again. A second run would repeat the side effects of the
-// connectors. So the system marks a started run as failed, and it does not touch a finished run.
+// recoverRun handles a run that the state rules refused to start (in_progress or finished).
+// In_progress means a worker died and the queue gave the job again. Running it again would
+// repeat the side effects of the connectors, so mark it failed. Do not touch a finished run.
 func (e *Executor) recoverRun(ctx context.Context, msg domain.TaskMessage) error {
 	e.logger.Warnw("run was already started, not running it again", "playbook_history_id", msg.PlaybookHistoryId)
 	err := e.finishPlaybook(ctx, msg, StatusFailed, nil, errWorkerStopped)
 	if errors.Is(err, domain.ErrInvalidTransition) {
 		return nil // already finished
 	}
-	// Only now, after the state rules accepted the change: a finished run keeps its tasks.
+	// after the state rules accepted the change, so a finished run keeps its tasks
 	writeCtx, cancel := detach(ctx)
 	defer cancel()
 	failed, failErr := e.taskService.FailUnfinishedTaskHistory(writeCtx, msg.PlaybookHistoryId.String(), errWorkerStopped.Error())
 	if failErr != nil {
 		e.logger.Errorw("failed to fail unfinished tasks", "playbook_history_id", msg.PlaybookHistoryId, "error", failErr)
 	}
-	// Tell the open pages about each task, so they do not show it as in_progress.
+	// tell the open pages, so they do not show the tasks as in_progress
 	for _, task := range failed {
 		if pubErr := e.status.Publish(writeCtx, "task_status", task.ID); pubErr != nil {
 			e.logger.Errorw("failed to publish task status event", "task", task.Name, "error", pubErr)
@@ -383,10 +367,9 @@ func (e *Executor) finishPlaybook(
 	return execErr
 }
 
-// saveFinalStatus saves the last status of a run. If the database fails, it tries again
-// after each delay in finalWriteDelays (about 30 seconds in all), so a short problem does
-// not leave the run in_progress. If every try fails, it returns an error that wraps
-// ErrNotFinished. A refused change (ErrInvalidTransition) is returned as it is.
+// saveFinalStatus tries again after each delay in finalWriteDelays (about 30 seconds), so a
+// short database problem does not leave the run in_progress. If all tries fail, it wraps
+// ErrNotFinished. ErrInvalidTransition is returned as it is.
 func (e *Executor) saveFinalStatus(ctx context.Context, msg domain.TaskMessage, status string, result any, execErr error) error {
 	var err error
 	for try := 0; ; try++ {
@@ -403,8 +386,8 @@ func (e *Executor) saveFinalStatus(ctx context.Context, msg domain.TaskMessage, 
 	}
 }
 
-// Abort marks a run as failed when the run cannot start, for example when the system
-// cannot build its message. It does not touch a finished run.
+// Abort marks a run as failed when it cannot start (for example, the message cannot be
+// built). It does not touch a finished run.
 func (e *Executor) Abort(ctx context.Context, historyID uuid.UUID, cause error) error {
 	err := e.saveFinalStatus(ctx, domain.TaskMessage{PlaybookHistoryId: historyID}, StatusFailed, nil, cause)
 	if errors.Is(err, domain.ErrInvalidTransition) {
@@ -413,8 +396,7 @@ func (e *Executor) Abort(ctx context.Context, historyID uuid.UUID, cause error) 
 	return err
 }
 
-// setRunStatus changes the run status through the state rules and sends the new row
-// to the clients.
+// setRunStatus changes the run status through the state rules and sends the row to clients.
 func (e *Executor) setRunStatus(
 	ctx context.Context,
 	msg domain.TaskMessage,
@@ -422,8 +404,8 @@ func (e *Executor) setRunStatus(
 	result any,
 	execErr error,
 ) (*domain.PlaybookHistory, error) {
-	// A run can end because of a timeout or a shutdown. The system must still save its status,
-	// but one try must not hang for minutes when the database host drops packets.
+	// a timeout or shutdown must still save the status, but one try must not hang when the
+	// database drops packets
 	ctx, cancel := detach(ctx)
 	defer cancel()
 	var errStr *string
@@ -452,9 +434,8 @@ type edgeKey struct {
 	destination string
 }
 
-// buildEdgeHandles indexes the wire edges' source_handles per (source,
-// destination) pair - two nodes can be linked by several edges ( a
-// condition's true AND false handle both pointing at the same join node).
+// buildEdgeHandles maps (source, destination) to the source handles. Two nodes can have
+// several edges (a condition's true and false to the same join node).
 func buildEdgeHandles(edges []domain.EdgeRef) map[edgeKey][]*string {
 	handles := map[edgeKey][]*string{}
 	for _, edge := range edges {
@@ -464,11 +445,9 @@ func buildEdgeHandles(edges []domain.EdgeRef) map[edgeKey][]*string {
 	return handles
 }
 
-// edgeFollowed decides whether a completed node follows the edge to child. A
-// branch handle (a condition's "true"/"false", or a switch case id / "else") is
-// only followed when it matches the node's {"result": ...}. Everything else always
-// follows: directional editor handles ("source-*"/"target-*"), unlabeled edges,
-// and output that isn't a condition result.
+// edgeFollowed says if a finished node follows the edge to child. A branch handle (condition
+// true/false, switch case id or "else") follows only when it matches the node's
+// {"result": ...}. All other edges always follow.
 func edgeFollowed(handles map[edgeKey][]*string, node string, child string, output any) bool {
 	entries, ok := handles[edgeKey{source: node, destination: child}]
 	if !ok || len(entries) == 0 {
@@ -489,15 +468,10 @@ func edgeFollowed(handles map[edgeKey][]*string, node string, child string, outp
 	return false
 }
 
-// conditionResult pulls the branch selector out of a node's output. A condition
-// returns {"result": ...} - a bool for true/false, or a case id / "else" for a
-// switch - which becomes the handle string an edge must match to be followed.
-//
-// Detection is intentionally shape-based rather than tied to the condition
-// builtin's connector id, so any connector (or code snippet) returning
-// {"result": ...} can act as a condition. Ordinary nodes are safe from
-// accidental gating because their edges only ever carry directional
-// ("source-*"/"target-*") or nil handles, which always follow.
+// conditionResult gets the branch handle from the output of a node: {"result": ...}
+// (bool, case id or "else"). It checks the shape, not the connector id, so any connector or
+// snippet can be a condition. Normal nodes are not gated, because their edges use
+// directional or nil handles.
 func conditionResult(output any) (string, bool) {
 	outMap, ok := output.(map[string]any)
 	if !ok {
@@ -516,15 +490,14 @@ func conditionResult(output any) (string, bool) {
 	}
 }
 
-// isDirectionalHandle reports whether a source_handle is one of React Flow's
-// positional editor handles (source-top, target-left, ...) rather than a
-// semantic condition branch - positional handles never gate an edge.
+// isDirectionalHandle: React Flow position handles (source-top, target-left, ...) never
+// gate an edge
 func isDirectionalHandle(handle string) bool {
 	return strings.HasPrefix(handle, "source-") || strings.HasPrefix(handle, "target-")
 }
 
-// buildIndegree mirrors the Python executor's invert_graph: nodes that appear
-// only as edge targets still get an indegree entry.
+// buildIndegree is like the Python invert_graph. Nodes that are only edge targets also get
+// an entry.
 func buildIndegree(graph map[string][]string) (indegree map[string]int, children map[string][]string) {
 	indegree = map[string]int{}
 	children = map[string][]string{}

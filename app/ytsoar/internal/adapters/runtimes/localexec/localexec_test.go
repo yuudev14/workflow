@@ -46,9 +46,9 @@ func requireNode(t *testing.T) {
 	}
 }
 
-// requireTypeScriptNode skips when node cannot evaluate TypeScript natively
-// (--input-type=commonjs-typescript needs Node >= 23.6) - the node harnesses
-// are TypeScript, so every test that executes them needs this.
+// requireTypeScriptNode skips when node cannot run TypeScript (--input-type=commonjs-typescript
+// needs Node >= 23.6). The node harnesses are TypeScript, so every test that runs them
+// needs this.
 func requireTypeScriptNode(t *testing.T) {
 	t.Helper()
 	requireNode(t)
@@ -211,11 +211,10 @@ func TestNodeJSSnippetRuntimeTimeoutKillsProcess(t *testing.T) {
 	assert.Less(t, time.Since(start), 5*time.Second)
 }
 
-// realTSCore is the actual core shipped in the repo tree, relative to this
-// package directory - the tests exercise the real class-discovery/templating
-// contract, not a fake. The implementation is TypeScript; plain-JS connectors
-// reach it through the 1-line connector.js shim (extensionless require never
-// resolves .ts), so the temp tree replicates both files.
+// realTSCore is the real core from the repo tree, relative to this package directory. The
+// tests use the real class discovery and templating, not a fake. The code is TypeScript,
+// and plain-JS connectors reach it through the 1-line connector.js shim (an extensionless
+// require never finds .ts), so the temp tree copies both files.
 const realTSCore = "../../../../../connectors/core/connector.ts"
 
 const jsCoreShim = `module.exports = require("./connector.ts");`
@@ -261,8 +260,8 @@ module.exports = { EchoConnector };`
 	require.NoError(t, os.WriteFile(filepath.Join(connectorDir, "configs", "default.toml"), []byte("key = \"value\"\n"), 0o644))
 }
 
-// writeTSConnector adds a TypeScript connector (connector.ts, no .js) to the
-// tree - Node executes it directly via native type stripping.
+// writeTSConnector adds a TypeScript connector (connector.ts, no .js) to the tree. Node
+// runs it directly with type stripping.
 func writeTSConnector(t *testing.T, dir string) {
 	t.Helper()
 
@@ -355,9 +354,9 @@ func TestNodeJSConnectorRuntimeExecutesTypeScriptConnector(t *testing.T) {
 	assert.Equal(t, "echo", decoded["op"])
 }
 
-// Vendored per-connector dependencies: <id>/node_modules (populated by `make
-// connector-deps` from <id>/package.json) resolve through Node's standard
-// upward walk from the connector file - no harness involvement.
+// Vendored dependencies per connector: <id>/node_modules (filled by `make connector-deps`
+// from <id>/package.json) are found by the normal upward walk of Node from the connector
+// file, with no help from the harness.
 func TestNodeJSConnectorRuntimeVendoredDeps(t *testing.T) {
 	requireTypeScriptNode(t)
 	dir := t.TempDir()

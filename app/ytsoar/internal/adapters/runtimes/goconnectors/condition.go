@@ -8,16 +8,13 @@ import (
 	"strings"
 )
 
-// ConditionConnector powers conditional branching. Both operations are a switch:
-// an ordered list of cases, each with a stable "id" naming its branch. The first
-// case that matches wins -> {"result": "<id>"}; none match -> {"result": "else"}.
-// The editor routes each id to an outgoing edge, which the executor then follows.
-// They differ only in how a case is written:
-//   - "switch": simple left/operator/right compare (==, !=, contains, ...) - no
-//     templating to learn.
-//   - "switch_expression": the advanced mode - a full template expression per case,
-//     already rendered by the registry (gonja/jinja2), so {{ ...score > 80 }}
-//     arrives as "True" and is read for truthiness.
+// ConditionConnector does conditional branching. Both operations are a switch: an ordered
+// list of cases, each with a stable "id" for its branch. The first matching case gives
+// {"result": "<id>"}, no match gives {"result": "else"}. The editor routes each id to an
+// edge, and the executor follows it.
+//   - "switch": simple compare of left, operator and right (==, !=, contains, ...)
+//   - "switch_expression": one template expression per case, already rendered by the
+//     registry (gonja/jinja2). {{ ...score > 80 }} arrives as "True" and is read as true.
 type ConditionConnector struct{}
 
 func NewConditionConnector() *ConditionConnector {
@@ -43,9 +40,9 @@ func (c *ConditionConnector) Execute(ctx context.Context, configs map[string]any
 	}
 }
 
-// evaluateSwitchSimple walks the ordered cases (each {id, left, operator, right})
-// and returns the id of the first whose compare holds, or "else". A compare error
-// (e.g. ">" on non-numeric) counts as no match, so one bad case never fails the run.
+// evaluateSwitchSimple walks the cases ({id, left, operator, right}) and returns the id
+// of the first true compare, or "else". A compare error (for example ">" on text) is no
+// match, so one bad case does not fail the run.
 func evaluateSwitchSimple(rawCases any) (string, error) {
 	cases, ok := rawCases.([]any)
 	if !ok {
@@ -68,9 +65,8 @@ func evaluateSwitchSimple(rawCases any) (string, error) {
 	return "else", nil
 }
 
-// evaluateSwitch walks the ordered cases (each {id, expression}, expression
-// already rendered by the registry) and returns the id of the first truthy one,
-// or "else".
+// evaluateSwitch walks the cases ({id, expression}, already rendered) and returns the id
+// of the first truthy one, or "else".
 func evaluateSwitch(rawCases any) (string, error) {
 	cases, ok := rawCases.([]any)
 	if !ok {
@@ -92,9 +88,8 @@ func evaluateSwitch(rawCases any) (string, error) {
 	return "else", nil
 }
 
-// validateCaseIDs requires every case to carry a stable id. A positional
-// fallback would silently misroute edges when cases are reordered or deleted,
-// so a missing id fails the node loudly instead.
+// validateCaseIDs needs an id on every case. A position fallback would send edges to the
+// wrong place when cases move or get deleted, so a missing id fails the node.
 func validateCaseIDs(cases []any) error {
 	for i, raw := range cases {
 		c, ok := raw.(map[string]any)
@@ -108,9 +103,8 @@ func validateCaseIDs(cases []any) error {
 	return nil
 }
 
-// truthy reads a rendered template value as true or false. Templates come back as
-// strings ("True", "", "0", "None", ...), so we treat the usual empty/zero/none
-// forms as false and anything else as true.
+// truthy reads a rendered template value. Templates return strings ("True", "", "0",
+// "None", ...), so the empty, zero and none forms are false and the rest is true.
 func truthy(value any) bool {
 	switch v := value.(type) {
 	case bool:
@@ -127,7 +121,7 @@ func truthy(value any) bool {
 		case "", "false", "none", "nil", "null", "no", "off", "[]", "{}":
 			return false
 		}
-		// catch every rendered zero form ("0", "0.0", "0.00", "-0") numerically
+		// catch every rendered zero form ("0", "0.0", "0.00", "-0") as a number
 		if n, err := strconv.ParseFloat(s, 64); err == nil && n == 0 {
 			return false
 		}
@@ -137,15 +131,13 @@ func truthy(value any) bool {
 	}
 }
 
-// canonicalNumber matches plainly-formatted numbers ("5", "-3.25") - no
-// leading zeros, no exponent. Equality coerces to numbers only for these, so
-// "5" == "5.0" holds but id-like values ("0123", "1e3") compare as strings
-// and never collide numerically.
+// canonicalNumber matches plain numbers ("5", "-3.25"): no leading zeros, no exponent.
+// Only these compare as numbers, so "5" == "5.0" is true, but ids like "0123" or "1e3"
+// compare as text.
 var canonicalNumber = regexp.MustCompile(`^-?(0|[1-9][0-9]*)(\.[0-9]+)?$`)
 
-// compare works on templated values, which arrive as strings: ordering
-// operators need both sides numeric; equality compares numerically only when
-// both sides are canonical numbers, otherwise as strings.
+// compare gets templated values as strings. Ordering operators need two numbers. Equality
+// is numeric only when both sides are canonical numbers, otherwise it compares text.
 func compare(left any, operator string, right any) (bool, error) {
 	l, r := asString(left), asString(right)
 	lNum, lOk := asNumber(left)

@@ -1,7 +1,7 @@
-// Path is "/" rather than the auth route because nginx strips the /auth-api/
-// prefix: a path-scoped cookie would be set for a path the browser never
-// requests again, and would never be sent back. SameSite=Lax is what stops a
-// cross-site page from driving /refresh or the websocket handshake.
+// Path is "/" and not the auth route, because nginx strips the /auth-api/ prefix. A cookie
+// with that path would be set for a path the browser never requests, so it would never be
+// sent back. SameSite=Lax stops a cross-site page from calling /refresh or the websocket
+// handshake.
 package middleware
 
 import (
@@ -47,16 +47,16 @@ func (w *CookieWriter) ClearRefreshCookie(c *gin.Context) {
 	c.SetCookie(RefreshCookieName, "", -1, "/", "", w.Secure, true)
 }
 
-// ClearSession removes both cookies. Used on logout and whenever a refresh is
-// rejected, so a dead session leaves nothing behind.
+// ClearSession removes both cookies. Used on logout and when a refresh is rejected, so a
+// dead session leaves nothing behind.
 func (w *CookieWriter) ClearSession(c *gin.Context) {
 	w.ClearAccessCookie(c)
 	w.ClearRefreshCookie(c)
 }
 
-// SetOIDCStateCookie holds the signed state+PKCE-verifier blob across the round
-// trip to the IdP. Short-lived and single-use: the callback clears it. Lax lets
-// it ride the top-level redirect back from the provider.
+// SetOIDCStateCookie keeps the signed state and PKCE verifier during the trip to the IdP.
+// It is short-lived and single-use, the callback clears it. Lax lets it come back with the
+// top-level redirect from the provider.
 func (w *CookieWriter) SetOIDCStateCookie(c *gin.Context, value string, ttl time.Duration) {
 	c.SetSameSite(http.SameSiteLaxMode)
 	c.SetCookie(OIDCStateCookieName, value, int(ttl.Seconds()), "/", "", w.Secure, true)

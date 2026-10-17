@@ -30,8 +30,8 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	// Do not use ctx here. A SIGTERM cancels ctx and stops the running playbooks.
-	// Stop below lets them finish.
+	// do not use ctx here: a SIGTERM cancels ctx and stops the running playbooks. Stop below
+	// lets them finish.
 	if err := riverClient.Start(context.Background()); err != nil {
 		log.Fatalf("failed to start job queue: %v", err)
 	}
@@ -42,9 +42,9 @@ func main() {
 	)
 	<-ctx.Done()
 
-	// Stop waits WorkerStopGrace for the running playbooks. After that, River cancels
-	// them. A cancelled run is saved as failed, so it does not stay in_progress. The extra
-	// 30 seconds give the cancelled runs time to save their status.
+	// Stop waits WorkerStopGrace for the running playbooks, then River cancels them. A
+	// cancelled run is saved as failed, so it does not stay in_progress. The extra 30 seconds
+	// let the cancelled runs save their status.
 	stopCtx, cancel := context.WithTimeout(context.Background(), cfg.WorkerStopGrace+30*time.Second)
 	defer cancel()
 	if err := riverClient.Stop(stopCtx); err != nil {

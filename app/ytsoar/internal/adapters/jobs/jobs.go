@@ -1,6 +1,6 @@
-// Package jobs runs playbook runs on River. River is a job queue in Postgres.
-// The API queues a run in the same transaction that creates its history rows.
-// So the system cannot lose the run, and it cannot queue the run without its history.
+// Package jobs runs playbook runs on River (a job queue in Postgres). The API queues a run
+// in the same transaction as its history rows, so a run is never lost and never queued
+// without its history.
 package jobs
 
 import (
@@ -21,21 +21,19 @@ import (
 
 const (
 	queueName = "playbook"
-	// maxAttempts is 2. A run that fails is never retried, and a run that already started is
-	// never started again. The second attempt is for a job that River takes back: the worker
-	// stopped in the middle of the run, the final status was not saved, or Abort failed. If
-	// the run already started, attempt 2 only marks it failed. If the run never started
-	// (Abort failed on attempt 1), attempt 2 can start it. A run that cannot start is not
-	// retried: the worker marks it failed at once.
+	// maxAttempts is 2. A failed run is not retried and a started run never starts again.
+	// Attempt 2 is for a job that River takes back (worker died, final status not saved, or
+	// Abort failed). If the run started, attempt 2 only marks it failed. If it never started
+	// (Abort failed), attempt 2 can start it. A run that cannot start is not retried: the
+	// worker marks it failed at once.
 	maxAttempts = 2
-	// rescueGrace is the time after the run timeout. After this time, River decides that the
-	// worker of a running job stopped. It must be longer than the run timeout.
-	// If it is shorter, River takes a live run from its worker.
+	// rescueGrace: time after the run timeout when River decides the worker died. It must be
+	// longer than the run timeout, or River takes a live run.
 	rescueGrace = 5 * time.Minute
 )
 
-// RunArgs is the job payload. It holds only the run ID. The worker builds the rest
-// from the history rows. So river_job stays small at high volume.
+// RunArgs is the job payload: only the run ID. The worker builds the rest from the history
+// rows, so river_job stays small.
 type RunArgs struct {
 	PlaybookHistoryID uuid.UUID `json:"playbook_history_id"`
 }
@@ -75,15 +73,14 @@ func (w *RunWorker) Work(ctx context.Context, job *river.Job[RunArgs]) error {
 		err = w.executor.Run(ctx, msg)
 		switch {
 		case errors.Is(err, execution.ErrNotStarted):
-			// The run could not start. Go to Abort below.
+			// the run could not start, go to Abort below
 		case errors.Is(err, execution.ErrNotFinished):
-			// The run ran, but the database did not save its final status. Return the error,
-			// so River gives the job to a new attempt. That attempt marks the run failed.
+			// the final status was not saved. Return the error so River retries, and attempt 2 marks
+			// the run failed.
 			return err
 		default:
-			// The executor already saved a failed run, so a failed run is not a job error.
-			// If the worker returned the error, River would retry the job and run the
-			// connectors again.
+			// a failed run is not a job error. The executor already saved it, and a retry would run
+			// the connectors again.
 			if err != nil {
 				w.logger.Errorw("playbook run failed", "playbook_history_id", id, "error", err)
 			}
@@ -91,16 +88,15 @@ func (w *RunWorker) Work(ctx context.Context, job *river.Job[RunArgs]) error {
 		}
 	}
 
-	// The worker is stopping (or the job timed out). Return the error without failing the
-	// run. River puts the job back without using an attempt, and a new worker starts the run.
+	// the worker is stopping (or the job timed out). Return the error without failing the run.
+	// River requeues it without using an attempt.
 	if ctx.Err() != nil {
 		return err
 	}
 
-	// The system could not build or start the run. We do not retry: the worker marks the run
-	// failed at once, so the user sees the error. If Abort fails (the database is down), the
-	// error goes to River, and the second attempt tries again. On attempt 2, the first
-	// attempt may have run the playbook already (ErrNotFinished), so the text says so.
+	// the run could not be built or started. Do not retry: mark it failed so the user sees the
+	// error. If Abort fails (database down), return the error and attempt 2 tries again. On
+	// attempt 2 the playbook may have run already (ErrNotFinished), so the text says so.
 	cause := err
 	if job.Attempt > 1 {
 		cause = fmt.Errorf("an earlier attempt did not finish this run: %w", err)
@@ -112,13 +108,13 @@ func (w *RunWorker) Work(ctx context.Context, job *river.Job[RunArgs]) error {
 // Enqueuer queues runs. It implements contracts.RunEnqueuer.
 type Enqueuer struct {
 	client *river.Client[pgx.Tx]
-	// txFrom finds the transaction that a TxManager put in ctx. main.go injects it,
-	// so this adapter does not import the repository adapter.
+	// txFrom finds the transaction in ctx. main.go injects it, so this adapter does not
+	// import the repository adapter.
 	txFrom func(context.Context) (pgx.Tx, bool)
 }
 
-// NewEnqueuer is for the API. It makes an insert-only River client.
-// The client queues runs and does not work them. The worker process works them.
+// NewEnqueuer is for the API. Its River client only inserts jobs, the worker process runs
+// them.
 func NewEnqueuer(pool *pgxpool.Pool, txFrom func(context.Context) (pgx.Tx, bool)) (*Enqueuer, error) {
 	client, err := river.NewClient(riverpgxv5.New(pool), &river.Config{})
 	if err != nil {
@@ -139,10 +135,9 @@ func (e *Enqueuer) EnqueueRun(ctx context.Context, playbookHistoryID uuid.UUID) 
 	return err
 }
 
-// NewWorkerClient works playbook runs. It works `concurrency` runs at the same time.
-// runTimeout is the time limit for one run. When the worker stops, River waits stopGrace
-// for the running playbooks to finish. After that, it cancels them. A cancelled run is
-// saved as failed, so it does not stay in_progress.
+// NewWorkerClient runs `concurrency` runs at the same time. runTimeout limits one run.
+// When the worker stops, River waits stopGrace, then cancels the runs. A cancelled run is
+// saved as failed.
 func NewWorkerClient(pool *pgxpool.Pool, worker *RunWorker, concurrency int, runTimeout, stopGrace time.Duration) (*river.Client[pgx.Tx], error) {
 	workers := river.NewWorkers()
 	river.AddWorker(workers, worker)
@@ -155,9 +150,9 @@ func NewWorkerClient(pool *pgxpool.Pool, worker *RunWorker, concurrency int, run
 	})
 }
 
-// ModuleEventLogger implements contracts.ModuleEventPublisher. Nothing uses alert and
-// incident events yet, so it only writes them to the log. Event-triggered playbooks
-// (on_create, on_update) will queue their runs from here.
+// ModuleEventLogger implements contracts.ModuleEventPublisher. It only logs alert and
+// incident events for now. Event-triggered playbooks (on_create, on_update) will queue
+// from here.
 type ModuleEventLogger struct{ logger logger.Logger }
 
 func NewModuleEventLogger(log logger.Logger) *ModuleEventLogger {

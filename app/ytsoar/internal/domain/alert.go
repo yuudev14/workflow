@@ -17,8 +17,7 @@ const (
 	SeverityLow      AlertSeverity = "low"
 )
 
-// AlertSeverities is ordered most severe first, matching the pg enum's
-// declaration order.
+// AlertSeverities is ordered most severe first, like the pg enum.
 var AlertSeverities = []AlertSeverity{
 	SeverityCritical, SeverityHigh, SeverityMedium, SeverityLow,
 }
@@ -31,8 +30,8 @@ func IsValidAlertSeverity(s string) bool {
 	return false
 }
 
-// AlertStatus mirrors the alert_status pg enum. "falsepos" is deliberate - it
-// is the spelling the frontend schema uses.
+// AlertStatus mirrors the alert_status pg enum. "falsepos" is on purpose, it is the
+// spelling of the frontend schema.
 type AlertStatus string
 
 const (
@@ -52,9 +51,8 @@ func IsValidAlertStatus(s string) bool {
 	return false
 }
 
-// OpenAlertStatuses is the open set. It must stay identical to the predicate on
-// alerts_open_idx and alerts_open_fingerprint_idx, or dedup and the live counts
-// will disagree with the indexes that serve them.
+// OpenAlertStatuses is the open set. Keep it the same as the predicate of alerts_open_idx
+// and alerts_open_fingerprint_idx, or dedup and live counts disagree with the indexes.
 var OpenAlertStatuses = []AlertStatus{AlertStatusNew, AlertStatusInvestigating}
 
 // SourceKind mirrors the source_kind pg enum.
@@ -77,8 +75,8 @@ func IsValidSourceKind(s string) bool {
 	return false
 }
 
-// EventType mirrors the event_type pg enum, shared by alert_events and
-// incident_events. Several values have no writer until later milestones.
+// EventType mirrors the event_type pg enum, shared by alert_events and incident_events.
+// Some values have no writer yet.
 type EventType string
 
 const (
@@ -91,13 +89,13 @@ const (
 	EventTypeAttackTag     EventType = "attack_tag"
 	EventTypeLinked        EventType = "linked"
 	EventTypeUnlinked      EventType = "unlinked"
-	// EventTypeUpdated records a field-level edit (severity, assignee, team,
-	// tags) so the timeline is a complete audit trail, not only status changes.
+	// EventTypeUpdated records a field-level edit (severity, assignee, team, tags), so the
+	// timeline is a full audit trail and not only status changes.
 	EventTypeUpdated EventType = "updated"
 )
 
-// SLAState mirrors the sla_state pg enum. Nothing transitions it until the SLA
-// watcher ships; every row sits at "ok".
+// SLAState mirrors the sla_state pg enum. Nothing changes it until the SLA watcher ships,
+// so every row is "ok".
 type SLAState string
 
 const (

@@ -24,8 +24,8 @@ func (h *AlertHandler) RegisterRoutes(
 		r.POST("", createAlerts, h.Create)
 		r.POST("/batch", createAlerts, h.CreateBatch)
 
-		// alerts:execute, not playbooks:update - "may run automation on alerts"
-		// is a different grant from "may edit playbooks".
+		// alerts:execute, not playbooks:update: "can run automation on alerts" is not the same
+		// grant as "can edit playbooks"
 		r.POST("/run", requirePermission(domain.ModuleAlerts, domain.ActionExecute), h.Run)
 
 		r.PATCH("/:alert_id", updateAlerts, h.Update)

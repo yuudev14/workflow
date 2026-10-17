@@ -17,8 +17,8 @@ func (h *ConnectorHandler) RegisterRoutes(
 		group.GET("", readConnectors, h.GetConnectors)
 		group.GET("/:connector_id", readConnectors, h.GetConnector)
 
-		// Upload extracts a zip and runs its dependency install, so this grant
-		// is effectively "may run code on the platform".
+		// Upload extracts a zip and runs its dependency install, so this grant is the same as "can
+		// run code on the platform"
 		group.POST("",
 			requirePermission(domain.ModuleConnectors, domain.ActionCreate),
 			h.UploadConnector)

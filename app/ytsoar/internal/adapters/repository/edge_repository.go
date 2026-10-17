@@ -40,8 +40,8 @@ func toDomainEdge(row db.Edge) domain.Edges {
 	}
 }
 
-// InsertEdges upserts the given edges; existing source/destination pairs get
-// their handles updated.
+// InsertEdges upserts the edges. Existing source/destination pairs get their handles
+// updated.
 func (e *EdgeRepositoryImpl) InsertEdges(ctx context.Context, edges []domain.Edges) ([]domain.Edges, error) {
 	q := e.queriesFromContext(ctx)
 
@@ -62,7 +62,6 @@ func (e *EdgeRepositoryImpl) InsertEdges(ctx context.Context, edges []domain.Edg
 	return inserted, nil
 }
 
-// DeleteEdges implements edges.EdgeRepository.
 func (e *EdgeRepositoryImpl) DeleteEdges(ctx context.Context, edgeIds []uuid.UUID) error {
 	ids := make([]pgtype.UUID, 0, len(edgeIds))
 	for _, id := range edgeIds {
@@ -71,7 +70,6 @@ func (e *EdgeRepositoryImpl) DeleteEdges(ctx context.Context, edgeIds []uuid.UUI
 	return e.queriesFromContext(ctx).DeleteEdges(ctx, ids)
 }
 
-// DeleteAllPlaybookEdges implements edges.EdgeRepository.
 func (e *EdgeRepositoryImpl) DeleteAllPlaybookEdges(ctx context.Context, playbookId string) error {
 	pgID, err := toPgUUIDFromString(playbookId)
 	if err != nil {
@@ -80,7 +78,6 @@ func (e *EdgeRepositoryImpl) DeleteAllPlaybookEdges(ctx context.Context, playboo
 	return e.queriesFromContext(ctx).DeleteAllPlaybookEdges(ctx, pgID)
 }
 
-// GetEdgesByPlaybookId implements edges.EdgeRepository.
 func (e *EdgeRepositoryImpl) GetEdgesByPlaybookId(ctx context.Context, playbookId string) ([]domain.ResponseEdges, error) {
 	pgID, err := toPgUUIDFromString(playbookId)
 	if err != nil {

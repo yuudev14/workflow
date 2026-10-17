@@ -48,7 +48,7 @@ func setupTest(t *testing.T) *testEnv {
 		Do(func(event any) { env.broadcasts = append(env.broadcasts, event) }).
 		AnyTimes()
 
-	// transactions pass straight through so the closure body runs against the mocks
+	// transactions pass through, so the closure runs against the mocks
 	mockTx := mock_contracts.NewMockTxManager(ctrl)
 	mockTx.EXPECT().
 		WithinTransaction(gomock.Any(), gomock.Any()).
@@ -849,9 +849,9 @@ func TestTriggerPlaybook(t *testing.T) {
 	}
 }
 
-// The run-created broadcast must carry the same {event, data} envelope the
-// status consumer emits. Clients route on `event`, so a bare history row is
-// dropped silently and the new run never shows up until a manual refetch.
+// The run-created broadcast must have the same {event, data} envelope as the status
+// consumer. Clients route on `event`, so a bare history row is dropped and the new run does
+// not show up until a refetch.
 func TestTriggerPlaybookBroadcastsStatusEnvelope(t *testing.T) {
 
 	env := setupTest(t)

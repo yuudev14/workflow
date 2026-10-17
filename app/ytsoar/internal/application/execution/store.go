@@ -2,14 +2,13 @@ package execution
 
 import "sync"
 
-// StepStore accumulates node outputs during a run. A snapshot rides along
-// with every runtime call so templates can reference prior steps.
+// StepStore collects the node outputs during a run. A snapshot goes with every runtime
+// call, so templates can use earlier steps.
 //
-// It is copy-on-write: Set clones the map, Snapshot just returns the current
-// immutable one. Snapshot is taken once per node (including nodes that never
-// reference steps), Set only for nodes that produce output, so the copy cost
-// lives on the rarer path and Snapshot stays O(1). The returned map is shared
-// and must be treated as read-only by callers.
+// It is copy-on-write: Set clones the map, Snapshot returns the current immutable one.
+// Snapshot runs once per node (also for nodes that never use steps), Set only for nodes
+// with output. So the copy cost is on the rarer path and Snapshot stays O(1). The returned
+// map is shared, callers must treat it as read-only.
 type StepStore struct {
 	mu    sync.Mutex
 	steps map[string]any

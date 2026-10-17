@@ -33,8 +33,8 @@ func TestSentinelKeepsKindAndMessage(t *testing.T) {
 	assert.Equal(t, "user not found", msg)
 }
 
-// The point of the whole package: a classified error carrying a driver error
-// must surface its own message, never the cause's.
+// The point of the package: a classified error with a driver error must show its own
+// message, never the cause's.
 func TestWrappedCauseNeverReachesTheMessage(t *testing.T) {
 	err := apperr.Wrap(apperr.Invalid, "role_ids must be uuids",
 		errors.New("pq: invalid input syntax for type uuid"))
@@ -46,15 +46,15 @@ func TestWrappedCauseNeverReachesTheMessage(t *testing.T) {
 	assert.NotContains(t, msg, "pq:")
 }
 
-// Wrapping preserves errors.Is, which every handler branch depends on.
+// Wrapping keeps errors.Is, which every handler branch needs.
 func TestWrapKeepsSentinelIdentity(t *testing.T) {
 	err := apperr.Wrap(apperr.NotFound, "no such user", errSentinel)
 
 	assert.True(t, errors.Is(err, errSentinel))
 }
 
-// An unclassified error wrapped around a classified one still resolves to the
-// inner classification, so an op-name wrap does not turn a 404 into a 500.
+// An unclassified error around a classified one still gets the inner kind, so an op-name
+// wrap does not turn a 404 into a 500.
 func TestOuterFormattingKeepsInnerKind(t *testing.T) {
 	err := fmt.Errorf("auth.GetUser: %w", errSentinel)
 
@@ -64,7 +64,7 @@ func TestOuterFormattingKeepsInnerKind(t *testing.T) {
 	assert.Equal(t, "user not found", msg, "the op prefix is for logs, not for the client")
 }
 
-// The full chain stays available for logging even though it is never returned.
+// The full chain stays available for logging, even though it is never returned.
 func TestErrorStringRetainsCauseForLogging(t *testing.T) {
 	err := apperr.Wrap(apperr.Internal, "could not save user",
 		errors.New("pq: duplicate key"))

@@ -30,9 +30,8 @@ type AlertRepository interface {
 
 //go:generate mockgen -destination=mocks/incident_linker_mock.go -package=mocks . IncidentLinker
 
-// IncidentLinker is the slice of the incidents domain that escalation needs. It
-// is defined here, in the consumer, so alerts does not depend on the whole
-// incidents service.
+// IncidentLinker is the part of the incidents domain that escalation needs. It is defined
+// here, in the consumer, so alerts does not depend on the whole incidents service.
 type IncidentLinker interface {
 	CreateForEscalation(ctx context.Context, params EscalationParams) (domain.Incident, error)
 }

@@ -31,8 +31,8 @@ type testEnv struct {
 	mockProviders *mock_auth.MockAuthProviderRepository
 	mockOIDC      *mock_auth.MockOIDCClient
 
-	// txCalls counts WithinTransaction entries so a test can assert that a
-	// multi-statement rewrite actually ran inside one.
+	// txCalls counts the WithinTransaction calls, so a test can check that a multi-statement
+	// rewrite ran inside one
 	txCalls    *int
 	mockAudit  *mock_auth.MockAuditLogRepository
 	mockHasher *mock_auth.MockPasswordHasher
@@ -52,12 +52,12 @@ func setupTest(t *testing.T) *testEnv {
 	mockOIDC := mock_auth.NewMockOIDCClient(ctrl)
 	mockHasher := mock_auth.NewMockPasswordHasher(ctrl)
 
-	// Audit rows are a side effect of nearly every path and never change the
-	// outcome, so they are allowed but not asserted unless a test cares.
+	// audit rows are a side effect of almost every path and never change the result, so they
+	// are allowed but not checked unless a test cares
 	mockAudit := mock_auth.NewMockAuditLogRepository(ctrl)
 	mockAudit.EXPECT().Insert(gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
 
-	// transactions pass straight through so the closure runs against the mocks
+	// transactions pass through, so the closure runs against the mocks
 	txCalls := 0
 	mockTx := mock_contracts.NewMockTxManager(ctrl)
 	mockTx.EXPECT().
@@ -139,8 +139,8 @@ func TestLoginUnknownUserStillHashes(t *testing.T) {
 	env := setupTest(t)
 
 	env.mockUsers.EXPECT().GetByUsername(gomock.Any(), "ghost").Return(domain.User{}, errors.New("no rows"))
-	// The throwaway hash is what keeps an unknown username as slow as a real
-	// one; without it reply latency enumerates accounts.
+	// the throwaway hash keeps an unknown username as slow as a real one, or the reply latency
+	// lists the accounts
 	env.mockHasher.EXPECT().Hash("whatever").Return("", nil)
 
 	_, err := env.service.Login(context.Background(), "ghost", "whatever")
@@ -160,8 +160,8 @@ func TestLoginWrongPassword(t *testing.T) {
 	assert.ErrorIs(t, err, auth.ErrInvalidCredentials)
 }
 
-// A disabled account must cost the same as a live one, so the password is
-// still verified before is_active is consulted.
+// A disabled account must cost the same as a live one, so the password is still checked
+// before is_active.
 func TestLoginInactiveUserVerifiesPasswordFirst(t *testing.T) {
 	env := setupTest(t)
 	user := activeUser()
@@ -211,7 +211,7 @@ func TestRefreshRotatesToken(t *testing.T) {
 	assert.NotEqual(t, refreshToken, pair.RefreshToken, "refresh token must rotate")
 }
 
-// An access token must not be usable where a refresh token is expected.
+// An access token must not work where a refresh token is expected.
 func TestRefreshRejectsAccessToken(t *testing.T) {
 	env := setupTest(t)
 	user := activeUser()
@@ -371,8 +371,8 @@ func TestMeReturnsRolesAndPermissions(t *testing.T) {
 	assert.Equal(t, []string{"read"}, me.Permissions[domain.ModuleAlerts])
 }
 
-// issueRefreshToken logs in through the service so the returned token is
-// signed and shaped exactly like a real one.
+// issueRefreshToken logs in through the service, so the token is signed and shaped like a
+// real one.
 func issueRefreshToken(t *testing.T, env *testEnv, user domain.User) string {
 	t.Helper()
 

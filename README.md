@@ -50,7 +50,40 @@ Ports: API `:8080`, Postgres `:5433`, nginx `:9999`.
 In dev, one Go program (`cmd/dev`) runs the api, the worker and the sandbox in one process. One `air` builds it again after each change. This mode is for dev only: the sandbox can read the database settings. Production runs the three programs apart.
 
 - `make start-split` runs the three programs in three containers, as in production (`docker/split.docker-compose.yml`).
-- `make dev` runs the one process on your computer, without a backend container. Postgres and Keycloak come from compose. You need `air`, `goose`, Python 3 with `jinja2`, `requests`, `colorlog` and `pydantic-settings`, and Node 24 with `nunjucks` on `NODE_PATH`.
+- `make dev` runs the one process on your computer, without a backend container. See below.
+
+### Run the backend on your computer
+
+Use `make dev` when you want to run the backend without a backend container. Postgres and Keycloak still run in Docker.
+
+1. Install the tools: `air`, `goose`, Python 3 with `jinja2`, `requests`, `colorlog` and `pydantic-settings`, and Node 24 with `nunjucks` on `NODE_PATH`.
+2. Add the Go bin folder to your `PATH`. Without it, the shell cannot find `air` and `goose`.
+
+   ```bash
+   go install github.com/air-verse/air@latest
+   go install github.com/pressly/goose/v3/cmd/goose@latest
+   echo 'export PATH="$PATH:$HOME/go/bin"' >> ~/.zshrc   # then open a new terminal
+   ```
+
+3. Make the settings file. `make dev` and `air` read it.
+
+   ```bash
+   cp app/ytsoar/.env.sample app/ytsoar/.env
+   ```
+
+4. Start the backend. This starts Postgres and Keycloak, runs the migrations and starts `air`.
+
+   ```bash
+   make dev
+   ```
+
+5. Start the frontend in a second terminal. `make dev` does not start it.
+
+   ```bash
+   make start-frontend
+   ```
+
+Do not run `make dev` together with `make start-dev` or `make rebuild-containers`. The backend would run twice.
 
 Two files build the backend images. `app/ytsoar/Dockerfile.dev` has the dev stages. They are `dev` (one process), `dev-api`, `dev-worker`, `dev-sandbox` and `debug`. `app/ytsoar/Dockerfile` has the production stages. They are `api`, `worker` and `sandbox`. One `build` stage compiles the three binaries for them.
 

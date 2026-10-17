@@ -31,8 +31,8 @@ type testEnv struct {
 	incidents *mock_alerts.MockIncidentLinker
 	published *[]publishedEvent
 	txCalls   *int
-	// txCommits counts transactions whose closure returned nil, so a test can
-	// prove a publish only followed a successful commit.
+	// txCommits counts the transactions whose closure returned nil, so a test can prove that a
+	// publish came after a successful commit
 	txCommits *int
 }
 
@@ -67,8 +67,8 @@ func setup(t *testing.T) *testEnv {
 		}).
 		AnyTimes()
 
-	// The directory only labels assignee changes; returning nothing keeps the
-	// diff assertions about the diff.
+	// the directory only labels assignee changes. Returning nothing keeps the diff assertions
+	// about the diff.
 	users := mock_contracts.NewMockUserDirectory(ctrl)
 	users.EXPECT().
 		UsernamesByIDs(gomock.Any(), gomock.Any()).
@@ -109,16 +109,15 @@ func TestFingerprintIsStableAndEntityScoped(t *testing.T) {
 	assert.Equal(t, base, alerts.Fingerprint(kind, reporter, title, hostASameAlertLater),
 		"timestamps must not enter the fingerprint or nothing would ever dedup")
 
-	// Without the primary entity, one rule firing across 200 hosts would
-	// collapse into a single alert.
+	// without the primary entity, one rule firing on 200 hosts would become one alert
 	assert.NotEqual(t, base, alerts.Fingerprint(kind, reporter, title, hostB))
 	assert.NotEqual(t, base, alerts.Fingerprint(kind, reporter, "Different rule", hostA))
 	assert.NotEqual(t, base, alerts.Fingerprint(domain.SourceKindFirewall, reporter, title, hostA))
 	assert.NotEqual(t, base, alerts.Fingerprint(kind, new("SentinelOne"), title, hostA))
 }
 
-// A fresh row is alert.created; a dedup hit is alert.updated. Getting this
-// wrong makes a 10k-alert storm fire every on_create playbook 10k times.
+// A new row is alert.created and a dedup hit is alert.updated. If this is wrong, a storm
+// of 10k alerts fires every on_create playbook 10k times.
 func TestCreateInsertPublishesCreatedAndWritesTimeline(t *testing.T) {
 	env := setup(t)
 	alert := domain.Alert{ID: uuid.New(), Title: "Encoded PowerShell execution"}
@@ -143,7 +142,7 @@ func TestCreateDedupPublishesUpdatedAndWritesNoTimelineRow(t *testing.T) {
 	alert := domain.Alert{ID: uuid.New(), DedupCount: 2}
 
 	env.repo.EXPECT().Upsert(gomock.Any(), gomock.Any()).Return(alert, false, nil)
-	// A recurrence is not a timeline entry - dedup_count/last_seen carry it.
+	// a recurrence is not a timeline entry, dedup_count and last_seen carry it
 	env.repo.EXPECT().AppendEvent(gomock.Any(), gomock.Any()).Times(0)
 
 	_, err := env.service.Create(context.Background(), createPayload(), nil)
@@ -151,7 +150,7 @@ func TestCreateDedupPublishesUpdatedAndWritesNoTimelineRow(t *testing.T) {
 	assert.Equal(t, []publishedEvent{{domain.ModuleEventAlert, domain.ModuleEventUpdated}}, *env.published)
 }
 
-// Publishing inside the transaction would announce state a rollback discards.
+// A publish inside the transaction would announce state that a rollback throws away.
 func TestCreateDoesNotPublishWhenTransactionFails(t *testing.T) {
 	env := setup(t)
 	boom := errors.New("append failed")
@@ -229,8 +228,8 @@ func TestUpdateWritesFieldDiffToTimeline(t *testing.T) {
 	require.NoError(t, err)
 }
 
-// A PATCH that changes nothing must not append an event: the timeline is an audit
-// log, and a row saying "nothing happened" is noise a reviewer has to read past.
+// A PATCH that changes nothing must not add an event: the timeline is an audit log, and a
+// row saying "nothing happened" is noise.
 func TestUpdateWithNoActualChangeWritesNoEvent(t *testing.T) {
 	env := setup(t)
 	id := uuid.New()
@@ -238,7 +237,7 @@ func TestUpdateWithNoActualChangeWritesNoEvent(t *testing.T) {
 
 	env.repo.EXPECT().GetByID(gomock.Any(), id).Return(unchanged, nil)
 	env.repo.EXPECT().Update(gomock.Any(), id, gomock.Any()).Return(unchanged, nil)
-	// no AppendEvent expectation: gomock fails the test if one is called
+	// no AppendEvent expectation: gomock fails the test if it is called
 
 	sev := "high"
 	_, err := env.service.Update(context.Background(), id, alerts.UpdateAlertPayload{
@@ -276,8 +275,8 @@ func TestUpdateStatusWritesTransitionToTimeline(t *testing.T) {
 	assert.Equal(t, []publishedEvent{{domain.ModuleEventAlert, domain.ModuleEventUpdated}}, *env.published)
 }
 
-// The column is cleared on reopen, so the timeline event is the only durable
-// record of why an alert was closed.
+// The column is cleared on reopen, so the timeline event is the only lasting record of why
+// an alert was closed.
 func TestUpdateStatusCarriesClosureNoteIntoTheTimeline(t *testing.T) {
 	env := setup(t)
 	id := uuid.New()
@@ -329,8 +328,8 @@ func TestUpdateStatusRejectsUnknownStatusBeforeTouchingTheRepo(t *testing.T) {
 	assert.Equal(t, 0, *env.txCalls)
 }
 
-// Escalation is one transaction: incident, link, alert status and both timeline
-// rows either all land or none do.
+// Escalation is one transaction: incident, link, alert status and both timeline rows all
+// land, or none.
 func TestEscalateRunsInOneTransactionAndPublishesBothEntities(t *testing.T) {
 	env := setup(t)
 	id := uuid.New()
@@ -356,7 +355,7 @@ func TestEscalateRunsInOneTransactionAndPublishesBothEntities(t *testing.T) {
 			return incident, nil
 		})
 
-	// A new alert is moved out of the queue by escalating it.
+	// a new alert is moved out of the queue by escalating it
 	env.repo.EXPECT().UpdateStatus(gomock.Any(), id, domain.AlertStatusInvestigating, nil).
 		Return(domain.Alert{ID: id, Status: domain.AlertStatusInvestigating}, nil)
 	env.repo.EXPECT().
@@ -439,8 +438,8 @@ func TestAddNoteRejectsBlankBody(t *testing.T) {
 	assert.Equal(t, apperr.Invalid, kind)
 }
 
-// A note is evidence in a post-incident review, so a third party must not be
-// able to rewrite it.
+// A note is evidence in a post-incident review, so a third party must not be able to
+// rewrite it.
 func TestUpdateNoteRejectsNonAuthors(t *testing.T) {
 	env := setup(t)
 	noteID := uuid.New()
@@ -459,8 +458,8 @@ func TestUpdateNoteRejectsNonAuthors(t *testing.T) {
 	assert.Equal(t, apperr.Forbidden, kind)
 }
 
-// ON DELETE SET NULL on author_id means a deleted user leaves an ownerless
-// note. It stays readable, but nobody inherits the right to edit it.
+// ON DELETE SET NULL on author_id means a deleted user leaves a note with no owner. It
+// stays readable, but nobody gets the right to edit it.
 func TestUpdateNoteRejectsWhenAuthorWasDeleted(t *testing.T) {
 	env := setup(t)
 	noteID := uuid.New()

@@ -25,8 +25,8 @@ type IncidentRepository interface {
 	DeleteNote(ctx context.Context, noteID uuid.UUID) error
 	ListNotes(ctx context.Context, incidentID uuid.UUID) ([]domain.IncidentNote, error)
 
-	// LinkAlert reports linked=false when the pair already existed, so a repeat
-	// call is idempotent instead of writing a duplicate timeline entry.
+	// LinkAlert returns linked=false when the pair already exists, so a repeat call is
+	// idempotent and writes no duplicate timeline entry.
 	LinkAlert(ctx context.Context, incidentID, alertID uuid.UUID, source domain.LinkSource) (linked bool, err error)
 	UnlinkAlert(ctx context.Context, incidentID, alertID uuid.UUID) error
 	Summary(ctx context.Context, rng types.ResolvedRange) (IncidentsSummary, error)
@@ -34,8 +34,8 @@ type IncidentRepository interface {
 
 //go:generate mockgen -destination=mocks/alert_timeline_mock.go -package=mocks . AlertTimeline
 
-// AlertTimeline lets link and unlink write the other half of the story onto the
-// alert, without depending on the whole alerts service.
+// AlertTimeline lets link and unlink write to the alert too, without depending on the
+// whole alerts service.
 type AlertTimeline interface {
 	AppendAlertEvent(ctx context.Context, alertID uuid.UUID, eventType domain.EventType, actorID *uuid.UUID, body []byte) error
 }

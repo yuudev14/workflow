@@ -1,5 +1,5 @@
-// Internal test package: the cursor helpers are unexported by design - nothing
-// outside the repository layer should be able to mint a token.
+// Internal test package: the cursor helpers are unexported on purpose, nothing outside the
+// repository layer should be able to make a token.
 package repository
 
 import (
@@ -68,8 +68,8 @@ func TestDecodeCursorRejectsBadTokens(t *testing.T) {
 		{"truncated", valid[:len(valid)/2]},
 		{"empty", ""},
 		{"valid base64, not json", base64.RawURLEncoding.EncodeToString([]byte("hello"))},
-		// The whole point of the whitelist: a sort key becomes raw SQL in
-		// OrderBy, so an unknown column must never reach the query builder.
+		// the point of the whitelist: a sort key becomes raw SQL in OrderBy, so an unknown column
+		// must never reach the query builder
 		{"non-whitelisted sort", tamper(func(c *pageCursor) { c.Sort = "reporter" })},
 		{"sql injection in sort", tamper(func(c *pageCursor) { c.Sort = "created_at; DROP TABLE alerts" })},
 		{"unsupported direction", tamper(func(c *pageCursor) { c.Dir = "asc" })},
@@ -95,9 +95,9 @@ func TestEncodeCursorRejectsNonWhitelistedSort(t *testing.T) {
 	assert.Equal(t, apperr.Invalid, kind)
 }
 
-// The row-value comparison is the whole reason the cursor carries an id: NOW()
-// is fixed at transaction start, so a batch insert gives every row the same
-// created_at and a timestamp-only predicate cannot page past it.
+// The row-value comparison is the reason the cursor carries an id: NOW() is fixed at the
+// start of the transaction, so a batch insert gives all rows the same created_at, and a
+// timestamp-only predicate cannot page past them.
 func TestApplyKeysetBuildsRowValuePredicate(t *testing.T) {
 	id := uuid.New()
 	at := time.Date(2026, 7, 25, 10, 0, 0, 0, time.UTC)

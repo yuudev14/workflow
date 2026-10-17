@@ -5,10 +5,9 @@ import (
 	"github.com/yuudev14/ytsoar/internal/application/incidents"
 )
 
-// The alert repository serves two consumers: its own module, and the incidents
-// service, which writes onto an alert's timeline when linking. cmd/api/main.go
-// passes the same instance to both, so a signature drift on either port would
-// otherwise only surface at composition.
+// The alert repository serves two consumers: its own module, and the incidents service,
+// which writes to the timeline of an alert when linking. cmd/api/main.go gives the same
+// instance to both, so a signature change on one port would show up only at composition.
 var (
 	_ alerts.AlertRepository       = (*AlertRepositoryImpl)(nil)
 	_ incidents.AlertTimeline      = (*AlertRepositoryImpl)(nil)

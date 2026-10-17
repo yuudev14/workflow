@@ -10,12 +10,11 @@ import (
 	"github.com/yuudev14/ytsoar/internal/logger"
 )
 
-// RecordResolverImpl hydrates the module rows a playbook run acts on.
+// RecordResolverImpl loads the module rows that a playbook run acts on.
 //
-// It reads through GetByID, not GetDetail: the plain row carries `payload`, which
-// is what templates read, while the detail aggregates pull in timeline, notes and
-// linked entities that nothing templates off and that would bloat every node's
-// gRPC call.
+// It reads with GetByID, not GetDetail: the plain row has `payload`, which templates read.
+// The detail aggregates add timeline, notes and linked entities that no template uses and
+// that would make every gRPC call of a node bigger.
 type RecordResolverImpl struct {
 	logger    logger.Logger
 	alerts    *AlertRepositoryImpl
@@ -45,8 +44,8 @@ func (r *RecordResolverImpl) Resolve(ctx context.Context, moduleType string, ids
 			return nil, err
 		}
 
-		// Round-tripped through JSON so the template engine sees the wire field
-		// names (the json tags), not the Go field names.
+		// round trip through JSON, so the template engine sees the wire names (json tags), not the
+		// Go field names
 		encoded, err := json.Marshal(record)
 		if err != nil {
 			return nil, err

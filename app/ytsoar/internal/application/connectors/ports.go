@@ -10,12 +10,11 @@ import (
 
 //go:generate mockgen -destination=mocks/store_mock.go -package=mocks . ConnectorStore,ConnectorWriter,ConnectorRepository,DepsInstaller
 
-// ErrConnectorNotFound is returned when the requested connector id does not
-// exist in the tree.
+// ErrConnectorNotFound: the connector id is not in the tree.
 var ErrConnectorNotFound = apperr.New(apperr.NotFound, "connector not found")
 
-// ErrInvalidConnector marks upload validation failures (bad zip, missing
-// info.json, unsafe paths, ...) - handlers map it to 400.
+// ErrInvalidConnector: upload validation failed (bad zip, missing info.json, unsafe
+// paths, ...). Handlers return 400.
 var ErrInvalidConnector = apperr.New(apperr.Invalid, "invalid connector")
 
 // ConnectorStore reads connector metadata from the unified connectors tree.
@@ -24,12 +23,12 @@ type ConnectorStore interface {
 	Get(ctx context.Context, connectorID string) (domain.ConnectorInfo, error)
 }
 
-// ConnectorWriter mutates the tree. The API process is the tree's only
-// writer; the sandbox mounts it read-only.
+// ConnectorWriter changes the tree. Only the API process writes it, the sandbox mounts it
+// read-only.
 type ConnectorWriter interface {
-	// Extract writes the archive under <tree>/<connectorID>, replacing any
-	// existing folder. prefix is the single top-level zip folder to strip
-	// ("" when files sit at the zip root). Entries were validated upstream.
+	// Extract writes the archive to <tree>/<connectorID> and replaces the old folder. prefix
+	// is the one top-level zip folder to strip ("" when files are at the zip root). The
+	// entries were validated before.
 	Extract(ctx context.Context, connectorID string, archive *zip.Reader, prefix string) error
 	Remove(ctx context.Context, connectorID string) error
 }
@@ -41,9 +40,9 @@ type ConnectorRepository interface {
 	Delete(ctx context.Context, connectorID string) error
 }
 
-// DepsInstaller vendors a connector's declared dependencies
-// (requirements.txt -> deps/, package.json -> node_modules/) - the same step
-// `make connector-deps` runs, executed at upload time.
+// DepsInstaller vendors the declared dependencies of a connector (requirements.txt ->
+// deps/, package.json -> node_modules/). It is the step of `make connector-deps`, run at
+// upload.
 type DepsInstaller interface {
 	Install(ctx context.Context, connectorID string) error
 }

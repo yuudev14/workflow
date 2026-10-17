@@ -1,7 +1,6 @@
-// Package templating renders {{ var.steps["node"] }} params for Go built-in
-// connectors with gonja (a jinja2 engine), matching what jinja2 does for
-// python connectors and nunjucks for node ones: template strings render to
-// strings, everything else passes through untouched.
+// Package templating renders {{ var.steps["node"] }} params for the Go built-in connectors
+// with gonja (a jinja2 engine). It matches jinja2 for python connectors and nunjucks for
+// node ones: template strings render to strings, everything else passes through.
 package templating
 
 import (
@@ -19,8 +18,8 @@ func NewGonjaEngine() *GonjaEngine {
 	return &GonjaEngine{}
 }
 
-// Render walks maps/lists and renders every string containing a template
-// marker against {"var": variables}.
+// Render walks maps and lists and renders each string with a template marker against
+// {"var": variables}.
 func (e *GonjaEngine) Render(value any, variables map[string]any) (any, error) {
 	normalized, _ := normalizeNumbers(variables).(map[string]any)
 	return e.render(value, normalized)
@@ -62,9 +61,9 @@ func (e *GonjaEngine) render(value any, variables map[string]any) (any, error) {
 	}
 }
 
-// normalizeNumbers converts whole-number float64s (what encoding/json gives
-// every JSON number) to int64 so templates render "200", not "200.0" - the
-// python side json.loads keeps ints as ints and jinja2 prints them plain.
+// normalizeNumbers converts whole float64s (what encoding/json gives for every JSON
+// number) to int64, so templates render "200" and not "200.0". The python side keeps ints
+// as ints with json.loads, and jinja2 prints them plain.
 func normalizeNumbers(value any) any {
 	switch v := value.(type) {
 	case map[string]any:

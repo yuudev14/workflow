@@ -16,10 +16,10 @@ import (
 	"github.com/yuudev14/ytsoar/internal/logger"
 )
 
-// RuntimeServer is the sandbox's gRPC surface: it implements ConnectorRuntime
-// and dispatches every request through the runtime resolver to a localexec
-// subprocess runner. Execution failures travel in the response error field
-// (parity with the Python runtime service), not as gRPC status errors.
+// RuntimeServer is the gRPC surface of the sandbox. It implements ConnectorRuntime and
+// sends every request through the runtime resolver to a localexec subprocess runner.
+// Execution failures go in the error field of the response (like the Python runtime
+// service), not as gRPC status errors.
 type RuntimeServer struct {
 	runtimepb.UnimplementedConnectorRuntimeServer
 	logger         logger.Logger
@@ -55,8 +55,8 @@ func (s *RuntimeServer) ExecuteOperation(ctx context.Context, req *runtimepb.Exe
 		}
 	}
 
-	// A missing input_json is an older producer, not an error: the empty shape
-	// keeps `var.input` defined for every template regardless.
+	// a missing input_json is an older producer, not an error: the empty shape keeps
+	// `var.input` defined for every template
 	input := domain.NewEmptyRunInput()
 	if req.InputJson != nil && *req.InputJson != "" {
 		if err := json.Unmarshal([]byte(*req.InputJson), input); err != nil {

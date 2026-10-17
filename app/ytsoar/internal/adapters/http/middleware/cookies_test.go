@@ -31,8 +31,8 @@ func captureCookie(t *testing.T, fn func(c *gin.Context)) *http.Cookie {
 	return cookies[0]
 }
 
-// HttpOnly is the whole reason the access token moved into a cookie: it is
-// what stops an injected script reading the token and replaying it elsewhere.
+// HttpOnly is the reason the access token moved into a cookie: it stops an injected script
+// from reading the token and replaying it somewhere else.
 func TestSetAccessCookieAttributes(t *testing.T) {
 	writer := middleware.NewCookieWriter(false)
 
@@ -62,8 +62,8 @@ func TestClearAccessCookie(t *testing.T) {
 	assert.Equal(t, "/", cookie.Path)
 }
 
-// Logout and a rejected refresh must leave nothing behind, or the browser
-// keeps replaying a dead session.
+// Logout and a rejected refresh must leave nothing behind, or the browser keeps replaying
+// a dead session.
 func TestClearSessionClearsBothCookies(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	writer := middleware.NewCookieWriter(false)
@@ -88,8 +88,8 @@ func TestClearSessionClearsBothCookies(t *testing.T) {
 	assert.True(t, cleared[middleware.RefreshCookieName], "refresh cookie must be cleared")
 }
 
-// These attributes are the entire CSRF and XSS story for the refresh token,
-// so they are asserted rather than assumed.
+// These attributes are the whole CSRF and XSS protection of the refresh token, so we assert
+// them and do not assume.
 func TestSetRefreshCookieAttributes(t *testing.T) {
 	writer := middleware.NewCookieWriter(false)
 
@@ -118,8 +118,8 @@ func TestSetRefreshCookieHonoursSecureFlag(t *testing.T) {
 	assert.True(t, cookie.Secure, "COOKIE_SECURE=true must reach the browser")
 }
 
-// An already-expired token must not produce a negative MaxAge, which a browser
-// reads as "delete this cookie" rather than "this is expired".
+// An already-expired token must not give a negative MaxAge, which a browser reads as
+// "delete this cookie" and not "this is expired".
 func TestSetRefreshCookieClampsPastExpiry(t *testing.T) {
 	writer := middleware.NewCookieWriter(false)
 
@@ -162,7 +162,7 @@ func TestReadRefreshCookie(t *testing.T) {
 	assert.Equal(t, "cookie-value", got)
 }
 
-// No cookie is an ordinary case (a signed-out visitor), not an error.
+// No cookie is a normal case (a signed-out visitor), not an error.
 func TestReadRefreshCookieAbsent(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 

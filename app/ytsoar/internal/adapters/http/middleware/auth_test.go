@@ -19,8 +19,8 @@ import (
 
 var errRejected = errors.New("rejected")
 
-// stubVerifier stands in for the auth service: it accepts exactly one token
-// per channel and rejects everything else.
+// stubVerifier replaces the auth service: it accepts exactly one token per channel and
+// rejects the rest.
 type stubVerifier struct {
 	validAccessToken  string
 	validRefreshToken string
@@ -47,8 +47,8 @@ func newStub() *stubVerifier {
 	}
 }
 
-// runRequest mounts mw on a route that reports whoever the middleware
-// authenticated, then plays req through it.
+// runRequest mounts mw on a route that reports who the middleware authenticated, then
+// sends req through it.
 func runRequest(t *testing.T, mw gin.HandlerFunc, req *http.Request) (*httptest.ResponseRecorder, *domain.AuthUser) {
 	t.Helper()
 	gin.SetMode(gin.TestMode)

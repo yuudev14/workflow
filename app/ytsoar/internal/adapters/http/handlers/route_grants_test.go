@@ -13,12 +13,12 @@ import (
 	"github.com/yuudev14/ytsoar/internal/domain"
 )
 
-// grantProbeStatus is outside the range any real handler returns, so a route
-// reaching the probe is unambiguous.
+// grantProbeStatus is outside the range of any real handler, so a route that reaches the
+// probe is clear.
 const grantProbeStatus = 599
 
-// recordingPermission stands in for the real middleware and reports which
-// grant a route demanded, without running the handler behind it.
+// recordingPermission replaces the real middleware and reports which grant a route asked
+// for, without running the handler.
 func recordingPermission() middleware.PermissionMiddleware {
 	return func(module, action string) gin.HandlerFunc {
 		grant := fmt.Sprintf("%s.%s", module, action)
@@ -29,9 +29,8 @@ func recordingPermission() middleware.PermissionMiddleware {
 	}
 }
 
-// grantFor plays a request through the registered routes and returns the grant
-// the route asked for. The handlers are never invoked, so zero-value handler
-// structs are enough.
+// grantFor sends a request through the registered routes and returns the grant that the
+// route asked for. Handlers are never called, so zero-value handler structs are enough.
 func grantFor(t *testing.T, register func(*gin.RouterGroup, middleware.PermissionMiddleware), method, path string) string {
 	t.Helper()
 	gin.SetMode(gin.TestMode)
@@ -71,7 +70,7 @@ func TestPlaybookRouteGrants(t *testing.T) {
 		{http.MethodPost, "/api/playbooks/v1", "playbooks.create"},
 		{http.MethodPut, "/api/playbooks/v1/abc", "playbooks.update"},
 		{http.MethodPut, "/api/playbooks/v1/tasks/abc", "playbooks.update"},
-		// Executing is deliberately not covered by update.
+		// executing is not covered by update on purpose
 		{http.MethodPost, "/api/playbooks/v1/trigger/abc", "playbooks.execute"},
 	}
 
@@ -106,8 +105,8 @@ func TestConnectorRouteGrants(t *testing.T) {
 	}
 }
 
-// Everything under settings administers who may do what, so a gap here is a
-// privilege-escalation hole rather than a cosmetic inconsistency.
+// Everything under settings controls who can do what, so a gap here is a privilege
+// escalation hole, not a cosmetic problem.
 func TestAdminRouteGrants(t *testing.T) {
 	h := &AdminHandler{}
 	register := func(g *gin.RouterGroup, p middleware.PermissionMiddleware) {
@@ -156,9 +155,8 @@ func TestAdminRouteGrants(t *testing.T) {
 	}
 }
 
-// SameSite=Lax only defends non-GET verbs, so a mutation exposed over GET
-// would be reachable cross-site. This asserts the invariant instead of leaving
-// it to review.
+// SameSite=Lax protects only non-GET verbs, so a mutation on GET would be reachable
+// cross-site. This test checks the rule, so review does not have to.
 func TestNoMutationIsExposedOverGET(t *testing.T) {
 	registrars := []func(*gin.RouterGroup, middleware.PermissionMiddleware){
 		(&PlaybookHandler{}).RegisterRoutes,
@@ -187,9 +185,9 @@ func TestNoMutationIsExposedOverGET(t *testing.T) {
 	}
 }
 
-// Every grant a route asks for must exist in the domain vocabulary. The
-// columns are TEXT, so a typo like "playbook.read" would not fail at the
-// database - it would silently grant nothing and 403 forever.
+// Every grant that a route asks for must exist in the domain list. The columns are TEXT, so
+// a typo like "playbook.read" does not fail at the database, it grants nothing and returns
+// 403 forever.
 func TestRouteGrantsUseKnownVocabulary(t *testing.T) {
 	registrars := []func(*gin.RouterGroup, middleware.PermissionMiddleware){
 		(&PlaybookHandler{}).RegisterRoutes,

@@ -14,7 +14,6 @@ import (
 	"github.com/yuudev14/ytsoar/internal/logger"
 )
 
-// TeamRepositoryImpl implements auth.TeamRepository.
 type TeamRepositoryImpl struct {
 	logger logger.Logger
 	q      QuerierTx
@@ -32,8 +31,8 @@ func (r *TeamRepositoryImpl) queriesFromContext(ctx context.Context) db.Querier 
 	return r.q
 }
 
-// teamRow carries the members aggregate as raw JSON so one query returns a
-// team and its members together rather than N+1.
+// teamRow has the members aggregate as raw JSON, so one query returns a team with its
+// members (no N+1).
 type teamRow struct {
 	domain.Team
 	Members json.RawMessage `db:"members"`

@@ -10,13 +10,12 @@ import (
 
 //go:generate mockgen -destination=mocks/repository_mock.go -package=mocks . PlaybookRepository,RecordResolver
 
-// RecordResolver hydrates the module rows a run acts on. Declared here, in the
-// consumer's package, so playbooks does not import alerts/incidents - the same
-// shape as IncidentLinker in application/alerts/ports.go.
+// RecordResolver loads the module rows that a run acts on. It is declared here, in the
+// consumer package, so playbooks does not import alerts/incidents (same as IncidentLinker
+// in application/alerts/ports.go).
 //
-// The caller sends ids and the server hydrates: list queries never select
-// `payload`, which is exactly what templates read, and a client-supplied record
-// would be spoofable.
+// The caller sends ids and the server loads the rows: list queries never select `payload`
+// (which templates read), and a record from the client could be faked.
 type RecordResolver interface {
 	Resolve(ctx context.Context, moduleType string, ids []uuid.UUID) ([]map[string]any, error)
 }

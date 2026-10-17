@@ -1,7 +1,6 @@
-// Package auth owns the session, whatever proved the identity. Local
-// passwords, OIDC and LDAP all converge on issuePair: the external provider
-// authenticates a user once, at login, and every request after that carries a
-// token this service signed. Nothing here contacts an identity provider.
+// Package auth owns the session, whatever proved the identity. Local passwords, OIDC and
+// LDAP all end in issuePair. The provider authenticates the user once at login, and every
+// later request carries a token signed here. Nothing here calls an identity provider.
 package auth
 
 import (
@@ -23,11 +22,10 @@ const (
 	typeAccess  = "access"
 	typeRefresh = "refresh"
 
-	// reuseGraceWindow keeps a multi-tab race from looking like token theft:
-	// two tabs refreshing at once both send the same cookie, and the loser
-	// arrives just after rotation revoked it. Within this window that is a
-	// plain 401 (the tab retries with the new cookie); beyond it, a replayed
-	// token means the cookie leaked and every session is revoked.
+	// reuseGraceWindow stops a multi-tab race from looking like token theft. Two tabs refresh
+	// at once with the same cookie, and the loser arrives just after the rotation revoked it.
+	// Inside the window that is a plain 401 (the tab retries with the new cookie). After it,
+	// a replayed token means the cookie leaked, so every session is revoked.
 	reuseGraceWindow = 10 * time.Second
 )
 
@@ -44,7 +42,7 @@ type Service struct {
 	txManager  contracts.TxManager
 	cfg        AuthConfig
 
-	// now is swappable so tests can drive expiry without sleeping.
+	// now can be replaced, so tests can drive expiry without sleeping
 	now func() time.Time
 }
 
@@ -77,11 +75,10 @@ func NewService(
 	}
 }
 
-// Login verifies local credentials and issues a fresh token pair.
+// Login checks local credentials and issues a new token pair.
 //
-// Every rejection path runs exactly one argon2 pass before returning. Skipping
-// it on any branch would make that branch measurably faster and let an
-// attacker sort usernames into unknown / disabled / real by reply latency.
+// Every rejection runs exactly one argon2 pass. If a branch skipped it, that branch would
+// be faster, and an attacker could sort usernames (unknown, disabled, real) by latency.
 func (s *Service) Login(ctx context.Context, username, password string) (TokenPair, error) {
 	user, err := s.users.GetByUsername(ctx, username)
 	if err != nil {
@@ -90,8 +87,8 @@ func (s *Service) Login(ctx context.Context, username, password string) (TokenPa
 		return TokenPair{}, ErrInvalidCredentials
 	}
 
-	// Checked before is_active so a disabled account costs the same as a live
-	// one. Users with no local hash (OIDC/LDAP) burn the time too.
+	// checked before is_active, so a disabled account costs the same as a live one. Users
+	// with no local hash (OIDC/LDAP) also burn the time.
 	passwordOK := false
 	if user.PasswordHash != nil {
 		passwordOK = s.hasher.Verify(password, *user.PasswordHash)
@@ -125,11 +122,9 @@ func (s *Service) Login(ctx context.Context, username, password string) (TokenPa
 	return pair, nil
 }
 
-// Refresh rotates the refresh token: the presented one is revoked and a new
-// pair is issued. Presenting an already-revoked token is treated as theft.
-//
-// This is provider-agnostic on purpose - an OIDC or LDAP session refreshes
-// here too, without the identity provider being involved.
+// Refresh rotates the refresh token: the old one is revoked and a new pair is issued.
+// A revoked token that comes again is treated as theft. It works for OIDC and LDAP
+// sessions too, without the identity provider.
 func (s *Service) Refresh(ctx context.Context, refreshToken string) (TokenPair, error) {
 	claims, err := token.Parse(refreshToken, s.cfg.JWTSecret)
 	if err != nil {
@@ -157,8 +152,8 @@ func (s *Service) Refresh(ctx context.Context, refreshToken string) (TokenPair, 
 		return TokenPair{}, ErrInvalidCredentials
 	}
 
-	// Revoking the old token and storing the new one must not half-apply, or
-	// the user ends up holding a cookie with no live row.
+	// revoke the old token and store the new one together, or the user holds a cookie with
+	// no live row
 	var pair TokenPair
 	err = s.txManager.WithinTransaction(ctx, func(txCtx context.Context) error {
 		if err := s.tokens.Revoke(txCtx, hash); err != nil {
@@ -178,8 +173,7 @@ func (s *Service) Refresh(ctx context.Context, refreshToken string) (TokenPair, 
 	return pair, nil
 }
 
-// handleReuse decides whether a revoked token is a benign tab race or a
-// leaked cookie being replayed.
+// handleReuse decides if a revoked token is a tab race or a leaked cookie.
 func (s *Service) handleReuse(ctx context.Context, stored domain.RefreshToken) error {
 	if stored.RevokedAt != nil && s.now().Sub(*stored.RevokedAt) < reuseGraceWindow {
 		return ErrInvalidCredentials
@@ -197,8 +191,8 @@ func (s *Service) handleReuse(ctx context.Context, stored domain.RefreshToken) e
 	return ErrInvalidCredentials
 }
 
-// Logout revokes the presented refresh token. It is idempotent: logging out
-// twice, or with an already-expired token, still succeeds.
+// Logout revokes the refresh token. It is idempotent: a second logout, or an expired
+// token, still succeeds.
 func (s *Service) Logout(ctx context.Context, refreshToken string) error {
 	if refreshToken == "" {
 		return nil
@@ -257,10 +251,9 @@ func (s *Service) VerifyAccessToken(tokenString string) (domain.AuthUser, error)
 	return authUserFromClaims(claims)
 }
 
-// VerifyRefreshTokenForWS authenticates a websocket handshake, which carries
-// the refresh cookie because a browser cannot set headers on a WebSocket.
-// The token is only read - never rotated - but it is checked against the
-// database so logout and deactivation stop reconnects immediately.
+// VerifyRefreshTokenForWS checks a websocket handshake. It uses the refresh cookie,
+// because a browser cannot set headers on a WebSocket. The token is read, never rotated.
+// It is checked against the database, so logout and deactivation stop reconnects at once.
 func (s *Service) VerifyRefreshTokenForWS(ctx context.Context, refreshToken string) (domain.AuthUser, error) {
 	claims, err := token.Parse(refreshToken, s.cfg.JWTSecret)
 	if err != nil {
@@ -286,9 +279,8 @@ func (s *Service) PermissionsFor(ctx context.Context, userID uuid.UUID) (domain.
 	return s.roles.ListPermissionsForUser(ctx, userID)
 }
 
-// issuePair signs an access/refresh pair and stores the refresh hash. Every
-// login path ends here, so a session looks identical whether the user typed a
-// password, came back from Keycloak, or bound against LDAP.
+// issuePair signs the access and refresh tokens and stores the refresh hash. Every login
+// path ends here, so a session looks the same for password, Keycloak or LDAP.
 func (s *Service) issuePair(ctx context.Context, user domain.User) (TokenPair, error) {
 	now := s.now()
 	accessExp := now.Add(s.cfg.AccessTokenTTL)
@@ -338,8 +330,7 @@ func (s *Service) recordLoginFailure(ctx context.Context, actorID *uuid.UUID, us
 	})
 }
 
-// writeAudit never fails the caller - losing an audit row must not turn a
-// successful login into an error.
+// writeAudit never fails the caller, a lost audit row must not turn a login into an error
 func (s *Service) writeAudit(ctx context.Context, entry domain.AuditEntry) {
 	if err := s.audit.Insert(ctx, entry); err != nil {
 		s.logger.Errorf("could not write audit entry %s.%s: %v", entry.Module, entry.Action, err)
@@ -359,8 +350,7 @@ func authUserFromClaims(claims jwt.MapClaims) (domain.AuthUser, error) {
 	return domain.AuthUser{ID: id, Username: username}, nil
 }
 
-// hashToken is what lands in refresh_tokens: a database leak then yields no
-// usable tokens.
+// hashToken is what we store in refresh_tokens, so a database leak gives no usable token
 func hashToken(t string) string {
 	sum := sha256.Sum256([]byte(t))
 	return hex.EncodeToString(sum[:])

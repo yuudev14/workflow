@@ -49,8 +49,8 @@ func TestResolveDerivesBucketFromSpan(t *testing.T) {
 	}
 }
 
-// An explicit bucket must win over the derived one, otherwise a weekly view of a
-// 30-day range is unaskable.
+// An explicit bucket must win over the derived one, or a weekly view of a 30-day range is
+// not possible.
 func TestResolveExplicitBucketBeatsDerived(t *testing.T) {
 	rng, err := types.DateRange{
 		From:   ptr("2026-06-01T00:00:00Z"),
@@ -77,8 +77,8 @@ func TestResolveRejectsTooManyPoints(t *testing.T) {
 	}
 }
 
-// The same decade is fine once the bucket is wide enough - the guard is on the
-// point count, not on how far back a caller may look.
+// The same decade is fine with a wider bucket: the guard is on the point count, not on how
+// far back a caller can look.
 func TestResolveAllowsLongRangeWithWideBucket(t *testing.T) {
 	rng, err := types.DateRange{
 		From:   ptr("2016-01-01T00:00:00Z"),
@@ -111,8 +111,8 @@ func TestResolveRejectsMalformedBound(t *testing.T) {
 	}
 }
 
-// Previous is what every rendered delta is measured against, so it must abut the
-// selected window exactly and share its length.
+// Previous is the baseline of every delta, so it must touch the selected window and have
+// the same length.
 func TestPreviousWindowAbutsAndMatchesLength(t *testing.T) {
 	rng, err := types.DateRange{
 		From: ptr("2026-07-15T00:00:00Z"),
