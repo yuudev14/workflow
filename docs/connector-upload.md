@@ -77,7 +77,7 @@ The zip may have the files at the root, or inside one top-level folder. The serv
 | `runtime` | `python` (default) or `node`. |
 | runtime file | `python` needs `connector.py`. `node` needs `connector.ts` or `connector.js`. |
 
-Reserved ids protect built-in code. `core` is the shared base class. The two snippet connectors are virtual (the sandbox runs them). `condition` and `http_request` are compiled into the worker, and the resolver picks built-ins first. An upload with these ids could never take effect, so the system rejects it.
+Reserved ids protect built-in code. `core` is the shared base class. The two snippet connectors are virtual (the sandbox runs them). `http_request` is compiled into the worker, and the resolver picks built-ins first, so an upload with this id could never take effect. `condition` is our own Python connector, and an upload must not replace it. The system rejects these ids.
 
 ### Step 3: extract (`FSWriter.Extract`)
 
@@ -111,7 +111,7 @@ The response is `201` and the connector info (`info.json` plus a `configs` list)
 ```mermaid
 flowchart LR
     T[Playbook task<br/>connector_id] --> W[Worker]
-    W -- "built-in? condition, http_request" --> B[BuiltinRuntime in the worker]
+    W -- "built-in? http_request" --> B[BuiltinRuntime in the worker]
     W -- "everything else, gRPC" --> SB[Sandbox]
     SB --> R[DynamicResolver<br/>reads info.json at each call]
     R -- "runtime python" --> P[python3 -I harness]
