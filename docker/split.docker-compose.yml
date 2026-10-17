@@ -1,0 +1,88 @@
+# Split override: the api, the worker and the sandbox in three containers, as
+# in production. Each one uses its own image target. Opt in with:
+#
+#   docker compose -f docker/dev.docker-compose.yml -f docker/split.docker-compose.yml up --build -d
+#
+# (make start-split). Return to one process with make rebuild-containers.
+services:
+  ytsoar_api:
+    build:
+      target: dev-api
+    image: ytsoar/backend:dev-api
+    entrypoint:
+      - sh
+      - -c
+      - >-
+        make migrate && exec air
+        --build.cmd "go build -o ./tmp/api ./cmd/api"
+        --build.bin tmp/api
+  ytsoar_playbook_worker:
+    build:
+      context: ../app/ytsoar
+      target: dev-worker
+    image: ytsoar/backend:dev-worker
+    container_name: ytsoar_playbook_worker
+    # more than WORKER_STOP_GRACE_SECONDS, so running playbooks can be cancelled and saved before Docker kills the worker
+    stop_grace_period: 60s
+    entrypoint:
+      [
+        "air",
+        "--build.cmd",
+        "go build -o ./tmp/worker ./cmd/worker",
+        "--build.bin",
+        "tmp/worker",
+      ]
+    restart: unless-stopped
+    mem_limit: 1g
+    volumes:
+      - ../app/ytsoar:/app
+      # read-only: go builtin connectors load their TOML configs from here
+      - ../app/connectors:/opt/ytsoar/connectors:ro
+    environment:
+      - DB_USER=postgres
+      - DB_PASSWORD=password
+      - DB_HOST=ytsoar_postgres
+      - DB_PORT=5432
+      - DB_NAME=ytsoar
+      - AIR_POLL=true
+      - SANDBOX_ADDR=ytsoar_sandbox:50052
+      - CONNECTORS_DIR=/opt/ytsoar/connectors
+    networks:
+      - ytsoar
+    depends_on:
+      ytsoar_postgres:
+        condition: service_healthy
+      ytsoar_sandbox:
+        condition: service_started
+      # migrations run in the API entrypoint; restart covers the race in dev
+      ytsoar_api:
+        condition: service_started
+  ytsoar_sandbox:
+    build:
+      context: ../app/ytsoar
+      target: dev-sandbox
+    image: ytsoar/backend:dev-sandbox
+    container_name: ytsoar_sandbox
+    entrypoint:
+      [
+        "air",
+        "--build.cmd",
+        "go build -o ./tmp/sandbox ./cmd/sandbox",
+        "--build.bin",
+        "tmp/sandbox",
+      ]
+    restart: unless-stopped
+    mem_limit: 1g
+    expose:
+      - "50052"
+    volumes:
+      - ../app/ytsoar:/app
+      # unified connectors tree, read-only: the sandbox only executes from it
+      - ../app/connectors:/opt/ytsoar/connectors:ro
+    # The sandbox has no DB_* settings. It holds no credentials.
+    environment:
+      - AIR_POLL=true
+      - SANDBOX_LISTEN_ADDR=:50052
+      - CONNECTORS_DIR=/opt/ytsoar/connectors
+    networks:
+      - ytsoar
