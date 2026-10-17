@@ -133,6 +133,11 @@ Other docs:
 - [River guide](docs/river-guide.md): how jobs work here: `RunArgs`, `RunWorker`, `NewRunWorker` and `NewWorkerClient`.
 - [Ports and interfaces](docs/ports-and-interfaces.md): what each interface is, why we made it, and who uses it.
 - [The runtime resolver](docs/runtime-resolver.md): how a node picks where it runs.
+- [Auth](docs/auth.md): sign-in, sessions, SSO, users, roles, teams and permissions.
+- [Database](docs/database.md): the tables as diagrams, and the enums.
+- [Connector upload](docs/connector-upload.md): how a zip becomes a connector.
+- [Connector dependencies](docs/connector-dependencies.md): how each connector gets its own libraries.
+- [The condition task](docs/condition.md): how branching works, the limits of the Go template engine, and the plan to move to Python.
 
 ### One run, step by step
 

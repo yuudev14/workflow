@@ -24,6 +24,7 @@ test.describe("users", () => {
     await dialog.getByRole("button", { name: "analyst" }).click();
     await dialog.getByRole("button", { name: "Create" }).click();
     await expect(dialog).toBeHidden();
+    await page.getByPlaceholder("Search username or email…").fill(username);
     await expect(page.getByRole("row", { name: new RegExp(username) })).toContainText("analyst");
 
     const other = await signInElsewhere(browser, username, "password123");
@@ -47,6 +48,7 @@ test.describe("users", () => {
   test("changes the name and the roles of a user", async ({ page }) => {
     const user = await newUser(page.request, ["viewer"]);
     await page.goto("/settings/users");
+    await page.getByPlaceholder("Search username or email…").fill(user.username);
     await page.getByRole("row", { name: new RegExp(user.username) }).getByTitle("Edit").click();
     const dialog = page.getByRole("dialog");
     await dialog.getByLabel("First name").fill("Ana");
@@ -59,6 +61,7 @@ test.describe("users", () => {
   test("resets the password of a user", async ({ page, browser }) => {
     const user = await newUser(page.request, ["viewer"]);
     await page.goto("/settings/users");
+    await page.getByPlaceholder("Search username or email…").fill(user.username);
     await page.getByRole("row", { name: new RegExp(user.username) }).getByTitle("Reset password").click();
     await page.getByLabel("New password").fill("password456");
     await page.getByRole("button", { name: "Reset", exact: true }).click();
@@ -75,6 +78,7 @@ test.describe("users", () => {
   test("deactivates a user, who then cannot sign in", async ({ page, browser }) => {
     const user = await newUser(page.request, ["viewer"]);
     await page.goto("/settings/users");
+    await page.getByPlaceholder("Search username or email…").fill(user.username);
     await page.getByRole("row", { name: new RegExp(user.username) }).getByTitle("Deactivate").click();
     await page.getByRole("button", { name: "Deactivate" }).click();
     await expect(page.getByRole("row", { name: new RegExp(user.username) })).toContainText("Inactive");
