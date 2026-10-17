@@ -28,21 +28,22 @@ func (q *Queries) CountUsersWithRole(ctx context.Context, name string) (int64, e
 const createUser = `-- name: CreateUser :one
 INSERT INTO users (
     username, email, password_hash, first_name, last_name,
-    auth_provider, external_id, is_active
+    auth_provider, external_id, is_active, email_verified_at
 )
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-RETURNING id, username, email, password_hash, first_name, last_name, auth_provider, external_id, is_active, last_login_at, created_at, updated_at
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+RETURNING id, username, email, password_hash, first_name, last_name, auth_provider, external_id, is_active, last_login_at, created_at, updated_at, email_verified_at
 `
 
 type CreateUserParams struct {
-	Username     string           `json:"username"`
-	Email        string           `json:"email"`
-	PasswordHash pgtype.Text      `json:"password_hash"`
-	FirstName    pgtype.Text      `json:"first_name"`
-	LastName     pgtype.Text      `json:"last_name"`
-	AuthProvider AuthProviderType `json:"auth_provider"`
-	ExternalID   pgtype.Text      `json:"external_id"`
-	IsActive     bool             `json:"is_active"`
+	Username        string           `json:"username"`
+	Email           string           `json:"email"`
+	PasswordHash    pgtype.Text      `json:"password_hash"`
+	FirstName       pgtype.Text      `json:"first_name"`
+	LastName        pgtype.Text      `json:"last_name"`
+	AuthProvider    AuthProviderType `json:"auth_provider"`
+	ExternalID      pgtype.Text      `json:"external_id"`
+	IsActive        bool             `json:"is_active"`
+	EmailVerifiedAt pgtype.Timestamp `json:"email_verified_at"`
 }
 
 func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, error) {
@@ -55,6 +56,7 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, e
 		arg.AuthProvider,
 		arg.ExternalID,
 		arg.IsActive,
+		arg.EmailVerifiedAt,
 	)
 	var i User
 	err := row.Scan(
@@ -70,12 +72,13 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, e
 		&i.LastLoginAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.EmailVerifiedAt,
 	)
 	return i, err
 }
 
 const getUserByEmail = `-- name: GetUserByEmail :one
-SELECT id, username, email, password_hash, first_name, last_name, auth_provider, external_id, is_active, last_login_at, created_at, updated_at FROM users WHERE email = $1
+SELECT id, username, email, password_hash, first_name, last_name, auth_provider, external_id, is_active, last_login_at, created_at, updated_at, email_verified_at FROM users WHERE email = $1
 `
 
 func (q *Queries) GetUserByEmail(ctx context.Context, email string) (User, error) {
@@ -94,12 +97,13 @@ func (q *Queries) GetUserByEmail(ctx context.Context, email string) (User, error
 		&i.LastLoginAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.EmailVerifiedAt,
 	)
 	return i, err
 }
 
 const getUserByExternalId = `-- name: GetUserByExternalId :one
-SELECT id, username, email, password_hash, first_name, last_name, auth_provider, external_id, is_active, last_login_at, created_at, updated_at FROM users WHERE auth_provider = $1 AND external_id = $2
+SELECT id, username, email, password_hash, first_name, last_name, auth_provider, external_id, is_active, last_login_at, created_at, updated_at, email_verified_at FROM users WHERE auth_provider = $1 AND external_id = $2
 `
 
 type GetUserByExternalIdParams struct {
@@ -123,12 +127,13 @@ func (q *Queries) GetUserByExternalId(ctx context.Context, arg GetUserByExternal
 		&i.LastLoginAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.EmailVerifiedAt,
 	)
 	return i, err
 }
 
 const getUserById = `-- name: GetUserById :one
-SELECT id, username, email, password_hash, first_name, last_name, auth_provider, external_id, is_active, last_login_at, created_at, updated_at FROM users WHERE id = $1
+SELECT id, username, email, password_hash, first_name, last_name, auth_provider, external_id, is_active, last_login_at, created_at, updated_at, email_verified_at FROM users WHERE id = $1
 `
 
 func (q *Queries) GetUserById(ctx context.Context, id pgtype.UUID) (User, error) {
@@ -147,12 +152,13 @@ func (q *Queries) GetUserById(ctx context.Context, id pgtype.UUID) (User, error)
 		&i.LastLoginAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.EmailVerifiedAt,
 	)
 	return i, err
 }
 
 const getUserByUsername = `-- name: GetUserByUsername :one
-SELECT id, username, email, password_hash, first_name, last_name, auth_provider, external_id, is_active, last_login_at, created_at, updated_at FROM users WHERE username = $1
+SELECT id, username, email, password_hash, first_name, last_name, auth_provider, external_id, is_active, last_login_at, created_at, updated_at, email_verified_at FROM users WHERE username = $1
 `
 
 func (q *Queries) GetUserByUsername(ctx context.Context, username string) (User, error) {
@@ -171,8 +177,23 @@ func (q *Queries) GetUserByUsername(ctx context.Context, username string) (User,
 		&i.LastLoginAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.EmailVerifiedAt,
 	)
 	return i, err
+}
+
+const markUserEmailVerified = `-- name: MarkUserEmailVerified :exec
+UPDATE users SET email_verified_at = $2 WHERE id = $1 AND email_verified_at IS NULL
+`
+
+type MarkUserEmailVerifiedParams struct {
+	ID              pgtype.UUID      `json:"id"`
+	EmailVerifiedAt pgtype.Timestamp `json:"email_verified_at"`
+}
+
+func (q *Queries) MarkUserEmailVerified(ctx context.Context, arg MarkUserEmailVerifiedParams) error {
+	_, err := q.db.Exec(ctx, markUserEmailVerified, arg.ID, arg.EmailVerifiedAt)
+	return err
 }
 
 const setUserPassword = `-- name: SetUserPassword :exec
@@ -219,7 +240,7 @@ SET
     END,
     updated_at = NOW()
 WHERE id = $9
-RETURNING id, username, email, password_hash, first_name, last_name, auth_provider, external_id, is_active, last_login_at, created_at, updated_at
+RETURNING id, username, email, password_hash, first_name, last_name, auth_provider, external_id, is_active, last_login_at, created_at, updated_at, email_verified_at
 `
 
 type UpdateUserParams struct {
@@ -260,6 +281,7 @@ func (q *Queries) UpdateUser(ctx context.Context, arg UpdateUserParams) (User, e
 		&i.LastLoginAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.EmailVerifiedAt,
 	)
 	return i, err
 }

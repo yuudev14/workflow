@@ -3,6 +3,8 @@ package auth
 import (
 	"time"
 
+	"github.com/google/uuid"
+
 	"github.com/yuudev14/ytsoar/internal/domain"
 	"github.com/yuudev14/ytsoar/internal/domain/apperr"
 	"github.com/yuudev14/ytsoar/internal/types"
@@ -26,6 +28,8 @@ type CreateUserParams struct {
 	LastName     *string
 	AuthProvider domain.AuthProvider
 	ExternalID   *string
+	// EmailVerifiedAt is nil for a local user until a set-password link is used
+	EmailVerifiedAt *time.Time
 }
 
 type UpdateUserParams struct {
@@ -44,9 +48,10 @@ type UserFilter struct {
 // CreateUserInput comes from the handler layer: a plaintext password and role ids. Neither
 // reaches the repository as it is.
 type CreateUserInput struct {
-	Username  string   `json:"username" binding:"required"`
-	Email     string   `json:"email" binding:"required,email"`
-	Password  string   `json:"password" binding:"required,min=8"`
+	Username string `json:"username" binding:"required"`
+	Email    string `json:"email" binding:"required,email"`
+	// Password is optional. Without it, the user gets an invite email to set one.
+	Password  string   `json:"password" binding:"omitempty,min=8"`
 	FirstName *string  `json:"first_name"`
 	LastName  *string  `json:"last_name"`
 	RoleIDs   []string `json:"role_ids"`
@@ -147,4 +152,34 @@ type AuthConfig struct {
 	// the browser base used to build the IdP redirect_uri.
 	FrontendURL   string
 	AuthPublicURL string
+}
+
+const (
+	TokenInvite        = "invite"
+	TokenPasswordReset = "password_reset"
+)
+
+type IssueTokenParams struct {
+	UserID    uuid.UUID
+	TokenHash string
+	Purpose   string
+	ExpiresAt time.Time
+	CreatedAt time.Time
+	// ResendAfter: an older link of the same purpose is replaced, a newer one is kept
+	ResendAfter time.Time
+}
+
+type UserToken struct {
+	UserID    uuid.UUID
+	Purpose   string
+	ExpiresAt time.Time
+}
+
+type ResetPasswordInput struct {
+	Token    string `json:"token" binding:"required"`
+	Password string `json:"password" binding:"required,min=8"`
+}
+
+type ForgotPasswordInput struct {
+	Email string `json:"email" binding:"required,email"`
 }

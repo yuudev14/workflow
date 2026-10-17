@@ -31,6 +31,8 @@ type testEnv struct {
 	mockRoles     *mock_auth.MockRoleRepository
 	mockTokens    *mock_auth.MockRefreshTokenRepository
 	mockAPIKeys   *mock_auth.MockAPIKeyRepository
+	mockLinks     *mock_auth.MockUserTokenRepository
+	mockMailer    *mock_auth.MockMailer
 	mockTeams     *mock_auth.MockTeamRepository
 	mockProviders *mock_auth.MockAuthProviderRepository
 	mockOIDC      *mock_auth.MockOIDCClient
@@ -52,6 +54,8 @@ func setupTest(t *testing.T) *testEnv {
 	mockRoles := mock_auth.NewMockRoleRepository(ctrl)
 	mockTokens := mock_auth.NewMockRefreshTokenRepository(ctrl)
 	mockAPIKeys := mock_auth.NewMockAPIKeyRepository(ctrl)
+	mockLinks := mock_auth.NewMockUserTokenRepository(ctrl)
+	mockMailer := mock_auth.NewMockMailer(ctrl)
 	mockTeams := mock_auth.NewMockTeamRepository(ctrl)
 	mockProviders := mock_auth.NewMockAuthProviderRepository(ctrl)
 	mockOIDC := mock_auth.NewMockOIDCClient(ctrl)
@@ -79,6 +83,8 @@ func setupTest(t *testing.T) *testEnv {
 		mockRoles,
 		mockTokens,
 		mockAPIKeys,
+		mockLinks,
+		mockMailer,
 		mockTeams,
 		mockAudit,
 		mockProviders,
@@ -103,6 +109,8 @@ func setupTest(t *testing.T) *testEnv {
 		mockRoles:     mockRoles,
 		mockTokens:    mockTokens,
 		mockAPIKeys:   mockAPIKeys,
+		mockLinks:     mockLinks,
+		mockMailer:    mockMailer,
 		mockTeams:     mockTeams,
 		mockProviders: mockProviders,
 		mockOIDC:      mockOIDC,
@@ -395,10 +403,6 @@ func issueRefreshToken(t *testing.T, env *testEnv, user domain.User) string {
 
 func TestAPIKeys(t *testing.T) {
 	ctx := context.Background()
-	sha := func(key string) string {
-		sum := sha256.Sum256([]byte(key))
-		return hex.EncodeToString(sum[:])
-	}
 
 	t.Run("CreateAPIKey", func(t *testing.T) {
 		t.Run("returns the key one time and stores only its hash", func(t *testing.T) {
@@ -487,15 +491,143 @@ func TestAPIKeys(t *testing.T) {
 }
 
 func TestDeleteExpiredTokens(t *testing.T) {
-	t.Run("deletes the refresh tokens that expired before now", func(t *testing.T) {
+	t.Run("deletes the refresh tokens and the links that expired before now", func(t *testing.T) {
 		env := setupTest(t)
 		before := time.Now()
-		env.mockTokens.EXPECT().DeleteExpired(gomock.Any(), gomock.Any()).
-			DoAndReturn(func(_ context.Context, cutoff time.Time) error {
-				assert.WithinDuration(t, before, cutoff, time.Second)
-				return nil
-			})
+		near := func(_ context.Context, cutoff time.Time) error {
+			assert.WithinDuration(t, before, cutoff, time.Second)
+			return nil
+		}
+		env.mockTokens.EXPECT().DeleteExpired(gomock.Any(), gomock.Any()).DoAndReturn(near)
+		env.mockLinks.EXPECT().DeleteExpired(gomock.Any(), gomock.Any()).DoAndReturn(near)
 
 		assert.NoError(t, env.service.DeleteExpiredTokens(context.Background()))
 	})
+}
+
+func TestInviteAndPasswordReset(t *testing.T) {
+	ctx := context.Background()
+	linkIn := func(body string) string {
+		_, token, ok := strings.Cut(body, "/set-password?token=")
+		require.True(t, ok, "the email has no link: %s", body)
+		return strings.TrimSpace(token)
+	}
+
+	t.Run("CreateUser", func(t *testing.T) {
+		t.Run("sends an invite when there is no password", func(t *testing.T) {
+			env := setupTest(t)
+			user := activeUser()
+			user.PasswordHash = nil
+			env.mockUsers.EXPECT().Create(gomock.Any(), gomock.Any()).
+				DoAndReturn(func(_ context.Context, p auth.CreateUserParams) (domain.User, error) {
+					assert.Nil(t, p.PasswordHash)
+					return user, nil
+				})
+			var issued auth.IssueTokenParams
+			env.mockLinks.EXPECT().Issue(gomock.Any(), gomock.Any()).
+				DoAndReturn(func(_ context.Context, p auth.IssueTokenParams) (bool, error) {
+					issued = p
+					return true, nil
+				})
+			env.mockMailer.EXPECT().Send(gomock.Any(), user.Email, gomock.Any(), gomock.Any()).
+				DoAndReturn(func(_ context.Context, _, _, body string) error {
+					assert.Equal(t, sha(linkIn(body)), issued.TokenHash, "only the hash is stored")
+					return nil
+				})
+			env.mockUsers.EXPECT().GetWithRoles(gomock.Any(), user.ID).Return(domain.UserWithRoles{User: user}, nil)
+
+			_, err := env.service.CreateUser(ctx, uuid.New(), auth.CreateUserInput{Username: "alice", Email: user.Email})
+
+			require.NoError(t, err)
+			assert.Equal(t, auth.TokenInvite, issued.Purpose)
+			assert.WithinDuration(t, time.Now().Add(72*time.Hour), issued.ExpiresAt, time.Minute)
+		})
+	})
+
+	t.Run("InviteUser", func(t *testing.T) {
+		t.Run("refuses an SSO user", func(t *testing.T) {
+			env := setupTest(t)
+			user := activeUser()
+			user.AuthProvider = domain.AuthProviderOIDC
+			env.mockUsers.EXPECT().GetByID(gomock.Any(), user.ID).Return(user, nil)
+
+			assert.ErrorIs(t, env.service.InviteUser(ctx, uuid.New(), user.ID), auth.ErrCannotInvite)
+		})
+
+		t.Run("sends no email when the last link is less than a minute old", func(t *testing.T) {
+			env := setupTest(t)
+			user := activeUser()
+			env.mockUsers.EXPECT().GetByID(gomock.Any(), user.ID).Return(user, nil)
+			env.mockLinks.EXPECT().Issue(gomock.Any(), gomock.Any()).Return(false, nil)
+
+			assert.ErrorIs(t, env.service.InviteUser(ctx, uuid.New(), user.ID), auth.ErrEmailTooSoon)
+		})
+	})
+
+	t.Run("ForgotPassword", func(t *testing.T) {
+		t.Run("sends nothing for an unknown email", func(t *testing.T) {
+			env := setupTest(t)
+			env.mockUsers.EXPECT().GetByEmail(gomock.Any(), "nobody@example.com").Return(domain.User{}, auth.ErrUserNotFound)
+
+			env.service.ForgotPassword(ctx, "nobody@example.com")
+		})
+
+		t.Run("sends a reset link that expires in one hour", func(t *testing.T) {
+			env := setupTest(t)
+			user := activeUser()
+			sent := make(chan struct{})
+			env.mockUsers.EXPECT().GetByEmail(gomock.Any(), user.Email).Return(user, nil)
+			env.mockLinks.EXPECT().Issue(gomock.Any(), gomock.Any()).
+				DoAndReturn(func(_ context.Context, p auth.IssueTokenParams) (bool, error) {
+					assert.Equal(t, auth.TokenPasswordReset, p.Purpose)
+					assert.WithinDuration(t, time.Now().Add(time.Hour), p.ExpiresAt, time.Minute)
+					return true, nil
+				})
+			env.mockMailer.EXPECT().Send(gomock.Any(), user.Email, gomock.Any(), gomock.Any()).
+				DoAndReturn(func(context.Context, string, string, string) error {
+					close(sent)
+					return nil
+				})
+
+			env.service.ForgotPassword(ctx, user.Email)
+
+			select {
+			case <-sent:
+			case <-time.After(5 * time.Second):
+				t.Fatal("no email was sent")
+			}
+		})
+	})
+
+	t.Run("ResetPassword", func(t *testing.T) {
+		input := auth.ResetPasswordInput{Token: "link-token", Password: "new-password"}
+
+		t.Run("sets the password, verifies the email and ends all sessions", func(t *testing.T) {
+			env := setupTest(t)
+			userID := uuid.New()
+			env.mockHasher.EXPECT().Hash("new-password").Return("new-hash", nil)
+			env.mockLinks.EXPECT().Take(gomock.Any(), sha("link-token")).
+				Return(auth.UserToken{UserID: userID, Purpose: auth.TokenInvite, ExpiresAt: time.Now().Add(time.Hour)}, nil)
+			env.mockUsers.EXPECT().SetPassword(gomock.Any(), userID, "new-hash").Return(nil)
+			env.mockUsers.EXPECT().MarkEmailVerified(gomock.Any(), userID, gomock.Any()).Return(nil)
+			env.mockTokens.EXPECT().RevokeAllForUser(gomock.Any(), userID).Return(nil)
+
+			require.NoError(t, env.service.ResetPassword(ctx, input))
+			assert.Equal(t, 1, *env.txCalls)
+		})
+
+		t.Run("rejects an expired link", func(t *testing.T) {
+			env := setupTest(t)
+			env.mockHasher.EXPECT().Hash("new-password").Return("new-hash", nil)
+			env.mockLinks.EXPECT().Take(gomock.Any(), sha("link-token")).
+				Return(auth.UserToken{UserID: uuid.New(), ExpiresAt: time.Now().Add(-time.Second)}, nil)
+
+			assert.ErrorIs(t, env.service.ResetPassword(ctx, input), auth.ErrInvalidLink)
+		})
+	})
+}
+
+func sha(s string) string {
+	sum := sha256.Sum256([]byte(s))
+	return hex.EncodeToString(sum[:])
 }

@@ -3,9 +3,11 @@ package repository
 import (
 	"context"
 	"fmt"
+	"time"
 
 	sq "github.com/Masterminds/squirrel"
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/yuudev14/ytsoar/db"
 	"github.com/yuudev14/ytsoar/internal/application/auth"
@@ -47,6 +49,14 @@ func (r *UserRepositoryImpl) GetByUsername(ctx context.Context, username string)
 	return toDomainUser(row), nil
 }
 
+func (r *UserRepositoryImpl) GetByEmail(ctx context.Context, email string) (domain.User, error) {
+	row, err := r.queriesFromContext(ctx).GetUserByEmail(ctx, email)
+	if err != nil {
+		return domain.User{}, mapNoRows(err, auth.ErrUserNotFound)
+	}
+	return toDomainUser(row), nil
+}
+
 func (r *UserRepositoryImpl) GetByExternalID(ctx context.Context, provider domain.AuthProvider, externalID string) (domain.User, error) {
 	row, err := r.queriesFromContext(ctx).GetUserByExternalId(ctx, db.GetUserByExternalIdParams{
 		AuthProvider: db.AuthProviderType(provider),
@@ -60,14 +70,15 @@ func (r *UserRepositoryImpl) GetByExternalID(ctx context.Context, provider domai
 
 func (r *UserRepositoryImpl) Create(ctx context.Context, params auth.CreateUserParams) (domain.User, error) {
 	row, err := r.queriesFromContext(ctx).CreateUser(ctx, db.CreateUserParams{
-		Username:     params.Username,
-		Email:        params.Email,
-		PasswordHash: toPgText(params.PasswordHash),
-		FirstName:    toPgText(params.FirstName),
-		LastName:     toPgText(params.LastName),
-		AuthProvider: db.AuthProviderType(params.AuthProvider),
-		ExternalID:   toPgText(params.ExternalID),
-		IsActive:     true,
+		Username:        params.Username,
+		Email:           params.Email,
+		PasswordHash:    toPgText(params.PasswordHash),
+		FirstName:       toPgText(params.FirstName),
+		LastName:        toPgText(params.LastName),
+		AuthProvider:    db.AuthProviderType(params.AuthProvider),
+		ExternalID:      toPgText(params.ExternalID),
+		IsActive:        true,
+		EmailVerifiedAt: toPgTimestampPtr(params.EmailVerifiedAt),
 	})
 	if err != nil {
 		return domain.User{}, mapUniqueViolation(err, auth.ErrUserTaken)
@@ -99,6 +110,14 @@ func (r *UserRepositoryImpl) SetPassword(ctx context.Context, id uuid.UUID, pass
 	return r.queriesFromContext(ctx).SetUserPassword(ctx, db.SetUserPasswordParams{
 		ID:           toPgUUID(id),
 		PasswordHash: toPgTextFromString(passwordHash),
+	})
+}
+
+// MarkEmailVerified keeps the first time. A second link does not move it.
+func (r *UserRepositoryImpl) MarkEmailVerified(ctx context.Context, id uuid.UUID, at time.Time) error {
+	return r.queriesFromContext(ctx).MarkUserEmailVerified(ctx, db.MarkUserEmailVerifiedParams{
+		ID:              toPgUUID(id),
+		EmailVerifiedAt: pgtype.Timestamp{Time: at, Valid: true},
 	})
 }
 
@@ -203,17 +222,18 @@ func (r *UserRepositoryImpl) CountWithRole(ctx context.Context, roleName string)
 
 func toDomainUser(row db.User) domain.User {
 	return domain.User{
-		ID:           fromPgUUID(row.ID),
-		Username:     row.Username,
-		Email:        row.Email,
-		PasswordHash: fromPgText(row.PasswordHash),
-		FirstName:    fromPgText(row.FirstName),
-		LastName:     fromPgText(row.LastName),
-		AuthProvider: domain.AuthProvider(row.AuthProvider),
-		ExternalID:   fromPgText(row.ExternalID),
-		IsActive:     row.IsActive,
-		LastLoginAt:  fromPgTimestampPtr(row.LastLoginAt),
-		CreatedAt:    row.CreatedAt.Time,
-		UpdatedAt:    row.UpdatedAt.Time,
+		ID:              fromPgUUID(row.ID),
+		Username:        row.Username,
+		Email:           row.Email,
+		PasswordHash:    fromPgText(row.PasswordHash),
+		FirstName:       fromPgText(row.FirstName),
+		LastName:        fromPgText(row.LastName),
+		AuthProvider:    domain.AuthProvider(row.AuthProvider),
+		ExternalID:      fromPgText(row.ExternalID),
+		IsActive:        row.IsActive,
+		LastLoginAt:     fromPgTimestampPtr(row.LastLoginAt),
+		CreatedAt:       row.CreatedAt.Time,
+		UpdatedAt:       row.UpdatedAt.Time,
+		EmailVerifiedAt: fromPgTimestampPtr(row.EmailVerifiedAt),
 	}
 }

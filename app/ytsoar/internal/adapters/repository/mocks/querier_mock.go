@@ -279,6 +279,20 @@ func (mr *MockQuerierTxMockRecorder) DeleteExpiredRefreshTokens(ctx, expiresAt a
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteExpiredRefreshTokens", reflect.TypeOf((*MockQuerierTx)(nil).DeleteExpiredRefreshTokens), ctx, expiresAt)
 }
 
+// DeleteExpiredUserTokens mocks base method.
+func (m *MockQuerierTx) DeleteExpiredUserTokens(ctx context.Context, expiresAt pgtype.Timestamp) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DeleteExpiredUserTokens", ctx, expiresAt)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// DeleteExpiredUserTokens indicates an expected call of DeleteExpiredUserTokens.
+func (mr *MockQuerierTxMockRecorder) DeleteExpiredUserTokens(ctx, expiresAt any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteExpiredUserTokens", reflect.TypeOf((*MockQuerierTx)(nil).DeleteExpiredUserTokens), ctx, expiresAt)
+}
+
 // DeleteIncidentAlert mocks base method.
 func (m *MockQuerierTx) DeleteIncidentAlert(ctx context.Context, arg db.DeleteIncidentAlertParams) (int64, error) {
 	m.ctrl.T.Helper()
@@ -1110,6 +1124,20 @@ func (mr *MockQuerierTxMockRecorder) ListRolesForUser(ctx, userID any) *gomock.C
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListRolesForUser", reflect.TypeOf((*MockQuerierTx)(nil).ListRolesForUser), ctx, userID)
 }
 
+// MarkUserEmailVerified mocks base method.
+func (m *MockQuerierTx) MarkUserEmailVerified(ctx context.Context, arg db.MarkUserEmailVerifiedParams) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "MarkUserEmailVerified", ctx, arg)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// MarkUserEmailVerified indicates an expected call of MarkUserEmailVerified.
+func (mr *MockQuerierTxMockRecorder) MarkUserEmailVerified(ctx, arg any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "MarkUserEmailVerified", reflect.TypeOf((*MockQuerierTx)(nil).MarkUserEmailVerified), ctx, arg)
+}
+
 // RevokeAllRefreshTokensForUser mocks base method.
 func (m *MockQuerierTx) RevokeAllRefreshTokensForUser(ctx context.Context, userID pgtype.UUID) error {
 	m.ctrl.T.Helper()
@@ -1151,6 +1179,21 @@ func (m *MockQuerierTx) SetUserPassword(ctx context.Context, arg db.SetUserPassw
 func (mr *MockQuerierTxMockRecorder) SetUserPassword(ctx, arg any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetUserPassword", reflect.TypeOf((*MockQuerierTx)(nil).SetUserPassword), ctx, arg)
+}
+
+// TakeUserToken mocks base method.
+func (m *MockQuerierTx) TakeUserToken(ctx context.Context, tokenHash string) (db.UserToken, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "TakeUserToken", ctx, tokenHash)
+	ret0, _ := ret[0].(db.UserToken)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// TakeUserToken indicates an expected call of TakeUserToken.
+func (mr *MockQuerierTxMockRecorder) TakeUserToken(ctx, tokenHash any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "TakeUserToken", reflect.TypeOf((*MockQuerierTx)(nil).TakeUserToken), ctx, tokenHash)
 }
 
 // TouchAPIKey mocks base method.
@@ -1464,6 +1507,21 @@ func (m *MockQuerierTx) UpsertTask(ctx context.Context, arg db.UpsertTaskParams)
 func (mr *MockQuerierTxMockRecorder) UpsertTask(ctx, arg any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpsertTask", reflect.TypeOf((*MockQuerierTx)(nil).UpsertTask), ctx, arg)
+}
+
+// UpsertUserToken mocks base method.
+func (m *MockQuerierTx) UpsertUserToken(ctx context.Context, arg db.UpsertUserTokenParams) (int64, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "UpsertUserToken", ctx, arg)
+	ret0, _ := ret[0].(int64)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// UpsertUserToken indicates an expected call of UpsertUserToken.
+func (mr *MockQuerierTxMockRecorder) UpsertUserToken(ctx, arg any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpsertUserToken", reflect.TypeOf((*MockQuerierTx)(nil).UpsertUserToken), ctx, arg)
 }
 
 // WithTx mocks base method.

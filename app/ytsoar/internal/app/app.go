@@ -18,6 +18,7 @@ import (
 	"github.com/yuudev14/ytsoar/internal/adapters/http/handlers"
 	"github.com/yuudev14/ytsoar/internal/adapters/http/middleware"
 	"github.com/yuudev14/ytsoar/internal/adapters/jobs"
+	"github.com/yuudev14/ytsoar/internal/adapters/mail"
 	"github.com/yuudev14/ytsoar/internal/adapters/oidcclient"
 	"github.com/yuudev14/ytsoar/internal/adapters/pgstatus"
 	"github.com/yuudev14/ytsoar/internal/adapters/repository"
@@ -154,6 +155,10 @@ func newAuthService(cfg config.Config, appLogger logger.Logger, queries *db.Quer
 		repository.NewRoleRepositoryImpl(appLogger, queries, pool),
 		repository.NewRefreshTokenRepositoryImpl(appLogger, queries, pool),
 		repository.NewAPIKeyRepositoryImpl(appLogger, queries, pool),
+		repository.NewUserTokenRepositoryImpl(appLogger, queries, pool),
+		mail.New(appLogger, mail.Config{
+			Host: cfg.SMTPHost, Port: cfg.SMTPPort, Username: cfg.SMTPUsername, Password: cfg.SMTPPassword, From: cfg.SMTPFrom,
+		}),
 		repository.NewTeamRepositoryImpl(appLogger, queries, pool),
 		repository.NewAuditLogRepositoryImpl(appLogger, queries, pool),
 		repository.NewAuthProviderRepositoryImpl(appLogger, queries, pool),
