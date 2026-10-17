@@ -9,7 +9,7 @@ import (
 )
 
 func TestIncidents(t *testing.T) {
-	const base = "/api/incidents/v1"
+	const base = "/api/v1/incidents"
 	c := admin(t)
 	id := c.create(t, base, J{"title": unique("incident"), "severity": "medium"})["id"].(string)
 

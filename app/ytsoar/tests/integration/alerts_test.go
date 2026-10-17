@@ -11,11 +11,11 @@ import (
 
 func newAlert(t *testing.T, c *client) string {
 	t.Helper()
-	return c.create(t, "/api/alerts/v1", J{"title": unique("alert"), "severity": "high", "source_kind": "edr"})["id"].(string)
+	return c.create(t, "/api/v1/alerts", J{"title": unique("alert"), "severity": "high", "source_kind": "edr"})["id"].(string)
 }
 
 func TestAlerts(t *testing.T) {
-	const base = "/api/alerts/v1"
+	const base = "/api/v1/alerts"
 	c := admin(t)
 	id := newAlert(t, c)
 
@@ -98,7 +98,7 @@ func TestAlerts(t *testing.T) {
 	t.Run("POST /alerts/:id/escalate", func(t *testing.T) {
 		t.Run("creates an incident that links the alert", func(t *testing.T) {
 			incident := c.create(t, base+"/"+id+"/escalate", J{"title": unique("escalated")})
-			linked := c.get(t, "/api/incidents/v1/"+incident["id"].(string)).(J)
+			linked := c.get(t, "/api/v1/incidents/"+incident["id"].(string)).(J)
 			assert.Contains(t, ids(linked["linked_alerts"]), id)
 		})
 	})

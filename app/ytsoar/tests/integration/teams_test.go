@@ -9,7 +9,7 @@ import (
 )
 
 func TestTeams(t *testing.T) {
-	const base = "/api/teams/v1"
+	const base = "/api/v1/teams"
 	c := admin(t)
 	name := unique("blue")
 	id := c.create(t, base, J{"name": name})["id"].(string)
@@ -42,19 +42,19 @@ func TestTeams(t *testing.T) {
 	})
 
 	t.Run("PUT /teams/:id/members and /roles", func(t *testing.T) {
-		roleID := c.create(t, "/api/roles/v1", J{"name": unique("reader"), "permissions": J{"alerts": []string{"read"}}})["id"].(string)
+		roleID := c.create(t, "/api/v1/roles", J{"name": unique("reader"), "permissions": J{"alerts": []string{"read"}}})["id"].(string)
 		userID, user := newUser(t)
-		user.expect(t, http.StatusForbidden, http.MethodGet, "/api/alerts/v1", nil)
+		user.expect(t, http.StatusForbidden, http.MethodGet, "/api/v1/alerts", nil)
 		c.expect(t, http.StatusOK, http.MethodPut, base+"/"+id+"/roles", J{"role_ids": []string{roleID}})
 
 		t.Run("gives the team roles to a new member", func(t *testing.T) {
 			c.expect(t, http.StatusOK, http.MethodPut, base+"/"+id+"/members", J{"member_ids": []string{userID}})
-			user.get(t, "/api/alerts/v1")
+			user.get(t, "/api/v1/alerts")
 		})
 
 		t.Run("takes the team roles from a removed member", func(t *testing.T) {
 			c.expect(t, http.StatusOK, http.MethodPut, base+"/"+id+"/members", J{"member_ids": []string{}})
-			user.expect(t, http.StatusForbidden, http.MethodGet, "/api/alerts/v1", nil)
+			user.expect(t, http.StatusForbidden, http.MethodGet, "/api/v1/alerts", nil)
 		})
 	})
 

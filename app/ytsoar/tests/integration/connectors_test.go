@@ -57,7 +57,7 @@ func zipDir(t *testing.T, dir string) []byte {
 }
 
 func TestConnectors(t *testing.T) {
-	const base = "/api/connectors/v1"
+	const base = "/api/v1/connectors"
 	c := admin(t)
 
 	t.Run("POST /connectors", func(t *testing.T) {

@@ -10,7 +10,7 @@ func (h *PlaybookHandler) RegisterRoutes(
 	route *gin.RouterGroup,
 	requirePermission middleware.PermissionMiddleware,
 ) {
-	r := route.Group("playbooks/v1")
+	r := route.Group("playbooks")
 	{
 		readPlaybooks := requirePermission(domain.ModulePlaybooks, domain.ActionRead)
 

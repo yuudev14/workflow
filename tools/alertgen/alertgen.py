@@ -61,7 +61,7 @@ class Client:
             ) from None
 
     def login(self):
-        self.request("POST", "/api/auth/v1/login", {"username": USERNAME, "password": PASSWORD})
+        self.request("POST", "/api/v1/auth/login", {"username": USERNAME, "password": PASSWORD})
 
 
 def spread_over_days(n, days, rng):
@@ -91,14 +91,14 @@ def cmd_seed(client, args):
         # One transaction, so every row shares a created_at unless the payload
         # carries its own - which is precisely the case the keyset cursor's id
         # tiebreaker exists for.
-        result = client.request("POST", "/api/alerts/v1/batch", {"alerts": bodies})
+        result = client.request("POST", "/api/v1/alerts/batch", {"alerts": bodies})
         created = result.get("created", [])
         print(f"batch: {len(created)} created, {result.get('failed', 0)} failed")
         alerts = created
     else:
         alerts = []
         for i, body in enumerate(bodies, 1):
-            alerts.append(client.request("POST", "/api/alerts/v1", body))
+            alerts.append(client.request("POST", "/api/v1/alerts", body))
             print(f"  [{i}/{len(bodies)}] {body['severity']:<8} {body['source_kind']:<9} {body['title'][:52]}")
 
     seed_incidents(client, alerts, rng, args.incidents)
@@ -112,24 +112,24 @@ def seed_incidents(client, alerts, rng, count):
     picks = rng.sample(alerts, min(count, len(alerts)))
     incidents = []
     for alert in picks:
-        incident = client.request("POST", f"/api/alerts/v1/{alert['id']}/escalate", {})
+        incident = client.request("POST", f"/api/v1/alerts/{alert['id']}/escalate", {})
         incidents.append(incident)
         print(f"escalated -> incident {incident['id'][:8]}  {incident['title'][:50]}")
 
     if not incidents:
         return
 
-    client.request("POST", f"/api/incidents/v1/{incidents[0]['id']}/notes", {
+    client.request("POST", f"/api/v1/incidents/{incidents[0]['id']}/notes", {
         "body": "Confirmed with the user over Teams. Containing the host and "
                 "pulling a memory capture before we re-image.",
     })
 
     # Move one along the stepper so status_mix has more than one bucket.
     if len(incidents) > 1:
-        client.request("PATCH", f"/api/incidents/v1/{incidents[1]['id']}/status",
+        client.request("PATCH", f"/api/v1/incidents/{incidents[1]['id']}/status",
                        {"status": "investigating"})
     if len(incidents) > 2:
-        client.request("PATCH", f"/api/incidents/v1/{incidents[2]['id']}/status",
+        client.request("PATCH", f"/api/v1/incidents/{incidents[2]['id']}/status",
                        {"status": "contained"})
     print(f"seeded {len(incidents)} incidents (1 note, status spread)")
 
@@ -141,7 +141,7 @@ def cmd_drip(client, args):
     try:
         while True:
             body = scenarios.build(rng)
-            alert = client.request("POST", "/api/alerts/v1", body)
+            alert = client.request("POST", "/api/v1/alerts", body)
             n += 1
             print(f"  [{n}] {body['severity']:<8} {body['source_kind']:<9} "
                   f"{body['title'][:48]}  dedup={alert['dedup_count']}")
@@ -160,21 +160,21 @@ def cmd_storm(client, args):
     body = scenarios.storm_body()
 
 
-    before = client.request("GET", "/api/alerts/v1?limit=1")["total"]
+    before = client.request("GET", "/api/v1/alerts?limit=1")["total"]
     print(f"sending {args.count} identical alerts ({before} alerts already in the queue)...")
 
-    first = client.request("POST", "/api/alerts/v1", body)
+    first = client.request("POST", "/api/v1/alerts", body)
     alert_id = first["id"]
 
     remaining = args.count - 1
     step = max(1, remaining // 10)
     for i in range(remaining):
-        last = client.request("POST", "/api/alerts/v1", body)
+        last = client.request("POST", "/api/v1/alerts", body)
         if (i + 1) % step == 0:
             print(f"  {i + 2}/{args.count}  dedup_count={last['dedup_count']}")
 
-    final = client.request("GET", f"/api/alerts/v1/{alert_id}")
-    after = client.request("GET", "/api/alerts/v1?limit=1")["total"]
+    final = client.request("GET", f"/api/v1/alerts/{alert_id}")
+    after = client.request("GET", "/api/v1/alerts?limit=1")["total"]
 
     print(f"\nalert id        : {alert_id}")
     print(f"dedup_count     : {final['dedup_count']}  (want {args.count})")

@@ -344,11 +344,11 @@ func (s *Service) oidcConfigFor(ctx context.Context, providerID uuid.UUID) (OIDC
 }
 
 func (s *Service) oidcRedirectURL(providerID uuid.UUID) string {
-	return fmt.Sprintf("%s/api/auth/v1/oidc/%s/callback", strings.TrimRight(s.cfg.AuthPublicURL, "/"), providerID)
+	return fmt.Sprintf("%s/api/v1/auth/oidc/%s/callback", strings.TrimRight(s.cfg.AuthPublicURL, "/"), providerID)
 }
 
 func (s *Service) oidcStartURL(providerID uuid.UUID) string {
-	return fmt.Sprintf("%s/api/auth/v1/oidc/%s/start", strings.TrimRight(s.cfg.AuthPublicURL, "/"), providerID)
+	return fmt.Sprintf("%s/api/v1/auth/oidc/%s/start", strings.TrimRight(s.cfg.AuthPublicURL, "/"), providerID)
 }
 
 func (s *Service) FrontendURL() string { return s.cfg.FrontendURL }

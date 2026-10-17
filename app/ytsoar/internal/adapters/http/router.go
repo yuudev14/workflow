@@ -42,7 +42,7 @@ func NewRouter(
 
 	docs.SwaggerInfo.BasePath = "./"
 
-	apiGroup := app.Group("/api")
+	apiGroup := app.Group("/api/v1")
 
 	// login, refresh and logout must work without an access token
 	authHandler.RegisterPublicRoutes(apiGroup)

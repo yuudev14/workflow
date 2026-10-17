@@ -78,7 +78,7 @@ One SQL query (`ListPermissionsForUser`) joins the direct roles and the team rol
 
 ## 4. Local sign-in
 
-`POST /api/auth/v1/login` with a username and a password.
+`POST /api/v1/auth/login` with a username and a password.
 
 ```mermaid
 sequenceDiagram
@@ -104,7 +104,7 @@ sequenceDiagram
 
 ## 5. Refresh, reuse and logout
 
-`POST /api/auth/v1/refresh` uses the refresh cookie. The frontend calls it when the access token ends.
+`POST /api/v1/auth/refresh` uses the refresh cookie. The frontend calls it when the access token ends.
 
 ```mermaid
 flowchart TD
@@ -120,7 +120,7 @@ flowchart TD
 
 - **Rotation.** Each refresh makes a new pair and revokes the old refresh token.
 - **Reuse detection.** A revoked token that comes back after more than 10 seconds (`reuseGraceWindow`) means a thief used a copy. The system revokes every session of that user.
-- **Logout** (`POST /api/auth/v1/logout`) revokes the refresh token and clears both cookies. It has no auth check on purpose. It works with an expired access token. It can only revoke the cookie of the caller.
+- **Logout** (`POST /api/v1/auth/logout`) revokes the refresh token and clears both cookies. It has no auth check on purpose. It works with an expired access token. It can only revoke the cookie of the caller.
 - **WebSocket.** `/ws/playbook` cannot send headers from a browser. It uses the refresh cookie. The token is read and checked in the database. It is never rotated here.
 - **Old rows.** `DeleteExpired` exists, but nothing calls it yet. It needs a single scheduled job.
 
@@ -146,7 +146,7 @@ sequenceDiagram
     participant B as Browser
     participant API as API
     participant IdP as Identity provider
-    B->>API: GET /api/auth/v1/oidc/{id}/start
+    B->>API: GET /api/v1/auth/oidc/{id}/start
     API-->>B: 302 to the IdP + signed cookie ytsoar_oidc (state + PKCE verifier)
     B->>IdP: user signs in
     IdP-->>B: 302 to /oidc/{id}/callback?code&state
@@ -185,14 +185,14 @@ The password and the secret in a provider config are masked in admin responses. 
 
 All these routes need the `settings` module.
 
-| Area | Routes (`/api/...`) | Grant |
+| Area | Routes (`/api/v1/...`) | Grant |
 |---|---|---|
-| Users | `GET/POST users/v1`, `GET/PUT users/v1/:id`, `PUT users/v1/:id/roles`, `PUT users/v1/:id/password`, `DELETE users/v1/:id` | `settings` read, create, update, delete |
-| Roles | `GET/POST roles/v1`, `GET/PUT roles/v1/:id`, `PUT roles/v1/:id/permissions`, `DELETE roles/v1/:id` | same |
-| Teams | `GET/POST teams/v1`, `GET/PUT teams/v1/:id`, `PUT teams/v1/:id/members`, `PUT teams/v1/:id/roles`, `DELETE teams/v1/:id` | same |
-| Audit log | `GET audit/v1` | `settings` read |
-| SSO providers | `GET/POST auth-providers/v1`, `PUT auth-providers/v1/:id` | same |
-| Assignee list | `GET users/v1/assignable` | none (any signed-in user) |
+| Users | `GET/POST users`, `GET/PUT users/:id`, `PUT users/:id/roles`, `PUT users/:id/password`, `DELETE users/:id` | `settings` read, create, update, delete |
+| Roles | `GET/POST roles`, `GET/PUT roles/:id`, `PUT roles/:id/permissions`, `DELETE roles/:id` | same |
+| Teams | `GET/POST teams`, `GET/PUT teams/:id`, `PUT teams/:id/members`, `PUT teams/:id/roles`, `DELETE teams/:id` | same |
+| Audit log | `GET audit` | `settings` read |
+| SSO providers | `GET/POST auth-providers`, `PUT auth-providers/:id` | same |
+| Assignee list | `GET users/assignable` | none (any signed-in user) |
 
 Rules to remember:
 
@@ -202,7 +202,7 @@ Rules to remember:
 - **Check before write.** An unknown role id fails before any write, with a clear error.
 - **A team role is a big grant.** It raises the rights of every member. It needs `settings.update` and it is always written to the audit log.
 - **The audit log is read-only.** No route edits or deletes it.
-- **Assignee list.** `users/v1/assignable` has no `settings` check on purpose. An analyst must be able to name the assignee. It returns only `id` and `username`.
+- **Assignee list.** `users/assignable` has no `settings` check on purpose. An analyst must be able to name the assignee. It returns only `id` and `username`.
 - **Teams on alerts.** `alerts.team_id` and `incidents.team_id` are labels for ownership. Only `team_roles` gives rights.
 
 ## 8. The first admin

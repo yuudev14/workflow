@@ -17,7 +17,7 @@ func (h *AdminHandler) RegisterRoutes(
 	update := requirePermission(domain.ModuleSettings, domain.ActionUpdate)
 	remove := requirePermission(domain.ModuleSettings, domain.ActionDelete)
 
-	users := route.Group("users/v1")
+	users := route.Group("users")
 	{
 		users.GET("", read, h.ListUsers)
 		// ungated on purpose: filling an assignee picker is not a settings operation. Static
@@ -32,7 +32,7 @@ func (h *AdminHandler) RegisterRoutes(
 		users.DELETE("/:user_id", remove, h.DeactivateUser)
 	}
 
-	roles := route.Group("roles/v1")
+	roles := route.Group("roles")
 	{
 		roles.GET("", read, h.ListRoles)
 		roles.GET("/:role_id", read, h.GetRole)
@@ -42,7 +42,7 @@ func (h *AdminHandler) RegisterRoutes(
 		roles.DELETE("/:role_id", remove, h.DeleteRole)
 	}
 
-	teams := route.Group("teams/v1")
+	teams := route.Group("teams")
 	{
 		teams.GET("", read, h.ListTeams)
 		teams.GET("/:team_id", read, h.GetTeam)
@@ -54,9 +54,9 @@ func (h *AdminHandler) RegisterRoutes(
 	}
 
 	// read-only on purpose: an audit trail that you can edit is not an audit trail
-	route.Group("audit/v1").GET("", read, h.ListAuditLogs)
+	route.Group("audit").GET("", read, h.ListAuditLogs)
 
-	providers := route.Group("auth-providers/v1")
+	providers := route.Group("auth-providers")
 	{
 		providers.GET("", read, h.ListAuthProviders)
 		providers.POST("", create, h.CreateAuthProvider)

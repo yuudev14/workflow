@@ -119,7 +119,7 @@ func anonymous(t *testing.T) *client {
 
 func signIn(t *testing.T, username, password string) *client {
 	c := anonymous(t)
-	out := c.expect(t, http.StatusOK, http.MethodPost, "/api/auth/v1/login", J{"username": username, "password": password})
+	out := c.expect(t, http.StatusOK, http.MethodPost, "/api/v1/auth/login", J{"username": username, "password": password})
 	c.token = out.(J)["access_token"].(string)
 	return c
 }
@@ -129,7 +129,7 @@ func admin(t *testing.T) *client { return signIn(t, adminUsername, adminPassword
 // newUser makes a user with the roles and returns its id and a signed-in client.
 func newUser(t *testing.T, roleIDs ...string) (string, *client) {
 	username := unique("user")
-	user := admin(t).create(t, "/api/users/v1", J{
+	user := admin(t).create(t, "/api/v1/users", J{
 		"username": username, "email": username + "@ytsoar.test", "password": "password123", "role_ids": roleIDs,
 	})
 	return user["id"].(string), signIn(t, username, "password123")
@@ -249,6 +249,6 @@ func fill(route string) string {
 // public routes need no session.
 func public(route string) bool {
 	return strings.HasPrefix(route, "/swagger/") ||
-		route == "/api/auth/v1/login" || route == "/api/auth/v1/refresh" || route == "/api/auth/v1/logout" ||
-		route == "/api/auth/v1/providers" || strings.HasPrefix(route, "/api/auth/v1/oidc/")
+		route == "/api/v1/auth/login" || route == "/api/v1/auth/refresh" || route == "/api/v1/auth/logout" ||
+		route == "/api/v1/auth/providers" || strings.HasPrefix(route, "/api/v1/auth/oidc/")
 }

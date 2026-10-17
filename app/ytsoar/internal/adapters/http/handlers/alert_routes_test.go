@@ -21,26 +21,26 @@ func TestAlertRouteGrants(t *testing.T) {
 		path   string
 		want   string
 	}{
-		{http.MethodGet, "/api/alerts/v1", "alerts.read"},
-		{http.MethodGet, "/api/alerts/v1/summary", "alerts.read"},
-		{http.MethodGet, "/api/alerts/v1/abc", "alerts.read"},
-		{http.MethodGet, "/api/alerts/v1/abc/notes", "alerts.read"},
+		{http.MethodGet, "/api/v1/alerts", "alerts.read"},
+		{http.MethodGet, "/api/v1/alerts/summary", "alerts.read"},
+		{http.MethodGet, "/api/v1/alerts/abc", "alerts.read"},
+		{http.MethodGet, "/api/v1/alerts/abc/notes", "alerts.read"},
 
-		{http.MethodPost, "/api/alerts/v1", "alerts.create"},
-		{http.MethodPost, "/api/alerts/v1/batch", "alerts.create"},
+		{http.MethodPost, "/api/v1/alerts", "alerts.create"},
+		{http.MethodPost, "/api/v1/alerts/batch", "alerts.create"},
 
 		// Running automation is its own grant: alerts:update is not enough to run a playbook, and
 		// neither is playbooks:update.
-		{http.MethodPost, "/api/alerts/v1/run", "alerts.execute"},
+		{http.MethodPost, "/api/v1/alerts/run", "alerts.execute"},
 
-		{http.MethodPatch, "/api/alerts/v1/abc", "alerts.update"},
-		{http.MethodPatch, "/api/alerts/v1/abc/status", "alerts.update"},
-		{http.MethodPost, "/api/alerts/v1/abc/notes", "alerts.update"},
-		{http.MethodPatch, "/api/alerts/v1/abc/notes/def", "alerts.update"},
-		{http.MethodDelete, "/api/alerts/v1/abc/notes/def", "alerts.update"},
+		{http.MethodPatch, "/api/v1/alerts/abc", "alerts.update"},
+		{http.MethodPatch, "/api/v1/alerts/abc/status", "alerts.update"},
+		{http.MethodPost, "/api/v1/alerts/abc/notes", "alerts.update"},
+		{http.MethodPatch, "/api/v1/alerts/abc/notes/def", "alerts.update"},
+		{http.MethodDelete, "/api/v1/alerts/abc/notes/def", "alerts.update"},
 
 		// Escalation creates an incident, so alerts:update alone must not reach it.
-		{http.MethodPost, "/api/alerts/v1/abc/escalate", "incidents.create"},
+		{http.MethodPost, "/api/v1/alerts/abc/escalate", "incidents.create"},
 	}
 
 	for _, tc := range cases {
@@ -61,21 +61,21 @@ func TestIncidentRouteGrants(t *testing.T) {
 		path   string
 		want   string
 	}{
-		{http.MethodGet, "/api/incidents/v1", "incidents.read"},
-		{http.MethodGet, "/api/incidents/v1/summary", "incidents.read"},
-		{http.MethodGet, "/api/incidents/v1/abc", "incidents.read"},
-		{http.MethodGet, "/api/incidents/v1/abc/notes", "incidents.read"},
+		{http.MethodGet, "/api/v1/incidents", "incidents.read"},
+		{http.MethodGet, "/api/v1/incidents/summary", "incidents.read"},
+		{http.MethodGet, "/api/v1/incidents/abc", "incidents.read"},
+		{http.MethodGet, "/api/v1/incidents/abc/notes", "incidents.read"},
 
-		{http.MethodPost, "/api/incidents/v1", "incidents.create"},
-		{http.MethodPost, "/api/incidents/v1/run", "incidents.execute"},
+		{http.MethodPost, "/api/v1/incidents", "incidents.create"},
+		{http.MethodPost, "/api/v1/incidents/run", "incidents.execute"},
 
-		{http.MethodPatch, "/api/incidents/v1/abc", "incidents.update"},
-		{http.MethodPatch, "/api/incidents/v1/abc/status", "incidents.update"},
-		{http.MethodPost, "/api/incidents/v1/abc/notes", "incidents.update"},
-		{http.MethodPatch, "/api/incidents/v1/abc/notes/def", "incidents.update"},
-		{http.MethodDelete, "/api/incidents/v1/abc/notes/def", "incidents.update"},
-		{http.MethodPost, "/api/incidents/v1/abc/alerts", "incidents.update"},
-		{http.MethodDelete, "/api/incidents/v1/abc/alerts/def", "incidents.update"},
+		{http.MethodPatch, "/api/v1/incidents/abc", "incidents.update"},
+		{http.MethodPatch, "/api/v1/incidents/abc/status", "incidents.update"},
+		{http.MethodPost, "/api/v1/incidents/abc/notes", "incidents.update"},
+		{http.MethodPatch, "/api/v1/incidents/abc/notes/def", "incidents.update"},
+		{http.MethodDelete, "/api/v1/incidents/abc/notes/def", "incidents.update"},
+		{http.MethodPost, "/api/v1/incidents/abc/alerts", "incidents.update"},
+		{http.MethodDelete, "/api/v1/incidents/abc/alerts/def", "incidents.update"},
 	}
 
 	for _, tc := range cases {

@@ -29,13 +29,13 @@ once against a running stack (or via the UI at **Settings → Providers**).
 ```bash
 # 1. sign in as the local admin, saving the session cookies
 curl -s -c /tmp/ytsoar.cookies \
-  -X POST http://localhost:9999/auth-api/api/auth/v1/login \
+  -X POST http://localhost:9999/auth-api/api/v1/auth/login \
   -H 'Content-Type: application/json' \
   -d '{"username":"admin","password":"admin123!"}' > /dev/null
 
 # 2. create the Keycloak OIDC provider
 curl -s -b /tmp/ytsoar.cookies \
-  -X POST http://localhost:9999/auth-api/api/auth-providers/v1 \
+  -X POST http://localhost:9999/auth-api/api/v1/auth-providers \
   -H 'Content-Type: application/json' \
   -d '{
         "type": "oidc",
