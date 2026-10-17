@@ -52,7 +52,7 @@ In dev, one Go program (`cmd/dev`) runs the api, the worker and the sandbox in o
 - `make start-split` runs the three programs in three containers, as in production (`docker/split.docker-compose.yml`).
 - `make dev` runs the one process on your computer, without a backend container. Postgres and Keycloak come from compose. You need `air`, `goose`, Python 3 with `jinja2`, `requests`, `colorlog` and `pydantic-settings`, and Node 24 with `nunjucks` on `NODE_PATH`.
 
-`app/ytsoar/Dockerfile` has one stage for each use. The dev stages are `dev` (one process), `dev-api`, `dev-worker`, `dev-sandbox` and `debug`. The production stages are `api`, `worker` and `sandbox`. One `build` stage compiles the three binaries for them.
+Two files build the backend images. `app/ytsoar/Dockerfile.dev` has the dev stages. They are `dev` (one process), `dev-api`, `dev-worker`, `dev-sandbox` and `debug`. `app/ytsoar/Dockerfile` has the production stages. They are `api`, `worker` and `sandbox`. One `build` stage compiles the three binaries for them.
 
 ## How it works
 
@@ -161,7 +161,7 @@ A connector can declare its own libraries:
 - Python: `<id>/requirements.txt`. The system installs the libraries into `<id>/deps/`.
 - JS/TS: `<id>/package.json`. The system installs the libraries into `<id>/node_modules/`.
 
-Run `make connector-deps` to install the libraries. The stack must already run. The command runs pip and npm inside the api container. In this way, the compiled packages match the sandbox image. The system keeps the libraries of each connector separate. Two connectors can use different versions of the same library. Code snippets cannot declare dependencies. They get only the base packages of the image. To add more packages, change the sandbox stages in `app/ytsoar/Dockerfile`.
+Run `make connector-deps` to install the libraries. The stack must already run. The command runs pip and npm inside the api container. In this way, the compiled packages match the sandbox image. The system keeps the libraries of each connector separate. Two connectors can use different versions of the same library. Code snippets cannot declare dependencies. They get only the base packages of the image. To add more packages, change the sandbox stages in `app/ytsoar/Dockerfile` and `app/ytsoar/Dockerfile.dev`.
 
 ## Branching
 
