@@ -24,11 +24,15 @@ func step(name, connector, code string) J {
 
 // runPlaybook saves the graph, starts a run and waits until the run ends.
 // It returns the run and its tasks by name.
-func runPlaybook(t *testing.T, c *client, nodes []J, edges J) (J, map[string]J) {
+func runPlaybook(t *testing.T, c *client, nodes []J, edges J, handles ...J) (J, map[string]J) {
 	t.Helper()
 	id := newPlaybook(t, c)
 	nodes = append([]J{{"name": "start", "operation": "start", "parameters": J{}}}, nodes...)
-	c.expect(t, http.StatusOK, http.MethodPut, "/api/playbooks/v1/tasks/"+id, J{"nodes": nodes, "edges": edges})
+	graph := J{"nodes": nodes, "edges": edges}
+	if len(handles) > 0 {
+		graph["handles"] = handles[0]
+	}
+	c.expect(t, http.StatusOK, http.MethodPut, "/api/playbooks/v1/tasks/"+id, graph)
 	runID := c.expect(t, http.StatusAccepted, http.MethodPost, "/api/playbooks/v1/trigger/"+id, nil).(J)["playbook_history_id"].(string)
 
 	var run J
@@ -113,6 +117,23 @@ func TestRuns(t *testing.T) {
 			}, J{"start": []string{"first"}, "first": []string{"second"}})
 			assert.Equal(t, "success", run["status"], tasks["second"]["error"])
 			assert.Contains(t, toJSON(tasks["second"]["result"]), "hello world")
+		})
+
+		t.Run("follows only the branch that a condition picks", func(t *testing.T) {
+			run, tasks := runPlaybook(t, c, []J{
+				step("scan", "code_snippet_py", "result = {'score': 60}"),
+				{"name": "check", "operation": "switch_expression", "connector_id": "condition", "connector_name": "Condition", "parameters": J{"cases": []J{
+					{"id": "high", "expression": `{{ var.steps['scan'].code_output.score > 90 }}`},
+					{"id": "med", "expression": `{{ var.steps['scan'].code_output.score > 50 }}`},
+				}}},
+				step("high", "code_snippet_py", "print('high')"),
+				step("med", "code_snippet_py", "print('med')"),
+			}, J{"start": []string{"scan"}, "scan": []string{"check"}, "check": []string{"high", "med"}},
+				J{"check": J{"high": J{"source_handle": "high"}, "med": J{"source_handle": "med"}}})
+			assert.Equal(t, "success", run["status"], tasks["check"]["error"])
+			assert.Contains(t, toJSON(tasks["check"]["result"]), `"med"`)
+			assert.Equal(t, "success", tasks["med"]["status"])
+			assert.Equal(t, "skipped", tasks["high"]["status"])
 		})
 
 		t.Run("does not run the steps after a failed step", func(t *testing.T) {

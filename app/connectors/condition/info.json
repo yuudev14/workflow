@@ -1,7 +1,7 @@
 {
   "name": "Condition",
   "id": "condition",
-  "runtime": "go",
+  "runtime": "python",
   "configuration": {
     "fields": []
   },
@@ -29,7 +29,7 @@
     {
       "operation": "switch_expression",
       "title": "Switch (advanced expression)",
-      "description": "Route to the first case whose template expression is truthy, or to else when none match. Write full gonja/jinja expressions per case. Pick each case's destination node in the editor.",
+      "description": "Route to the first case whose template expression is truthy, or to else when none match. Write full jinja2 expressions per case. Pick each case's destination node in the editor.",
       "annotation": "switch_expression",
       "enabled": true,
       "parameters": [
