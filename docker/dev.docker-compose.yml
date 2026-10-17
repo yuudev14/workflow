@@ -48,6 +48,7 @@ services:
   ytsoar_api:
     build:
       context: ../app/ytsoar
+      dockerfile: Dockerfile.dev
       target: dev
     image: ytsoar/backend:dev
     container_name: ytsoar_api

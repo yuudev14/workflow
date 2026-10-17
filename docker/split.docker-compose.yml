@@ -19,6 +19,7 @@ services:
   ytsoar_playbook_worker:
     build:
       context: ../app/ytsoar
+      dockerfile: Dockerfile.dev
       target: dev-worker
     image: ytsoar/backend:dev-worker
     container_name: ytsoar_playbook_worker
@@ -60,6 +61,7 @@ services:
   ytsoar_sandbox:
     build:
       context: ../app/ytsoar
+      dockerfile: Dockerfile.dev
       target: dev-sandbox
     image: ytsoar/backend:dev-sandbox
     container_name: ytsoar_sandbox
