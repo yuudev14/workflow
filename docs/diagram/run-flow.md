@@ -17,7 +17,7 @@ sequenceDiagram
     participant N as adapters/pgstatus/status.go<br/>Notifier + Listener
     participant WS as adapters/ws/hub.go<br/>Hub
 
-    B->>H: POST /playbooks/v1/trigger/{id}
+    B->>H: POST /api/v1/playbooks/trigger/{id}
     H->>O: TriggerPlaybook
     rect rgb(235, 245, 255)
     Note over O,DB: One transaction (repository/tx_manager.go)

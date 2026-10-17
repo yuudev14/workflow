@@ -24,7 +24,7 @@ func TestRoutes(t *testing.T) {
 		_, user := newUser(t)
 		// Every user can read their own profile and the list of assignable users.
 		// The WebSocket uses the refresh cookie, not the token, so this test skips it.
-		open := map[string]bool{"/api/auth/v1/me": true, "/api/users/v1/assignable": true, "/ws/playbook": true}
+		open := map[string]bool{"/api/v1/auth/me": true, "/api/v1/users/assignable": true, "/ws/playbook": true}
 		for _, r := range routes {
 			if public(r.Path) || open[r.Path] {
 				continue
@@ -32,7 +32,7 @@ func TestRoutes(t *testing.T) {
 			code, _ := user.do(t, r.Method, fill(r.Path), J{})
 			assert.Equal(t, http.StatusForbidden, code, "%s %s", r.Method, r.Path)
 		}
-		user.get(t, "/api/auth/v1/me")
-		user.get(t, "/api/users/v1/assignable")
+		user.get(t, "/api/v1/auth/me")
+		user.get(t, "/api/v1/users/assignable")
 	})
 }

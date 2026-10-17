@@ -10,7 +10,7 @@ func (h *IncidentHandler) RegisterRoutes(
 	route *gin.RouterGroup,
 	requirePermission middleware.PermissionMiddleware,
 ) {
-	r := route.Group("incidents/v1")
+	r := route.Group("incidents")
 	{
 		readIncidents := requirePermission(domain.ModuleIncidents, domain.ActionRead)
 		updateIncidents := requirePermission(domain.ModuleIncidents, domain.ActionUpdate)

@@ -10,7 +10,7 @@ func (h *AlertHandler) RegisterRoutes(
 	route *gin.RouterGroup,
 	requirePermission middleware.PermissionMiddleware,
 ) {
-	r := route.Group("alerts/v1")
+	r := route.Group("alerts")
 	{
 		readAlerts := requirePermission(domain.ModuleAlerts, domain.ActionRead)
 		createAlerts := requirePermission(domain.ModuleAlerts, domain.ActionCreate)

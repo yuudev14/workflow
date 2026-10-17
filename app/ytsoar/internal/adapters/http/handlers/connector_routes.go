@@ -10,7 +10,7 @@ func (h *ConnectorHandler) RegisterRoutes(
 	route *gin.RouterGroup,
 	requirePermission middleware.PermissionMiddleware,
 ) {
-	group := route.Group("connectors/v1")
+	group := route.Group("connectors")
 	{
 		readConnectors := requirePermission(domain.ModuleConnectors, domain.ActionRead)
 

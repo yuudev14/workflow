@@ -9,7 +9,7 @@ import (
 )
 
 func TestAuthProviders(t *testing.T) {
-	const base = "/api/auth-providers/v1"
+	const base = "/api/v1/auth-providers"
 	c := admin(t)
 	config := J{"issuer": "http://localhost:8180/realms/test", "client_id": "ytsoar", "client_secret": "secret"}
 	name := unique("keycloak")
@@ -27,7 +27,7 @@ func TestAuthProviders(t *testing.T) {
 			assert.Contains(t, ids(c.get(t, base)), id)
 		})
 		t.Run("shows an enabled provider on the login page", func(t *testing.T) {
-			assert.Contains(t, ids(anonymous(t).get(t, "/api/auth/v1/providers")), id)
+			assert.Contains(t, ids(anonymous(t).get(t, "/api/v1/auth/providers")), id)
 		})
 	})
 
@@ -37,7 +37,7 @@ func TestAuthProviders(t *testing.T) {
 			{"disables the provider", http.MethodPut, base + "/" + id, J{"enabled": false}, http.StatusOK},
 		})
 		t.Run("removes a disabled provider from the login page", func(t *testing.T) {
-			assert.NotContains(t, ids(anonymous(t).get(t, "/api/auth/v1/providers")), id)
+			assert.NotContains(t, ids(anonymous(t).get(t, "/api/v1/auth/providers")), id)
 		})
 	})
 }

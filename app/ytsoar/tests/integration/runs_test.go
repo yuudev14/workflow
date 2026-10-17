@@ -28,17 +28,17 @@ func runPlaybook(t *testing.T, c *client, nodes []J, edges J) (J, map[string]J) 
 	t.Helper()
 	id := newPlaybook(t, c)
 	nodes = append([]J{{"name": "start", "operation": "start", "parameters": J{}}}, nodes...)
-	c.expect(t, http.StatusOK, http.MethodPut, "/api/playbooks/v1/tasks/"+id, J{"nodes": nodes, "edges": edges})
-	runID := c.expect(t, http.StatusAccepted, http.MethodPost, "/api/playbooks/v1/trigger/"+id, nil).(J)["playbook_history_id"].(string)
+	c.expect(t, http.StatusOK, http.MethodPut, "/api/v1/playbooks/tasks/"+id, J{"nodes": nodes, "edges": edges})
+	runID := c.expect(t, http.StatusAccepted, http.MethodPost, "/api/v1/playbooks/trigger/"+id, nil).(J)["playbook_history_id"].(string)
 
 	var run J
 	require.Eventually(t, func() bool {
-		run = items(c.get(t, "/api/playbooks/v1/history?playbook_id="+id))[0].(J)
+		run = items(c.get(t, "/api/v1/playbooks/history?playbook_id="+id))[0].(J)
 		return run["status"] == "success" || run["status"] == "failed"
 	}, 30*time.Second, 200*time.Millisecond, "the run did not end")
 
 	tasks := map[string]J{}
-	for _, task := range items(c.get(t, "/api/playbooks/v1/history/"+runID+"/tasks")) {
+	for _, task := range items(c.get(t, "/api/v1/playbooks/history/"+runID+"/tasks")) {
 		tasks[task.(J)["name"].(string)] = task.(J)
 	}
 	return run, tasks

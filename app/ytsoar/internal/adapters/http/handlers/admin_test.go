@@ -35,7 +35,7 @@ func TestDeactivateSelfIsRejected(t *testing.T) {
 	actorID := uuid.New()
 	handler, c, recorder := adminContext(t, &domain.AuthUser{ID: actorID, Username: "admin"})
 
-	c.Request = httptest.NewRequest(http.MethodDelete, "/api/users/v1/"+actorID.String(), nil)
+	c.Request = httptest.NewRequest(http.MethodDelete, "/api/v1/users/"+actorID.String(), nil)
 	c.Params = []gin.Param{{Key: "user_id", Value: actorID.String()}}
 
 	handler.DeactivateUser(c)
@@ -104,7 +104,7 @@ func TestAdminRejectsMalformedPathIDs(t *testing.T) {
 func TestAdminMutationsRequireAnActor(t *testing.T) {
 	handler, c, recorder := adminContext(t, nil)
 
-	c.Request = httptest.NewRequest(http.MethodPost, "/api/users/v1", strings.NewReader(`{}`))
+	c.Request = httptest.NewRequest(http.MethodPost, "/api/v1/users", strings.NewReader(`{}`))
 	c.Request.Header.Set("Content-Type", "application/json")
 
 	handler.CreateUser(c)

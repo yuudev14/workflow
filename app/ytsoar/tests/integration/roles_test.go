@@ -9,7 +9,7 @@ import (
 )
 
 func TestRoles(t *testing.T) {
-	const base = "/api/roles/v1"
+	const base = "/api/v1/roles"
 	c := admin(t)
 	name := unique("reader")
 	id := c.create(t, base, J{"name": name, "permissions": J{"alerts": []string{"read"}}})["id"].(string)
@@ -55,18 +55,18 @@ func TestRoles(t *testing.T) {
 
 	t.Run("PUT /roles/:id/permissions", func(t *testing.T) {
 		userID, user := newUser(t)
-		c.expect(t, http.StatusOK, http.MethodPut, "/api/users/v1/"+userID+"/roles", J{"role_ids": []string{id}})
+		c.expect(t, http.StatusOK, http.MethodPut, "/api/v1/users/"+userID+"/roles", J{"role_ids": []string{id}})
 
 		t.Run("gives only the granted actions to the users of the role", func(t *testing.T) {
-			user.get(t, "/api/alerts/v1")
-			user.expect(t, http.StatusForbidden, http.MethodGet, "/api/incidents/v1", nil)
-			user.expect(t, http.StatusForbidden, http.MethodPost, "/api/alerts/v1", J{"title": "x", "severity": "low", "source_kind": "edr"})
+			user.get(t, "/api/v1/alerts")
+			user.expect(t, http.StatusForbidden, http.MethodGet, "/api/v1/incidents", nil)
+			user.expect(t, http.StatusForbidden, http.MethodPost, "/api/v1/alerts", J{"title": "x", "severity": "low", "source_kind": "edr"})
 		})
 
 		t.Run("changes the grants at once, not at the next login", func(t *testing.T) {
 			c.expect(t, http.StatusOK, http.MethodPut, base+"/"+id+"/permissions", J{"permissions": J{"incidents": []string{"read"}}})
-			user.get(t, "/api/incidents/v1")
-			user.expect(t, http.StatusForbidden, http.MethodGet, "/api/alerts/v1", nil)
+			user.get(t, "/api/v1/incidents")
+			user.expect(t, http.StatusForbidden, http.MethodGet, "/api/v1/alerts", nil)
 		})
 	})
 
