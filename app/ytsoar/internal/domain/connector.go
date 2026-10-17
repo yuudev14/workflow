@@ -4,7 +4,7 @@ import "time"
 
 // ConnectorInfo is the parsed info.json of a connector plus the derived "configs" list
 // (config file stems). It stays a map, so unknown metadata fields reach the frontend
-// unchanged (same shape as the old FastAPI GET /connectors/ endpoint).
+// unchanged
 type ConnectorInfo map[string]any
 
 // ConnectorRecord is the audit and control row in Postgres for each uploaded connector.
