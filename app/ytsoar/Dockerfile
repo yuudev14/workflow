@@ -1,4 +1,4 @@
-# Prod images (dev: Dockerfile.dev). Compose picks a stage with `target:`.
+# Prod images (dev: Dockerfile.dev). Build one with `docker build --target <stage>`.
 
 # One build for the three binaries.
 FROM golang:1.26-alpine AS build
