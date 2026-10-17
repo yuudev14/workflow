@@ -88,6 +88,8 @@ type User struct {
 	LastLoginAt  *time.Time   `db:"last_login_at" json:"last_login_at"`
 	CreatedAt    time.Time    `db:"created_at" json:"created_at"`
 	UpdatedAt    time.Time    `db:"updated_at" json:"updated_at"`
+	// EmailVerifiedAt is information only. A set-password link or the IdP sets it.
+	EmailVerifiedAt *time.Time `db:"email_verified_at" json:"email_verified_at"`
 }
 
 // UserWithRoles is the list and detail shape for the admin UI. Roles come from an

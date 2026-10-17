@@ -12,6 +12,10 @@ func (h *AuthHandler) RegisterPublicRoutes(route *gin.RouterGroup) {
 		group.POST("/refresh", h.Refresh)
 		group.POST("/logout", h.Logout)
 
+		// the browser has no session: the user forgot the password or was just invited
+		group.POST("/password/forgot", h.ForgotPassword)
+		group.POST("/password/reset", h.ResetPassword)
+
 		// OIDC is public by design: the browser has no session yet, and the callback authenticates
 		// with the signed state cookie and PKCE
 		group.GET("/providers", h.Providers)

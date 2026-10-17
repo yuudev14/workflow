@@ -14,10 +14,12 @@ import (
 type UserRepository interface {
 	GetByID(ctx context.Context, id uuid.UUID) (domain.User, error)
 	GetByUsername(ctx context.Context, username string) (domain.User, error)
+	GetByEmail(ctx context.Context, email string) (domain.User, error)
 	GetByExternalID(ctx context.Context, provider domain.AuthProvider, externalID string) (domain.User, error)
 	Create(ctx context.Context, params CreateUserParams) (domain.User, error)
 	Update(ctx context.Context, id uuid.UUID, params UpdateUserParams) (domain.User, error)
 	SetPassword(ctx context.Context, id uuid.UUID, passwordHash string) error
+	MarkEmailVerified(ctx context.Context, id uuid.UUID, at time.Time) error
 	TouchLastLogin(ctx context.Context, id uuid.UUID) error
 	CountWithRole(ctx context.Context, roleName string) (int64, error)
 	List(ctx context.Context, offset, limit int, filter UserFilter) ([]domain.UserWithRoles, error)
@@ -66,6 +68,23 @@ type RefreshTokenRepository interface {
 	Revoke(ctx context.Context, tokenHash string) error
 	RevokeAllForUser(ctx context.Context, userID uuid.UUID) error
 	DeleteExpired(ctx context.Context, before time.Time) error
+}
+
+//go:generate mockgen -destination=mocks/user_token_repository_mock.go -package=mocks . UserTokenRepository
+
+// UserTokenRepository keeps the one-time links for an invite or a password reset.
+type UserTokenRepository interface {
+	// Issue says false when a link of the same purpose is newer than ResendAfter.
+	Issue(ctx context.Context, params IssueTokenParams) (bool, error)
+	// Take deletes the token and returns it, so a link works one time.
+	Take(ctx context.Context, tokenHash string) (UserToken, error)
+	DeleteExpired(ctx context.Context, before time.Time) error
+}
+
+//go:generate mockgen -destination=mocks/mailer_mock.go -package=mocks . Mailer
+
+type Mailer interface {
+	Send(ctx context.Context, to, subject, body string) error
 }
 
 //go:generate mockgen -destination=mocks/api_key_repository_mock.go -package=mocks . APIKeyRepository

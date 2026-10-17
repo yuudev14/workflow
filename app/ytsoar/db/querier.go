@@ -27,6 +27,7 @@ type Querier interface {
 	DeleteConnectorRecord(ctx context.Context, id string) (int64, error)
 	DeleteEdges(ctx context.Context, ids []pgtype.UUID) error
 	DeleteExpiredRefreshTokens(ctx context.Context, expiresAt pgtype.Timestamp) error
+	DeleteExpiredUserTokens(ctx context.Context, expiresAt pgtype.Timestamp) error
 	DeleteIncidentAlert(ctx context.Context, arg DeleteIncidentAlertParams) (int64, error)
 	DeleteIncidentNote(ctx context.Context, id pgtype.UUID) (int64, error)
 	DeleteRole(ctx context.Context, id pgtype.UUID) (int64, error)
@@ -90,9 +91,11 @@ type Querier interface {
 	ListRoles(ctx context.Context) ([]Role, error)
 	// Effective roles: direct assignments UNION those inherited from teams.
 	ListRolesForUser(ctx context.Context, userID pgtype.UUID) ([]Role, error)
+	MarkUserEmailVerified(ctx context.Context, arg MarkUserEmailVerifiedParams) error
 	RevokeAllRefreshTokensForUser(ctx context.Context, userID pgtype.UUID) error
 	RevokeRefreshToken(ctx context.Context, tokenHash string) (int64, error)
 	SetUserPassword(ctx context.Context, arg SetUserPasswordParams) error
+	TakeUserToken(ctx context.Context, tokenHash string) (UserToken, error)
 	TouchAPIKey(ctx context.Context, arg TouchAPIKeyParams) error
 	TouchUserLastLogin(ctx context.Context, id pgtype.UUID) error
 	UpdateAlert(ctx context.Context, arg UpdateAlertParams) (Alert, error)
@@ -118,6 +121,9 @@ type Querier interface {
 	UpsertConnector(ctx context.Context, arg UpsertConnectorParams) (Connector, error)
 	UpsertEdge(ctx context.Context, arg UpsertEdgeParams) (Edge, error)
 	UpsertTask(ctx context.Context, arg UpsertTaskParams) (Task, error)
+	// a user has at most one link for each purpose. The WHERE skips the insert when the last
+	// link is newer than the limit, so a user cannot get many emails.
+	UpsertUserToken(ctx context.Context, arg UpsertUserTokenParams) (int64, error)
 }
 
 var _ Querier = (*Queries)(nil)

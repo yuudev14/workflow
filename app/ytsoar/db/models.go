@@ -855,21 +855,30 @@ type TeamRole struct {
 }
 
 type User struct {
-	ID           pgtype.UUID      `json:"id"`
-	Username     string           `json:"username"`
-	Email        string           `json:"email"`
-	PasswordHash pgtype.Text      `json:"password_hash"`
-	FirstName    pgtype.Text      `json:"first_name"`
-	LastName     pgtype.Text      `json:"last_name"`
-	AuthProvider AuthProviderType `json:"auth_provider"`
-	ExternalID   pgtype.Text      `json:"external_id"`
-	IsActive     bool             `json:"is_active"`
-	LastLoginAt  pgtype.Timestamp `json:"last_login_at"`
-	CreatedAt    pgtype.Timestamp `json:"created_at"`
-	UpdatedAt    pgtype.Timestamp `json:"updated_at"`
+	ID              pgtype.UUID      `json:"id"`
+	Username        string           `json:"username"`
+	Email           string           `json:"email"`
+	PasswordHash    pgtype.Text      `json:"password_hash"`
+	FirstName       pgtype.Text      `json:"first_name"`
+	LastName        pgtype.Text      `json:"last_name"`
+	AuthProvider    AuthProviderType `json:"auth_provider"`
+	ExternalID      pgtype.Text      `json:"external_id"`
+	IsActive        bool             `json:"is_active"`
+	LastLoginAt     pgtype.Timestamp `json:"last_login_at"`
+	CreatedAt       pgtype.Timestamp `json:"created_at"`
+	UpdatedAt       pgtype.Timestamp `json:"updated_at"`
+	EmailVerifiedAt pgtype.Timestamp `json:"email_verified_at"`
 }
 
 type UserRole struct {
 	UserID pgtype.UUID `json:"user_id"`
 	RoleID pgtype.UUID `json:"role_id"`
+}
+
+type UserToken struct {
+	TokenHash string           `json:"token_hash"`
+	UserID    pgtype.UUID      `json:"user_id"`
+	Purpose   string           `json:"purpose"`
+	ExpiresAt pgtype.Timestamp `json:"expires_at"`
+	CreatedAt pgtype.Timestamp `json:"created_at"`
 }

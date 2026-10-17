@@ -13,9 +13,9 @@ SELECT * FROM users WHERE auth_provider = $1 AND external_id = $2;
 -- name: CreateUser :one
 INSERT INTO users (
     username, email, password_hash, first_name, last_name,
-    auth_provider, external_id, is_active
+    auth_provider, external_id, is_active, email_verified_at
 )
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
 RETURNING *;
 
 -- name: UpdateUser :one
@@ -43,6 +43,9 @@ RETURNING *;
 
 -- name: SetUserPassword :exec
 UPDATE users SET password_hash = $2, updated_at = NOW() WHERE id = $1;
+
+-- name: MarkUserEmailVerified :exec
+UPDATE users SET email_verified_at = $2 WHERE id = $1 AND email_verified_at IS NULL;
 
 -- name: TouchUserLastLogin :exec
 UPDATE users SET last_login_at = NOW() WHERE id = $1;

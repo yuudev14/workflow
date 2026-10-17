@@ -28,6 +28,7 @@ func (h *AdminHandler) RegisterRoutes(
 		users.PUT("/:user_id", update, h.UpdateUser)
 		users.PUT("/:user_id/roles", update, h.SetUserRoles)
 		users.PUT("/:user_id/password", update, h.SetUserPassword)
+		users.POST("/:user_id/invite", update, h.InviteUser)
 		// deactivation, not deletion, see the handler
 		users.DELETE("/:user_id", remove, h.DeactivateUser)
 	}

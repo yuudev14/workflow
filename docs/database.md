@@ -130,6 +130,7 @@ erDiagram
     roles ||--o{ team_roles : ""
     users ||--o{ refresh_tokens : "sessions"
     users ||--o{ api_keys : "machine access"
+    users ||--o{ user_tokens : "invite and reset links"
     users |o--o{ audit_logs : "actor_id"
 
     users {
@@ -141,6 +142,7 @@ erDiagram
         text external_id "provider id + subject"
         boolean is_active
         timestamp last_login_at
+        timestamp email_verified_at "information only"
     }
     roles {
         uuid id PK
@@ -183,6 +185,12 @@ erDiagram
         text prefix "shown in the list"
         timestamp expires_at "null = no expiry"
         timestamp last_used_at
+    }
+    user_tokens {
+        text token_hash PK "sha256, never the token"
+        uuid user_id FK
+        text purpose "invite or password_reset, one per user"
+        timestamp expires_at
     }
     auth_providers {
         uuid id PK

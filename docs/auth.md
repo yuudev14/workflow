@@ -124,7 +124,7 @@ flowchart TD
 - **Reuse detection.** A revoked token that comes back after more than 10 seconds (`reuseGraceWindow`) means a thief used a copy. The system revokes every session of that user.
 - **Logout** (`POST /api/auth/v1/logout`) revokes the refresh token and clears both cookies. It has no auth check on purpose. It works with an expired access token. It can only revoke the cookie of the caller.
 - **WebSocket.** `/ws/playbook` cannot send headers from a browser. It uses the refresh cookie. The token is read and checked in the database. It is never rotated here.
-- **Old rows.** Each refresh adds a row. A River periodic job (`auth_delete_expired_tokens`) deletes the expired rows once a day and when the worker starts. River runs periodic jobs only on the elected leader, so many workers still delete once.
+- **Old rows.** Each refresh adds a row. A River periodic job (`auth_delete_expired_tokens`) deletes the expired rows (and the expired links of section 7) once a day and when the worker starts. River runs periodic jobs only on the elected leader, so many workers still delete once.
 
 ## 6. API keys
 
@@ -141,7 +141,33 @@ curl -H "Authorization: Bearer ytsoar_3q2k8..." https://soar.example.com/api/ale
 - **Last use.** `last_used_at` is updated at most once a minute, so most requests do no write.
 - Each create and delete writes a row in `audit_logs`.
 
-## 7. SSO with OIDC
+## 7. Invite and password reset
+
+A local user can get a one-time link by email. The link opens `FRONTEND_URL/set-password?token=...`, and the user types a new password.
+
+```mermaid
+sequenceDiagram
+    participant A as Admin or user
+    participant API as API
+    participant M as Mail server
+    participant U as User
+    A->>API: create a user with no password, or "forgot password"
+    API->>API: save the sha256 of a random token
+    API->>M: email with the link
+    M-->>U: link
+    U->>API: POST /api/auth/v1/password/reset (token + password)
+    API->>API: delete the token, set the password, set email_verified_at, end all sessions
+```
+
+- **Invite.** `POST /api/users/v1` without a `password` sends an invite. The link works for 72 hours. `POST /api/users/v1/:id/invite` sends it again. If the email fails, the user is not created.
+- **Forgot password.** `POST /api/auth/v1/password/forgot` always answers `204`, so the reply does not show if the email exists. The email goes out in the background, so the reply time does not show it either. The link works for 1 hour. Only active local users get one.
+- **One link at a time.** A user has at most one link for each purpose. A new link replaces the old one, but not when the old one is less than 1 minute old. Then nothing is sent (the invite route answers `409`).
+- **One use.** `POST /api/auth/v1/password/reset` deletes the token. A wrong, used or expired link gives the same `400`.
+- **`email_verified_at`** is information only. It blocks nothing. A link sets it, because only the owner of the address can open the link. For SSO users, the `email_verified` claim sets it. The migration set it for all users that existed before.
+- **Email.** `SMTP_*` settings. The mailer uses STARTTLS when the server offers it. Port 465 (TLS from the start) is not supported. With an empty `SMTP_HOST`, the email goes to the log.
+- The daily cleanup job also deletes the expired links.
+
+## 8. SSO with OIDC
 
 An admin adds a provider (Keycloak, Google, Azure and so on). The provider is a row in `auth_providers`. It is not an environment variable. The `config` column is JSON.
 
@@ -198,13 +224,13 @@ When roles come from the IdP, they replace the old roles at each login. When the
 
 The password and the secret in a provider config are masked in admin responses. If the admin saves the masked value back, the stored secret stays.
 
-## 8. Manage users, roles and teams
+## 9. Manage users, roles and teams
 
 All these routes need the `settings` module.
 
 | Area | Routes (`/api/...`) | Grant |
 |---|---|---|
-| Users | `GET/POST users/v1`, `GET/PUT users/v1/:id`, `PUT users/v1/:id/roles`, `PUT users/v1/:id/password`, `DELETE users/v1/:id` | `settings` read, create, update, delete |
+| Users | `GET/POST users/v1`, `GET/PUT users/v1/:id`, `PUT users/v1/:id/roles`, `PUT users/v1/:id/password`, `POST users/v1/:id/invite`, `DELETE users/v1/:id` | `settings` read, create, update, delete |
 | Roles | `GET/POST roles/v1`, `GET/PUT roles/v1/:id`, `PUT roles/v1/:id/permissions`, `DELETE roles/v1/:id` | same |
 | Teams | `GET/POST teams/v1`, `GET/PUT teams/v1/:id`, `PUT teams/v1/:id/members`, `PUT teams/v1/:id/roles`, `DELETE teams/v1/:id` | same |
 | Audit log | `GET audit/v1` | `settings` read |
@@ -223,14 +249,14 @@ Rules to remember:
 - **Assignee list.** `users/v1/assignable` has no `settings` check on purpose. An analyst must be able to name the assignee. It returns only `id` and `username`.
 - **Teams on alerts.** `alerts.team_id` and `incidents.team_id` are labels for ownership. Only `team_roles` gives rights.
 
-## 9. The first admin
+## 10. The first admin
 
 A new database has roles but no users. At start, `EnsureAdminUser` checks: "Does anyone hold the admin role?" If not, it creates the user from `ADMIN_USERNAME`, `ADMIN_EMAIL` and `ADMIN_PASSWORD`.
 
 - If `ADMIN_PASSWORD` is empty, the API starts and writes a warning. Nobody can sign in.
 - The check is "any admin", not "the table is empty". Old rows cannot lock everyone out.
 
-## 10. Settings
+## 11. Settings
 
 | Setting | Default | Meaning |
 |---|---|---|
@@ -239,7 +265,8 @@ A new database has roles but no users. At start, `EnsureAdminUser` checks: "Does
 | `REFRESH_TOKEN_TTL_HOURS` | 168 | Refresh token life. |
 | `COOKIE_SECURE` | false | Set true when the site uses HTTPS. |
 | `CORS_ORIGINS` | localhost:9999, localhost:3000 | Exact list. A wildcard does not work with cookies. |
-| `FRONTEND_URL`, `AUTH_PUBLIC_URL` | localhost:9999 | Used by the OIDC callback. |
+| `FRONTEND_URL`, `AUTH_PUBLIC_URL` | localhost:9999 | Used by the OIDC callback. The invite and reset links start with `FRONTEND_URL`. |
+| `SMTP_HOST`, `SMTP_PORT`, `SMTP_USERNAME`, `SMTP_PASSWORD`, `SMTP_FROM` | empty, 587, empty, empty, `ytsoar@localhost` | Mail server for the invite and reset emails. Empty host: the email goes to the log. |
 | `ADMIN_*` | admin / `admin123!` in the sample | First admin. |
 
 The refresh cookie is `SameSite=Lax`. This works because nginx serves the frontend and the API from one origin (`:9999`). If you split them across domains, the cookie needs `SameSite=None` and `Secure`.
