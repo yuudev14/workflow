@@ -3,5 +3,4 @@
 .git
 tmp/
 tests/
-docs/
 coverage*.out
