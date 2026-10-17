@@ -18,8 +18,8 @@ import (
 	"github.com/yuudev14/ytsoar/internal/token"
 )
 
-// oidcProviderWithConfig builds an enabled oidc provider from a partial config,
-// filling in the required issuer/client_id so tests only state what they exercise.
+// oidcProviderWithConfig builds an enabled oidc provider from a partial config. It fills
+// issuer and client_id, so tests state only what they test.
 func oidcProviderWithConfig(id uuid.UUID, extra map[string]any) auth.AuthProvider {
 	extra["issuer"] = "https://idp.example"
 	extra["client_id"] = "cid"
@@ -33,8 +33,8 @@ func oidcProviderWithConfig(id uuid.UUID, extra map[string]any) auth.AuthProvide
 	}
 }
 
-// oidcProviderRow builds an enabled oidc provider whose group map sends
-// soc-analysts → analyst, with viewer as the default.
+// oidcProviderRow builds an enabled oidc provider where soc-analysts -> analyst, and
+// viewer is the default.
 func oidcProviderRow(id uuid.UUID, allowJIT bool) auth.AuthProvider {
 	cfg, _ := json.Marshal(map[string]any{
 		"issuer":             "https://idp.example",
@@ -71,7 +71,7 @@ func TestCompleteOIDCStateMismatchRejected(t *testing.T) {
 	pid := uuid.New()
 	cookie := stateCookie(t, pid, "real-state", "verifier", time.Now().Add(time.Minute))
 
-	// query state differs from the sealed one - the CSRF signal.
+	// the query state differs from the sealed one: the CSRF signal
 	_, err := env.service.CompleteOIDC(context.Background(), pid, "code", "forged-state", cookie)
 	assert.ErrorIs(t, err, auth.ErrOIDCState)
 }
@@ -154,7 +154,7 @@ func TestCompleteOIDCExistingUserSyncsDefaultRole(t *testing.T) {
 	env.mockTokens.EXPECT().Insert(gomock.Any(), existing.ID, gomock.Any(), gomock.Any()).Return(nil)
 	env.mockUsers.EXPECT().TouchLastLogin(gomock.Any(), existing.ID).Return(nil)
 
-	// mockUsers.Create is never set - a match by external_id must not JIT again.
+	// mockUsers.Create is not set: a match by external_id must not create the user again
 	_, err := env.service.CompleteOIDC(context.Background(), pid, "code", "s", cookie)
 	require.NoError(t, err)
 }
@@ -205,7 +205,7 @@ func TestStartOIDCBuildsRedirectAndStateCookie(t *testing.T) {
 	require.NoError(t, err)
 	assert.Contains(t, redirect, "https://idp.example/authorize")
 
-	// the cookie must be a well-formed, verifiable oidc_state token for this pid.
+	// the cookie must be a valid, verifiable oidc_state token for this pid
 	claims, err := token.Parse(cookie, testSecret)
 	require.NoError(t, err)
 	assert.Equal(t, "oidc_state", claims["typ"])
@@ -213,7 +213,7 @@ func TestStartOIDCBuildsRedirectAndStateCookie(t *testing.T) {
 	assert.NotEmpty(t, claims["verifier"])
 }
 
-// A single IdP group mapping to a list of roles assigns every one of them.
+// One IdP group that maps to a list of roles assigns all of them.
 func TestCompleteOIDCOneToManyRoleMapping(t *testing.T) {
 	env := setupTest(t)
 	pid := uuid.New()
@@ -242,8 +242,8 @@ func TestCompleteOIDCOneToManyRoleMapping(t *testing.T) {
 	require.NoError(t, err)
 }
 
-// No mapping table: the IdP emits a value that already is a role name
-// (Azure app roles / Okta roles) and it is assigned directly via passthrough.
+// No mapping table: the IdP sends a value that is already a role name (Azure app roles,
+// Okta roles), and it is assigned directly.
 func TestCompleteOIDCPassthroughRole(t *testing.T) {
 	env := setupTest(t)
 	pid := uuid.New()
@@ -270,8 +270,8 @@ func TestCompleteOIDCPassthroughRole(t *testing.T) {
 	require.NoError(t, err)
 }
 
-// A group that maps to nothing and is not itself a role resolves nothing, so
-// the user still lands on the default role rather than losing all access.
+// A group that maps to nothing and is not a role resolves to nothing, so the user gets the
+// default role and does not lose all access.
 func TestCompleteOIDCPassthroughMissFallsToDefault(t *testing.T) {
 	env := setupTest(t)
 	pid := uuid.New()
@@ -286,7 +286,7 @@ func TestCompleteOIDCPassthroughMissFallsToDefault(t *testing.T) {
 		Return(auth.OIDCIdentity{Subject: "kc-sub", Groups: []string{"random-ad-group"}}, nil)
 	env.mockUsers.EXPECT().GetByExternalID(gomock.Any(), domain.AuthProviderOIDC, externalID).Return(existing, nil)
 
-	// passthrough candidate isn't a real role → skipped; default resolves.
+	// the candidate is not a real role, so it is skipped and the default resolves
 	env.mockRoles.EXPECT().GetByName(gomock.Any(), "random-ad-group").Return(domain.Role{}, errors.New("no rows"))
 	viewer := domain.Role{ID: uuid.New(), Name: "viewer"}
 	env.mockRoles.EXPECT().GetByName(gomock.Any(), "viewer").Return(viewer, nil)
@@ -299,8 +299,8 @@ func TestCompleteOIDCPassthroughMissFallsToDefault(t *testing.T) {
 	require.NoError(t, err)
 }
 
-// sync_mode "attributes" hands roles to an admin: a login refreshes the session
-// but must never touch the user's roles, even with a matching group claim.
+// sync_mode "attributes" leaves roles to an admin: a login refreshes the session but never
+// changes the roles, even with a matching group claim.
 func TestCompleteOIDCSyncModeAttributesLeavesRoles(t *testing.T) {
 	env := setupTest(t)
 	pid := uuid.New()
@@ -316,7 +316,7 @@ func TestCompleteOIDCSyncModeAttributesLeavesRoles(t *testing.T) {
 	env.mockOIDC.EXPECT().Exchange(gomock.Any(), gomock.Any(), gomock.Any(), "code", "v").
 		Return(auth.OIDCIdentity{Subject: "kc-sub", Groups: []string{"soc-analysts"}}, nil)
 	env.mockUsers.EXPECT().GetByExternalID(gomock.Any(), domain.AuthProviderOIDC, externalID).Return(existing, nil)
-	// deliberately no mockRoles expectations - any role call fails the test.
+	// no mockRoles expectations on purpose: any role call fails the test
 	env.mockTokens.EXPECT().Insert(gomock.Any(), existing.ID, gomock.Any(), gomock.Any()).Return(nil)
 	env.mockUsers.EXPECT().TouchLastLogin(gomock.Any(), existing.ID).Return(nil)
 
@@ -324,9 +324,9 @@ func TestCompleteOIDCSyncModeAttributesLeavesRoles(t *testing.T) {
 	require.NoError(t, err)
 }
 
-// A lookup that fails for any reason other than "no such user" must not fall
-// through to JIT - re-provisioning an existing account would trip the
-// external_id unique index and report a database outage as a bad login.
+// A lookup that fails for any reason except "no such user" must not go on to JIT.
+// Provisioning an existing account again would hit the external_id unique index and report
+// a database outage as a bad login.
 func TestCompleteOIDCLookupFailureDoesNotProvision(t *testing.T) {
 	env := setupTest(t)
 	pid := uuid.New()
@@ -340,7 +340,7 @@ func TestCompleteOIDCLookupFailureDoesNotProvision(t *testing.T) {
 	env.mockUsers.EXPECT().
 		GetByExternalID(gomock.Any(), domain.AuthProviderOIDC, pid.String()+"|kc-sub").
 		Return(domain.User{}, dbDown)
-	// no Create expectation: gomock fails the test if provisioning is attempted.
+	// no Create expectation: gomock fails the test if the user is provisioned
 
 	_, err := env.service.CompleteOIDC(context.Background(), pid, "code", "s", cookie)
 	assert.ErrorIs(t, err, dbDown)
@@ -400,7 +400,7 @@ func TestCompleteOIDCSyncModeAllPushesAttributes(t *testing.T) {
 	require.NoError(t, err)
 }
 
-// The default mode syncs roles only - a profile edited in YTSoar must survive.
+// The default mode syncs roles only: a profile edited in YTSoar must stay.
 func TestCompleteOIDCDefaultModeDoesNotPushAttributes(t *testing.T) {
 	env := setupTest(t)
 	pid := uuid.New()
@@ -414,7 +414,7 @@ func TestCompleteOIDCDefaultModeDoesNotPushAttributes(t *testing.T) {
 		Return(auth.OIDCIdentity{Subject: "kc-sub", Email: "different@corp", FirstName: "Bob"}, nil)
 	env.mockUsers.EXPECT().GetByExternalID(gomock.Any(), domain.AuthProviderOIDC, externalID).Return(existing, nil)
 	env.mockRoles.EXPECT().RemoveAllFromUser(gomock.Any(), existing.ID).Return(nil)
-	// no Update expectation: gomock fails the test if the profile is written.
+	// no Update expectation: gomock fails the test if the profile is written
 	env.mockTokens.EXPECT().Insert(gomock.Any(), existing.ID, gomock.Any(), gomock.Any()).Return(nil)
 	env.mockUsers.EXPECT().TouchLastLogin(gomock.Any(), existing.ID).Return(nil)
 
@@ -422,8 +422,8 @@ func TestCompleteOIDCDefaultModeDoesNotPushAttributes(t *testing.T) {
 	require.NoError(t, err)
 }
 
-// An unchanged profile costs no write, and a claim the IdP omits must not blank
-// a value someone set by hand.
+// An unchanged profile costs no write, and a claim that the IdP omits must not blank a
+// value set by hand.
 func TestCompleteOIDCAttributeSyncSkipsUnchangedAndEmpty(t *testing.T) {
 	env := setupTest(t)
 	pid := uuid.New()
@@ -440,7 +440,7 @@ func TestCompleteOIDCAttributeSyncSkipsUnchangedAndEmpty(t *testing.T) {
 	env.mockOIDC.EXPECT().Exchange(gomock.Any(), gomock.Any(), gomock.Any(), "code", "v").
 		Return(auth.OIDCIdentity{Subject: "kc-sub", Email: "same@corp", FirstName: "Bob"}, nil)
 	env.mockUsers.EXPECT().GetByExternalID(gomock.Any(), domain.AuthProviderOIDC, externalID).Return(existing, nil)
-	// no Update expectation, and no role expectations.
+	// no Update expectation and no role expectations
 	env.mockTokens.EXPECT().Insert(gomock.Any(), existing.ID, gomock.Any(), gomock.Any()).Return(nil)
 	env.mockUsers.EXPECT().TouchLastLogin(gomock.Any(), existing.ID).Return(nil)
 
@@ -448,9 +448,8 @@ func TestCompleteOIDCAttributeSyncSkipsUnchangedAndEmpty(t *testing.T) {
 	require.NoError(t, err)
 }
 
-// The Google preset ships sync_mode "attributes" (Google sends no groups), so a
-// JIT user would otherwise arrive with no roles at all. default_role must still
-// apply on the provisioning login.
+// The Google preset has sync_mode "attributes" (Google sends no groups), so a JIT user
+// would get no roles. default_role must still apply at the provisioning login.
 func TestCompleteOIDCJITGetsDefaultRoleEvenWhenRoleSyncIsOff(t *testing.T) {
 	env := setupTest(t)
 	pid := uuid.New()
@@ -482,8 +481,8 @@ func TestCompleteOIDCJITGetsDefaultRoleEvenWhenRoleSyncIsOff(t *testing.T) {
 	require.NoError(t, err)
 }
 
-// ...but the IdP's groups are still ignored in that mode: a group that maps to
-// admin must not sneak a role in through the provisioning path.
+// ...but the IdP groups are still ignored in that mode: a group that maps to admin must
+// not add a role through the provisioning path.
 func TestCompleteOIDCJITRoleSyncOffIgnoresGroups(t *testing.T) {
 	env := setupTest(t)
 	pid := uuid.New()
@@ -506,8 +505,8 @@ func TestCompleteOIDCJITRoleSyncOffIgnoresGroups(t *testing.T) {
 	env.mockUsers.EXPECT().Create(gomock.Any(), gomock.Any()).Return(created, nil)
 
 	viewer := domain.Role{ID: uuid.New(), Name: "viewer"}
-	// only viewer is looked up - no GetByName("admin") expectation, so the
-	// mapping firing would fail this test.
+	// only viewer is looked up, with no GetByName("admin") expectation, so the mapping would
+	// fail this test
 	env.mockRoles.EXPECT().GetByName(gomock.Any(), "viewer").Return(viewer, nil)
 	env.mockRoles.EXPECT().RemoveAllFromUser(gomock.Any(), created.ID).Return(nil)
 	env.mockRoles.EXPECT().AssignToUser(gomock.Any(), created.ID, viewer.ID).Return(nil)

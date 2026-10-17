@@ -93,7 +93,7 @@ func (s *Service) SetTeamMembers(ctx context.Context, actorID, id uuid.UUID, mem
 		return domain.TeamWithMembers{}, err
 	}
 
-	// Same reason as SetRolePermissions: delete-then-insert must not half-apply.
+	// same reason as SetRolePermissions: delete and insert must not half-apply
 	if err := s.txManager.WithinTransaction(ctx, func(ctx context.Context) error {
 		return s.teams.ReplaceMembers(ctx, id, memberIDs)
 	}); err != nil {
@@ -111,10 +111,10 @@ func (s *Service) SetTeamMembers(ctx context.Context, actorID, id uuid.UUID, mem
 	return s.teams.GetWithMembers(ctx, id)
 }
 
-// SetTeamRoles replaces the roles a team grants its members. This escalates
-// privilege for everyone in the team, so it stays behind settings.update and is
-// always audited. Builtin roles may be granted freely - that only *uses* a
-// role; ErrBuiltinRole still guards editing a builtin's own matrix.
+// SetTeamRoles replaces the roles that a team gives its members. This raises the privilege
+// of everyone in the team, so it stays behind settings.update and is always audited.
+// Builtin roles can be granted freely, because that only uses a role. ErrBuiltinRole still
+// guards editing the matrix of a builtin.
 func (s *Service) SetTeamRoles(ctx context.Context, actorID, id uuid.UUID, roleIDStrings []string) (domain.TeamWithMembers, error) {
 	roleIDs, err := parseUUIDs(roleIDStrings, "role_ids")
 	if err != nil {
@@ -141,8 +141,8 @@ func (s *Service) SetTeamRoles(ctx context.Context, actorID, id uuid.UUID, roleI
 	return s.teams.GetWithMembers(ctx, id)
 }
 
-// verifyRolesExist fails before any write, so an unknown id surfaces as a clean
-// not-found rather than an opaque foreign-key violation.
+// verifyRolesExist fails before any write, so an unknown id gives a clean not-found and
+// not an unclear foreign-key error
 func (s *Service) verifyRolesExist(ctx context.Context, roleIDs []uuid.UUID) error {
 	for _, roleID := range roleIDs {
 		if _, err := s.roles.GetByID(ctx, roleID); err != nil {

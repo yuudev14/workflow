@@ -40,8 +40,8 @@ func (s *Service) CreateProvider(ctx context.Context, actorID uuid.UUID, input P
 	if len(config) == 0 {
 		config = json.RawMessage(`{}`)
 	}
-	// Validate now so a malformed config (e.g. the whole provider object pasted
-	// into the config field) fails here with a clear message, not later at login.
+	// validate now, so a bad config (for example the whole provider object pasted into the
+	// config field) fails here with a clear message, not later at login
 	if typ == domain.AuthProviderOIDC {
 		if _, err := decodeOIDCConfig(config); err != nil {
 			return AdminProvider{}, err
@@ -65,8 +65,8 @@ func (s *Service) CreateProvider(ctx context.Context, actorID uuid.UUID, input P
 	return adminProviderOf(p), nil
 }
 
-// UpdateProvider patches name/enabled/config. A config that arrives with the
-// masked-secret sentinel keeps the stored secret - the admin didn't retype it.
+// UpdateProvider patches name, enabled and config. A config with the masked-secret
+// sentinel keeps the stored secret, because the admin did not type it again.
 func (s *Service) UpdateProvider(ctx context.Context, actorID, id uuid.UUID, input UpdateProviderInput) (AdminProvider, error) {
 	existing, err := s.providers.GetByID(ctx, id)
 	if err != nil {
@@ -100,10 +100,10 @@ func (s *Service) UpdateProvider(ctx context.Context, actorID, id uuid.UUID, inp
 	return adminProviderOf(p), nil
 }
 
-// preserveMaskedSecret swaps a masked client_secret back to the stored value so
-// a round-trip through the masked admin view can't wipe the real secret. On any
-// parse trouble it returns the incoming config unchanged - validation downstream
-// still catches a genuinely broken config.
+// preserveMaskedSecret puts the stored value back when client_secret is masked, so a round
+// trip through the masked admin view cannot wipe the real secret. On any parse problem it
+// returns the incoming config as it is, and the validation after it catches a really broken
+// config.
 func preserveMaskedSecret(existingConfig, incoming json.RawMessage) json.RawMessage {
 	var next map[string]any
 	if err := json.Unmarshal(incoming, &next); err != nil {
@@ -134,8 +134,8 @@ func adminProviderOf(p AuthProvider) AdminProvider {
 	}
 }
 
-// maskSecrets replaces any client_secret / bind_password with a sentinel so the
-// admin view never ships a live credential to the browser.
+// maskSecrets replaces client_secret and bind_password with a sentinel, so the admin view
+// never sends a live credential to the browser.
 func maskSecrets(raw json.RawMessage) json.RawMessage {
 	var m map[string]any
 	if err := json.Unmarshal(raw, &m); err != nil {

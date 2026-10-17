@@ -13,8 +13,8 @@ import (
 	"github.com/yuudev14/ytsoar/internal/logger"
 )
 
-// FSWriter mutates the unified connectors tree. It implements
-// connectors.ConnectorWriter; the API process is the tree's only writer.
+// FSWriter changes the unified connectors tree. It implements connectors.ConnectorWriter.
+// Only the API process writes the tree.
 type FSWriter struct {
 	logger logger.Logger
 	dir    string
@@ -27,9 +27,9 @@ func NewFSWriter(log logger.Logger, dir string) *FSWriter {
 	}
 }
 
-// Extract unpacks the (already validated) archive into <dir>/<connectorID>.
-// It stages into a temp folder first so a failed extraction never leaves a
-// half-written connector, then swaps it in place of any previous version.
+// Extract unpacks the (already validated) archive into <dir>/<connectorID>. It stages in a
+// temp folder first, so a failed extraction never leaves a half-written connector, then
+// swaps it in place of the old version.
 func (w *FSWriter) Extract(ctx context.Context, connectorID string, archive *zip.Reader, prefix string) error {
 	if w.dir == "" {
 		return fmt.Errorf("connector uploads are disabled: CONNECTORS_DIR is not set")
@@ -90,8 +90,8 @@ func writeArchiveFile(file *zip.File, dest string) error {
 		return err
 	}
 	defer out.Close()
-	// The size caps upstream trust the zip's declared UncompressedSize64; hold
-	// the stream to it so a lying header can't expand past the checked budget.
+	// the size caps before this trust the UncompressedSize64 of the zip, so hold the stream to
+	// it. A lying header cannot grow past the checked budget.
 	declared := int64(file.UncompressedSize64)
 	written, err := io.Copy(out, io.LimitReader(reader, declared+1))
 	if err != nil {

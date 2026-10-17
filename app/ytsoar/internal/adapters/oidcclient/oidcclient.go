@@ -1,6 +1,6 @@
-// Package oidcclient is the thin go-oidc/oauth2 wrapper behind auth.OIDCClient.
-// It carries no policy - discovery, PKCE params and id_token verification only -
-// so all provisioning/role logic stays in the service and stays mockable.
+// Package oidcclient is a thin go-oidc/oauth2 wrapper behind auth.OIDCClient. It has no
+// policy, only discovery, PKCE params and id_token verification. Provisioning and role
+// logic stay in the service, so they stay mockable.
 package oidcclient
 
 import (
@@ -18,9 +18,9 @@ type Client struct{}
 
 func New() *Client { return &Client{} }
 
-// providerAndConfig runs discovery and builds the oauth2 config. Split-horizon
-// dev: discover against internal_issuer while trusting the public issuer, so the
-// id_token's `iss` (the public url) still verifies.
+// providerAndConfig runs discovery and builds the oauth2 config. Split-horizon dev:
+// discover at internal_issuer but trust the public issuer, so the `iss` of the id_token
+// (the public url) still verifies.
 func (c *Client) providerAndConfig(ctx context.Context, cfg auth.OIDCConfig, redirectURL string) (*oidc.Provider, oauth2.Config, error) {
 	discoveryCtx := ctx
 	issuer := cfg.Issuer
@@ -103,9 +103,8 @@ func claimNameOr(name, fallback string) string {
 	return fallback
 }
 
-// claimByPath resolves a claim by a dotted path, so a nested claim like
-// "realm_access.roles" (Keycloak realm roles) reaches its value. A single
-// segment is an ordinary top-level lookup.
+// claimByPath gets a claim by dotted path, so a nested claim like "realm_access.roles"
+// (Keycloak realm roles) works. One segment is a normal top-level lookup.
 func claimByPath(claims map[string]any, path string) any {
 	var cur any = claims
 	for part := range strings.SplitSeq(path, ".") {
@@ -123,8 +122,8 @@ func stringFromClaim(claims map[string]any, path string) string {
 	return s
 }
 
-// stringsFromClaim reads a claim (possibly a dotted path) that may be a JSON
-// array of strings. A single-string value is tolerated as a one-element list.
+// stringsFromClaim reads a claim (maybe a dotted path) that can be a JSON array of
+// strings. A single string counts as a one-item list.
 func stringsFromClaim(claims map[string]any, path string) []string {
 	switch v := claimByPath(claims, path).(type) {
 	case []any:

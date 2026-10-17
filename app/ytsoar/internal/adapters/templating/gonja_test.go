@@ -10,8 +10,8 @@ import (
 	"github.com/yuudev14/ytsoar/internal/adapters/templating"
 )
 
-// Golden tests: the same expressions the python side renders with jinja2 and
-// the node side with nunjucks - {{ var.steps["node name"] }} et al.
+// Golden tests: the same expressions that the python side renders with jinja2 and the node
+// side with nunjucks, like {{ var.steps["node name"] }}.
 func TestGonjaRendersStepsAccess(t *testing.T) {
 	engine := templating.NewGonjaEngine()
 	variables := map[string]any{"steps": map[string]any{
@@ -63,14 +63,14 @@ func TestGonjaUndefinedRendersEmpty(t *testing.T) {
 
 	out, err := engine.Render(`{{ var.steps["ghost"] }}`, map[string]any{"steps": map[string]any{}})
 
-	// jinja2's default Undefined renders as empty string - parity
+	// the default Undefined of jinja2 renders as an empty string, same here
 	require.NoError(t, err)
 	assert.Equal(t, "", out)
 }
 
-// var.input is the trigger-data namespace. The list index matters: records is a
-// list of module rows, so `records[0]` is how every playbook reaches the alert
-// that triggered it.
+// var.input is the namespace of the trigger data. The list index matters: records is a list
+// of module rows, so `records[0]` is how every playbook reaches the alert that triggered
+// it.
 func TestGonjaRendersInputAccess(t *testing.T) {
 	engine := templating.NewGonjaEngine()
 	variables := map[string]any{
@@ -106,10 +106,10 @@ func TestGonjaRendersInputAccess(t *testing.T) {
 	}
 }
 
-// Records must arrive as decoded maps. They were json.RawMessage once, and gonja
-// cannot index into raw bytes - the Go builtins failed with "Can't use Getitem on
-// None" while python/node kept working, because those re-parse the payload.
-// Marshalling here mirrors exactly what the record resolver does.
+// Records must arrive as decoded maps. They were json.RawMessage once, and gonja cannot
+// index raw bytes: the Go builtins failed with "Can't use Getitem on None" while
+// python/node worked, because they parse the payload again. The marshal here is what the
+// record resolver does.
 func TestGonjaRendersInputRecordsDecodedFromJSON(t *testing.T) {
 	engine := templating.NewGonjaEngine()
 
@@ -135,9 +135,8 @@ func TestGonjaRendersInputRecordsDecodedFromJSON(t *testing.T) {
 	assert.Equal(t, "critical", out)
 }
 
-// An empty input must render rather than raise: a manual run from the editor has
-// no trigger data, and a playbook author should not have to write defensive
-// templates for that case.
+// An empty input must render and not raise: a manual run from the editor has no trigger
+// data, and a playbook author should not need defensive templates for it.
 func TestGonjaEmptyInputRendersEmpty(t *testing.T) {
 	engine := templating.NewGonjaEngine()
 	variables := map[string]any{

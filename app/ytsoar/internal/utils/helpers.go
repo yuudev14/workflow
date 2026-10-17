@@ -17,8 +17,8 @@ func NullStringToInterface(ns sql.NullString) *string {
 // Helper
 func StrPtr(s string) *string { return &s }
 
-// DebugJSON marshals v to indented JSON and logs it at debug level under
-// label, so it shows up on the dev logger's colored DEBUG line.
+// DebugJSON logs v as indented JSON at debug level under label, so it shows on the
+// colored DEBUG line of the dev logger.
 func DebugJSON(log logger.Logger, label string, v any, indent string) {
 	b, err := json.MarshalIndent(v, "", indent)
 	if err != nil {

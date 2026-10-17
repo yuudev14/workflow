@@ -34,12 +34,10 @@ func NewTaskServiceImpl(taskRepository TaskRepository) TaskService {
 	}
 }
 
-// CreateTaskHistory implements TaskService.
 func (t *TaskServiceImpl) CreateTaskHistory(ctx context.Context, playbookHistoryId string, tasks []domain.Tasks, graph map[uuid.UUID][]uuid.UUID) ([]domain.TaskHistory, error) {
 	return t.TaskRepository.CreateTaskHistory(ctx, playbookHistoryId, tasks, graph)
 }
 
-// GetTasksByPlaybookId implements TaskService.
 func (t *TaskServiceImpl) GetTasksByPlaybookId(ctx context.Context, playbookId string) ([]domain.Tasks, error) {
 	return t.TaskRepository.GetTasksByPlaybookId(ctx, playbookId), nil
 }
@@ -54,7 +52,6 @@ func (t *TaskServiceImpl) DeleteTasks(ctx context.Context, taskIds []uuid.UUID) 
 	return t.TaskRepository.DeleteTasks(ctx, taskIds)
 }
 
-// UpdateTaskStatus implements TaskService.
 func (t *TaskServiceImpl) UpdateTaskStatus(ctx context.Context, playbookHistoryId string, taskId string, status string) (*domain.TaskHistory, error) {
 	res, err := t.TaskRepository.UpdateTaskStatus(ctx, playbookHistoryId, taskId, status)
 	if err != nil {
@@ -68,7 +65,6 @@ func (t *TaskServiceImpl) UpdateTaskStatus(ctx context.Context, playbookHistoryI
 	return res, nil
 }
 
-// UpdateTaskHistory implements TaskService.
 func (t *TaskServiceImpl) UpdateTaskHistory(ctx context.Context, playbookHistoryId string, taskId string, taskHistory UpdateTaskHistoryData) (*domain.TaskHistory, error) {
 	res, err := t.TaskRepository.UpdateTaskHistory(ctx, playbookHistoryId, taskId, taskHistory)
 	if err != nil {
@@ -82,22 +78,18 @@ func (t *TaskServiceImpl) UpdateTaskHistory(ctx context.Context, playbookHistory
 	return res, nil
 }
 
-// FailUnfinishedTaskHistory implements TaskService.
 func (t *TaskServiceImpl) FailUnfinishedTaskHistory(ctx context.Context, playbookHistoryId string, reason string) ([]domain.TaskHistory, error) {
 	return t.TaskRepository.FailUnfinishedTaskHistory(ctx, playbookHistoryId, reason)
 }
 
-// GetTaskHistoryById implements TaskService.
 func (t *TaskServiceImpl) GetTaskHistoryById(ctx context.Context, id uuid.UUID) (*domain.TaskHistory, error) {
 	return t.TaskRepository.GetTaskHistoryById(ctx, id)
 }
 
-// GetTaskHistoryByPlaybookHistoryId implements TaskService.
 func (t *TaskServiceImpl) GetTaskHistoryByPlaybookHistoryId(ctx context.Context, id string, filter TaskHistoryFilter) ([]domain.TaskHistory, error) {
 	return t.TaskRepository.GetTaskHistoryByPlaybookHistoryId(ctx, id, filter)
 }
 
-// GetTaskHistoryCount implements TaskService.
 func (t *TaskServiceImpl) GetTaskHistoryCount(ctx context.Context, filter TaskHistoryFilter) (int, error) {
 	return t.TaskRepository.GetTaskHistoryCount(ctx, filter)
 }

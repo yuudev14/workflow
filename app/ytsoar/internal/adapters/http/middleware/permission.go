@@ -14,9 +14,8 @@ type PermissionSource interface {
 	PermissionsFor(ctx context.Context, userID uuid.UUID) (domain.PermissionSet, error)
 }
 
-// PermissionMiddleware lets a route file declare a grant without knowing about
-// the logger or the auth service:
-// `requirePermission(domain.ModulePlaybooks, domain.ActionRead)`.
+// PermissionMiddleware lets a route file declare a grant without knowing the logger or the
+// auth service: `requirePermission(domain.ModulePlaybooks, domain.ActionRead)`.
 type PermissionMiddleware func(module, action string) gin.HandlerFunc
 
 func NewPermissionMiddleware(log logger.Logger, src PermissionSource) PermissionMiddleware {
@@ -25,12 +24,10 @@ func NewPermissionMiddleware(log logger.Logger, src PermissionSource) Permission
 	}
 }
 
-// RequirePermission gates a route on one (module, action) grant. Mount it
-// after Auth.
+// RequirePermission gates a route on one (module, action) grant. Mount it after Auth.
 //
-// The lookup runs per request instead of reading roles off the JWT, so a role
-// change or a deactivation takes effect immediately rather than at the user's
-// next login.
+// The lookup runs on every request and does not read roles from the JWT, so a role change
+// or a deactivation works at once, not at the next login.
 func RequirePermission(log logger.Logger, src PermissionSource, module, action string) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		user, ok := CurrentUser(c)
@@ -41,7 +38,7 @@ func RequirePermission(log logger.Logger, src PermissionSource, module, action s
 
 		permissions, err := src.PermissionsFor(c.Request.Context(), user.ID)
 		if err != nil {
-			// Fail closed: a database hiccup must never hand out access.
+			// fail closed: a database problem must never give access
 			log.Errorw("could not load permissions",
 				"user_id", user.ID, "module", module, "action", action, "error", err)
 			c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{

@@ -12,8 +12,7 @@ import (
 	"github.com/yuudev14/ytsoar/internal/types"
 )
 
-// ErrPlaybookNotFound lets handlers map a missing playbook to 404 with
-// errors.Is instead of matching error strings.
+// ErrPlaybookNotFound lets handlers return 404 with errors.Is, not by matching strings.
 var ErrPlaybookNotFound = apperr.New(apperr.NotFound, "playbook is not found")
 
 //go:generate mockgen -destination=mocks/service_mock.go -package=mocks . PlaybookService
@@ -48,12 +47,10 @@ func NewPlaybookService(log logger.Logger, playbookRepository PlaybookRepository
 	}
 }
 
-// GetPlaybooks implements PlaybookService.
 func (w *PlaybookServiceImpl) GetPlaybooks(ctx context.Context, offset int, limit int, filter PlaybookFilter) ([]domain.Playbooks, error) {
 	return w.PlaybookRepository.GetPlaybooks(ctx, offset, limit, filter)
 }
 
-// GetPlaybooksData implements [PlaybookService].
 func (w *PlaybookServiceImpl) GetPlaybooksData(ctx context.Context, offset int, limit int, filter PlaybookFilter) (types.Entries[domain.Playbooks], error) {
 	playbooks, err := w.GetPlaybooks(ctx, offset, limit, filter)
 	if err != nil {
@@ -71,7 +68,6 @@ func (w *PlaybookServiceImpl) GetPlaybooksData(ctx context.Context, offset int, 
 	}, nil
 }
 
-// GetPlaybooksHistoryData implements [PlaybookService].
 func (w *PlaybookServiceImpl) GetPlaybooksHistoryData(ctx context.Context, offset int, limit int, filter PlaybookHistoryFilter) (types.Entries[domain.PlaybookHistoryResponse], error) {
 	histories, err := w.GetPlaybookHistory(ctx, offset, limit, filter)
 	if err != nil {
@@ -93,37 +89,30 @@ func (w *PlaybookServiceImpl) GetPlaybookHistoryById(ctx context.Context, playbo
 	return w.PlaybookRepository.GetPlaybookHistoryById(ctx, playbookHistoryId)
 }
 
-// GetPlaybookHistory implements PlaybookService.
 func (w *PlaybookServiceImpl) GetPlaybookHistory(ctx context.Context, offset int, limit int, filter PlaybookHistoryFilter) ([]domain.PlaybookHistoryResponse, error) {
 	return w.PlaybookRepository.GetPlaybookHistory(ctx, offset, limit, filter)
 }
 
-// GetPlaybookHistoryCount implements PlaybookService.
 func (w *PlaybookServiceImpl) GetPlaybookHistoryCount(ctx context.Context, filter PlaybookHistoryFilter) (int, error) {
 	return w.PlaybookRepository.GetPlaybookHistoryCount(ctx, filter)
 }
 
-// GetPlaybooksCount implements PlaybookService.
 func (w *PlaybookServiceImpl) GetPlaybooksCount(ctx context.Context, filter PlaybookFilter) (int, error) {
 	return w.PlaybookRepository.GetPlaybooksCount(ctx, filter)
 }
 
-// CreatePlaybookHistory implements PlaybookService.
 func (w *PlaybookServiceImpl) CreatePlaybookHistory(ctx context.Context, id string, edges []domain.ResponseEdges, run RunStamp) (*domain.PlaybookHistory, error) {
 	return w.PlaybookRepository.CreatePlaybookHistory(ctx, id, edges, run)
 }
 
-// Summary implements PlaybookService.
 func (w *PlaybookServiceImpl) Summary(ctx context.Context, rng types.ResolvedRange) (PlaybooksSummary, error) {
 	return w.PlaybookRepository.Summary(ctx, rng)
 }
 
-// CreatePlaybookRunRecords implements PlaybookService.
 func (w *PlaybookServiceImpl) CreatePlaybookRunRecords(ctx context.Context, historyID uuid.UUID, moduleType string, recordIDs []uuid.UUID) error {
 	return w.PlaybookRepository.CreatePlaybookRunRecords(ctx, historyID, moduleType, recordIDs)
 }
 
-// GetPlaybookById implements PlaybookService.
 func (w *PlaybookServiceImpl) GetPlaybookById(ctx context.Context, id string) (*domain.Playbooks, error) {
 	playbook, playbookErr := w.PlaybookRepository.GetPlaybookById(ctx, id)
 	if playbookErr != nil {
@@ -137,7 +126,6 @@ func (w *PlaybookServiceImpl) GetPlaybookById(ctx context.Context, id string) (*
 	return playbook, nil
 }
 
-// GetPlaybookGraphById implements PlaybookService.
 func (w *PlaybookServiceImpl) GetPlaybookGraphById(ctx context.Context, id string) (*domain.PlaybookGraph, error) {
 	playbook, playbookErr := w.PlaybookRepository.GetPlaybookGraphById(ctx, id)
 	if playbookErr != nil {
@@ -151,12 +139,10 @@ func (w *PlaybookServiceImpl) GetPlaybookGraphById(ctx context.Context, id strin
 	return playbook, nil
 }
 
-// CreatePlaybook implements PlaybookService.
 func (w *PlaybookServiceImpl) CreatePlaybook(ctx context.Context, playbook PlaybookPayload) (*domain.Playbooks, error) {
 	return w.PlaybookRepository.CreatePlaybook(ctx, playbook)
 }
 
-// UpdatePlaybook implements PlaybookService.
 func (w *PlaybookServiceImpl) UpdatePlaybook(ctx context.Context, id string, playbook UpdatePlaybookData) (*domain.Playbooks, error) {
 	if playbook.TriggerType.Set && playbook.TriggerType.Value != nil && !domain.IsValidTriggerType(*playbook.TriggerType.Value) {
 		return nil, fmt.Errorf("unknown trigger type: %s", *playbook.TriggerType.Value)
@@ -164,7 +150,6 @@ func (w *PlaybookServiceImpl) UpdatePlaybook(ctx context.Context, id string, pla
 	return w.PlaybookRepository.UpdatePlaybook(ctx, id, playbook)
 }
 
-// UpdatePlaybookHistoryStatus implements PlaybookService.
 func (w *PlaybookServiceImpl) UpdatePlaybookHistoryStatus(ctx context.Context, playbookHistoryId string, status string) (*domain.PlaybookHistory, error) {
 	res, err := w.PlaybookRepository.UpdatePlaybookHistoryStatus(ctx, playbookHistoryId, status)
 	if err != nil {
@@ -182,7 +167,6 @@ func (w *PlaybookServiceImpl) UpdatePlaybookHistoryStatus(ctx context.Context, p
 	return res, nil
 }
 
-// UpdatePlaybookHistory implements PlaybookService.
 func (w *PlaybookServiceImpl) UpdatePlaybookHistory(ctx context.Context, playbookHistoryId string, playbookHistory UpdatePlaybookHistoryData) (*domain.PlaybookHistory, error) {
 	res, err := w.PlaybookRepository.UpdatePlaybookHistory(ctx, playbookHistoryId, playbookHistory)
 	if err != nil {

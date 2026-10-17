@@ -1,2 +1,7 @@
 .env
 **/node_modules
+.git
+tmp/
+tests/
+docs/
+coverage*.out

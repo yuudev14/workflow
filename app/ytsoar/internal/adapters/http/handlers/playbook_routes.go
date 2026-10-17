@@ -30,8 +30,7 @@ func (h *PlaybookHandler) RegisterRoutes(
 		r.PUT("/:playbook_id", updatePlaybooks, h.UpdatePlaybook)
 		r.PUT("/tasks/:playbook_id", updatePlaybooks, h.UpdatePlaybookTasks)
 
-		// Running a playbook is its own grant: editing and executing are
-		// separate privileges.
+		// running a playbook is its own grant: editing and executing are different privileges
 		r.POST("/trigger/:playbook_id",
 			requirePermission(domain.ModulePlaybooks, domain.ActionExecute),
 			h.Trigger)

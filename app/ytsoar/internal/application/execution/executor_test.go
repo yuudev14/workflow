@@ -133,7 +133,7 @@ func (f *executorFixture) runWithEdges(t *testing.T, graph map[string][]string, 
 	})
 }
 
-// edgeRef builds a wire edge; handle "" means a plain edge (nil source_handle).
+// edgeRef builds a wire edge. Handle "" is a plain edge (nil source_handle).
 func edgeRef(source, destination, handle string) domain.EdgeRef {
 	ref := domain.EdgeRef{Source: source, Destination: destination}
 	if handle != "" {
@@ -142,8 +142,8 @@ func edgeRef(source, destination, handle string) domain.EdgeRef {
 	return ref
 }
 
-// conditionRuntime returns runtime outputs per node name; the "cond" node
-// yields the condition builtin's {"result": bool} shape.
+// conditionRuntime returns runtime outputs per node name. The "cond" node gives the
+// {"result": bool} shape of the condition builtin.
 func conditionRuntime(f *executorFixture, condResult bool, executed *[]string, mu *sync.Mutex) {
 	f.runtime.EXPECT().
 		Execute(gomock.Any(), gomock.Any()).
@@ -190,11 +190,11 @@ func TestExecutorDiamondOrderingAndStepsThreading(t *testing.T) {
 	assert.Equal(t, "success", f.playbookFinal)
 	assert.Equal(t, "A", order[0])
 	assert.Equal(t, "D", order[len(order)-1])
-	// D's templating snapshot must include every finished predecessor output.
+	// the templating snapshot of D must have the output of every finished parent
 	assert.Contains(t, stepsSeenByD, "A")
 	assert.Contains(t, stepsSeenByD, "B")
 	assert.Contains(t, stepsSeenByD, "C")
-	// start is a no-op: one success write, no in_progress round-trip
+	// start does nothing: one success write, no in_progress round trip
 	assert.Equal(t, []string{"success"}, f.taskStatuses["start"])
 	assert.Equal(t, []string{"in_progress", "success"}, f.taskStatuses["D"])
 }
@@ -268,8 +268,8 @@ func TestExecutorFailFast(t *testing.T) {
 	assert.Empty(t, f.taskStatuses["C"])
 }
 
-// A fail-fast cancel must not strand the other in-flight nodes at in_progress:
-// their failed status is persisted with a cancellation-detached context.
+// A fail-fast cancel must not leave the other running nodes at in_progress: their failed
+// status is saved with a context that is detached from the cancel.
 func TestExecutorPersistsFailureStatusOfCancelledNodes(t *testing.T) {
 	graph := map[string][]string{
 		"start": {"A", "B"},
@@ -284,7 +284,7 @@ func TestExecutorPersistsFailureStatusOfCancelledNodes(t *testing.T) {
 			if req.Task.Name == "A" {
 				return nil, errors.New("boom")
 			}
-			// B: block until A's failure cancels the run
+			// B: wait until the failure of A cancels the run
 			<-ctx.Done()
 			return nil, ctx.Err()
 		}).Times(2)
@@ -300,7 +300,7 @@ func TestExecutorPersistsFailureStatusOfCancelledNodes(t *testing.T) {
 func TestExecutorStartNodeIsNoOpSuccess(t *testing.T) {
 	graph := map[string][]string{"start": {}}
 	f := newExecutorFixture(t, 1)
-	// no runtime.Execute expectation: calling it would fail the test
+	// no runtime.Execute expectation: calling it fails the test
 
 	err := f.run(t, graph, tasksFor(graph))
 
@@ -326,7 +326,7 @@ func TestExecutorRejectsCyclicGraph(t *testing.T) {
 		"B": {"A"},
 	}
 	f := newExecutorFixture(t, 2)
-	// no runtime.Execute expectation: nothing may run on a cyclic graph
+	// no runtime.Execute expectation: nothing runs on a cyclic graph
 
 	err := f.run(t, graph, tasksFor(graph))
 
@@ -358,7 +358,7 @@ func TestExecutorConditionFollowsTruePathSkipsFalse(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, "success", f.playbookFinal)
 	assert.Equal(t, []string{"in_progress", "success"}, f.taskStatuses["yes"])
-	// false branch and everything downstream of it is skipped, not executed.
+	// the false branch and everything after it is skipped, not run
 	assert.Equal(t, []string{"skipped"}, f.taskStatuses["no"])
 	assert.Equal(t, []string{"skipped"}, f.taskStatuses["after"])
 	mu.Lock()
@@ -390,7 +390,7 @@ func TestExecutorConditionFalsePathSkipsTrueSubtree(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, "success", f.playbookFinal)
 	assert.Equal(t, []string{"in_progress", "success"}, f.taskStatuses["no"])
-	// true branch skips, and the skip propagates to its whole subtree.
+	// the true branch skips, and the skip goes to its whole subtree
 	assert.Equal(t, []string{"skipped"}, f.taskStatuses["yes"])
 	assert.Equal(t, []string{"skipped"}, f.taskStatuses["child"])
 	mu.Lock()
@@ -400,8 +400,8 @@ func TestExecutorConditionFalsePathSkipsTrueSubtree(t *testing.T) {
 }
 
 func TestExecutorJoinRunsWhenOneParentFollowed(t *testing.T) {
-	// join has two incoming edges: the taken (true) branch and the skipped
-	// (false) branch both point at it. One followed parent is enough to run it.
+	// join has two incoming edges: the taken (true) branch and the skipped (false) branch. One
+	// followed parent is enough to run it.
 	graph := map[string][]string{
 		"start": {"cond"},
 		"cond":  {"yes", "no"},
@@ -425,7 +425,7 @@ func TestExecutorJoinRunsWhenOneParentFollowed(t *testing.T) {
 	assert.Equal(t, "success", f.playbookFinal)
 	assert.Equal(t, []string{"in_progress", "success"}, f.taskStatuses["yes"])
 	assert.Equal(t, []string{"skipped"}, f.taskStatuses["no"])
-	// join runs because the true branch reached it, even though "no" skipped.
+	// join runs because the true branch reached it, even though "no" skipped
 	assert.Equal(t, []string{"in_progress", "success"}, f.taskStatuses["join"])
 	mu.Lock()
 	assert.Contains(t, executed, "join")
@@ -433,7 +433,7 @@ func TestExecutorJoinRunsWhenOneParentFollowed(t *testing.T) {
 }
 
 func TestExecutorSwitchFollowsMatchingCaseSkipsRest(t *testing.T) {
-	// if/else-if/else from one node: three labeled handles, one taken.
+	// if/else-if/else from one node: three labeled handles, one is taken
 	graph := map[string][]string{
 		"start": {"cond"},
 		"cond":  {"a", "b", "c"},
@@ -505,8 +505,8 @@ func TestExecutorSwitchFallsThroughToElse(t *testing.T) {
 }
 
 func TestExecutorDirectionalHandlesAlwaysFollow(t *testing.T) {
-	// a normal node whose output happens to carry a "result" field must not
-	// have its positional editor edges gated.
+	// a normal node whose output has a "result" field must not gate its positional editor
+	// edges
 	graph := map[string][]string{
 		"start": {"A"},
 		"A":     {"B"},
@@ -559,7 +559,8 @@ func sampleTaskWithConnector(connectorID string) domain.Tasks {
 }
 
 // The state rules refuse to start a run that a worker already started (the worker stopped
-// and the queue delivered the run again). The run must fail. The connectors must not run again.
+// and the queue delivered the run again). The run must fail, and the connectors must not
+// run again.
 func TestExecutorAlreadyStartedRunIsFailedNotRerun(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	taskService := taskmocks.NewMockTaskService(ctrl)
@@ -591,7 +592,7 @@ func TestExecutorAlreadyStartedRunIsFailedNotRerun(t *testing.T) {
 
 	assert.Error(t, err)
 	assert.Equal(t, []string{"in_progress", "failed"}, statuses)
-	// The open pages hear about the task that recoverRun failed.
+	// the open pages hear about the task that recoverRun failed
 	assert.Contains(t, events, "task_status")
 }
 
@@ -612,7 +613,7 @@ func TestExecutorFinishedRunIsLeftAlone(t *testing.T) {
 }
 
 // A short database problem must not leave a finished run in_progress. The executor tries
-// again to save the final status.
+// to save the final status again.
 func TestExecutorRetriesTheFinalStatusWrite(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	taskService := taskmocks.NewMockTaskService(ctrl)
@@ -643,8 +644,8 @@ func TestExecutorRetriesTheFinalStatusWrite(t *testing.T) {
 	assert.Equal(t, []string{"in_progress", "success"}, saved)
 }
 
-// If every try fails, Run returns ErrNotFinished. The job worker then returns the error to River,
-// and the next attempt marks the run failed.
+// If every try fails, Run returns ErrNotFinished. The job worker returns the error to
+// River, and the next attempt marks the run failed.
 func TestExecutorReturnsErrNotFinishedWhenTheFinalWriteKeepsFailing(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	taskService := taskmocks.NewMockTaskService(ctrl)
@@ -670,7 +671,8 @@ func TestExecutorReturnsErrNotFinishedWhenTheFinalWriteKeepsFailing(t *testing.T
 	assert.ErrorIs(t, err, execution.ErrNotFinished)
 }
 
-// A panic in a node must not stop the worker. The node and the run fail, and the status is saved.
+// A panic in a node must not stop the worker. The node and the run fail, and the status is
+// saved.
 func TestExecutorTurnsANodePanicIntoAFailedRun(t *testing.T) {
 	graph := map[string][]string{"start": {"A"}}
 	f := newExecutorFixture(t, 1)

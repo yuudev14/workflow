@@ -29,23 +29,22 @@ type IncidentFilter struct {
 	SLAState   []string `form:"sla_state" binding:"omitempty,dive,oneof=ok warning breached met"`
 	AssigneeID []string `form:"assignee_id" binding:"omitempty,dive,uuid"`
 	TeamID     []string `form:"team_id" binding:"omitempty,dive,uuid"`
-	// Unassigned unions with AssigneeID rather than contradicting it: a picker
-	// offering "Unassigned" beside names has to mean "either".
+	// Unassigned is a union with AssigneeID, not a conflict: a picker with "Unassigned" beside
+	// names means "either".
 	Unassigned *bool    `form:"unassigned" binding:"omitempty"`
 	Tags       []string `form:"tags" binding:"omitempty"`
-	// RFC3339 instants, not dates - a queue filter is "since 14:30 today my
-	// time", and the offset removes any question of whose midnight is meant.
-	// The datetime tag is gin's own validator, so a bad value 400s at bind.
+	// RFC3339 instants, not dates. A queue filter is "since 14:30 today my time", and the
+	// offset says whose midnight it is. The datetime tag is gin's validator, so a bad value
+	// gives 400 at bind.
 	CreatedFrom *string `form:"created_from" binding:"omitempty,datetime=2006-01-02T15:04:05Z07:00"`
 	CreatedTo   *string `form:"created_to" binding:"omitempty,datetime=2006-01-02T15:04:05Z07:00"`
 	Search      *string `form:"q" binding:"omitempty"`
 	Cursor      *string `form:"cursor" binding:"omitempty"`
-	// Offset is the programmatic paging mode. Unlike the cursor it can skip or
-	// repeat rows when incidents arrive mid-page; that is the trade a caller
-	// opts into by using it.
+	// Offset is the programmatic paging mode. It can skip or repeat rows when incidents
+	// arrive mid-page. The caller accepts that by using it.
 	Offset *int `form:"offset" binding:"omitempty,min=0"`
 	Limit  int  `form:"limit" binding:"omitempty,min=1,max=200"`
-	// Open filters to the not-yet-closed set, matching incidents_open_idx.
+	// Open filters the not-yet-closed set, like incidents_open_idx.
 	Open *bool `form:"open" binding:"omitempty"`
 }
 
@@ -149,9 +148,8 @@ type IncidentListItem struct {
 	UpdatedAt   time.Time             `db:"updated_at" json:"updated_at"`
 }
 
-// Runs and IOCs stay empty until module-event triggers link a playbook run to an
-// incident and IOC extraction ships. The fields exist so the response shape does
-// not change when they do.
+// Runs and IOCs stay empty until module-event triggers link a playbook run to an incident
+// and IOC extraction ships. They exist now so the response shape does not change.
 type IncidentDetail struct {
 	domain.Incident
 	Assignee     *string                      `json:"assignee"`
@@ -164,10 +162,9 @@ type IncidentDetail struct {
 	IOCs         []IOC                        `json:"iocs"`
 }
 
-// PlaybookID is what lets the UI deep-link to the run itself rather than the
-// whole executions list. TriggerType and TriggeredBy are nullable: runs predating
-// the run-input migration have neither, and a scheduled or event-driven run has
-// no user behind it.
+// PlaybookID lets the UI link to the run itself, not the whole executions list.
+// TriggerType and TriggeredBy can be null: runs from before the run-input migration have
+// neither, and a scheduled or event run has no user.
 type IncidentRun struct {
 	PlaybookHistoryID uuid.UUID `json:"playbook_history_id"`
 	PlaybookID        uuid.UUID `json:"playbook_id"`
@@ -200,17 +197,17 @@ type SLARisk struct {
 	Breached    bool       `db:"breached" json:"breached"`
 }
 
-// MTTRPoint is one point on the resolution-time series. It carries the
-// timestamp it covers because the range is caller-picked: length, start and
-// bucket width all vary per request, so the chart cannot derive its own x-axis.
+// MTTRPoint is one point of the resolution-time series. It has its own timestamp because
+// the caller picks the range: length, start and bucket width change per request, so the
+// chart cannot derive its x-axis.
 type MTTRPoint struct {
 	BucketStart time.Time `db:"bucket_start" json:"bucket_start"`
 	AvgSeconds  int       `db:"avg_seconds" json:"avg_seconds"`
 }
 
-// OpenTotal, StatusMix and SeverityMix stay all-time-open on purpose: the queue
-// header and its filter counts read them, so range-scoping would silently turn
-// "6 open" into "opened in the last 14 days".
+// OpenTotal, StatusMix and SeverityMix stay all-time-open on purpose. The queue header
+// and its filter counts read them, and a range would turn "6 open" into "opened in the
+// last 14 days".
 type IncidentsSummary struct {
 	OpenTotal   int                 `json:"open_total"`
 	StatusMix   []StatusBucket      `json:"status_mix"`
@@ -220,7 +217,7 @@ type IncidentsSummary struct {
 	Range       types.ResolvedRange `json:"range"`
 	Created     types.WindowCount   `json:"created"`
 	Resolved    types.WindowCount   `json:"resolved"`
-	// MTTRSeconds is mean time to resolve across the whole window, beside the
-	// same figure for the preceding window.
+	// MTTRSeconds is the mean time to resolve for the whole window, with the same figure for
+	// the window before.
 	MTTRSeconds types.WindowCount `json:"mttr_seconds"`
 }

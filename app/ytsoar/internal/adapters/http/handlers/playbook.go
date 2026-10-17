@@ -92,8 +92,8 @@ func (w *PlaybookHandler) GetPlaybookGraphById(c *gin.Context) {
 	response.ResponseSuccess(playbook)
 }
 
-// Summary backs the automation KPI row on the dashboards, replacing the
-// hardcoded metrics fixture.
+// Summary feeds the automation KPI row on the dashboards (it replaced the hardcoded
+// metrics fixture).
 func (w *PlaybookHandler) Summary(c *gin.Context) {
 	response := rest.Response{C: c}
 
@@ -279,8 +279,8 @@ func (w *PlaybookHandler) Trigger(c *gin.Context) {
 	response := rest.Response{C: c}
 	playbookId := c.Param("playbook_id")
 
-	// Without this the raw string reaches postgres and comes back as an
-	// invalid-uuid-syntax error, which the branch below would report as 502.
+	// without this the raw string reaches postgres and comes back as an invalid-uuid-syntax
+	// error, which the branch below would report as 502
 	if _, uuidErr := uuid.Parse(playbookId); uuidErr != nil {
 		response.ResponseError(http.StatusBadRequest, "playbook_id must be a uuid")
 		return
@@ -295,7 +295,7 @@ func (w *PlaybookHandler) Trigger(c *gin.Context) {
 	response.Response(http.StatusAccepted, data)
 }
 
-// "skipped" is deliberately absent: only the executor sets it, never a client.
+// "skipped" is not here on purpose: only the executor sets it, never a client.
 func validateTaskStateChangePayload(body tasks.UpdatePlaybookTaskHistoryStatus) error {
 	status := []string{
 		"pending",

@@ -3,12 +3,13 @@
 # Enable polling mode for Docker bind mounts
 poll = true
 
-# Main settings
+# Main settings. The default build is cmd/dev (api, worker and sandbox in one
+# process). docker/split.docker-compose.yml builds each program apart.
 root = "."
 tmp_dir = "tmp"
 
 [build]
-cmd = "go build -o ./tmp/main ./cmd/api"
+cmd = "go build -o ./tmp/main ./cmd/dev"
 bin = "tmp/main"
 full_bin = ""
 # ts/py: the localexec harnesses are go:embed'ed, so editing one must trigger

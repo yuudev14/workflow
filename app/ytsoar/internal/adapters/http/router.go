@@ -13,9 +13,8 @@ import (
 )
 
 type RouterConfig struct {
-	// CORSOrigins is an exact allow-list. A wildcard is not an option here:
-	// browsers refuse "*" once credentials are involved, and the refresh
-	// cookie makes every request credentialed.
+	// CORSOrigins is an exact allow-list. A wildcard is not possible: browsers refuse "*" with
+	// credentials, and the refresh cookie makes every request credentialed.
 	CORSOrigins []string
 }
 
@@ -45,13 +44,13 @@ func NewRouter(
 
 	apiGroup := app.Group("/api")
 
-	// Login, refresh and logout have to work without an access token.
+	// login, refresh and logout must work without an access token
 	authHandler.RegisterPublicRoutes(apiGroup)
 
 	protected := apiGroup.Group("", authMW)
 
-	// /me carries no grant: every authenticated user must be able to read
-	// their own profile and permissions.
+	// /me has no grant: every signed-in user must be able to read their own profile and
+	// permissions
 	authHandler.RegisterProtectedRoutes(protected)
 
 	playbookHandler.RegisterRoutes(protected, requirePermission)
@@ -62,9 +61,9 @@ func NewRouter(
 
 	app.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
-	// The handshake authenticates with the refresh cookie: a browser cannot
-	// set an Authorization header on a WebSocket. The socket carries playbook
-	// status, so it needs the same grant as reading playbooks.
+	// the handshake authenticates with the refresh cookie, because a browser cannot set an
+	// Authorization header on a WebSocket. The socket carries playbook status, so it needs the
+	// same grant as reading playbooks.
 	app.GET("/ws/playbook",
 		wsAuthMW,
 		requirePermission(domain.ModulePlaybooks, domain.ActionRead),

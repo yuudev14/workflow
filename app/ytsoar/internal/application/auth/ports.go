@@ -40,8 +40,7 @@ type RoleRepository interface {
 	GetWithPermissions(ctx context.Context, id uuid.UUID) (domain.RoleWithPermissions, error)
 	Create(ctx context.Context, name string, description *string) (domain.Role, error)
 	Update(ctx context.Context, id uuid.UUID, params UpdateRoleParams) (domain.Role, error)
-	// Delete refuses builtin roles at the query level and reports whether a
-	// row was removed.
+	// Delete refuses builtin roles in the query and says if a row was removed.
 	Delete(ctx context.Context, id uuid.UUID) (int64, error)
 	ReplacePermissions(ctx context.Context, roleID uuid.UUID, permissions domain.PermissionSet) error
 }
@@ -93,8 +92,8 @@ type AuthProviderRepository interface {
 	Update(ctx context.Context, id uuid.UUID, params UpdateProviderParams) (AuthProvider, error)
 }
 
-// UpdateProviderParams is the partial-update shape (Set flags mirror the
-// types.Nullable pattern the sql CASE arms read).
+// UpdateProviderParams is the partial-update shape (Set flags like the types.Nullable
+// pattern that the sql CASE arms read).
 type UpdateProviderParams struct {
 	Name    *string
 	Config  json.RawMessage
@@ -103,10 +102,9 @@ type UpdateProviderParams struct {
 
 //go:generate mockgen -destination=mocks/oidc_client_mock.go -package=mocks . OIDCClient
 
-// OIDCClient is the thin seam over go-oidc/oauth2 so the OIDC flow is testable
-// without a live IdP. AuthCodeURL builds the redirect to the provider; Exchange
-// swaps the returned code for a verified identity (id_token signature + claims
-// already checked by the adapter).
+// OIDCClient is a thin layer over go-oidc/oauth2, so the OIDC flow is testable without a
+// real IdP. AuthCodeURL builds the redirect to the provider. Exchange swaps the code for a
+// verified identity (the adapter already checked the id_token signature and claims).
 type OIDCClient interface {
 	AuthCodeURL(ctx context.Context, cfg OIDCConfig, redirectURL, state, codeChallenge string) (string, error)
 	Exchange(ctx context.Context, cfg OIDCConfig, redirectURL, code, codeVerifier string) (OIDCIdentity, error)

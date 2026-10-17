@@ -2,16 +2,14 @@ package domain
 
 import "time"
 
-// ConnectorInfo is a connector's parsed info.json plus the derived "configs"
-// list (config file stems). It stays a map so unknown metadata fields survive
-// the trip to the frontend unchanged - shape parity with the old FastAPI
-// GET /connectors/ endpoint.
+// ConnectorInfo is the parsed info.json of a connector plus the derived "configs" list
+// (config file stems). It stays a map, so unknown metadata fields reach the frontend
+// unchanged
 type ConnectorInfo map[string]any
 
-// ConnectorRecord is the audit/control row kept in Postgres for every
-// uploaded connector. The filesystem tree stays the execution source of
-// truth; this records provenance (zip checksum, uploader) and the disable
-// flag.
+// ConnectorRecord is the audit and control row in Postgres for each uploaded connector.
+// The filesystem tree is still the source of truth for execution. This row keeps the
+// provenance (zip checksum, uploader) and the disable flag.
 type ConnectorRecord struct {
 	ID         string    `json:"id"`
 	Name       string    `json:"name"`

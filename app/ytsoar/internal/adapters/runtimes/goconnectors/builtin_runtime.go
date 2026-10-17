@@ -1,8 +1,7 @@
-// Package goconnectors runs built-in connectors compiled into the worker.
-// These are OUR code - not user code - so they may run in-process; everything
-// user-authored still goes to the sandbox. Metadata parity: each builtin has
-// an info.json dir in the connectors tree with "runtime": "go" (virtual - the
-// BuiltinRuntime is the implementation).
+// Package goconnectors runs the built-in connectors compiled into the worker. They are our
+// code, not user code, so they can run in-process. User-written code still goes to the
+// sandbox. Each builtin has an info.json dir in the connectors tree with "runtime": "go"
+// (virtual, BuiltinRuntime is the implementation).
 package goconnectors
 
 import (
@@ -20,8 +19,8 @@ import (
 
 //go:generate mockgen -destination=mocks/goconnectors_mock.go -package=mocks . TemplateEngine
 
-// TemplateEngine renders {{ var.steps["node"] }} templates inside params -
-// jinja2 semantics (gonja adapter), golden-tested against the python side.
+// TemplateEngine renders {{ var.steps["node"] }} templates in params. It has jinja2
+// semantics (gonja adapter) and is golden-tested against the python side.
 type TemplateEngine interface {
 	Render(value any, variables map[string]any) (any, error)
 }
@@ -33,9 +32,8 @@ type BuiltinConnector interface {
 }
 
 // BuiltinRuntime runs the built-in connectors (http_request, condition). They are our
-// code, not user code, so they run inside the WORKER, with no sandbox. It fits
-// execution.TaskRuntime. The worker's StaticResolver returns it for the connector ids
-// that you Register here.
+// code, so they run inside the WORKER, with no sandbox. It fits execution.TaskRuntime. The
+// StaticResolver of the worker returns it for the connector ids you Register here.
 type BuiltinRuntime struct {
 	logger     logger.Logger
 	template   TemplateEngine
@@ -56,8 +54,8 @@ func (r *BuiltinRuntime) Register(id string, connector BuiltinConnector) {
 	r.connectors[id] = connector
 }
 
-// IDs returns the registered connector ids - the composition root maps each
-// of them to this runtime in the resolver.
+// IDs returns the registered connector ids. The composition root maps each one to this
+// runtime in the resolver.
 func (r *BuiltinRuntime) IDs() []string {
 	ids := make([]string, 0, len(r.connectors))
 	for id := range r.connectors {
