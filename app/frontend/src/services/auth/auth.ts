@@ -3,7 +3,7 @@ import apiClient, { refreshSession } from "../common/client";
 import { AuthProviderSummary, LoginPayload, Me, SessionResponse } from "./auth.schema";
 
 export default class AuthService {
-  private static BASE_URL = settings.BASE_URL.AUTH_SERVICE_API + "/api/auth/v1";
+  private static BASE_URL = settings.BASE_URL.AUTH_SERVICE_API + "/api/v1/auth";
 
   /**
    * Exchange credentials for a session. The API replies with httpOnly cookies;

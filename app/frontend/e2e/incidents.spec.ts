@@ -19,7 +19,7 @@ test.describe("incident list", () => {
   test("shows the open or the resolved incidents", async ({ page }) => {
     const open = await newIncident(page.request);
     const resolved = await newIncident(page.request);
-    await api(page.request).patch(`/incidents/v1/${resolved.id}/status`, { status: "resolved" });
+    await api(page.request).patch(`/incidents/${resolved.id}/status`, { status: "resolved" });
     await page.goto("/incidents");
     await page.getByRole("button", { name: "Resolved", exact: true }).click();
     await page.getByPlaceholder("Search incidents…").fill(resolved.title);
@@ -36,7 +36,7 @@ test.describe("incident detail", () => {
     const incident = await newIncident(page.request);
     await page.goto(`/incidents/${incident.id}`);
     await page.getByRole("button", { name: "Mark contained" }).click();
-    await expect.poll(async () => (await api(page.request).get(`/incidents/v1/${incident.id}`)).status).toBe("contained");
+    await expect.poll(async () => (await api(page.request).get(`/incidents/${incident.id}`)).status).toBe("contained");
   });
 
   test("adds a note", async ({ page }) => {
@@ -51,7 +51,7 @@ test.describe("incident detail", () => {
   test("unlinks an alert", async ({ page }) => {
     const incident = await newIncident(page.request);
     const alert = await newAlert(page.request);
-    await api(page.request).post(`/incidents/v1/${incident.id}/alerts`, { alert_id: alert.id });
+    await api(page.request).post(`/incidents/${incident.id}/alerts`, { alert_id: alert.id });
     await page.goto(`/incidents/${incident.id}`);
     await page.getByRole("tab", { name: /Related/ }).click();
     await expect(page.getByText(alert.title)).toBeVisible();

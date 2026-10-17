@@ -16,7 +16,7 @@ import { DateRangeParams } from "../common/range";
 
 export default class PlaybookService {
   private static BASE_URL =
-    settings.BASE_URL.PLAYBOOK_SERVICE_API + "/api/playbooks/v1";
+    settings.BASE_URL.PLAYBOOK_SERVICE_API + "/api/v1/playbooks";
   /**
    * get workflows lists
    * @param offset

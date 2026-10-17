@@ -13,13 +13,13 @@ test.describe("alert queue", () => {
 
   test("filters by severity", async ({ page }) => {
     const high = await newAlert(page.request);
-    const { id } = await api(page.request).post("/alerts/v1", { title: unique("low"), severity: "low", source_kind: "edr" });
+    const { id } = await api(page.request).post("/alerts", { title: unique("low"), severity: "low", source_kind: "edr" });
     await page.goto("/alerts");
     await page.getByRole("button", { name: "Severity" }).click();
     await page.getByRole("menuitemcheckbox", { name: /^Low/ }).click();
     await page.keyboard.press("Escape");
     await expect(page.getByRole("link", { name: high.title })).toBeHidden();
-    const low = (await api(page.request).get(`/alerts/v1/${id}`)).title;
+    const low = (await api(page.request).get(`/alerts/${id}`)).title;
     await expect(page.getByRole("link", { name: low })).toBeVisible();
   });
 
@@ -43,7 +43,7 @@ test.describe("alert queue", () => {
     await dialog.getByRole("button", { name: "Run" }).click();
     await expect(dialog).toBeHidden();
     await expect
-      .poll(async () => (await api(page.request).get(`/playbooks/v1/history?playbook_id=${playbook.id}`)).entries.length)
+      .poll(async () => (await api(page.request).get(`/playbooks/history?playbook_id=${playbook.id}`)).entries.length)
       .toBe(1);
   });
 });
@@ -56,7 +56,7 @@ test.describe("alert detail", () => {
     await page.getByRole("option", { name: "Investigating" }).click();
     await page.getByRole("button", { name: "Update status" }).click();
     await expect(page.getByRole("button", { name: "Update status" })).toBeHidden();
-    expect((await api(page.request).get(`/alerts/v1/${alert.id}`)).status).toBe("investigating");
+    expect((await api(page.request).get(`/alerts/${alert.id}`)).status).toBe("investigating");
   });
 
   test("asks for a note when the alert closes", async ({ page }) => {
@@ -99,7 +99,7 @@ test.describe("alert detail", () => {
     await expect(dialog).toBeHidden();
 
     await expect
-      .poll(async () => (await api(page.request).get(`/playbooks/v1/history?playbook_id=${playbook.id}`)).entries[0]?.status, {
+      .poll(async () => (await api(page.request).get(`/playbooks/history?playbook_id=${playbook.id}`)).entries[0]?.status, {
         timeout: 30_000,
       })
       .toBe("success");

@@ -8,7 +8,7 @@ const keycloak = "http://localhost:8180/realms/ytsoar";
 // The provider row holds the client secret, so it is not a migration. The test
 // makes it, the same as the admin does in Settings.
 async function addKeycloakProvider(request: APIRequestContext) {
-  const res = await request.post("/playbook-api/api/auth-providers/v1", {
+  const res = await request.post("/playbook-api/api/v1/auth-providers", {
     data: {
       type: "oidc",
       name: "Keycloak",
