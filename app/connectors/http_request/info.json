@@ -24,6 +24,18 @@
           "tooltip": "URL to GET",
           "placeholder": "https://api.example.com/items"
         }
+      ],
+      "output": [
+        {
+          "name": "status",
+          "type": "number",
+          "description": "HTTP status code"
+        },
+        {
+          "name": "body",
+          "type": "object",
+          "description": "Response body, parsed as JSON when possible"
+        }
       ]
     }
   ]
