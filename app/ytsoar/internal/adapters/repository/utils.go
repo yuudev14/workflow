@@ -20,8 +20,8 @@ import (
 	"github.com/yuudev14/ytsoar/internal/types"
 )
 
-// CollectRowsFromSqlizer builds the squirrel statement and maps every row
-// onto T by column name (db struct tags).
+// CollectRowsFromSqlizer builds the squirrel statement and maps each row to T by column
+// name (db struct tags).
 func CollectRowsFromSqlizer[T any](
 	ctx context.Context,
 	stmt sq.Sqlizer,
@@ -43,8 +43,8 @@ func CollectRowsFromSqlizer[T any](
 	return pgx.CollectRows(rows, pgx.RowToStructByName[T])
 }
 
-// CollectOneScalarFromSqlizer builds the squirrel statement and scans a
-// single value (e.g. count(*)).
+// CollectOneScalarFromSqlizer builds the squirrel statement and scans one value (for
+// example count(*)).
 func CollectOneScalarFromSqlizer[T any](
 	ctx context.Context,
 	stmt sq.Sqlizer,
@@ -64,8 +64,8 @@ func CollectOneScalarFromSqlizer[T any](
 	return v, nil
 }
 
-// mapNoRows keeps "no such row" distinguishable from a database failure, so
-// callers can 404 one and 500 the other.
+// mapNoRows keeps "no such row" different from a database failure, so callers can return
+// 404 for one and 500 for the other.
 func mapNoRows(err error, notFound error) error {
 	if errors.Is(err, pgx.ErrNoRows) {
 		return notFound
@@ -241,9 +241,9 @@ func fromNullTriggerType(nt db.NullTriggerType) *string {
 	return &s
 }
 
-// likeTerm builds an ILIKE pattern, escaping the wildcards so a user searching
-// for a literal "%" or "_" does not get wildcard behaviour. An empty search is
-// not a match-everything pattern - it is no filter at all.
+// likeTerm builds an ILIKE pattern and escapes the wildcards, so a search for a literal
+// "%" or "_" is not a wildcard. An empty search is no filter, not a match-everything
+// pattern.
 func likeTerm(search *string) (string, bool) {
 	if search == nil || strings.TrimSpace(*search) == "" {
 		return "", false
@@ -252,9 +252,8 @@ func likeTerm(search *string) (string, bool) {
 	return "%" + escaped + "%", true
 }
 
-// applyAssigneeFilter ORs the two controls together rather than ANDing them: a
-// picker offering "Unassigned" beside a list of names has to mean union, and
-// AND would make that selection return nothing.
+// applyAssigneeFilter combines the two controls with OR, not AND. A picker with
+// "Unassigned" beside names means union, and AND would return nothing.
 func applyAssigneeFilter(stmt sq.SelectBuilder, alias string, ids []string, unassigned *bool) sq.SelectBuilder {
 	col := alias + ".assignee_id"
 	isNull := sq.Expr(col + " IS NULL")

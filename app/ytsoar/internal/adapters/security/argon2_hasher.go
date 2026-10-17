@@ -1,5 +1,5 @@
-// Package security holds credential primitives kept out of the application
-// layer so services depend on the PasswordHasher port instead of a library.
+// Package security has credential primitives kept out of the application layer, so
+// services depend on the PasswordHasher port and not on a library.
 package security
 
 import (
@@ -18,8 +18,8 @@ func (h *Argon2Hasher) Hash(password string) (string, error) {
 	return argon2id.CreateHash(password, h.params)
 }
 
-// Verify reports whether the password matches. A malformed stored hash is a
-// mismatch, not an error. the caller only distinguishes valid from invalid.
+// Verify says if the password matches. A malformed stored hash is a mismatch, not an
+// error. The caller only needs valid or invalid.
 func (h *Argon2Hasher) Verify(password, encodedHash string) bool {
 	match, err := argon2id.ComparePasswordAndHash(password, encodedHash)
 	if err != nil {

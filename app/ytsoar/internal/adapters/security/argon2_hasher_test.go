@@ -29,7 +29,7 @@ func TestVerifyRejectsWrongPassword(t *testing.T) {
 	assert.False(t, hasher.Verify("wrong-password", encoded))
 }
 
-// The salt is random, so the same password never hashes to the same string.
+// The salt is random, so the same password never gives the same string.
 func TestHashIsSalted(t *testing.T) {
 	hasher := security.NewArgon2Hasher()
 
@@ -43,7 +43,7 @@ func TestHashIsSalted(t *testing.T) {
 	assert.True(t, hasher.Verify("same-password", second))
 }
 
-// A user row with a corrupt or empty hash must fail closed, not error out.
+// A user row with a corrupt or empty hash must fail closed, not return an error.
 func TestVerifyRejectsMalformedHash(t *testing.T) {
 	hasher := security.NewArgon2Hasher()
 

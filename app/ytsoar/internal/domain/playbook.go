@@ -8,10 +8,9 @@ import (
 	"github.com/yuudev14/ytsoar/internal/domain/apperr"
 )
 
-// TriggerType says how a playbook starts. The set is static: each value needs
-// real backend behavior, so new triggers are added here (plus the trigger_type
-// enum in the schema), never as database rows. The frontend keeps its own copy
-// of this list for the trigger picker.
+// TriggerType says how a playbook starts. The set is fixed: each value needs real backend
+// behavior, so add new triggers here (and in the trigger_type enum), never as database
+// rows. The frontend keeps its own copy for the trigger picker.
 type TriggerType string
 
 const (
@@ -44,13 +43,13 @@ const (
 	StatusSkipped    = "skipped"
 )
 
-// ErrInvalidTransition means the system refused a status change. The row is not in a
-// status that allows the new status, or the row does not exist.
+// ErrInvalidTransition: the status change was refused. The row is not in a status that
+// allows the new one, or the row does not exist.
 var ErrInvalidTransition = apperr.New(apperr.Conflict, "status change is not allowed")
 
 // Transitions maps a new status to the statuses that allow it. The repositories pass
-// From(to) to the UPDATE, so the check is atomic. Two workers cannot both change the
-// same run from queued to in_progress.
+// From(to) to the UPDATE, so the check is atomic and two workers cannot both move the same
+// run from queued to in_progress.
 type Transitions map[string][]string
 
 // From returns the statuses that allow a change to `to`. An unknown status has none.
@@ -62,7 +61,7 @@ var RunTransitions = Transitions{
 	StatusFailed:     {StatusQueued, StatusInProgress},
 }
 
-// A task can succeed or fail directly from pending. The start node never reports
+// A task can succeed or fail directly from pending: the start node never reports
 // in_progress, and a node can fail before it starts.
 var TaskTransitions = Transitions{
 	StatusInProgress: {StatusPending},

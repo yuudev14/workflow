@@ -16,14 +16,14 @@ func TestDesiredRoleNamesResolution(t *testing.T) {
 			"ignored-group": {}, // explicit empty → contributes nothing, no passthrough
 		},
 	}
-	// mapping wins + expands one-to-many, unmapped "viewer" passes through, the
-	// duplicate "soc-admins" and the overlapping "analyst" dedupe.
+	// the mapping wins and expands one to many, unmapped "viewer" passes through, and the
+	// duplicate "soc-admins" and the overlapping "analyst" are deduped
 	got := desiredRoleNames(cfg, []string{"soc-admins", "soc-analysts", "viewer", "ignored-group", "soc-admins"})
 	assert.Equal(t, []string{"admin", "analyst", "viewer"}, got)
 }
 
 func TestDesiredRoleNamesPassthroughOnly(t *testing.T) {
-	// no mapping table at all - every value is a passthrough candidate.
+	// no mapping table: every value is a passthrough candidate
 	got := desiredRoleNames(OIDCConfig{}, []string{"analyst", "analyst"})
 	assert.Equal(t, []string{"analyst"}, got)
 }

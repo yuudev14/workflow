@@ -88,8 +88,8 @@ func (r *UserRepositoryImpl) Update(ctx context.Context, id uuid.UUID, params au
 		IsActive:     toPgBoolFromNullable(params.IsActive),
 	})
 	if err != nil {
-		// UPDATE … RETURNING yields no row for an unknown id, which is a 404
-		// rather than a database failure.
+		// UPDATE ... RETURNING gives no row for an unknown id. That is a 404, not a database
+		// failure.
 		return domain.User{}, mapUniqueViolation(mapNoRows(err, auth.ErrUserNotFound), auth.ErrUserTaken)
 	}
 	return toDomainUser(row), nil
@@ -102,8 +102,8 @@ func (r *UserRepositoryImpl) SetPassword(ctx context.Context, id uuid.UUID, pass
 	})
 }
 
-// applyUserFilter is shared by List and Count so a filter can never apply to
-// the page but not the total. It assumes the users table is aliased `u`.
+// applyUserFilter is shared by List and Count, so a filter never applies to the page but
+// not the total. It assumes the users table has the alias `u`.
 func applyUserFilter(stmt sq.SelectBuilder, filter auth.UserFilter) sq.SelectBuilder {
 	if filter.Search != nil {
 		term := fmt.Sprint("%", *filter.Search, "%")
@@ -123,8 +123,8 @@ func applyUserFilter(stmt sq.SelectBuilder, filter auth.UserFilter) sq.SelectBui
 	return stmt
 }
 
-// rolesAggregate keeps roles on the same row as the user, so a page of N users
-// is one query rather than N+1.
+// rolesAggregate keeps the roles on the same row as the user, so a page of N users is one
+// query, not N+1.
 const rolesAggregate = `COALESCE((
     SELECT array_agg(r.name ORDER BY r.name)
     FROM user_roles ur JOIN roles r ON r.id = ur.role_id
@@ -149,10 +149,10 @@ func (r *UserRepositoryImpl) Count(ctx context.Context, filter auth.UserFilter) 
 	return CollectOneScalarFromSqlizer[int](ctx, stmt, r.pool, r.logger)
 }
 
-// ListAssignable returns only id and username. Everything else on a user row -
-// email, roles, auth_provider, external_id, last_login_at - stays behind
-// settings:read on the full list route; a colleague's username is ordinary SOC
-// knowledge that any analyst needs in order to fill an assignee picker.
+// ListAssignable returns only id and username. All other user fields (email, roles,
+// auth_provider, external_id, last_login_at) stay behind settings:read on the full list
+// route. A colleague's username is normal SOC knowledge, and every analyst needs it for the
+// assignee picker.
 func (r *UserRepositoryImpl) ListAssignable(ctx context.Context) ([]domain.AssignableUser, error) {
 	stmt := selectUsers("u.id, u.username").
 		Where(sq.Eq{"u.is_active": true}).
@@ -162,7 +162,6 @@ func (r *UserRepositoryImpl) ListAssignable(ctx context.Context) ([]domain.Assig
 	return CollectRowsFromSqlizer[domain.AssignableUser](ctx, stmt, r.pool, r.logger)
 }
 
-// UsernamesByIDs implements contracts.UserDirectory.
 func (r *UserRepositoryImpl) UsernamesByIDs(ctx context.Context, ids []uuid.UUID) (map[uuid.UUID]string, error) {
 	if len(ids) == 0 {
 		return map[uuid.UUID]string{}, nil

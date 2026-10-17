@@ -58,8 +58,8 @@ func TestWorkRunsTheLoadedMessage(t *testing.T) {
 	assert.Equal(t, id, <-exec.ran)
 }
 
-// The executor already saved a failed run. If the worker returned the error,
-// River would retry the job and run the connectors a second time.
+// The executor already saved a failed run. If the worker returned the error, River would
+// retry the job and run the connectors again.
 func TestWorkDoesNotRetryAFailedRun(t *testing.T) {
 	exec := &fakeExecutor{runErr: errors.New("connector failed"), ran: make(chan uuid.UUID, 1)}
 	worker := NewRunWorker(logger.NewNop(), fakeLoader{}, exec)
@@ -67,8 +67,8 @@ func TestWorkDoesNotRetryAFailedRun(t *testing.T) {
 	assert.NoError(t, worker.Work(context.Background(), job(uuid.New(), 1)))
 }
 
-// Nothing ran when the run could not start. The worker marks the run failed at once, and it
-// does not return an error, so River does not retry.
+// Nothing ran, because the run could not start. The worker marks the run failed at once
+// and returns no error, so River does not retry.
 func TestWorkFailsARunThatDidNotStartAtOnce(t *testing.T) {
 	id, exec := uuid.New(), &fakeExecutor{runErr: execution.ErrNotStarted}
 	worker := NewRunWorker(logger.NewNop(), fakeLoader{}, exec)
@@ -85,8 +85,8 @@ func TestWorkFailsTheRunWhenTheMessageCannotBeLoaded(t *testing.T) {
 	assert.Equal(t, []uuid.UUID{id}, exec.aborted)
 }
 
-// On attempt 2, the first attempt may have run the playbook already. The error text of the run
-// must not say that the run could not start.
+// On attempt 2, the first attempt may have run the playbook already. The error text of the
+// run must not say that the run could not start.
 func TestWorkSaysAnEarlierAttemptDidNotFinishOnAttempt2(t *testing.T) {
 	exec := &fakeExecutor{}
 	worker := NewRunWorker(logger.NewNop(), fakeLoader{err: errors.New("connection refused")}, exec)
@@ -98,8 +98,8 @@ func TestWorkSaysAnEarlierAttemptDidNotFinishOnAttempt2(t *testing.T) {
 	}
 }
 
-// The worker is stopping. The run must not be failed: River puts the job back, and a new worker
-// starts the run.
+// The worker is stopping. The run must not be failed: River puts the job back, and a new
+// worker starts the run.
 func TestWorkDoesNotFailTheRunWhenTheContextIsCancelled(t *testing.T) {
 	exec := &fakeExecutor{}
 	worker := NewRunWorker(logger.NewNop(), fakeLoader{err: context.Canceled}, exec)
@@ -110,7 +110,7 @@ func TestWorkDoesNotFailTheRunWhenTheContextIsCancelled(t *testing.T) {
 	assert.Empty(t, exec.aborted)
 }
 
-// If Abort fails too (the database is down), the error goes to River, so the second attempt tries again.
+// If Abort fails too (database down), the error goes to River and attempt 2 tries again.
 func TestWorkReturnsTheErrorWhenAbortFails(t *testing.T) {
 	exec := &fakeExecutor{runErr: execution.ErrNotStarted, abortErr: errors.New("db down")}
 	worker := NewRunWorker(logger.NewNop(), fakeLoader{}, exec)
@@ -118,8 +118,8 @@ func TestWorkReturnsTheErrorWhenAbortFails(t *testing.T) {
 	assert.Error(t, worker.Work(context.Background(), job(uuid.New(), 1)))
 }
 
-// The run ran, but its final status was not saved. The worker returns the error, so River gives
-// the job to a new attempt. That attempt marks the run failed. The worker does not abort here.
+// The run ran, but its final status was not saved. The worker returns the error, so River
+// gives the job to a new attempt, which marks the run failed. The worker does not abort.
 func TestWorkRetriesWhenTheFinalStatusWasNotSaved(t *testing.T) {
 	exec := &fakeExecutor{runErr: execution.ErrNotFinished}
 	worker := NewRunWorker(logger.NewNop(), fakeLoader{}, exec)
@@ -128,9 +128,9 @@ func TestWorkRetriesWhenTheFinalStatusWasNotSaved(t *testing.T) {
 	assert.Empty(t, exec.aborted)
 }
 
-// This test needs a migrated Postgres: TEST_DATABASE_URL=postgres://... go test ./internal/adapters/jobs
-// Use a throwaway database. The test starts a worker on the "playbook" queue, and that worker
-// would also take real jobs.
+// This test needs a migrated Postgres: TEST_DATABASE_URL=postgres://... go test
+// ./internal/adapters/jobs. Use a throwaway database: the test starts a worker on the
+// "playbook" queue, and it would also take real jobs.
 func TestEnqueueRunIsTransactional(t *testing.T) {
 	url := os.Getenv("TEST_DATABASE_URL")
 	if url == "" {
@@ -148,13 +148,13 @@ func TestEnqueueRunIsTransactional(t *testing.T) {
 		require.NoError(t, pool.QueryRow(ctx, "SELECT count(*) FROM river_job WHERE args->>'playbook_history_id' = $1", id.String()).Scan(&n))
 		return n
 	}
-	// The test removes only the jobs that it made.
+	// the test removes only the jobs that it made
 	rolledBackID, id := uuid.New(), uuid.New()
 	t.Cleanup(func() {
 		_, _ = pool.Exec(ctx, "DELETE FROM river_job WHERE args->>'playbook_history_id' = ANY($1)", []string{rolledBackID.String(), id.String()})
 	})
 
-	// A rolled back transaction removes its job.
+	// a rolled back transaction removes its job
 	rollback := errors.New("rollback")
 	err = txManager.WithinTransaction(ctx, func(ctx context.Context) error {
 		require.NoError(t, enqueuer.EnqueueRun(ctx, rolledBackID))
@@ -163,7 +163,7 @@ func TestEnqueueRunIsTransactional(t *testing.T) {
 	require.ErrorIs(t, err, rollback)
 	assert.Equal(t, 0, count(rolledBackID))
 
-	// A committed transaction keeps its job, and the worker works it.
+	// a committed transaction keeps its job, and the worker works it
 	exec := &fakeExecutor{ran: make(chan uuid.UUID, 1)}
 	require.NoError(t, txManager.WithinTransaction(ctx, func(ctx context.Context) error {
 		return enqueuer.EnqueueRun(ctx, id)
@@ -174,7 +174,7 @@ func TestEnqueueRunIsTransactional(t *testing.T) {
 	require.NoError(t, err)
 	require.NoError(t, workerClient.Start(ctx))
 	defer func() { _ = workerClient.Stop(ctx) }()
-	// Other tests can leave queued runs in the same database. The worker works them too.
+	// other tests can leave queued runs in this database, and the worker works them too
 	timeout := time.After(10 * time.Second)
 	for {
 		select {

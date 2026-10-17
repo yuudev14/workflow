@@ -16,12 +16,12 @@ var statusByKind = map[apperr.Kind]int{
 	apperr.Unavailable:  http.StatusBadGateway,
 }
 
-// Fail is the single exit for an error returned by a service or repository.
-// A classified error becomes its status and its own message; anything else is
-// a 500 whose detail goes to the log and never to the client.
+// Fail is the single exit for an error from a service or repository. A classified error
+// becomes its status and its own message. Anything else is a 500, with the detail in the
+// log and never sent to the client.
 //
-// It logs once - layers below must return errors rather than logging them, or
-// one failure appears several times with no way to tell they are one event.
+// It logs once: layers below must return errors, not log them, or one failure shows up
+// several times and nobody knows it is one event.
 func (r *Response) Fail(log logger.Logger, err error) {
 	kind, msg := apperr.KindOf(err)
 

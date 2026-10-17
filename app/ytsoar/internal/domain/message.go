@@ -2,24 +2,24 @@ package domain
 
 import "github.com/google/uuid"
 
-// TaskMessage is the wire format published to the playbook queue when a
-// playbook is triggered. The graph is an adjacency list keyed by task name.
-// Edges is additive metadata for conditional branching: absent or empty means
-// every edge is followed unconditionally (older messages keep working).
+// TaskMessage is the wire format published to the playbook queue when a playbook is
+// triggered. The graph is an adjacency list keyed by task name. Edges is extra metadata
+// for conditional branching: absent or empty means every edge is followed (old messages
+// keep working).
 type TaskMessage struct {
 	Graph             map[string][]string `json:"graph"`
 	Tasks             map[string]Tasks    `json:"tasks"`
 	PlaybookHistoryId uuid.UUID           `json:"playbook_history_id"`
 	Edges             []EdgeRef           `json:"edges,omitempty"`
-	// Input is the trigger data, reachable in templates as `var.input`. Additive
-	// and optional, the only kind of change this wire format allows - an old
-	// producer that omits it still runs.
+	// Input is the trigger data, available in templates as `var.input`. It is optional and
+	// additive, the only change this wire format allows. An old producer that omits it still
+	// runs.
 	Input *RunInput `json:"input,omitempty"`
 }
 
-// EdgeRef mirrors one playbook edge on the wire. A SourceHandle of "true" or
-// "false" marks a conditional branch (followed only when the source node's
-// output {"result": bool} matches); any other value follows unconditionally.
+// EdgeRef is one playbook edge on the wire. A SourceHandle of "true" or "false" is a
+// conditional branch (followed only when the output {"result": bool} of the source node
+// matches). Any other value always follows.
 type EdgeRef struct {
 	Source       string  `json:"source"`
 	Destination  string  `json:"destination"`

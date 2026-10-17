@@ -119,9 +119,9 @@ func TestHTTPRequestConnectorUnknownOperation(t *testing.T) {
 	assert.ErrorContains(t, err, "post_request")
 }
 
-// TestConditionConnectorSwitchSimple covers the simple switch: ordered
-// left/operator/right cases; the first that matches wins by its stable id, else
-// "else". A compare error (e.g. ">" on non-numeric) counts as no match.
+// TestConditionConnectorSwitchSimple covers the simple switch: ordered left/operator/right
+// cases, and the first match wins by its stable id, else "else". A compare error (for
+// example ">" on text) is no match.
 func TestConditionConnectorSwitchSimple(t *testing.T) {
 	conn := goconnectors.NewConditionConnector()
 	cases := []struct {
@@ -173,8 +173,8 @@ func TestConditionConnectorUnknownOperation(t *testing.T) {
 	assert.ErrorContains(t, err, "bogus")
 }
 
-// A case without a stable id would silently misroute edges (positional ids
-// shift when cases are reordered or deleted), so both operations reject it.
+// A case without a stable id would send edges to the wrong place (position ids move when
+// cases are reordered or deleted), so both operations reject it.
 func TestConditionConnectorMissingCaseID(t *testing.T) {
 	conn := goconnectors.NewConditionConnector()
 
@@ -190,10 +190,9 @@ func TestConditionConnectorMissingCaseID(t *testing.T) {
 	assert.ErrorContains(t, err, "case 1 has no id")
 }
 
-// TestConditionConnectorSwitchExpression covers the advanced switch: each case is
-// a template expression the registry already rendered to "True"/"False"/etc. The
-// first truthy case's stable id wins, else "else". It also exercises truthy()
-// coercion of rendered values.
+// TestConditionConnectorSwitchExpression covers the advanced switch: each case is a
+// template expression that the registry already rendered to "True", "False" and so on. The
+// id of the first truthy case wins, else "else". It also tests the truthy() conversion.
 func TestConditionConnectorSwitchExpression(t *testing.T) {
 	conn := goconnectors.NewConditionConnector()
 	cases := []struct {
@@ -235,9 +234,8 @@ func TestConditionConnectorSwitchExpression(t *testing.T) {
 	}
 }
 
-// TestConditionSwitchExpressionThroughBuiltinRuntime proves the advanced switch end to
-// end: case expressions rendered by the real gonja engine pick the first matching
-// branch.
+// TestConditionSwitchExpressionThroughBuiltinRuntime tests the advanced switch end to end:
+// expressions rendered by the real gonja engine pick the first matching branch.
 func TestConditionSwitchExpressionThroughBuiltinRuntime(t *testing.T) {
 	registry := goconnectors.NewBuiltinRuntime(logger.NewNop(), templating.NewGonjaEngine(), "")
 	registry.Register("condition", goconnectors.NewConditionConnector())
@@ -261,8 +259,8 @@ func TestConditionSwitchExpressionThroughBuiltinRuntime(t *testing.T) {
 	assert.JSONEq(t, `{"result":"med"}`, string(raw))
 }
 
-// TestConditionSwitchThroughBuiltinRuntime proves the simple switch end to end:
-// templated left/right values, structured compare picking the first match.
+// TestConditionSwitchThroughBuiltinRuntime tests the simple switch end to end: templated
+// left and right values, and the structured compare picks the first match.
 func TestConditionSwitchThroughBuiltinRuntime(t *testing.T) {
 	registry := goconnectors.NewBuiltinRuntime(logger.NewNop(), templating.NewGonjaEngine(), "")
 	registry.Register("condition", goconnectors.NewConditionConnector())

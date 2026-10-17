@@ -6,8 +6,8 @@ import (
 	"github.com/yuudev14/ytsoar/internal/domain/apperr"
 )
 
-// RFC3339Binding is gin's validator form of time.RFC3339, so a malformed bound
-// is rejected at bind time rather than inside a handler.
+// RFC3339Binding is the gin validator form of time.RFC3339, so a bad bound is rejected at
+// bind time, not in a handler.
 const RFC3339Binding = "2006-01-02T15:04:05Z07:00"
 
 const (
@@ -21,13 +21,13 @@ const (
 	BucketMonth = "month"
 	BucketYear  = "year"
 
-	// maxSeriesPoints bounds the response and keeps the chart readable. It is a
-	// guard on the bucket choice, not on how far back a caller may look.
+	// maxSeriesPoints limits the response and keeps the chart readable. It guards the bucket
+	// choice, not how far back a caller can look.
 	maxSeriesPoints = 400
 )
 
-// bucketSpans are nominal widths, used only to size the series before running
-// the query. date_trunc does the real bucketing.
+// bucketSpans are rough widths, only to size the series before the query. date_trunc does
+// the real bucketing.
 var bucketSpans = map[string]time.Duration{
 	BucketDay:   24 * time.Hour,
 	BucketWeek:  7 * 24 * time.Hour,
@@ -35,13 +35,11 @@ var bucketSpans = map[string]time.Duration{
 	BucketYear:  365 * 24 * time.Hour,
 }
 
-// DateRange binds as *string for the same reason uuids do: gin's binder cannot
-// populate a time.Time from a query parameter. Bounds are RFC3339 instants, so
-// the offset settles whose midnight a caller meant.
+// DateRange binds as *string, like uuids: gin's binder cannot fill a time.Time from a query
+// parameter. Bounds are RFC3339 instants, so the offset says whose midnight is meant.
 //
-// Bucket is the caller's choice of granularity; omitted, it follows from the
-// span. Explicit beats derived because a weekly view of a 30-day range is a
-// legitimate thing to ask for.
+// Bucket is the granularity the caller picks. If omitted, it comes from the span. Explicit
+// wins, because a weekly view of a 30-day range is a valid request.
 type DateRange struct {
 	From   *string `form:"from" binding:"omitempty,datetime=2006-01-02T15:04:05Z07:00"`
 	To     *string `form:"to" binding:"omitempty,datetime=2006-01-02T15:04:05Z07:00"`
@@ -56,8 +54,8 @@ type ResolvedRange struct {
 
 func (r ResolvedRange) Span() time.Duration { return r.To.Sub(r.From) }
 
-// Previous is the window of equal length immediately before this one — the
-// baseline every rendered delta is measured against.
+// Previous is the window of the same length right before this one. Every delta uses it as
+// the baseline.
 func (r ResolvedRange) Previous() (time.Time, time.Time) {
 	return r.From.Add(-r.Span()), r.From
 }
@@ -109,9 +107,9 @@ func (d DateRange) Resolve() (ResolvedRange, error) {
 	return ResolvedRange{From: start, To: end, Bucket: bucket}, nil
 }
 
-// bucketFor keeps the returned series a readable length instead of capping how
-// far back a caller may ask: a decade of daily points is unusable, a decade of
-// monthly points is a chart.
+// bucketFor keeps the series at a readable length, instead of limiting how far back a
+// caller can ask: a decade of daily points is unusable, a decade of monthly points is a
+// chart.
 func bucketFor(span time.Duration) string {
 	switch {
 	case span <= dayBucketMaxDays*24*time.Hour:
@@ -123,8 +121,7 @@ func bucketFor(span time.Duration) string {
 	}
 }
 
-// WindowCount pairs a value for the selected range with the same value for the
-// preceding range of equal length.
+// WindowCount is a value for the selected range and the same value for the range before.
 type WindowCount struct {
 	Current  int `json:"current"`
 	Previous int `json:"previous"`

@@ -14,7 +14,6 @@ import (
 	"github.com/yuudev14/ytsoar/internal/logger"
 )
 
-// AuditLogRepositoryImpl implements auth.AuditLogRepository.
 type AuditLogRepositoryImpl struct {
 	logger logger.Logger
 	q      QuerierTx
@@ -51,8 +50,8 @@ func applyAuditFilter(stmt sq.SelectBuilder, filter auth.AuditFilter) sq.SelectB
 	return stmt
 }
 
-// The join is LEFT: actor_id is ON DELETE SET NULL, and a row whose actor was
-// removed must still appear in the trail.
+// the join is LEFT: actor_id is ON DELETE SET NULL, and a row whose actor was removed must
+// still show in the trail
 func selectAuditLogs(columns string) sq.SelectBuilder {
 	return sq.Select(columns).
 		From("audit_logs a").

@@ -13,11 +13,11 @@ import (
 	"github.com/yuudev14/ytsoar/internal/logger"
 )
 
-// SandboxRuntime sends a task to the sandbox over gRPC. It runs in the WORKER, and it
-// fits execution.TaskRuntime. The sandbox then picks the real runtime with its own
-// DynamicResolver. The worker's StaticResolver returns this runtime for every connector
-// that is not built in. The connection is dialed once and reused. Per-call deadlines
-// come from the request context.
+// SandboxRuntime sends a task to the sandbox over gRPC. It runs in the WORKER and fits
+// execution.TaskRuntime. The sandbox picks the real runtime with its own DynamicResolver.
+// The StaticResolver of the worker returns this runtime for every connector that is not
+// built in. The connection is dialed once and reused. Per-call deadlines come from the
+// request context.
 type SandboxRuntime struct {
 	logger logger.Logger
 	conn   *grpc.ClientConn
@@ -36,7 +36,7 @@ func NewSandboxRuntime(log logger.Logger, addr string) (*SandboxRuntime, error) 
 	}, nil
 }
 
-// Close tears down the underlying connection; call it on worker shutdown.
+// Close closes the connection, call it on worker shutdown.
 func (c *SandboxRuntime) Close() error {
 	return c.conn.Close()
 }

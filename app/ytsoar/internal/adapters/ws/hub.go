@@ -10,24 +10,23 @@ import (
 )
 
 const (
-	// writeTimeout bounds a single frame write; sendBuffer is how many events a
-	// client may fall behind before it is dropped. Together they keep one slow
-	// client from stalling the broadcast loop for everyone else.
+	// writeTimeout limits one frame write. sendBuffer is how many events a client can fall
+	// behind before it is dropped. Together they stop one slow client from stalling the
+	// broadcast loop for all.
 	writeTimeout = 10 * time.Second
 	sendBuffer   = 64
 )
 
-// newUpgrader restricts which pages may open a socket. CORS does not apply to
-// WebSockets, so without this check any site could open an authenticated
-// connection using the visitor's cookie.
+// newUpgrader limits which pages can open a socket. CORS does not apply to WebSockets, so
+// without this check any site could open an authenticated connection with the cookie of
+// the visitor.
 func newUpgrader(allowedOrigins []string) websocket.Upgrader {
 	return websocket.Upgrader{
 		ReadBufferSize:  1024,
 		WriteBufferSize: 1024,
 		CheckOrigin: func(r *http.Request) bool {
 			origin := r.Header.Get("Origin")
-			// Non-browser clients (curl, the CLI) send no Origin at all;
-			// they still have to pass the auth middleware.
+			// non-browser clients (curl, CLI) send no Origin, they still pass the auth middleware
 			if origin == "" {
 				return true
 			}
@@ -41,8 +40,8 @@ func newUpgrader(allowedOrigins []string) websocket.Upgrader {
 	}
 }
 
-// client pairs a connection with its buffered send queue; a dedicated
-// writePump goroutine drains the queue so writes never block the hub.
+// client is a connection with its buffered send queue. One writePump goroutine drains the
+// queue, so writes never block the hub.
 type client struct {
 	conn *websocket.Conn
 	send chan any
@@ -53,8 +52,8 @@ func (c *client) writePump() {
 	for message := range c.send {
 		_ = c.conn.SetWriteDeadline(time.Now().Add(writeTimeout))
 		if err := c.conn.WriteJSON(message); err != nil {
-			// drain the rest so the hub's channel sends never block; the read
-			// loop notices the closed conn and unregisters us
+			// drain the rest so channel sends of the hub never block, the read loop sees the closed
+			// conn and unregisters us
 			for range c.send {
 			}
 			return
@@ -62,8 +61,8 @@ func (c *client) writePump() {
 	}
 }
 
-// Hub fans playbook/task status updates out to connected websocket clients.
-// It implements contracts.StatusBroadcaster.
+// Hub sends playbook and task status updates to the connected websocket clients. It
+// implements contracts.StatusBroadcaster.
 type Hub struct {
 	clients    map[*client]bool
 	broadcast  chan any
@@ -99,7 +98,7 @@ func (h *Hub) Run() {
 				select {
 				case c.send <- message:
 				default:
-					// client is too far behind - drop it rather than block
+					// the client is too far behind, drop it instead of blocking
 					delete(h.clients, c)
 					close(c.send)
 				}
@@ -112,9 +111,9 @@ func (h *Hub) Broadcast(data any) {
 	h.broadcast <- data
 }
 
-// ServeWS upgrades the request and keeps the connection registered until the
-// client disconnects. Incoming messages are read and discarded so pings and
-// close frames are processed.
+// ServeWS upgrades the request and keeps the connection registered until the client
+// disconnects. Incoming messages are read and dropped, so pings and close frames are
+// handled.
 func (h *Hub) ServeWS(c *gin.Context) {
 	conn, err := h.upgrader.Upgrade(c.Writer, c.Request, nil)
 	if err != nil {

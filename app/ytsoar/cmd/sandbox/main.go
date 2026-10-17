@@ -1,7 +1,7 @@
-// The sandbox hosts ALL dynamic code - Python connectors, JS connectors and
-// code snippets - behind the ConnectorRuntime gRPC API. Every run is a fresh
-// subprocess (localexec). It deliberately has no database or message-queue
-// access: deploy it with zero credentials in its environment.
+// The sandbox runs ALL dynamic code (Python connectors, JS connectors, code snippets)
+// behind the ConnectorRuntime gRPC API. Each run is a new subprocess (localexec). It has
+// no database or message queue access on purpose: deploy it with no credentials in its
+// environment.
 package main
 
 import (

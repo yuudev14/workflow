@@ -13,9 +13,9 @@ import (
 	"github.com/yuudev14/ytsoar/internal/application/auth"
 )
 
-// The whole provider object pasted into the config field (a real mistake we hit)
-// must be rejected at create, before any row is written - not stored to fail
-// later at login. mockProviders has no Create expectation, so a write fails.
+// The whole provider object pasted into the config field (a real mistake we had) must be
+// rejected at create, before any row is written, and not stored to fail at login.
+// mockProviders has no Create expectation, so a write fails.
 func TestCreateProviderRejectsWrappedConfig(t *testing.T) {
 	env := setupTest(t)
 	wrapped := json.RawMessage(`{"name":"Keycloak","type":"oidc","enabled":true,"config":{"issuer":"x","client_id":"y"}}`)

@@ -62,8 +62,8 @@ func setup(t *testing.T) *testEnv {
 		}).
 		AnyTimes()
 
-	// The directory only labels assignee changes; returning nothing keeps the
-	// diff assertions about the diff.
+	// the directory only labels assignee changes. Returning nothing keeps the diff assertions
+	// about the diff.
 	users := mock_contracts.NewMockUserDirectory(ctrl)
 	users.EXPECT().
 		UsernamesByIDs(gomock.Any(), gomock.Any()).
@@ -79,8 +79,8 @@ func setup(t *testing.T) *testEnv {
 	}
 }
 
-// The alerts service depends on incidents through a port it owns, so this is
-// the compile-time proof the wiring in cmd/api/main.go stays valid.
+// The alerts service depends on incidents through a port it owns, so this is the compile
+// check that the wiring in cmd/api/main.go stays valid.
 var _ alerts.IncidentLinker = (*incidents.Service)(nil)
 
 var _ contracts.ModuleEventPublisher = (*mock_contracts.MockModuleEventPublisher)(nil)
@@ -106,7 +106,7 @@ func TestCreateLinksSuppliedAlertsInOneTransaction(t *testing.T) {
 		env.repo.EXPECT().LinkAlert(gomock.Any(), incident.ID, id, domain.LinkSourceManual).
 			Return(true, nil)
 	}
-	// linked is written on both sides: the incident's timeline and the alert's.
+	// linked is written on both sides: the timeline of the incident and of the alert
 	env.repo.EXPECT().AppendEvent(gomock.Any(), gomock.Any()).
 		DoAndReturn(func(_ context.Context, p incidents.AppendEventParams) error {
 			assert.Equal(t, domain.EventTypeLinked, p.Type)
@@ -212,7 +212,7 @@ func TestUpdateWithNoActualChangeWritesNoEvent(t *testing.T) {
 	require.NoError(t, err)
 }
 
-// The stepper lives in the domain so a bad move is a 400, not a silent write.
+// The stepper is in the domain, so a bad move is a 400 and not a silent write.
 func TestUpdateStatusEnforcesTheTransitionStepper(t *testing.T) {
 	env := setup(t)
 	id := uuid.New()
@@ -281,8 +281,8 @@ func TestUpdateStatusRejectsUnknownStatus(t *testing.T) {
 	assert.Equal(t, 0, *env.txCalls)
 }
 
-// Escalation runs inside the alert service's transaction, so it must not open
-// one of its own or publish - the caller announces both entities after commit.
+// Escalation runs inside the transaction of the alert service, so it must not open its own
+// or publish. The caller announces both entities after the commit.
 func TestCreateForEscalationDoesNotOpenATransactionOrPublish(t *testing.T) {
 	env := setup(t)
 	incident := domain.Incident{ID: uuid.New(), Title: "Encoded PowerShell execution"}
@@ -346,8 +346,8 @@ func TestLinkAlertWritesBothTimelines(t *testing.T) {
 	assert.Equal(t, 1, *env.txCalls)
 }
 
-// ON CONFLICT DO NOTHING makes a repeat link a no-op, but it must not append a
-// second pair of timeline rows claiming it happened twice.
+// ON CONFLICT DO NOTHING makes a repeat link do nothing, but it must not add a second pair
+// of timeline rows that say it happened twice.
 func TestLinkAlertIsIdempotent(t *testing.T) {
 	env := setup(t)
 	incidentID, alertID := uuid.New(), uuid.New()

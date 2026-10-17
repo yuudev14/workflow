@@ -19,6 +19,8 @@ The backend is Go (`app/ytsoar`). It has three programs: `api`, `worker` and `sa
 ## Working rules
 
 - Less code is better. Be parsimonious.
+- Write few comments. Comment only the reason, not the action. Keep each to one line.
+- At the end of each feature or bug fix, add a unit test or an integration test for it.
 - Fewer files is better. Do not add a file or a package when an existing one fits.
 - Keep a clear service boundary. A service does not need to know the details of the model objects. Ideally the service returns state that the model can then adopt.
 - Never commit or push unless asked. The user reviews, tests and commits.

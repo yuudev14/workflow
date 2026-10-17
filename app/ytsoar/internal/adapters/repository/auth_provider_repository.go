@@ -13,7 +13,6 @@ import (
 	"github.com/yuudev14/ytsoar/internal/logger"
 )
 
-// AuthProviderRepositoryImpl implements auth.AuthProviderRepository.
 type AuthProviderRepositoryImpl struct {
 	logger logger.Logger
 	q      QuerierTx

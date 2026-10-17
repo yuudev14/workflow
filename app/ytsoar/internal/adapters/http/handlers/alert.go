@@ -25,8 +25,8 @@ func NewAlertHandler(log logger.Logger, alertService *alerts.Service, orchestrat
 	return &AlertHandler{logger: log, alertService: alertService, orchestrator: orchestrator}
 }
 
-// actorID is optional on ingest: a forwarder posting alerts is authenticated
-// but its user id is not the analyst who acted on them.
+// actorID is optional on ingest: a forwarder that posts alerts is authenticated, but its
+// user id is not the analyst who acted on them.
 func actorID(c *gin.Context) *uuid.UUID {
 	actor, ok := middleware.CurrentUser(c)
 	if !ok {
@@ -36,8 +36,8 @@ func actorID(c *gin.Context) *uuid.UUID {
 	return &id
 }
 
-// gin cannot bind a path param to uuid.UUID ([16]byte), so every id is parsed
-// here rather than through the binder.
+// gin cannot bind a path param to uuid.UUID ([16]byte), so every id is parsed here and not
+// by the binder.
 func pathUUID(c *gin.Context, param string) (uuid.UUID, bool) {
 	id, err := uuid.Parse(c.Param(param))
 	if err != nil {
@@ -48,8 +48,8 @@ func pathUUID(c *gin.Context, param string) (uuid.UUID, bool) {
 	return id, true
 }
 
-// bindRange is shared by every /summary handler: bind the raw bounds, then let
-// Resolve apply the defaults and reject an impossible window.
+// bindRange is shared by every /summary handler: bind the raw bounds, then Resolve applies
+// the defaults and rejects an impossible window.
 func bindRange(c *gin.Context, log logger.Logger) (types.ResolvedRange, bool) {
 	response := rest.Response{C: c}
 
@@ -294,8 +294,8 @@ func (h *AlertHandler) DeleteNote(c *gin.Context) {
 	c.Status(http.StatusNoContent)
 }
 
-// Run starts one playbook run against the selected alerts. The body carries ids
-// only; the records are hydrated server-side.
+// Run starts one playbook run on the selected alerts. The body has only ids, and the
+// server loads the records.
 func (h *AlertHandler) Run(c *gin.Context) {
 	response := rest.Response{C: c}
 

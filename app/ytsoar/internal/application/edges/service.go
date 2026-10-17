@@ -25,7 +25,6 @@ func NewEdgeServiceImpl(EdgeRepository EdgeRepository) EdgeService {
 	}
 }
 
-// GetEdgesByPlaybookId implements EdgeService.
 func (e *EdgeServiceImpl) GetEdgesByPlaybookId(ctx context.Context, playbookId string) ([]domain.ResponseEdges, error) {
 	return e.EdgeRepository.GetEdgesByPlaybookId(ctx, playbookId)
 }

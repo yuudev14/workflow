@@ -84,7 +84,6 @@ func toDomainTaskHistory(row db.TaskHistory) domain.TaskHistory {
 	}
 }
 
-// GetTasksByPlaybookId implements tasks.TaskRepository.
 func (t *TaskRepositoryImpl) GetTasksByPlaybookId(ctx context.Context, playbookId string) []domain.Tasks {
 	pgID, err := toPgUUIDFromString(playbookId)
 	if err != nil {
@@ -132,7 +131,6 @@ func (t *TaskRepositoryImpl) UpsertTasks(ctx context.Context, playbookId uuid.UU
 	return upserted, nil
 }
 
-// DeleteTasks implements tasks.TaskRepository.
 func (t *TaskRepositoryImpl) DeleteTasks(ctx context.Context, taskIds []uuid.UUID) error {
 	ids := make([]pgtype.UUID, 0, len(taskIds))
 	for _, id := range taskIds {
@@ -141,7 +139,6 @@ func (t *TaskRepositoryImpl) DeleteTasks(ctx context.Context, taskIds []uuid.UUI
 	return t.queriesFromContext(ctx).DeleteTasks(ctx, ids)
 }
 
-// CreateTaskHistory implements tasks.TaskRepository.
 func (t *TaskRepositoryImpl) CreateTaskHistory(ctx context.Context, playbookHistoryId string, taskList []domain.Tasks, graph map[uuid.UUID][]uuid.UUID) ([]domain.TaskHistory, error) {
 	pgHistoryID, err := toPgUUIDFromString(playbookHistoryId)
 	if err != nil {
@@ -185,7 +182,6 @@ func (t *TaskRepositoryImpl) CreateTaskHistory(ctx context.Context, playbookHist
 	return histories, nil
 }
 
-// UpdateTaskStatus implements tasks.TaskRepository.
 func (t *TaskRepositoryImpl) UpdateTaskStatus(ctx context.Context, playbookHistoryId string, taskId string, status string) (*domain.TaskHistory, error) {
 	pgHistoryID, err := toPgUUIDFromString(playbookHistoryId)
 	if err != nil {
@@ -213,7 +209,6 @@ func (t *TaskRepositoryImpl) UpdateTaskStatus(ctx context.Context, playbookHisto
 	return &history, nil
 }
 
-// UpdateTaskHistory implements tasks.TaskRepository.
 func (t *TaskRepositoryImpl) UpdateTaskHistory(ctx context.Context, playbookHistoryId string, taskId string, taskHistory tasks.UpdateTaskHistoryData) (*domain.TaskHistory, error) {
 	pgHistoryID, err := toPgUUIDFromString(playbookHistoryId)
 	if err != nil {
@@ -274,7 +269,6 @@ func (t *TaskRepositoryImpl) UpdateTaskHistory(ctx context.Context, playbookHist
 	return &history, nil
 }
 
-// FailUnfinishedTaskHistory implements tasks.TaskRepository.
 func (t *TaskRepositoryImpl) FailUnfinishedTaskHistory(ctx context.Context, playbookHistoryId string, reason string) ([]domain.TaskHistory, error) {
 	pgID, err := toPgUUIDFromString(playbookHistoryId)
 	if err != nil {
@@ -294,7 +288,6 @@ func (t *TaskRepositoryImpl) FailUnfinishedTaskHistory(ctx context.Context, play
 	return failed, nil
 }
 
-// GetTaskHistoryById implements tasks.TaskRepository.
 func (t *TaskRepositoryImpl) GetTaskHistoryById(ctx context.Context, id uuid.UUID) (*domain.TaskHistory, error) {
 	row, err := t.queriesFromContext(ctx).GetTaskHistoryById(ctx, toPgUUID(id))
 	if err != nil {
@@ -304,7 +297,6 @@ func (t *TaskRepositoryImpl) GetTaskHistoryById(ctx context.Context, id uuid.UUI
 	return &history, nil
 }
 
-// GetTaskHistoryByPlaybookHistoryId implements tasks.TaskRepository.
 func (t *TaskRepositoryImpl) GetTaskHistoryByPlaybookHistoryId(ctx context.Context, id string, filter tasks.TaskHistoryFilter) ([]domain.TaskHistory, error) {
 	pgID, err := toPgUUIDFromString(id)
 	if err != nil {
@@ -323,7 +315,6 @@ func (t *TaskRepositoryImpl) GetTaskHistoryByPlaybookHistoryId(ctx context.Conte
 	return histories, nil
 }
 
-// GetTaskHistoryCount implements tasks.TaskRepository.
 func (t *TaskRepositoryImpl) GetTaskHistoryCount(ctx context.Context, filter tasks.TaskHistoryFilter) (int, error) {
 	stmt := sq.Select("count(*)").From("task_history").
 		PlaceholderFormat(sq.Dollar)

@@ -13,8 +13,8 @@ import (
 
 const oidcStateCookieTTL = 600 * time.Second
 
-// Providers lists the enabled identity providers for the login screen.
-// Public: the browser needs it before it has any session.
+// Providers lists the enabled identity providers for the login screen. Public, because
+// the browser needs it before it has a session.
 func (h *AuthHandler) Providers(c *gin.Context) {
 	response := rest.Response{C: c}
 
@@ -27,8 +27,8 @@ func (h *AuthHandler) Providers(c *gin.Context) {
 	response.ResponseSuccess(providers)
 }
 
-// OIDCStart seals the state+PKCE verifier in a short-lived cookie and 302s the
-// browser to the identity provider.
+// OIDCStart puts the state and PKCE verifier in a short-lived cookie and redirects (302)
+// the browser to the identity provider.
 func (h *AuthHandler) OIDCStart(c *gin.Context) {
 	response := rest.Response{C: c}
 
@@ -49,10 +49,10 @@ func (h *AuthHandler) OIDCStart(c *gin.Context) {
 	c.Redirect(http.StatusFound, redirectURL)
 }
 
-// OIDCCallback verifies state, exchanges the code, provisions/syncs the user,
-// sets the session cookies and returns the browser to the app. On any failure
-// it lands on /login?error=sso - never an error body, since this is a top-level
-// navigation the user sees.
+// OIDCCallback checks the state, exchanges the code, creates or syncs the user, sets the
+// session cookies and returns the browser to the app. On any failure it goes to
+// /login?error=sso and never shows an error body, because the user sees this top-level
+// navigation.
 func (h *AuthHandler) OIDCCallback(c *gin.Context) {
 	frontend := h.authService.FrontendURL()
 
@@ -62,7 +62,7 @@ func (h *AuthHandler) OIDCCallback(c *gin.Context) {
 		return
 	}
 
-	// The state cookie is single-use regardless of outcome.
+	// the state cookie is single-use, whatever the result
 	stateCookie := middleware.ReadOIDCStateCookie(c)
 	h.cookies.ClearOIDCStateCookie(c)
 

@@ -41,8 +41,8 @@ type UserFilter struct {
 	RoleName *string `form:"role"`
 }
 
-// CreateUserInput is what the handler layer hands in: a plaintext password
-// and role ids, neither of which reach the repository as-is.
+// CreateUserInput comes from the handler layer: a plaintext password and role ids. Neither
+// reaches the repository as it is.
 type CreateUserInput struct {
 	Username  string   `json:"username" binding:"required"`
 	Email     string   `json:"email" binding:"required,email"`
@@ -81,8 +81,8 @@ type TeamFilter struct {
 	Search *string `form:"search"`
 }
 
-// RoleInput carries the whole matrix: permissions are replaced wholesale, not
-// patched, so the editor cannot leave a half-applied grant set behind.
+// RoleInput has the whole matrix. Permissions are replaced, not patched, so the editor
+// cannot leave a half-applied set of grants.
 type RoleInput struct {
 	Name        string              `json:"name" binding:"required"`
 	Description *string             `json:"description"`
@@ -143,8 +143,8 @@ type AuthConfig struct {
 	AdminEmail      string
 	AdminPassword   string
 
-	// OIDC. FrontendURL is where the callback redirects the browser on success;
-	// AuthPublicURL is the browser-facing base used to build the IdP redirect_uri.
+	// OIDC. FrontendURL is where the callback sends the browser on success. AuthPublicURL is
+	// the browser base used to build the IdP redirect_uri.
 	FrontendURL   string
 	AuthPublicURL string
 }

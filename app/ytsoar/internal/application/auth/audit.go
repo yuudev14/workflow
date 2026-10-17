@@ -7,8 +7,8 @@ import (
 	"github.com/yuudev14/ytsoar/internal/types"
 )
 
-// ListAuditLogs is read-only by design: audit rows are never edited or deleted
-// through the API, or the trail could be doctored by whoever it incriminates.
+// ListAuditLogs is read-only on purpose: audit rows are never edited or deleted through
+// the API, or the person it incriminates could change the trail.
 func (s *Service) ListAuditLogs(ctx context.Context, offset, limit int, filter AuditFilter) (types.Entries[domain.AuditLog], error) {
 	logs, err := s.audit.List(ctx, offset, limit, filter)
 	if err != nil {

@@ -109,9 +109,8 @@ func (w *PlaybookApplicationServiceImpl) InsertEdges(
 	var edgeToInsert []domain.Edges
 	tasksMap := make(map[string]uuid.UUID)
 
-	// initialize data to insert. in payload we have the name of the tasks but we need
-	// to save the id instead of the name that why we need to
-	// create a taskmap with name and uuid of the task to easily get the uuid from the edges
+	// the payload has task names, but we save ids. Build a name -> uuid map to get the id
+	// from the edges
 	for _, task := range tasks {
 		tasksMap[task.Name] = task.ID
 	}
@@ -317,8 +316,8 @@ func (w *PlaybookApplicationServiceImpl) UpdatePlaybookTasks(
 	return playbookGraph, nil
 }
 
-// TriggerPlaybook implements PlaybookApplicationService. The editor's bare
-// trigger has no records and no analyst-supplied parameters.
+// TriggerPlaybook implements PlaybookApplicationService. The editor trigger has no
+// records and no parameters.
 func (w *PlaybookApplicationServiceImpl) TriggerPlaybook(ctx context.Context, playbookId string) (*domain.TaskMessage, error) {
 	return w.runPlaybook(ctx, playbookId, RunStamp{
 		TriggerType: new(string(domain.TriggerTypeManual)),
@@ -326,9 +325,8 @@ func (w *PlaybookApplicationServiceImpl) TriggerPlaybook(ctx context.Context, pl
 	}, "", nil)
 }
 
-// RunPlaybook implements PlaybookApplicationService. The caller sends record ids
-// and the records are hydrated here, so a fabricated payload cannot aim a
-// playbook at a target the analyst never selected.
+// RunPlaybook implements PlaybookApplicationService. The caller sends record ids and we
+// load the records here, so a fake payload cannot target a record the analyst did not pick.
 func (w *PlaybookApplicationServiceImpl) RunPlaybook(ctx context.Context, playbookId string, moduleType string, payload RunPlaybookPayload, actorID *uuid.UUID) (*domain.TaskMessage, error) {
 	recordIDs, err := parseRecordIDs(payload.RecordIDs)
 	if err != nil {
@@ -404,18 +402,16 @@ func (w *PlaybookApplicationServiceImpl) runPlaybook(ctx context.Context, playbo
 		if _, err := w.TaskService.CreateTaskHistory(ctx, playbookHistory.ID.String(), taskData, GetGraphUUIDS(edges)); err != nil {
 			return err
 		}
-		// Use the same transaction as the history rows. The run is queued only if its history
-		// exists. The worker builds the message from the history rows.
+		// same transaction as the history rows, so the run is queued only if its history exists
 		return w.RunEnqueuer.EnqueueRun(ctx, playbookHistory.ID)
 	})
 	if txErr != nil {
 		return nil, txErr
 	}
 
-	// broadcast only after the tx commits - a rollback must not leak a
-	// phantom history to WS clients, and a slow client must not hold the tx open.
-	// Same {event, data} envelope the status consumer emits: clients route on
-	// `event`, so a bare row is silently dropped and the new run never appears.
+	// broadcast after the commit: a rollback must not leak a phantom history, and a slow
+	// client must not hold the tx open. Use the same {event, data} envelope as the status
+	// consumer, or clients drop the row.
 	w.StatusBroadcaster.Broadcast(map[string]any{
 		"event": "playbook_status",
 		"data":  playbookHistory,
@@ -430,9 +426,9 @@ func (w *PlaybookApplicationServiceImpl) runPlaybook(ctx context.Context, playbo
 	}, nil
 }
 
-// RunLoader builds the TaskMessage of a queued run from its history rows. The edges and
-// the input are on playbook_history. The task snapshots are in task_history. So the queue
-// holds only the run ID, not a copy of the whole graph.
+// RunLoader builds the TaskMessage of a queued run from its history rows (edges and input
+// in playbook_history, task snapshots in task_history). The queue holds only the run ID,
+// not a copy of the graph.
 type RunLoader struct {
 	playbooks PlaybookService
 	tasks     tasks.TaskService
@@ -465,7 +461,7 @@ func (l *RunLoader) LoadRunMessage(ctx context.Context, historyID uuid.UUID) (do
 		}
 	}
 
-	// The system stores the edge handles as plain JSON strings, or null.
+	// edge handles are stored as plain JSON strings or null
 	var stored []struct {
 		SourceTaskName      string  `json:"source_task_name"`
 		DestinationTaskName string  `json:"destination_task_name"`
@@ -532,17 +528,16 @@ func prepareMessage(tasksData []domain.Tasks, edges []domain.ResponseEdges) (map
 			ref.SourceHandle = &handle
 		} else if source, ok := tasksMap[edge.SourceTaskName]; ok &&
 			source.ConnectorID != nil && *source.ConnectorID == domain.ConditionConnectorID {
-			// A nil handle always follows in the executor, which would defeat
-			// branch gating on a condition edge; stamp the editor's unrouted
-			// "output" handle instead (never a followed branch).
+			// a nil handle always follows in the executor, which would skip branch gating on a
+			// condition edge. Use the "output" handle of the editor instead (never a followed branch).
 			handle := domain.ConditionOutputHandle
 			ref.SourceHandle = &handle
 		}
 		edgeRefs = append(edgeRefs, ref)
 	}
 
-	// The graph so far only has nodes that touch an edge; seed the rest so
-	// single-node and disconnected tasks still run.
+	// the graph only has nodes with an edge so far. Add the rest so single-node and
+	// disconnected tasks still run.
 	for name := range tasksMap {
 		if _, ok := graph[name]; !ok {
 			graph[name] = []string{}

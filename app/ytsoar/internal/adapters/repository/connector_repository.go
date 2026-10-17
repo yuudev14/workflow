@@ -10,7 +10,7 @@ import (
 	"github.com/yuudev14/ytsoar/internal/logger"
 )
 
-// ConnectorRepositoryImpl persists connector audit rows. It implements
+// ConnectorRepositoryImpl saves the connector audit rows. It implements
 // connectors.ConnectorRepository.
 type ConnectorRepositoryImpl struct {
 	logger logger.Logger

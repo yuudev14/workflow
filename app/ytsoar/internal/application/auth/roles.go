@@ -68,8 +68,8 @@ func (s *Service) UpdateRole(ctx context.Context, actorID, id uuid.UUID, input U
 	return s.roles.GetWithPermissions(ctx, id)
 }
 
-// SetRolePermissions replaces the whole matrix in one transaction. A partial
-// apply would leave a role holding grants nobody chose.
+// SetRolePermissions replaces the whole matrix in one transaction. A partial apply would
+// leave a role with grants nobody chose.
 func (s *Service) SetRolePermissions(ctx context.Context, actorID, id uuid.UUID, matrix map[string][]string) (domain.RoleWithPermissions, error) {
 	if err := s.rejectBuiltin(ctx, id); err != nil {
 		return domain.RoleWithPermissions{}, err
@@ -80,8 +80,8 @@ func (s *Service) SetRolePermissions(ctx context.Context, actorID, id uuid.UUID,
 		return domain.RoleWithPermissions{}, err
 	}
 
-	// ReplacePermissions deletes then re-inserts, so without a transaction a
-	// failure mid-rewrite leaves the role holding a partial matrix.
+	// ReplacePermissions deletes and inserts again, so without a transaction a failure in the
+	// middle leaves the role with a partial matrix
 	if err := s.txManager.WithinTransaction(ctx, func(ctx context.Context) error {
 		return s.roles.ReplacePermissions(ctx, id, permissions)
 	}); err != nil {
@@ -132,9 +132,9 @@ func (s *Service) rejectBuiltin(ctx context.Context, id uuid.UUID) error {
 	return nil
 }
 
-// parsePermissionMatrix validates every module and action against the domain
-// vocabulary. The columns are TEXT, so the database accepts anything - a typo
-// would be stored happily and then grant nothing, forever.
+// parsePermissionMatrix checks every module and action against the domain list. The
+// columns are TEXT, so the database accepts anything, and a typo would be stored and grant
+// nothing, forever.
 func parsePermissionMatrix(matrix map[string][]string) (domain.PermissionSet, error) {
 	permissions := make(domain.PermissionSet, 0, len(matrix))
 	for module, actions := range matrix {

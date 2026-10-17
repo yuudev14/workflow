@@ -1,7 +1,7 @@
-// Package depsinstall vendors a connector's declared dependencies right
-// after upload - the same commands `make connector-deps` runs for the whole
-// tree. It executes in the API container, whose alpine/musl toolchain
-// matches the sandbox image that will import the packages.
+// Package depsinstall vendors the declared dependencies of a connector right after upload,
+// with the same commands as `make connector-deps` for the whole tree. It runs in the API
+// container, whose alpine/musl toolchain matches the sandbox image that imports the
+// packages.
 package depsinstall
 
 import (
@@ -30,8 +30,8 @@ func New(log logger.Logger, dir string) *LocalInstaller {
 	}
 }
 
-// Install vendors requirements.txt into <id>/deps and package.json into
-// <id>/node_modules. Connectors without dependency files are a no-op.
+// Install vendors requirements.txt into <id>/deps and package.json into <id>/node_modules.
+// Connectors without dependency files do nothing.
 func (i *LocalInstaller) Install(ctx context.Context, connectorID string) error {
 	base := filepath.Join(i.dir, connectorID)
 

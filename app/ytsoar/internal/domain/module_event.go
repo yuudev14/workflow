@@ -16,9 +16,8 @@ const (
 	ModuleEventUpdated = "updated"
 )
 
-// FieldChange is one entry in an `updated` timeline event. Usernames are filled
-// in for id-valued fields so the timeline reads as a sentence rather than a pair
-// of uuids.
+// FieldChange is one entry in an `updated` timeline event. Usernames are filled in for
+// id fields, so the timeline reads as a sentence and not a pair of uuids.
 type FieldChange struct {
 	Field        string  `json:"field"`
 	From         any     `json:"from"`
@@ -27,11 +26,9 @@ type FieldChange struct {
 	ToUsername   *string `json:"to_username,omitempty"`
 }
 
-// DiffAssignable computes the timeline diff for the fields both alerts and
-// incidents expose through PATCH. Comparing the persisted before/after rows
-// rather than the request payload means a PATCH that sets a field to the value
-// it already held produces no change - a no-op edit must not pollute the audit
-// log.
+// DiffAssignable builds the timeline diff for the fields that alerts and incidents both
+// expose through PATCH. It compares the saved before and after rows, not the request, so a
+// PATCH that sets the same value gives no change and does not pollute the audit log.
 func DiffAssignable(
 	beforeSeverity, afterSeverity AlertSeverity,
 	beforeAssignee, afterAssignee *uuid.UUID,
@@ -74,8 +71,8 @@ func uuidOrNil(id *uuid.UUID) any {
 	return *id
 }
 
-// Tag order is not meaningful, but reordering is also not an edit worth logging,
-// so the comparison is on the sorted copies.
+// tag order does not matter, and a reorder is not an edit worth logging, so compare the
+// sorted copies
 func sameTags(a, b []string) bool {
 	if len(a) != len(b) {
 		return false

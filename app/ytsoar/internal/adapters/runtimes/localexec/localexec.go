@@ -1,9 +1,8 @@
-// Package localexec runs user code nodes and JS connectors inside the worker
-// as fresh subprocesses. The harness scripts are embedded in the binary and
-// passed inline (`python3 -I -c` / `node -e`); the payload travels over stdin
-// as JSON and the result comes back on stdout as JSON, so nothing is written
-// to disk. Subprocesses give fault isolation (crash/hang/OOM cannot take the
-// worker down) - the worker container remains the security boundary.
+// Package localexec runs user code nodes and JS connectors in the worker as new
+// subprocesses. The harness scripts are embedded in the binary and passed inline
+// (`python3 -I -c` / `node -e`). The payload goes in over stdin as JSON and the result
+// comes back on stdout as JSON, so nothing is written to disk. A crash, hang or OOM cannot
+// take the worker down. The worker container is the security boundary.
 package localexec
 
 import (
@@ -20,22 +19,22 @@ import (
 const (
 	defaultNodeMemoryLimitMB = 256
 
-	// python has no CLI flag like node's --max-old-space-size, so the harness
-	// applies RLIMIT_AS itself from the env var pythonMemLimitEnv passes.
-	// Higher than the node cap: RLIMIT_AS counts total address space, not heap.
+	// python has no flag like node's --max-old-space-size, so the harness sets RLIMIT_AS
+	// itself from the env var pythonMemLimitEnv passes. It is higher than the node cap,
+	// because RLIMIT_AS counts all address space, not only the heap.
 	defaultPythonMemoryLimitMB = 512
 
-	// killGracePeriod bounds Wait after the process group is killed, so a
-	// child that ignores SIGKILL semantics (unlikely) cannot hang the node.
+	// killGracePeriod limits Wait after the process group is killed, so a child that ignores
+	// SIGKILL (unlikely) cannot hang the node
 	killGracePeriod = 2 * time.Second
 
-	// stderrTailLimit caps how much subprocess stderr is kept for error
-	// messages; only the tail matters (that's where the traceback ends).
+	// stderrTailLimit: how much stderr we keep for errors. Only the tail matters, the
+	// traceback ends there.
 	stderrTailLimit = 64 * 1024
 )
 
-// tailBuffer keeps only the last limit bytes written, so a stderr-spamming
-// subprocess cannot grow memory for its whole timeout window.
+// tailBuffer keeps only the last limit bytes, so a subprocess that spams stderr cannot
+// grow memory during its whole timeout
 type tailBuffer struct {
 	limit int
 	buf   []byte
@@ -56,9 +55,8 @@ func (t *tailBuffer) Write(p []byte) (int, error) {
 
 func (t *tailBuffer) String() string { return string(t.buf) }
 
-// runSubprocess executes an interpreter in its own process group with a
-// scrubbed environment, feeding payload on stdin. On timeout the whole
-// process group is SIGKILLed so grandchildren die too.
+// runSubprocess runs an interpreter in its own process group with a clean environment and
+// the payload on stdin. On timeout the whole group gets SIGKILL, so grandchildren die too.
 func runSubprocess(
 	ctx context.Context,
 	timeout time.Duration,
@@ -96,21 +94,21 @@ func runSubprocess(
 	return stdout.Bytes(), nil
 }
 
-// scrubbedEnv is the minimal environment user code may see: PATH plus the
-// given extras. DB/MQ credentials from the worker process must never leak in.
+// scrubbedEnv is the small environment that user code can see: PATH and the extras.
+// DB and MQ credentials of the worker must never leak in.
 func scrubbedEnv(extra ...string) []string {
 	env := []string{"PATH=" + os.Getenv("PATH")}
 	return append(env, extra...)
 }
 
-// pythonMemLimitEnv tells the python harnesses what RLIMIT_AS to apply to
-// themselves before running user code (see defaultPythonMemoryLimitMB).
+// pythonMemLimitEnv tells the python harnesses which RLIMIT_AS to set before the user code
+// runs (see defaultPythonMemoryLimitMB).
 func pythonMemLimitEnv(limitMB int) []string {
 	return []string{fmt.Sprintf("YTSOAR_MEM_LIMIT_MB=%d", limitMB)}
 }
 
-// nodePathEnv forwards NODE_PATH (where the harness node_modules with
-// nunjucks and the npm allowlist live) when the worker has it set.
+// nodePathEnv passes NODE_PATH (the harness node_modules with nunjucks and the npm
+// allowlist) when the worker has it.
 func nodePathEnv() []string {
 	if nodePath := os.Getenv("NODE_PATH"); nodePath != "" {
 		return []string{"NODE_PATH=" + nodePath}

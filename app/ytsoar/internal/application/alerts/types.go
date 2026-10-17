@@ -30,22 +30,21 @@ type AlertFilter struct {
 	SLAState   []string `form:"sla_state" binding:"omitempty,dive,oneof=ok warning breached met"`
 	AssigneeID []string `form:"assignee_id" binding:"omitempty,dive,uuid"`
 	TeamID     []string `form:"team_id" binding:"omitempty,dive,uuid"`
-	// Unassigned unions with AssigneeID rather than contradicting it: a picker
-	// offering "Unassigned" beside names has to mean "either".
+	// Unassigned is a union with AssigneeID, not a conflict: a picker with "Unassigned" beside
+	// names means "either".
 	Unassigned *bool    `form:"unassigned" binding:"omitempty"`
 	Tags       []string `form:"tags" binding:"omitempty"`
-	// RFC3339 instants, not dates - a queue filter is "since 14:30 today my
-	// time", and the offset removes any question of whose midnight is meant.
-	// The datetime tag is gin's own validator, so a bad value 400s at bind.
+	// RFC3339 instants, not dates. A queue filter is "since 14:30 today my time", and the
+	// offset says whose midnight it is. The datetime tag is gin's validator, so a bad value
+	// gives 400 at bind.
 	CreatedFrom *string `form:"created_from" binding:"omitempty,datetime=2006-01-02T15:04:05Z07:00"`
 	CreatedTo   *string `form:"created_to" binding:"omitempty,datetime=2006-01-02T15:04:05Z07:00"`
 	DedupMin    *int    `form:"dedup_min" binding:"omitempty,min=1"`
 	Triaged     *bool   `form:"triaged" binding:"omitempty"`
 	Search      *string `form:"q" binding:"omitempty"`
 	Cursor      *string `form:"cursor" binding:"omitempty"`
-	// Offset is the programmatic paging mode. Unlike the cursor it can skip or
-	// repeat rows when alerts arrive mid-page; that is the trade a caller opts
-	// into by using it.
+	// Offset is the programmatic paging mode. It can skip or repeat rows when alerts arrive
+	// mid-page. The caller accepts that by using it.
 	Offset *int `form:"offset" binding:"omitempty,min=0"`
 	Limit  int  `form:"limit" binding:"omitempty,min=1,max=200"`
 }
@@ -183,11 +182,10 @@ type AlertDetail struct {
 	Runs            []RunRef            `json:"runs"`
 }
 
-// RunRef is one playbook run that acted on this record. PlaybookID is what lets
-// the UI deep-link to the run itself rather than the whole executions list; the
-// name is nullable because the playbook may since have been deleted. TriggerType
-// and TriggeredBy are nullable too - runs predating the run-input migration have
-// neither, and a scheduled or event-driven run has no user behind it.
+// RunRef is one playbook run that acted on this record. PlaybookID lets the UI link to the
+// run itself, not the whole executions list. The name can be null because the playbook may
+// be deleted. TriggerType and TriggeredBy can be null: runs from before the run-input
+// migration have neither, and a scheduled or event run has no user.
 type RunRef struct {
 	PlaybookHistoryID uuid.UUID `json:"playbook_history_id"`
 	PlaybookID        uuid.UUID `json:"playbook_id"`
@@ -221,18 +219,17 @@ type PlaybookSuccess struct {
 	SuccessRate float64 `db:"success_rate" json:"success_rate"`
 }
 
-// VolumePoint is one point on the volume series. It carries the timestamp it
-// covers because the range is caller-picked: length, start and bucket width all
-// vary per request, so the chart cannot derive its own x-axis labels.
+// VolumePoint is one point of the volume series. It has its own timestamp because the
+// caller picks the range: length, start and bucket width change per request, so the chart
+// cannot derive its x-axis labels.
 type VolumePoint struct {
 	BucketStart time.Time `db:"bucket_start" json:"bucket_start"`
 	Count       int       `db:"count" json:"count"`
 }
 
-// Total, BySeverity and BySource stay all-time-open on purpose: the queue header
-// and its filter counts read them, so range-scoping would silently turn
-// "47 open" into "opened in the last 14 days". The range applies to Volume and
-// the window counts only.
+// Total, BySeverity and BySource stay all-time-open on purpose. The queue header and its
+// filter counts read them, and a range would turn "47 open" into "opened in the last 14
+// days". The range applies only to Volume and the window counts.
 type AlertsSummary struct {
 	Total        int                 `json:"total"`
 	BySeverity   []SeverityBucket    `json:"by_severity"`
@@ -242,6 +239,6 @@ type AlertsSummary struct {
 	Range        types.ResolvedRange `json:"range"`
 	Created      types.WindowCount   `json:"created"`
 	Resolved     types.WindowCount   `json:"resolved"`
-	// MTTTSeconds is mean time to triage: created_at to triaged_at.
+	// MTTTSeconds is the mean time to triage: created_at to triaged_at.
 	MTTTSeconds types.WindowCount `json:"mttt_seconds"`
 }

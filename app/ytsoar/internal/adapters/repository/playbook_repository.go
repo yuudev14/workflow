@@ -66,7 +66,6 @@ func toDomainPlaybookHistory(row db.PlaybookHistory) domain.PlaybookHistory {
 	}
 }
 
-// GetPlaybooks implements playbooks.PlaybookRepository.
 func (w *PlaybookRepositoryImpl) GetPlaybooks(ctx context.Context, offset int, limit int, filter playbooks.PlaybookFilter) ([]domain.Playbooks, error) {
 	stmt := sq.Select("*").From("playbooks").
 		PlaceholderFormat(sq.Dollar).
@@ -81,7 +80,6 @@ func (w *PlaybookRepositoryImpl) GetPlaybooks(ctx context.Context, offset int, l
 	return CollectRowsFromSqlizer[domain.Playbooks](ctx, stmt, w.pool, w.logger)
 }
 
-// GetPlaybooksCount implements playbooks.PlaybookRepository.
 func (w *PlaybookRepositoryImpl) GetPlaybooksCount(ctx context.Context, filter playbooks.PlaybookFilter) (int, error) {
 	stmt := sq.Select("count(*)").From("playbooks").
 		PlaceholderFormat(sq.Dollar)
@@ -93,12 +91,12 @@ func (w *PlaybookRepositoryImpl) GetPlaybooksCount(ctx context.Context, filter p
 	return CollectOneScalarFromSqlizer[int](ctx, stmt, w.pool, w.logger)
 }
 
-// Summary implements playbooks.PlaybookRepository. Each figure is paired with the
-// preceding window of equal length so the UI can render an honest delta.
+// Summary: every figure has the previous window of the same length, so the UI shows a fair
+// delta.
 //
-// Playbooks.previous is deliberately "how many existed before the window", not
-// "how many were created in the previous window": the card shows a running total,
-// so its delta is the growth inside the selected range.
+// Playbooks.previous is "how many existed before the window", not "how many were created
+// in the previous window": the card shows a running total, so its delta is the growth in
+// the selected range.
 func (w *PlaybookRepositoryImpl) Summary(ctx context.Context, rng types.ResolvedRange) (playbooks.PlaybooksSummary, error) {
 	summary := playbooks.PlaybooksSummary{Range: rng}
 	prevFrom, prevTo := rng.Previous()
@@ -140,7 +138,6 @@ func (w *PlaybookRepositoryImpl) Summary(ctx context.Context, rng types.Resolved
 	return summary, nil
 }
 
-// GetPlaybookHistory implements playbooks.PlaybookRepository.
 func (w *PlaybookRepositoryImpl) GetPlaybookHistory(ctx context.Context, offset int, limit int, filter playbooks.PlaybookHistoryFilter) ([]domain.PlaybookHistoryResponse, error) {
 	stmt := sq.Select("playbook_history.*, to_jsonb(playbooks) AS playbook_data").
 		From("playbook_history").
@@ -155,7 +152,6 @@ func (w *PlaybookRepositoryImpl) GetPlaybookHistory(ctx context.Context, offset 
 	return CollectRowsFromSqlizer[domain.PlaybookHistoryResponse](ctx, stmt, w.pool, w.logger)
 }
 
-// GetPlaybookHistoryCount implements playbooks.PlaybookRepository.
 func (w *PlaybookRepositoryImpl) GetPlaybookHistoryCount(ctx context.Context, filter playbooks.PlaybookHistoryFilter) (int, error) {
 	stmt := sq.Select("count(playbook_history.*)").
 		From("playbook_history").
@@ -167,8 +163,8 @@ func (w *PlaybookRepositoryImpl) GetPlaybookHistoryCount(ctx context.Context, fi
 	return CollectOneScalarFromSqlizer[int](ctx, stmt, w.pool, w.logger)
 }
 
-// Shared by the list and the count so `total` can never disagree with the page
-// it describes - previously the count applied only Name.
+// shared by the list and the count, so `total` always matches the page (before, the count
+// used only Name)
 func applyPlaybookHistoryFilter(stmt sq.SelectBuilder, filter playbooks.PlaybookHistoryFilter) sq.SelectBuilder {
 	if term, ok := likeTerm(filter.Name); ok {
 		stmt = stmt.Where(sq.Expr("playbooks.name ILIKE ?", term))
@@ -190,7 +186,6 @@ func applyPlaybookHistoryFilter(stmt sq.SelectBuilder, filter playbooks.Playbook
 	return stmt
 }
 
-// GetPlaybookHistoryById implements playbooks.PlaybookRepository.
 func (w *PlaybookRepositoryImpl) GetPlaybookHistoryById(ctx context.Context, playbookHistoryId uuid.UUID) (*domain.PlaybookHistoryResponse, error) {
 	row, err := w.queriesFromContext(ctx).GetPlaybookHistoryById(ctx, toPgUUID(playbookHistoryId))
 	if err != nil {
@@ -220,7 +215,6 @@ func (w *PlaybookRepositoryImpl) GetPlaybookHistoryById(ctx context.Context, pla
 	}, nil
 }
 
-// GetPlaybookById implements playbooks.PlaybookRepository.
 func (w *PlaybookRepositoryImpl) GetPlaybookById(ctx context.Context, id string) (*domain.Playbooks, error) {
 	pgID, err := toPgUUIDFromString(id)
 	if err != nil {
@@ -239,7 +233,6 @@ func (w *PlaybookRepositoryImpl) GetPlaybookById(ctx context.Context, id string)
 	return &playbook, nil
 }
 
-// GetPlaybookGraphById implements playbooks.PlaybookRepository.
 func (w *PlaybookRepositoryImpl) GetPlaybookGraphById(ctx context.Context, id string) (*domain.PlaybookGraph, error) {
 	pgID, err := toPgUUIDFromString(id)
 	if err != nil {
@@ -276,7 +269,6 @@ func (w *PlaybookRepositoryImpl) GetPlaybookGraphById(ctx context.Context, id st
 	}, nil
 }
 
-// CreatePlaybook implements playbooks.PlaybookRepository.
 func (w *PlaybookRepositoryImpl) CreatePlaybook(ctx context.Context, playbook playbooks.PlaybookPayload) (*domain.Playbooks, error) {
 	row, err := w.queriesFromContext(ctx).CreatePlaybook(ctx, db.CreatePlaybookParams{
 		Name:              toPgTextFromString(playbook.Name),
@@ -292,7 +284,6 @@ func (w *PlaybookRepositoryImpl) CreatePlaybook(ctx context.Context, playbook pl
 	return &created, nil
 }
 
-// UpdatePlaybook implements playbooks.PlaybookRepository.
 func (w *PlaybookRepositoryImpl) UpdatePlaybook(ctx context.Context, id string, playbook playbooks.UpdatePlaybookData) (*domain.Playbooks, error) {
 	pgID, err := toPgUUIDFromString(id)
 	if err != nil {
@@ -325,7 +316,6 @@ func (w *PlaybookRepositoryImpl) UpdatePlaybook(ctx context.Context, id string, 
 	return &updated, nil
 }
 
-// CreatePlaybookHistory implements playbooks.PlaybookRepository.
 func (w *PlaybookRepositoryImpl) CreatePlaybookHistory(ctx context.Context, id string, edges []domain.ResponseEdges, run playbooks.RunStamp) (*domain.PlaybookHistory, error) {
 	pgID, err := toPgUUIDFromString(id)
 	if err != nil {
@@ -369,7 +359,6 @@ func (w *PlaybookRepositoryImpl) CreatePlaybookHistory(ctx context.Context, id s
 	return &history, nil
 }
 
-// CreatePlaybookRunRecords implements playbooks.PlaybookRepository.
 func (w *PlaybookRepositoryImpl) CreatePlaybookRunRecords(ctx context.Context, historyID uuid.UUID, moduleType string, recordIDs []uuid.UUID) error {
 	q := w.queriesFromContext(ctx)
 	for _, recordID := range recordIDs {
@@ -384,7 +373,6 @@ func (w *PlaybookRepositoryImpl) CreatePlaybookRunRecords(ctx context.Context, h
 	return nil
 }
 
-// UpdatePlaybookHistory implements playbooks.PlaybookRepository.
 func (w *PlaybookRepositoryImpl) UpdatePlaybookHistory(ctx context.Context, playbookHistoryId string, playbookHistory playbooks.UpdatePlaybookHistoryData) (*domain.PlaybookHistory, error) {
 	pgID, err := toPgUUIDFromString(playbookHistoryId)
 	if err != nil {
@@ -423,7 +411,6 @@ func (w *PlaybookRepositoryImpl) UpdatePlaybookHistory(ctx context.Context, play
 	return &history, nil
 }
 
-// UpdatePlaybookHistoryStatus implements playbooks.PlaybookRepository.
 func (w *PlaybookRepositoryImpl) UpdatePlaybookHistoryStatus(ctx context.Context, playbookHistoryId string, status string) (*domain.PlaybookHistory, error) {
 	pgID, err := toPgUUIDFromString(playbookHistoryId)
 	if err != nil {

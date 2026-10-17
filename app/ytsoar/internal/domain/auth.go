@@ -16,9 +16,9 @@ const (
 	AuthProviderLDAP  AuthProvider = "ldap"
 )
 
-// Permission modules and actions are stored as TEXT, so these constants are
-// the source of truth. Adding a module is a code change, not a migration -
-// keep this list in sync with the frontend's settings/permissions.ts.
+// Permission modules and actions are stored as TEXT, so these constants are the source of
+// truth. A new module is a code change, not a migration. Keep this list in sync with the
+// frontend settings/permissions.ts.
 const (
 	ModulePlaybooks  = "playbooks"
 	ModuleAlerts     = "alerts"
@@ -38,8 +38,8 @@ const (
 	ActionApprove = "approve"
 )
 
-// PermissionModules and PermissionActions bound what the roles matrix may
-// contain; anything else is rejected on write and would grant nothing anyway.
+// PermissionModules and PermissionActions limit what the roles matrix can hold. Anything
+// else is rejected on write, and it would grant nothing anyway.
 var PermissionModules = []string{
 	ModulePlaybooks, ModuleAlerts, ModuleIncidents, ModuleConnectors,
 	ModuleAgent, ModuleSchedules, ModuleSettings,
@@ -68,7 +68,7 @@ func IsValidPermissionAction(action string) bool {
 	return false
 }
 
-// Builtin role names seeded by the auth migration.
+// Built-in role names, seeded by the auth migration.
 const (
 	RoleAdmin   = "admin"
 	RoleAnalyst = "analyst"
@@ -90,8 +90,8 @@ type User struct {
 	UpdatedAt    time.Time    `db:"updated_at" json:"updated_at"`
 }
 
-// UserWithRoles is the list/detail shape the admin UI reads. Roles come from
-// an aggregate in the same query rather than a per-row lookup.
+// UserWithRoles is the list and detail shape for the admin UI. Roles come from an
+// aggregate in the same query, not a lookup per row.
 type UserWithRoles struct {
 	User
 	Roles []string `db:"roles" json:"roles"`
@@ -106,8 +106,8 @@ type Role struct {
 	UpdatedAt   time.Time `db:"updated_at" json:"updated_at"`
 }
 
-// RoleWithPermissions is the matrix editor's shape: the role plus its grants
-// rendered as {module: [actions]}.
+// RoleWithPermissions is the shape of the matrix editor: the role and its grants as
+// {module: [actions]}.
 type RoleWithPermissions struct {
 	Role
 	Permissions map[string][]string `json:"permissions"`
@@ -118,7 +118,7 @@ type Permission struct {
 	Action string `json:"action"`
 }
 
-// PermissionSet is one user's effective grants, unioned across their roles.
+// PermissionSet is the grants of one user, joined over all their roles.
 type PermissionSet []Permission
 
 func (p PermissionSet) Has(module, action string) bool {
@@ -130,7 +130,7 @@ func (p PermissionSet) Has(module, action string) bool {
 	return false
 }
 
-// ToMap renders the set as {module: [actions]} for the /me payload.
+// ToMap gives the set as {module: [actions]} for the /me payload.
 func (p PermissionSet) ToMap() map[string][]string {
 	out := make(map[string][]string)
 	for _, perm := range p {
@@ -173,9 +173,9 @@ type RefreshToken struct {
 	CreatedAt time.Time
 }
 
-// AuditLog is the read shape. ActorUsername is joined in and stays nil for
-// system-generated rows and for actors whose account was later removed
-// (actor_id is ON DELETE SET NULL - the trail outlives the user).
+// AuditLog is the read shape. ActorUsername is joined in. It is nil for system rows and
+// for actors whose account was deleted later (actor_id is ON DELETE SET NULL, the trail
+// outlives the user).
 type AuditLog struct {
 	ID            uuid.UUID       `db:"id" json:"id"`
 	ActorID       *uuid.UUID      `db:"actor_id" json:"actor_id"`
@@ -200,8 +200,8 @@ type AuthUser struct {
 	Username string    `json:"username"`
 }
 
-// AssignableUser is the minimum an assignee picker needs: enough to attribute
-// work, nothing that would leak a directory.
+// AssignableUser is the minimum an assignee picker needs: enough to name who has the
+// work, nothing that leaks a directory.
 type AssignableUser struct {
 	ID       uuid.UUID `db:"id" json:"id"`
 	Username string    `db:"username" json:"username"`

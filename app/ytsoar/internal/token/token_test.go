@@ -52,8 +52,8 @@ func TestParseRejectsWrongSecret(t *testing.T) {
 	assert.ErrorIs(t, err, token.ErrInvalidToken)
 }
 
-// The classic JWT forgery: strip the signature and claim the algorithm is
-// "none". Parse pins HS256 precisely so this cannot work.
+// The classic JWT forgery: remove the signature and claim the algorithm is "none". Parse
+// pins HS256 so this cannot work.
 func TestParseRejectsAlgNone(t *testing.T) {
 	unsigned := jwt.NewWithClaims(jwt.SigningMethodNone, jwt.MapClaims{
 		"sub": "attacker",
@@ -67,7 +67,7 @@ func TestParseRejectsAlgNone(t *testing.T) {
 	assert.ErrorIs(t, err, token.ErrInvalidToken)
 }
 
-// A token with no exp claim would never expire, so it is refused outright.
+// A token with no exp claim would never expire, so it is refused.
 func TestParseRequiresExpiry(t *testing.T) {
 	signed, err := token.GenerateToken(jwt.MapClaims{"sub": "user-1"}, parseSecret)
 	require.NoError(t, err)

@@ -38,8 +38,8 @@ const incidentAlertCount = `(SELECT count(*)::int FROM incident_alerts ia WHERE 
 const incidentRunCount = `(SELECT count(*)::int FROM playbook_run_records prr
     WHERE prr.module_type = 'incident' AND prr.record_id = i.id) AS run_count`
 
-// Timestamps inside the aggregate are cast to UTC because jsonb renders a bare
-// `timestamp` with no offset, which Go's RFC3339 unmarshal then rejects.
+// timestamps inside the aggregate are cast to UTC, because jsonb writes a bare
+// `timestamp` without offset and Go's RFC3339 unmarshal rejects it
 const incidentRunsAggregate = `COALESCE((
     SELECT jsonb_agg(jsonb_build_object(
                'playbook_history_id', h.id, 'playbook_id', h.playbook_id,
@@ -168,8 +168,7 @@ func (r *IncidentRepositoryImpl) List(ctx context.Context, filter incidents.Inci
 		rows = rows[:filter.Limit]
 	}
 
-	// Offset mode returns no cursor: handing back both would invite a client to
-	// interleave the two paging modes on one result set.
+	// offset mode returns no cursor, so a client cannot mix the two paging modes
 	if !hasMore || filter.Offset != nil {
 		return rows, nil, nil
 	}
@@ -354,8 +353,8 @@ func (r *IncidentRepositoryImpl) ListNotes(ctx context.Context, incidentID uuid.
 	return notes, nil
 }
 
-// ON CONFLICT DO NOTHING means zero rows affected is a repeat link, not a
-// failure - the caller uses that to skip a duplicate timeline entry.
+// ON CONFLICT DO NOTHING: zero rows affected is a repeat link, not a failure. The caller
+// uses it to skip a duplicate timeline entry.
 func (r *IncidentRepositoryImpl) LinkAlert(ctx context.Context, incidentID, alertID uuid.UUID, source domain.LinkSource) (bool, error) {
 	affected, err := r.queriesFromContext(ctx).InsertIncidentAlert(ctx, db.InsertIncidentAlertParams{
 		IncidentID: toPgUUID(incidentID),
@@ -421,8 +420,8 @@ func (r *IncidentRepositoryImpl) Summary(ctx context.Context, rng types.Resolved
 	}
 	summary.SeverityMix = severityMix
 
-	// SLA deadlines are never stamped yet (#14), so this is empty in practice -
-	// the query is here so it lights up the day a policy engine sets them.
+	// SLA deadlines are not set yet (#14), so this is empty for now. The query is ready for
+	// when a policy engine sets them.
 	slaAtRisk, err := CollectRowsFromSqlizer[incidents.SLARisk](ctx,
 		sq.Select("i.id, i.title, i.sla_deadline, (i.sla_state = 'breached') AS breached").
 			From("incidents i").
@@ -465,8 +464,8 @@ func (r *IncidentRepositoryImpl) Summary(ctx context.Context, rng types.Resolved
 	return summary, nil
 }
 
-// A bucket with no resolutions reports 0 rather than dropping out and shifting
-// every later point left.
+// a bucket with no resolutions reports 0, so it does not drop out and shift the later
+// points left
 func (r *IncidentRepositoryImpl) mttrTrend(ctx context.Context, rng types.ResolvedRange) ([]incidents.MTTRPoint, error) {
 	const q = `
         SELECT d.bucket_start AT TIME ZONE 'UTC' AS bucket_start,
@@ -500,9 +499,8 @@ func (r *IncidentRepositoryImpl) mttrTrend(ctx context.Context, rng types.Resolv
 	return points, rows.Err()
 }
 
-// windowCount counts rows whose column falls in the selected range beside the
-// same count for the preceding range - the only baseline that makes the delta
-// on a KPI card mean anything.
+// windowCount counts the rows in the selected range, and the same count for the range
+// before it. This is the baseline for the delta on a KPI card.
 func (r *IncidentRepositoryImpl) windowCount(ctx context.Context, column string, rng types.ResolvedRange, prevFrom, prevTo time.Time) (types.WindowCount, error) {
 	q := fmt.Sprintf(`
         SELECT

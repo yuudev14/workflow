@@ -86,8 +86,7 @@ func (h *AuthHandler) Refresh(c *gin.Context) {
 	pair, err := h.authService.Refresh(c.Request.Context(), refreshToken)
 	if err != nil {
 		if errors.Is(err, auth.ErrInvalidCredentials) {
-			// The session is dead; clearing both cookies stops the browser
-			// retrying with them forever.
+			// the session is dead: clear both cookies, or the browser retries with them forever
 			h.cookies.ClearSession(c)
 			response.ResponseError(http.StatusUnauthorized, "session expired")
 			return
@@ -111,8 +110,8 @@ func (h *AuthHandler) Refresh(c *gin.Context) {
 // @Tags auth
 // @Router /api/auth/v1/logout [post]
 //
-// Deliberately unauthenticated: logging out has to work when the access token
-// has already expired, and it can only ever revoke the caller's own cookie.
+// Deliberately unauthenticated: logout must work when the access token is expired, and it
+// can only revoke the cookie of the caller.
 func (h *AuthHandler) Logout(c *gin.Context) {
 	response := rest.Response{C: c}
 
