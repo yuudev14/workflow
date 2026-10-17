@@ -36,7 +36,7 @@ Alert arrives  ->  Check the IP address  ->  Is the IP bad?  --yes-->  Block the
 You need Docker and Node.js.
 
 ```bash
-# backend stack (postgres, api, worker, sandbox, nginx)
+# backend stack (postgres, keycloak, nginx, and the api, worker and sandbox in one process)
 make rebuild-containers
 
 # frontend (dev server on :3000, proxied by nginx on :9999)
@@ -46,6 +46,13 @@ cd app/frontend && npm install && npm run dev
 Open http://localhost:9999. Create a playbook, add nodes and trigger it. The statuses appear live.
 
 Ports: API `:8080`, Postgres `:5433`, nginx `:9999`.
+
+In dev, one Go program (`cmd/dev`) runs the api, the worker and the sandbox in one process. One `air` builds it again after each change. This mode is for dev only: the sandbox can read the database settings. Production runs the three programs apart.
+
+- `make start-split` runs the three programs in three containers, as in production (`docker/split.docker-compose.yml`).
+- `make dev` runs the one process on your computer, without a backend container. Postgres and Keycloak come from compose. You need `air`, `goose`, Python 3 with `jinja2`, `requests`, `colorlog` and `pydantic-settings`, and Node 24 with `nunjucks` on `NODE_PATH`.
+
+`app/ytsoar/Dockerfile` has one stage for each use. The dev stages are `dev` (one process), `dev-api`, `dev-worker`, `dev-sandbox` and `debug`. The production stages are `api`, `worker` and `sandbox`. One `build` stage compiles the three binaries for them.
 
 ## How it works
 
@@ -154,7 +161,7 @@ A connector can declare its own libraries:
 - Python: `<id>/requirements.txt`. The system installs the libraries into `<id>/deps/`.
 - JS/TS: `<id>/package.json`. The system installs the libraries into `<id>/node_modules/`.
 
-Run `make connector-deps` to install the libraries. The stack must already run. The command runs pip and npm inside the api container. In this way, the compiled packages match the sandbox image. The system keeps the libraries of each connector separate. Two connectors can use different versions of the same library. Code snippets cannot declare dependencies. They get only the base packages of the image. To add more packages, change `app/ytsoar/Dockerfile.dev`.
+Run `make connector-deps` to install the libraries. The stack must already run. The command runs pip and npm inside the api container. In this way, the compiled packages match the sandbox image. The system keeps the libraries of each connector separate. Two connectors can use different versions of the same library. Code snippets cannot declare dependencies. They get only the base packages of the image. To add more packages, change the sandbox stages in `app/ytsoar/Dockerfile`.
 
 ## Branching
 
@@ -233,23 +240,23 @@ DB_PORT=5433 DB_PASSWORD=password npx playwright test e2e/alerts.spec.ts -g "sho
 
 ### Debugging in Docker
 
-Start the stack with the debug override. It builds each Go program without optimizations. It runs each program under a headless [Delve](https://github.com/go-delve/delve):
+Start the stack with the debug override. It builds the one-process program without optimizations. It runs the program under a headless [Delve](https://github.com/go-delve/delve):
 
 ```bash
 docker compose -f docker/dev.docker-compose.yml -f docker/debug.docker-compose.yml up -d
 ```
 
-Then press F5 in VS Code. Choose one of the `Attach to …` configurations in `.vscode/launch.json` (api :2345, worker :2346, sandbox :2347). Set breakpoints. Air still reloads the program when you save. Each reload restarts Delve. Attach again after a rebuild.
+Then press F5 in VS Code. Choose `Attach to ytsoar_api (docker)` in `.vscode/launch.json` (:2345). Set breakpoints in the api, the worker or the sandbox code. Air still reloads the program when you save. Each reload restarts Delve. Attach again after a rebuild.
 
 ## Repository layout
 
 ```
-app/ytsoar/        Go backend - cmd/{api,worker,sandbox}, internal/, db/
+app/ytsoar/        Go backend - cmd/{api,worker,sandbox,dev}, internal/, db/
 app/connectors/    connector tree (python + js/ts + code-node metadata)
 app/frontend/      Vite + React visual editor
 app/nginx/         reverse proxy (:9999)
 app/proto/         connector_runtime.proto (worker <-> sandbox contract)
-docker/            dev compose stack
+docker/            dev compose stack (+ split and debug overrides)
 ```
 
 ## Roadmap
