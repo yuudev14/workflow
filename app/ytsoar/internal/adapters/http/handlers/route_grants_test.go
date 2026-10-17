@@ -143,6 +143,10 @@ func TestAdminRouteGrants(t *testing.T) {
 
 		{http.MethodGet, "/api/audit/v1", "settings.read"},
 
+		{http.MethodGet, "/api/api-keys/v1", "settings.read"},
+		{http.MethodPost, "/api/api-keys/v1", "settings.create"},
+		{http.MethodDelete, "/api/api-keys/v1/abc", "settings.delete"},
+
 		{http.MethodGet, "/api/auth-providers/v1", "settings.read"},
 		{http.MethodPost, "/api/auth-providers/v1", "settings.create"},
 		{http.MethodPut, "/api/auth-providers/v1/abc", "settings.update"},

@@ -24,13 +24,15 @@ const (
 type TokenVerifier interface {
 	VerifyAccessToken(tokenString string) (domain.AuthUser, error)
 	VerifyRefreshTokenForWS(ctx context.Context, refreshToken string) (domain.AuthUser, error)
+	VerifyAPIKey(ctx context.Context, key string) (domain.AuthUser, error)
 }
 
 // Auth authenticates normal API requests.
 //
 // Browsers send the access token as an httpOnly cookie, so the frontend never handles the
 // token. Service clients (agent service, worker, CLI) have no cookie jar, so an
-// Authorization header is accepted too. The header wins when both exist.
+// Authorization header is accepted too. The header wins when both exist. A value
+// with domain.APIKeyPrefix is an API key, anything else is an access token.
 //
 // Because cookies are accepted, CSRF protection depends on SameSite=Lax and the exact-origin
 // CORS allow-list, not on headers that cannot be forged. Lax keeps cookies off cross-site
@@ -46,7 +48,13 @@ func Auth(log logger.Logger, verifier TokenVerifier) gin.HandlerFunc {
 			return
 		}
 
-		user, err := verifier.VerifyAccessToken(raw)
+		var user domain.AuthUser
+		var err error
+		if strings.HasPrefix(raw, domain.APIKeyPrefix) {
+			user, err = verifier.VerifyAPIKey(c.Request.Context(), raw)
+		} else {
+			user, err = verifier.VerifyAccessToken(raw)
+		}
 		if err != nil {
 			log.Debugw("rejected access token", "path", c.Request.URL.Path)
 			unauthorized(c)

@@ -65,6 +65,18 @@ type RefreshTokenRepository interface {
 	GetByHash(ctx context.Context, tokenHash string) (domain.RefreshToken, error)
 	Revoke(ctx context.Context, tokenHash string) error
 	RevokeAllForUser(ctx context.Context, userID uuid.UUID) error
+	DeleteExpired(ctx context.Context, before time.Time) error
+}
+
+//go:generate mockgen -destination=mocks/api_key_repository_mock.go -package=mocks . APIKeyRepository
+
+type APIKeyRepository interface {
+	Create(ctx context.Context, params CreateAPIKeyParams) (domain.APIKey, error)
+	// GetByHash finds only the keys of active users.
+	GetByHash(ctx context.Context, keyHash string) (domain.APIKey, error)
+	List(ctx context.Context, userID *uuid.UUID) ([]domain.APIKey, error)
+	Touch(ctx context.Context, id uuid.UUID, at time.Time) error
+	Delete(ctx context.Context, id uuid.UUID) (int64, error)
 }
 
 //go:generate mockgen -destination=mocks/audit_log_repository_mock.go -package=mocks . AuditLogRepository
