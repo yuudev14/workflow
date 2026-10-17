@@ -181,6 +181,56 @@ make sqlc                          # run after you change db/queries/*.sql
 
 Conventions: The code uses sqlc and pgx. Migrations are goose files with a date in the name. Squirrel builds the dynamic list queries. `types.Nullable[T]` supports partial updates. Every port has a mockgen mock. Each part gets the logger from its caller.
 
+### Tests
+
+CI (`.github/workflows/ci.yml`) runs all of these on each pull request. To run them on your computer:
+
+**1. Start Postgres and Keycloak, and make the test databases (one time).** The dev stack gives Postgres on port 5433 (password `password`) and Keycloak on port 8180.
+
+```bash
+docker compose -f docker/dev.docker-compose.yml up -d ytsoar_postgres ytsoar_keycloak
+docker exec ytsoar_postgres createdb -U postgres ytsoar_it    # Go tests
+docker exec ytsoar_postgres createdb -U postgres ytsoar_e2e   # browser tests
+```
+
+**2. Install the sandbox packages (one time).** The integration and browser tests run playbooks in a sandbox on your computer. The sandbox runs `python3 -I`, which ignores the user site, so do not use `pip install --user`. Node must be version 24.
+
+```bash
+python3 -m pip install --break-system-packages jinja2 requests colorlog pydantic-settings
+npm install --prefix ~/.ytsoar-node nunjucks@3
+export NODE_PATH=~/.ytsoar-node/node_modules
+```
+
+**3. Backend tests and lint.**
+
+```bash
+cd app/ytsoar
+go test ./...                      # unit tests; the database tests skip
+
+export TEST_DATABASE_URL="postgres://postgres:password@localhost:5433/ytsoar_it?sslmode=disable"
+go run github.com/pressly/goose/v3/cmd/goose@v3.29.0 -dir db/migrations postgres "$TEST_DATABASE_URL" up
+go test -p 1 ./...                 # all tests; -p 1 because two packages share the job queue
+go test ./tests/integration -run 'TestAlerts/POST_/alerts' -v   # one test
+
+go vet ./... && golangci-lint run  # golangci-lint 2.x built with Go 1.26
+```
+
+**4. Frontend lint.**
+
+```bash
+cd app/frontend
+npm ci && npm run lint && npx tsc --noEmit
+```
+
+**5. Browser tests (Playwright).** Playwright migrates `ytsoar_e2e`, then starts the api (:8090), the sandbox (:50062), the worker and the frontend (:3000). Stop your dev frontend first: it also uses port 3000, and Playwright uses a server that already runs on the port.
+
+```bash
+cd app/frontend
+npx playwright install chromium    # one time
+DB_PORT=5433 DB_PASSWORD=password npx playwright test
+DB_PORT=5433 DB_PASSWORD=password npx playwright test e2e/alerts.spec.ts -g "shows no rows" --headed   # one test
+```
+
 ### Debugging in Docker
 
 Start the stack with the debug override. It builds each Go program without optimizations. It runs each program under a headless [Delve](https://github.com/go-delve/delve):

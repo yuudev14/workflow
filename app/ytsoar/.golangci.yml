@@ -1,0 +1,11 @@
+version: "2"
+
+linters:
+  exclusions:
+    # Do not report unchecked errors from Close, Sync, os.RemoveAll and the like.
+    presets:
+      - std-error-handling
+
+formatters:
+  enable:
+    - gofmt

@@ -51,7 +51,7 @@ type client struct {
 func (c *client) writePump() {
 	defer c.conn.Close()
 	for message := range c.send {
-		c.conn.SetWriteDeadline(time.Now().Add(writeTimeout))
+		_ = c.conn.SetWriteDeadline(time.Now().Add(writeTimeout))
 		if err := c.conn.WriteJSON(message); err != nil {
 			// drain the rest so the hub's channel sends never block; the read
 			// loop notices the closed conn and unregisters us

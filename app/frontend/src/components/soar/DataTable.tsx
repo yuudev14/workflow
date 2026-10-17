@@ -13,7 +13,12 @@ import {
 import { cn } from "@/lib/utils";
 import { PaginationBar } from "./PaginationBar";
 
+/** A column of any value type. TanStack Table uses `any` here. */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export type Column<T> = ColumnDef<T, any>;
+
 declare module "@tanstack/react-table" {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   interface ColumnMeta<TData, TValue> {
     align?: "left" | "right";
     /** Human name for the column picker; falls back to the column id. */
@@ -35,7 +40,7 @@ export function DataTable<TData>({
   onRowSelectionChange,
   onRowClick,
 }: {
-  columns: ColumnDef<TData, any>[];
+  columns: Column<TData>[];
   data: TData[];
   getRowId?: (row: TData) => string;
   className?: string;

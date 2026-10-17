@@ -1,7 +1,7 @@
 
 import * as React from "react";
 import { Columns3 } from "lucide-react";
-import type { ColumnDef, VisibilityState } from "@tanstack/react-table";
+import type { VisibilityState } from "@tanstack/react-table";
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
@@ -11,8 +11,9 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
+import type { Column } from "./DataTable";
 
-const columnId = <T,>(c: ColumnDef<T, any>): string =>
+const columnId = <T,>(c: Column<T>): string =>
   (c.id ?? ("accessorKey" in c ? String(c.accessorKey) : "")) as string;
 
 /**
@@ -24,7 +25,7 @@ const columnId = <T,>(c: ColumnDef<T, any>): string =>
  */
 export function useColumnVisibility<T>(
   storageKey: string,
-  columns: ColumnDef<T, any>[],
+  columns: Column<T>[],
   defaults: VisibilityState = {},
 ) {
   const [visibility, setVisibility] = React.useState<VisibilityState>(defaults);
@@ -67,7 +68,7 @@ export function ColumnPicker<T>({
   onChange,
   className,
 }: {
-  columns: ColumnDef<T, any>[];
+  columns: Column<T>[];
   visibility: VisibilityState;
   onChange: React.Dispatch<React.SetStateAction<VisibilityState>>;
   className?: string;

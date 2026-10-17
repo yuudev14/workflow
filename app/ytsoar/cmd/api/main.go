@@ -19,7 +19,7 @@ import (
 func main() {
 	cfg := config.Load()
 	appLogger := logger.SetupLogger()
-	defer appLogger.Sync()
+	defer func() { _ = appLogger.Sync() }()
 
 	if cfg.AppEnv == "production" && cfg.JWTSecret == config.DefaultJWTSecret {
 		log.Fatal("JWT_SECRET must be set to a private value when APP_ENV=production")

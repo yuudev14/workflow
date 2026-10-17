@@ -12,7 +12,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	mock_edges "github.com/yuudev14/ytsoar/internal/application/edges/mocks"
 	"github.com/yuudev14/ytsoar/internal/application/playbooks"
-	mock_playbook_application "github.com/yuudev14/ytsoar/internal/application/playbooks/mocks"
 	mock_playbooks "github.com/yuudev14/ytsoar/internal/application/playbooks/mocks"
 	"github.com/yuudev14/ytsoar/internal/application/tasks"
 	mock_tasks "github.com/yuudev14/ytsoar/internal/application/tasks/mocks"
@@ -27,7 +26,7 @@ type setupMockServices struct {
 	PlaybookService            *mock_playbooks.MockPlaybookService
 	TaskService                *mock_tasks.MockTaskService
 	EdgeService                *mock_edges.MockEdgeService
-	PlaybookApplicationService *mock_playbook_application.MockPlaybookApplicationService
+	PlaybookApplicationService *mock_playbooks.MockPlaybookApplicationService
 }
 
 func setupController(t *testing.T) (
@@ -42,7 +41,7 @@ func setupController(t *testing.T) (
 	mockPlaybookService := mock_playbooks.NewMockPlaybookService(ctrl)
 	mockTaskService := mock_tasks.NewMockTaskService(ctrl)
 	mockEdgeService := mock_edges.NewMockEdgeService(ctrl)
-	mockPlaybookAppService := mock_playbook_application.NewMockPlaybookApplicationService(ctrl)
+	mockPlaybookAppService := mock_playbooks.NewMockPlaybookApplicationService(ctrl)
 
 	gin.SetMode(gin.TestMode)
 

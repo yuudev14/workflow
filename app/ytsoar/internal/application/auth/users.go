@@ -87,12 +87,7 @@ func (s *Service) UpdateUser(ctx context.Context, actorID, id uuid.UUID, input U
 	deactivating := input.IsActive.Set && input.IsActive.Value != nil && !*input.IsActive.Value
 
 	txErr := s.txManager.WithinTransaction(ctx, func(ctx context.Context) error {
-		if _, err := s.users.Update(ctx, id, UpdateUserParams{
-			Email:     input.Email,
-			FirstName: input.FirstName,
-			LastName:  input.LastName,
-			IsActive:  input.IsActive,
-		}); err != nil {
+		if _, err := s.users.Update(ctx, id, UpdateUserParams(input)); err != nil {
 			return err
 		}
 

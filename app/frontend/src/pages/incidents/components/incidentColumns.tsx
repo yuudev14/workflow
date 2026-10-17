@@ -1,11 +1,10 @@
 import { Link } from "react-router";
 import * as React from "react";
 
-import type { ColumnDef } from "@tanstack/react-table";
 import { AlertTriangle } from "lucide-react";
 
 import type { Incident } from "@/services/incidents/incidents.schema";
-import { InitialsAvatar, LinkChip, StatusPill } from "@/components/soar";
+import { type Column, InitialsAvatar, LinkChip, StatusPill } from "@/components/soar";
 import { selectColumn } from "@/pages/alerts/components/alertColumns";
 import { SEV_STRIPE } from "@/pages/alerts/components/alertPresentation";
 import { cn, relativeAge } from "@/lib/utils";
@@ -17,7 +16,7 @@ export const INCIDENT_COLUMN_DEFAULTS = {
   sla_deadline: false,
 };
 
-export function incidentColumns(): ColumnDef<Incident, any>[] {
+export function incidentColumns(): Column<Incident>[] {
   return [
     selectColumn<Incident>(),
     {
