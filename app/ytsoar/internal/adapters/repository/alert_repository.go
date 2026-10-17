@@ -33,8 +33,8 @@ func (r *AlertRepositoryImpl) queriesFromContext(ctx context.Context) db.Querier
 	return r.q
 }
 
-// payload and triage are detail-only: a queue page of 50 would otherwise drag
-// 50 raw event documents across the wire.
+// payload and triage are detail-only: a queue page of 50 would send 50 raw event
+// documents
 const alertRunCount = `(SELECT count(*)::int FROM playbook_run_records prr
     WHERE prr.module_type = 'alert' AND prr.record_id = a.id) AS run_count`
 
@@ -42,8 +42,8 @@ const alertListColumns = `a.id, a.title, a.severity, a.status, a.source_kind, a.
     a.assignee_id, u.username AS assignee, a.team_id, a.tags, a.dedup_count, a.last_seen,
     a.triaged_at, a.sla_deadline, a.sla_state, a.created_at, a.updated_at, ` + alertRunCount
 
-// Timestamps inside the aggregate are cast to UTC because jsonb renders a bare
-// `timestamp` with no offset, which Go's RFC3339 unmarshal then rejects.
+// timestamps inside the aggregate are cast to UTC, because jsonb writes a bare
+// `timestamp` without offset and Go's RFC3339 unmarshal rejects it
 const alertRunsAggregate = `COALESCE((
     SELECT jsonb_agg(jsonb_build_object(
                'playbook_history_id', h.id, 'playbook_id', h.playbook_id,
@@ -58,9 +58,8 @@ const alertRunsAggregate = `COALESCE((
     WHERE prr.module_type = 'alert' AND prr.record_id = a.id
 ), '[]'::jsonb) AS runs`
 
-// The timestamps are cast to UTC because jsonb renders a bare `timestamp` with
-// no offset, which Go's RFC3339 unmarshal then rejects. The top-level columns
-// are unaffected - pgx scans those natively.
+// the timestamps are cast to UTC, because jsonb writes a bare `timestamp` without offset
+// and Go's RFC3339 unmarshal rejects it. The top-level columns are fine, pgx scans them.
 const alertTimelineAggregate = `COALESCE((
     SELECT jsonb_agg(jsonb_build_object(
                'id', e.id, 'alert_id', e.alert_id, 'type', e.type, 'actor_id', e.actor_id,
@@ -155,8 +154,7 @@ func applyAlertFilter(stmt sq.SelectBuilder, filter alerts.AlertFilter) (sq.Sele
 	return stmt, nil
 }
 
-// Fetching limit+1 is what decides whether a next page exists, without a second
-// query.
+// fetch limit+1 to know if a next page exists, without a second query
 func (r *AlertRepositoryImpl) List(ctx context.Context, filter alerts.AlertFilter) ([]alerts.AlertListItem, *string, error) {
 	stmt, err := applyAlertFilter(selectAlerts(alertListColumns), filter)
 	if err != nil {
@@ -182,8 +180,7 @@ func (r *AlertRepositoryImpl) List(ctx context.Context, filter alerts.AlertFilte
 		rows = rows[:filter.Limit]
 	}
 
-	// Offset mode returns no cursor: handing back both would invite a client to
-	// interleave the two paging modes on one result set.
+	// offset mode returns no cursor, so a client cannot mix the two paging modes
 	if !hasMore || filter.Offset != nil {
 		return rows, nil, nil
 	}
@@ -308,8 +305,7 @@ func (r *AlertRepositoryImpl) AppendEvent(ctx context.Context, params alerts.App
 	return err
 }
 
-// AppendAlertEvent satisfies incidents.AlertTimeline so linking can write the
-// other half of the story onto the alert.
+// AppendAlertEvent satisfies incidents.AlertTimeline, so a link also writes to the alert.
 func (r *AlertRepositoryImpl) AppendAlertEvent(ctx context.Context, alertID uuid.UUID, eventType domain.EventType, actorID *uuid.UUID, body []byte) error {
 	return r.AppendEvent(ctx, alerts.AppendEventParams{
 		AlertID: alertID,
@@ -382,9 +378,8 @@ func (r *AlertRepositoryImpl) ListNotes(ctx context.Context, alertID uuid.UUID) 
 	return notes, nil
 }
 
-// Every bucket is a live GROUP BY over the open partial index rather than a
-// rollup table: the open set stays small even when alerts does not, and a
-// counter would drift.
+// every bucket is a live GROUP BY on the open partial index, not a rollup table: the open
+// set stays small even when alerts grow, and a counter would drift
 func (r *AlertRepositoryImpl) Summary(ctx context.Context, rng types.ResolvedRange) (alerts.AlertsSummary, error) {
 	summary := alerts.AlertsSummary{
 		BySeverity:   []alerts.SeverityBucket{},
@@ -424,8 +419,7 @@ func (r *AlertRepositoryImpl) Summary(ctx context.Context, rng types.ResolvedRan
 	}
 	summary.BySource = bySource
 
-	// Scoped to alert runs so the "share of that playbook's runs on alerts"
-	// label on the dashboard is actually true.
+	// only alert runs, so the "share of runs on alerts" label on the dashboard is true
 	topPlaybooks, err := CollectRowsFromSqlizer[alerts.PlaybookSuccess](ctx,
 		sq.Select(`p.name AS label,
             (count(*) FILTER (WHERE h.status = 'success'))::float / count(*)::float AS success_rate`).
@@ -474,8 +468,8 @@ func (r *AlertRepositoryImpl) Summary(ctx context.Context, rng types.ResolvedRan
 	return summary, nil
 }
 
-// generate_series supplies the empty buckets; a plain GROUP BY drops them, and
-// the chart would then compress a quiet week into a spike.
+// generate_series gives the empty buckets. A plain GROUP BY drops them, and a quiet week
+// would look like a spike.
 func (r *AlertRepositoryImpl) volume(ctx context.Context, rng types.ResolvedRange) ([]alerts.VolumePoint, error) {
 	const q = `
         SELECT d.bucket_start AT TIME ZONE 'UTC' AS bucket_start, COALESCE(c.count, 0)::int AS count
@@ -507,9 +501,8 @@ func (r *AlertRepositoryImpl) volume(ctx context.Context, rng types.ResolvedRang
 	return points, rows.Err()
 }
 
-// windowCount counts rows whose column falls in the selected range beside the
-// same count for the preceding range - the only baseline that makes the delta
-// on a KPI card mean anything.
+// windowCount counts the rows in the selected range, and the same count for the range
+// before it. This is the baseline for the delta on a KPI card.
 func (r *AlertRepositoryImpl) windowCount(ctx context.Context, column string, rng types.ResolvedRange, prevFrom, prevTo time.Time) (types.WindowCount, error) {
 	q := fmt.Sprintf(`
         SELECT
@@ -522,10 +515,9 @@ func (r *AlertRepositoryImpl) windowCount(ctx context.Context, column string, rn
 	return out, err
 }
 
-// alerts has no resolved_at column, so the timeline is the authority on when an
-// alert was closed out. Counting the event rather than the current status is
-// also what makes the previous window answerable at all - a row that was
-// resolved and later reopened must still count in the window it was resolved in.
+// alerts has no resolved_at column, so the timeline says when an alert was closed. Count
+// the event, not the current status: a row that was resolved and then reopened must still
+// count in the window where it was resolved.
 func (r *AlertRepositoryImpl) resolvedWindow(ctx context.Context, rng types.ResolvedRange, prevFrom, prevTo time.Time) (types.WindowCount, error) {
 	const q = `
         SELECT

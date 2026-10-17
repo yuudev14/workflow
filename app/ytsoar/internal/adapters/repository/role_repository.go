@@ -11,7 +11,6 @@ import (
 	"github.com/yuudev14/ytsoar/internal/logger"
 )
 
-// RoleRepositoryImpl implements auth.RoleRepository.
 type RoleRepositoryImpl struct {
 	logger logger.Logger
 	q      QuerierTx
@@ -144,8 +143,8 @@ func (r *RoleRepositoryImpl) Delete(ctx context.Context, id uuid.UUID) (int64, e
 	return r.queriesFromContext(ctx).DeleteRole(ctx, toPgUUID(id))
 }
 
-// ReplacePermissions clears the matrix and rewrites it. The caller runs it in
-// a transaction, so a failure mid-rewrite cannot leave the role partly granted.
+// ReplacePermissions clears the matrix and writes it again. The caller runs it in a
+// transaction, so a failure in the middle cannot leave the role partly granted.
 func (r *RoleRepositoryImpl) ReplacePermissions(ctx context.Context, roleID uuid.UUID, permissions domain.PermissionSet) error {
 	q := r.queriesFromContext(ctx)
 	if err := q.DeleteRolePermissions(ctx, toPgUUID(roleID)); err != nil {

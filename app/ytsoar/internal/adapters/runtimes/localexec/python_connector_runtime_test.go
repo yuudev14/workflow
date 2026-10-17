@@ -19,10 +19,10 @@ import (
 	"github.com/yuudev14/ytsoar/internal/logger"
 )
 
-// fakeConnectorsTree builds a minimal connectors/ package whose core mirrors
-// the real connectors/core/connector.py API (importlib loading, TOML configs)
-// without the jinja2/colorlog dependencies, so the harness contract can be
-// tested on any machine with python3.
+// fakeConnectorsTree builds a small connectors/ package whose core copies the API of the
+// real connectors/core/connector.py (importlib loading, TOML configs) without the
+// jinja2/colorlog dependencies, so the harness contract is testable on any machine with
+// python3.
 func fakeConnectorsTree(t *testing.T) string {
 	t.Helper()
 	root := t.TempDir()
@@ -98,9 +98,8 @@ func TestPythonConnectorRuntimeExecutesOperation(t *testing.T) {
 	assert.Equal(t, "echo", decoded["op"])
 }
 
-// Vendored per-connector dependencies: <id>/deps (populated by `make
-// connector-deps` from <id>/requirements.txt) must be importable by the
-// connector, isolated per run.
+// Vendored dependencies per connector: <id>/deps (filled by `make connector-deps` from
+// <id>/requirements.txt) must be importable by the connector, separate for each run.
 func TestPythonConnectorRuntimeVendoredDeps(t *testing.T) {
 	requirePython(t)
 	root := fakeConnectorsTree(t)

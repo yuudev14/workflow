@@ -1,5 +1,5 @@
-// Package middleware holds the gin handlers that run before route handlers:
-// authentication today, permission checks alongside it.
+// Package middleware has the gin handlers that run before the route handlers:
+// authentication, and permission checks next to it.
 package middleware
 
 import (
@@ -12,7 +12,7 @@ import (
 	"github.com/yuudev14/ytsoar/internal/logger"
 )
 
-// authUserKey is unexported so only CurrentUser can read the context value.
+// authUserKey is unexported, so only CurrentUser can read the context value
 const authUserKey = "auth_user"
 
 const (
@@ -26,17 +26,15 @@ type TokenVerifier interface {
 	VerifyRefreshTokenForWS(ctx context.Context, refreshToken string) (domain.AuthUser, error)
 }
 
-// Auth authenticates ordinary API requests.
+// Auth authenticates normal API requests.
 //
-// Browsers send the access token as an httpOnly cookie, which they attach
-// automatically. the frontend never handles the token. Service clients (the
-// agent service, the worker, the CLI) have no cookie jar, so an Authorization
-// header is accepted too; the header wins when both are present.
+// Browsers send the access token as an httpOnly cookie, so the frontend never handles the
+// token. Service clients (agent service, worker, CLI) have no cookie jar, so an
+// Authorization header is accepted too. The header wins when both exist.
 //
-// Accepting cookies means CSRF protection rests on SameSite=Lax plus the
-// exact-origin CORS allow-list rather than on headers being unforgeable. Lax
-// keeps cookies off cross-site POST/PUT/DELETE, so mutations stay safe as long
-// as they never hide behind GET.
+// Because cookies are accepted, CSRF protection depends on SameSite=Lax and the exact-origin
+// CORS allow-list, not on headers that cannot be forged. Lax keeps cookies off cross-site
+// POST/PUT/DELETE, so mutations stay safe as long as they never hide behind GET.
 func Auth(log logger.Logger, verifier TokenVerifier) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		raw := bearerToken(c.GetHeader("Authorization"))
@@ -60,10 +58,10 @@ func Auth(log logger.Logger, verifier TokenVerifier) gin.HandlerFunc {
 	}
 }
 
-// AuthFromRefreshCookie authenticates the websocket handshake. A browser
-// cannot attach headers to a WebSocket, but the handshake is a normal GET, so
-// the refresh cookie rides along. The token is read only - never rotated -
-// and verified against the database so a logout stops reconnects at once.
+// AuthFromRefreshCookie authenticates the websocket handshake. A browser cannot set
+// headers on a WebSocket, but the handshake is a normal GET, so the refresh cookie comes
+// with it. The token is read, never rotated, and checked against the database, so a logout
+// stops reconnects at once.
 func AuthFromRefreshCookie(log logger.Logger, verifier TokenVerifier) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		raw, err := c.Cookie(RefreshCookieName)
@@ -84,9 +82,8 @@ func AuthFromRefreshCookie(log logger.Logger, verifier TokenVerifier) gin.Handle
 	}
 }
 
-// SetCurrentUser records the authenticated caller. The context key stays
-// unexported so identity can only be set through here - nothing outside this
-// package can forge one by writing the raw key.
+// SetCurrentUser saves the authenticated caller. The context key stays unexported, so
+// nothing outside this package can fake an identity.
 func SetCurrentUser(c *gin.Context, user domain.AuthUser) {
 	c.Set(authUserKey, user)
 }

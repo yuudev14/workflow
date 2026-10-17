@@ -15,14 +15,12 @@ start-split:
 		docker compose -f ./docker/dev.docker-compose.yml -f ./docker/split.docker-compose.yml up --build -d
 
 # The backend in one process on the host, without Docker for the backend
-# (Postgres and Keycloak still come from compose). Needs air, goose, Python and
-# Node on the host; see the README.
+# (Postgres and Keycloak still come from compose). Needs app/ytsoar/.env
+# (copy .env.sample), air, goose, Python and Node on the host; see the README.
 dev:
 		docker compose -f ./docker/dev.docker-compose.yml up -d --wait ytsoar_postgres ytsoar_keycloak && \
 		cd ./app/ytsoar && \
-		DB_USER=postgres DB_PASSWORD=password DB_HOST=localhost DB_PORT=5433 DB_NAME=ytsoar \
-		CONNECTORS_DIR=$(CURDIR)/app/connectors \
-		sh -c 'make migrate && exec air'
+		make migrate && exec air
 
 start-dev:
 		docker compose -f ./docker/dev.docker-compose.yml up -d && \

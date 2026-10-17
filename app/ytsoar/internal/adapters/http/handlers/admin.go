@@ -13,9 +13,8 @@ import (
 	"github.com/yuudev14/ytsoar/internal/logger"
 )
 
-// AdminHandler serves the settings module: users, roles, teams and the audit
-// trail. They share one handler because they share one permission module and
-// one service.
+// AdminHandler serves the settings module: users, roles, teams and the audit trail. They
+// share one handler because they share one permission module and one service.
 type AdminHandler struct {
 	logger      logger.Logger
 	authService *auth.Service
@@ -25,9 +24,9 @@ func NewAdminHandler(log logger.Logger, authService *auth.Service) *AdminHandler
 	return &AdminHandler{logger: log, authService: authService}
 }
 
-// actorAndTarget resolves who is acting and which entity they named. Every
-// mutating route needs both, and the id must be validated here - gin's binder
-// cannot bind a path param to uuid.UUID.
+// actorAndTarget gets who is acting and which entity they named. Every mutating route
+// needs both, and the id is validated here because gin cannot bind a path param to
+// uuid.UUID.
 func (h *AdminHandler) actorAndTarget(c *gin.Context, param string) (uuid.UUID, uuid.UUID, bool) {
 	response := rest.Response{C: c}
 
@@ -78,8 +77,8 @@ func (h *AdminHandler) ListUsers(c *gin.Context) {
 	response.ResponseSuccess(users)
 }
 
-// ListAssignableUsers is authenticated but ungated - see the service method for
-// why, and note that it must stay a projection of id + username only.
+// ListAssignableUsers is authenticated but not gated. See the service method for why. It
+// must stay a projection of id and username only.
 func (h *AdminHandler) ListAssignableUsers(c *gin.Context) {
 	response := rest.Response{C: c}
 
@@ -195,8 +194,8 @@ func (h *AdminHandler) SetUserPassword(c *gin.Context) {
 	c.Status(http.StatusNoContent)
 }
 
-// DeactivateUser is what DELETE means here. Users are never hard-deleted:
-// audit rows and uploaded connectors reference them.
+// DeactivateUser is what DELETE means here. Users are never hard-deleted, because audit
+// rows and uploaded connectors point to them.
 func (h *AdminHandler) DeactivateUser(c *gin.Context) {
 	response := rest.Response{C: c}
 
@@ -205,7 +204,7 @@ func (h *AdminHandler) DeactivateUser(c *gin.Context) {
 		return
 	}
 
-	// Locking yourself out is easy to do by accident and awkward to undo.
+	// locking yourself out is easy to do by accident and hard to undo
 	if actorID == userID {
 		response.ResponseError(http.StatusBadRequest, "you cannot deactivate your own account")
 		return
@@ -435,8 +434,8 @@ func (h *AdminHandler) SetTeamMembers(c *gin.Context) {
 	response.ResponseSuccess(team)
 }
 
-// SetTeamRoles grants roles to every member of the team, so it carries the same
-// weight as editing a user's roles and sits behind the same settings.update.
+// SetTeamRoles grants roles to every member of the team. It has the same weight as editing
+// the roles of a user, so it is behind the same settings.update.
 func (h *AdminHandler) SetTeamRoles(c *gin.Context) {
 	response := rest.Response{C: c}
 

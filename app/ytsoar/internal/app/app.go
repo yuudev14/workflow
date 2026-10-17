@@ -40,9 +40,8 @@ import (
 	"github.com/yuudev14/ytsoar/internal/logger"
 )
 
-// NewAPI connects every adapter and service of the api program and returns
-// its HTTP router. cmd/api and the integration tests both call it, so the
-// tests use the same wiring as production.
+// NewAPI connects the adapters and services of the api program and returns its HTTP
+// router. cmd/api and the integration tests both call it, so tests use the real wiring.
 func NewAPI(ctx context.Context, cfg config.Config, appLogger logger.Logger, pool *pgxpool.Pool) (*gin.Engine, error) {
 	queries := db.New(pool)
 	txManager := repository.NewPgxTxManager(pool)
@@ -103,8 +102,8 @@ func NewAPI(ctx context.Context, cfg config.Config, appLogger logger.Logger, poo
 		authConfig,
 	)
 
-	// Without this a fresh database has roles but no users, so nobody could
-	// sign in. It is a no-op once someone holds the admin role.
+	// without this a new database has roles but no users, and nobody can sign in.
+	// It does nothing once someone has the admin role.
 	if err := authService.EnsureAdminUser(ctx); err != nil {
 		return nil, fmt.Errorf("failed to seed admin user: %w", err)
 	}
@@ -150,8 +149,7 @@ func NewAPI(ctx context.Context, cfg config.Config, appLogger logger.Logger, poo
 
 	moduleEventPublisher := jobs.NewModuleEventLogger(appLogger)
 
-	// The alert repository doubles as incidents.AlertTimeline so linking writes
-	// the other half of the story onto the alert.
+	// the alert repository is also incidents.AlertTimeline, so a link writes to the alert too
 	incidentService := incidents.NewService(
 		appLogger, incidentRepository, alertRepository, txManager, moduleEventPublisher, userRepository)
 	alertService := alerts.NewService(
@@ -179,8 +177,8 @@ func NewAPI(ctx context.Context, cfg config.Config, appLogger logger.Logger, poo
 	), nil
 }
 
-// NewWorker connects the parts of the worker program and returns its job
-// queue client. The caller starts and stops it.
+// NewWorker connects the parts of the worker program and returns its job queue client.
+// The caller starts and stops it.
 func NewWorker(cfg config.Config, appLogger logger.Logger, pool *pgxpool.Pool) (*river.Client[pgx.Tx], error) {
 	queries := db.New(pool)
 
@@ -190,9 +188,9 @@ func NewWorker(cfg config.Config, appLogger logger.Logger, pool *pgxpool.Pool) (
 	playbookService := playbooks.NewPlaybookService(appLogger, playbookRepository)
 	taskService := tasks.NewTaskServiceImpl(taskRepository)
 
-	// The worker never runs user code. SandboxRuntime sends every other task
-	// (python/js/ts connectors, code snippets) to the sandbox over gRPC. The
-	// built-in connectors are OUR code, so BuiltinRuntime runs them in the worker.
+	// the worker never runs user code. SandboxRuntime sends all other tasks (python/js/ts
+	// connectors, code snippets) to the sandbox over gRPC. The built-in connectors are our
+	// code, so BuiltinRuntime runs them in the worker.
 	sandboxRuntime, err := grpcruntime.NewSandboxRuntime(appLogger, cfg.SandboxAddr)
 	if err != nil {
 		return nil, fmt.Errorf("failed to setup sandbox runtime client: %w", err)
@@ -225,21 +223,18 @@ func NewWorker(cfg config.Config, appLogger logger.Logger, pool *pgxpool.Pool) (
 		cfg.PlaybookConcurrency, cfg.RunTimeout, cfg.WorkerStopGrace)
 }
 
-// NewSandbox connects the parts of the sandbox program and returns its gRPC
-// server. The sandbox has no database access.
+// NewSandbox connects the parts of the sandbox program and returns its gRPC server.
+// The sandbox has no database access.
 func NewSandbox(cfg config.Config, appLogger logger.Logger) (*grpcserver.RuntimeServer, error) {
-	// Code nodes are pinned first; connector ids from the unified tree never
-	// override them.
+	// code nodes are pinned first, connector ids from the unified tree never override them
 	byConnector := map[string]execution.TaskRuntime{
 		"code_snippet_py": localexec.NewPythonSnippetRuntime(appLogger, cfg.PythonMemoryLimitMB),
 		"code_snippet_js": localexec.NewNodeJSSnippetRuntime(appLogger, cfg.NodeMemoryLimitMB),
 	}
 
-	// Python connectors are the default: any connector without an explicit
-	// mapping runs through the python connector harness. Connectors whose
-	// info.json declares "runtime": "node" run through the node harness -
-	// checked per request, so connectors uploaded after boot route correctly
-	// without a restart.
+	// python connectors are the default: a connector without a mapping uses the python
+	// harness. A connector with "runtime": "node" in info.json uses the node harness. This is
+	// checked per request, so a connector uploaded after boot works without a restart.
 	var defaultRuntime execution.TaskRuntime
 	var nodeJSConnectorRuntime execution.TaskRuntime
 	if cfg.ConnectorsDir != "" {
@@ -258,9 +253,8 @@ func NewSandbox(cfg config.Config, appLogger logger.Logger) (*grpcserver.Runtime
 		appLogger.Warn("CONNECTORS_DIR is empty: connectors are disabled, only code nodes will run")
 	}
 
-	// DynamicResolver runs in the sandbox. It picks the runtime for each task that
-	// the worker sends over gRPC, and it reads info.json on every call, so a
-	// connector that you upload works with no restart.
+	// DynamicResolver runs in the sandbox. It picks the runtime of each task from the worker
+	// and reads info.json on every call, so an uploaded connector works without a restart.
 	resolver := execution.DynamicResolver(func(task domain.Tasks) (execution.TaskRuntime, error) {
 		if task.ConnectorID != nil {
 			if runtime, ok := byConnector[*task.ConnectorID]; ok {

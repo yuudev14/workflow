@@ -21,18 +21,17 @@ import (
 
 //go:generate mockgen -destination=mocks/service_mock.go -package=mocks . ConnectorService
 
-// MaxUploadBytes caps the uploaded zip; maxUncompressedBytes caps what it may
-// expand to (zip-bomb guard).
+// MaxUploadBytes limits the uploaded zip. maxUncompressedBytes limits what it can expand
+// to (zip-bomb guard).
 const (
 	MaxUploadBytes       = 50 << 20
 	maxUncompressedBytes = 200 << 20
 )
 
-// reservedIDs cannot be uploaded: "core" is the shared base-class package,
-// the code_snippet pair are virtual connectors implemented by the sandbox,
-// and condition/http_request are Go builtins compiled into the worker - an
-// upload could never shadow them (the resolver routes builtins first), so
-// reject it instead of confusing anyone.
+// reservedIDs cannot be uploaded. "core" is the shared base-class package. The
+// code_snippet pair are virtual connectors of the sandbox. condition and http_request are
+// Go builtins in the worker, and the resolver routes builtins first, so an upload could
+// never replace them. Reject it, so nobody is confused.
 var reservedIDs = map[string]bool{
 	"core":            true,
 	"code_snippet_py": true,
@@ -77,9 +76,9 @@ func (s *ConnectorServiceImpl) GetConnector(ctx context.Context, connectorID str
 	return s.store.Get(ctx, connectorID)
 }
 
-// UploadConnector validates the zip, extracts it into the tree (replacing any
-// previous version), vendors its declared dependencies and upserts the audit
-// row. Validation failures wrap ErrInvalidConnector.
+// UploadConnector checks the zip, extracts it into the tree (replacing the old version),
+// vendors the declared dependencies and upserts the audit row. A validation failure wraps
+// ErrInvalidConnector.
 func (s *ConnectorServiceImpl) UploadConnector(ctx context.Context, zipBytes []byte, uploadedBy string) (domain.ConnectorInfo, error) {
 	if len(zipBytes) > MaxUploadBytes {
 		return nil, apperr.Wrap(apperr.Invalid, fmt.Sprintf("zip exceeds %d bytes", MaxUploadBytes), ErrInvalidConnector)
@@ -125,8 +124,8 @@ func (s *ConnectorServiceImpl) UploadConnector(ctx context.Context, zipBytes []b
 }
 
 func (s *ConnectorServiceImpl) DeleteConnector(ctx context.Context, connectorID string) error {
-	// reservedIDs guard deletes too: removing a builtin's info.json dir would
-	// strip it from the editor even though its implementation is compiled in.
+	// reservedIDs guard deletes too: removing the info.json dir of a builtin would remove it
+	// from the editor, even though the code is compiled in
 	if reservedIDs[connectorID] {
 		return apperr.Wrap(apperr.Invalid, fmt.Sprintf("connector id %q is reserved", connectorID), ErrInvalidConnector)
 	}
@@ -136,7 +135,7 @@ func (s *ConnectorServiceImpl) DeleteConnector(ctx context.Context, connectorID 
 	if err := s.writer.Remove(ctx, connectorID); err != nil {
 		return err
 	}
-	// built-ins seeded from the repo have no audit row - not an error
+	// built-ins seeded from the repo have no audit row, not an error
 	if err := s.repo.Delete(ctx, connectorID); err != nil && err != ErrConnectorNotFound {
 		return err
 	}
@@ -158,8 +157,8 @@ type archiveInfo struct {
 	version string
 }
 
-// validateArchive rejects unsafe entries and returns the single top-level
-// folder to strip ("" when files sit at the zip root).
+// validateArchive rejects unsafe entries and returns the one top-level folder to strip
+// ("" when files are at the zip root).
 func validateArchive(archive *zip.Reader) (string, error) {
 	if len(archive.File) == 0 {
 		return "", apperr.Wrap(apperr.Invalid, "empty zip", ErrInvalidConnector)
@@ -202,8 +201,8 @@ func validateArchive(archive *zip.Reader) (string, error) {
 	return prefix, nil
 }
 
-// readArchiveInfo parses info.json at the connector root and checks the
-// runtime implementation file is present.
+// readArchiveInfo parses info.json at the connector root and checks that the runtime file
+// exists.
 func readArchiveInfo(archive *zip.Reader, prefix string) (archiveInfo, error) {
 	files := map[string]bool{}
 	var raw []byte

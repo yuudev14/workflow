@@ -1,6 +1,6 @@
-// Dev only: the api, the worker and the sandbox in one process, so one air
-// builds one binary per change. The sandbox shares the process and the DB_*
-// settings with the api. Production runs the three programs apart.
+// Dev only: the api, the worker and the sandbox in one process, so one air build makes one
+// binary per change. The sandbox shares the process and the DB_* settings with the api.
+// Production runs the three programs apart.
 package main
 
 import (
@@ -29,8 +29,8 @@ func main() {
 	}
 	defer pool.Close()
 
-	// The worker calls SANDBOX_ADDR (default localhost:50052), and the sandbox
-	// listens on SANDBOX_LISTEN_ADDR (default :50052).
+	// the worker calls SANDBOX_ADDR (default localhost:50052), the sandbox listens on
+	// SANDBOX_LISTEN_ADDR (default :50052)
 	sandbox, err := app.NewSandbox(cfg, appLogger)
 	if err != nil {
 		log.Fatal(err)

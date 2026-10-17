@@ -110,9 +110,9 @@ func (s *Service) Create(ctx context.Context, payload CreateIncidentPayload, act
 	return incident, nil
 }
 
-// CreateForEscalation runs inside the alert service's transaction, so it must
-// not publish or open one of its own - the caller announces both entities once
-// the whole escalation has committed.
+// CreateForEscalation runs inside the transaction of the alert service. It must not
+// publish or open its own one, the caller announces both entities after the whole
+// escalation commits.
 func (s *Service) CreateForEscalation(ctx context.Context, params alerts.EscalationParams) (domain.Incident, error) {
 	incident, err := s.repo.Create(ctx, CreateParams{
 		Title:      params.Title,
@@ -249,8 +249,8 @@ func (s *Service) DeleteNote(ctx context.Context, noteID uuid.UUID, actorID *uui
 	return s.repo.DeleteNote(ctx, noteID)
 }
 
-// A note is evidence in a post-incident review, so only its author may rewrite
-// it. A note whose author was deleted becomes permanently read-only.
+// A note is evidence in a post-incident review, so only its author can rewrite it. A note
+// whose author was deleted is read-only forever.
 func (s *Service) assertNoteAuthor(ctx context.Context, noteID uuid.UUID, actorID *uuid.UUID) error {
 	note, err := s.repo.GetNote(ctx, noteID)
 	if err != nil {
@@ -317,8 +317,8 @@ func (s *Service) UnlinkAlert(ctx context.Context, incidentID, alertID uuid.UUID
 	return nil
 }
 
-// A repeat link is a no-op rather than an error, but it must not append a
-// second pair of timeline rows saying it happened twice.
+// A repeat link does nothing and is not an error. It must not add a second pair of
+// timeline rows saying it happened twice.
 func (s *Service) link(
 	ctx context.Context,
 	incident domain.Incident,
@@ -344,8 +344,8 @@ func (s *Service) link(
 		mustJSON(map[string]any{"incident_id": incident.ID, "incident_title": incident.Title, "source": source}))
 }
 
-// Fire-and-log: the write already committed, so failing the request here would
-// report nothing happened when something did.
+// Fire and log: the write already committed, so failing the request would say nothing
+// happened when something did.
 func (s *Service) publish(module, event string, entity any) {
 	if err := s.events.Publish(module, event, entity); err != nil {
 		s.logger.Errorw("failed to publish module event",
@@ -415,7 +415,7 @@ func toUpdateParams(payload UpdateIncidentPayload) (UpdateParams, error) {
 	return params, nil
 }
 
-// Unset leaves the column alone; an explicit null clears it.
+// Unset leaves the column alone, an explicit null clears it.
 func nullableUUID(in types.Nullable[string], field string) (types.Nullable[uuid.UUID], error) {
 	if !in.Set {
 		return types.Nullable[uuid.UUID]{}, nil
@@ -462,9 +462,8 @@ func mustJSON(v any) json.RawMessage {
 	return raw
 }
 
-// appendUpdateEvent records a field-level edit on the timeline. It returns
-// without writing when nothing actually changed, so a no-op PATCH leaves the
-// audit log alone.
+// appendUpdateEvent writes a field-level edit to the timeline. It writes nothing when
+// nothing changed, so a no-op PATCH leaves the audit log alone.
 func (s *Service) appendUpdateEvent(ctx context.Context, id uuid.UUID, before, after domain.Incident, actorID *uuid.UUID) error {
 	changes := domain.DiffAssignable(
 		before.Severity, after.Severity,
@@ -486,8 +485,8 @@ func (s *Service) appendUpdateEvent(ctx context.Context, id uuid.UUID, before, a
 	})
 }
 
-// A missing directory is not worth failing an edit over: the event still records
-// the change, just with uuids instead of names.
+// a missing directory is not worth failing an edit: the event still records the change,
+// with uuids instead of names
 func (s *Service) labelAssignees(ctx context.Context, changes []domain.FieldChange) {
 	if s.users == nil {
 		return

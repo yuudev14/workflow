@@ -10,9 +10,8 @@ import (
 
 type txKey struct{}
 
-// PgxTxManager implements contracts.TxManager. The transaction is carried in
-// the context so repositories pick it up transparently and services never
-// touch the driver.
+// PgxTxManager implements contracts.TxManager. The transaction is in the context, so
+// repositories use it without extra code and services never touch the driver.
 type PgxTxManager struct {
 	pool *pgxpool.Pool
 }
@@ -47,8 +46,8 @@ func (m *PgxTxManager) WithinTransaction(
 	return nil
 }
 
-// TxFromContext lets other adapters (the job queue) join the transaction that the
-// TxManager put in ctx.
+// TxFromContext lets other adapters (the job queue) join the transaction that TxManager
+// put in ctx.
 func TxFromContext(ctx context.Context) (pgx.Tx, bool) { return txFromContext(ctx) }
 
 func txFromContext(ctx context.Context) (pgx.Tx, bool) {

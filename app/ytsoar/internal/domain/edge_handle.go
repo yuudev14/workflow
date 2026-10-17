@@ -1,13 +1,12 @@
 package domain
 
 const (
-	// ConditionConnectorID is the builtin switch connector powering
-	// conditional branching.
+	// ConditionConnectorID is the builtin switch connector for conditional branching.
 	ConditionConnectorID = "condition"
 
-	// ConditionOutputHandle is the editor's single output handle on a
-	// condition node (frontend CONDITION_OUTPUT_HANDLE). Edges still carrying
-	// it were never routed to a branch, so the executor does not follow them.
+	// ConditionOutputHandle is the single output handle of a condition node in the editor
+	// (frontend CONDITION_OUTPUT_HANDLE). Edges that still have it were never routed to a
+	// branch, so the executor does not follow them.
 	ConditionOutputHandle = "output"
 )
 

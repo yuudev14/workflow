@@ -50,8 +50,8 @@ func TestCreateUserStoresHashNeverPlaintext(t *testing.T) {
 	assert.Equal(t, []string{"analyst"}, created.Roles)
 }
 
-// An unknown role id must be caught before the insert, otherwise it surfaces
-// as an opaque foreign-key violation.
+// An unknown role id must be caught before the insert, or it shows as an unclear
+// foreign-key error.
 func TestCreateUserRejectsUnknownRole(t *testing.T) {
 	env := setupTest(t)
 	roleID := uuid.New()
@@ -73,7 +73,7 @@ func TestCreateUserRejectsUnknownRole(t *testing.T) {
 	assert.ErrorIs(t, err, auth.ErrRoleNotFound)
 }
 
-// A malformed role id must fail before anything is hashed or written.
+// A bad role id must fail before anything is hashed or written.
 func TestCreateUserRejectsMalformedRoleID(t *testing.T) {
 	env := setupTest(t)
 
@@ -87,8 +87,8 @@ func TestCreateUserRejectsMalformedRoleID(t *testing.T) {
 	assert.ErrorIs(t, err, auth.ErrValidation)
 }
 
-// The security-relevant half of deactivation: flipping is_active alone would
-// leave the user working until their refresh token expires - up to a week.
+// The security part of deactivation: flipping is_active alone would leave the user working
+// until the refresh token expires (up to a week).
 func TestDeactivateUserRevokesEverySession(t *testing.T) {
 	env := setupTest(t)
 	userID := uuid.New()
@@ -107,7 +107,7 @@ func TestDeactivateUserRevokesEverySession(t *testing.T) {
 	require.NoError(t, env.service.DeactivateUser(context.Background(), uuid.New(), userID))
 }
 
-// The mirror of the test above: an ordinary edit must not log the user out.
+// The opposite of the test above: a normal edit must not log the user out.
 func TestUpdateUserWithoutDeactivationKeepsSessions(t *testing.T) {
 	env := setupTest(t)
 	userID := uuid.New()
@@ -116,7 +116,7 @@ func TestUpdateUserWithoutDeactivationKeepsSessions(t *testing.T) {
 	env.mockUsers.EXPECT().Update(gomock.Any(), userID, gomock.Any()).
 		Return(domain.User{ID: userID}, nil)
 	env.mockUsers.EXPECT().GetWithRoles(gomock.Any(), userID).Return(domain.UserWithRoles{}, nil)
-	// No RevokeAllForUser expectation: gomock fails the test if it is called.
+	// no RevokeAllForUser expectation: gomock fails the test if it is called
 
 	_, err := env.service.UpdateUser(context.Background(), uuid.New(), userID, auth.UpdateUserInput{
 		Email: types.Nullable[string]{Value: &newEmail, Set: true},
@@ -140,8 +140,8 @@ func TestUpdateUserReactivatingKeepsSessions(t *testing.T) {
 	require.NoError(t, err)
 }
 
-// An admin resetting a password is usually responding to a compromise; the
-// old sessions have to die with the old password.
+// An admin resets a password usually after a compromise, so the old sessions must die with
+// the old password.
 func TestSetUserPasswordRevokesEverySession(t *testing.T) {
 	env := setupTest(t)
 	userID := uuid.New()
@@ -153,8 +153,8 @@ func TestSetUserPasswordRevokesEverySession(t *testing.T) {
 	require.NoError(t, env.service.SetUserPassword(context.Background(), uuid.New(), userID, "brand-new-password"))
 }
 
-// Replacing roles must clear the old grants first - appending would silently
-// widen access instead of setting it.
+// Replacing roles must clear the old grants first. Appending would widen the access
+// instead of setting it.
 func TestSetUserRolesReplacesRatherThanAppends(t *testing.T) {
 	env := setupTest(t)
 	userID := uuid.New()

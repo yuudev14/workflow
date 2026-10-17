@@ -14,8 +14,8 @@ const (
 	DefaultNodeMemoryLimitMB   = 256
 	DefaultPythonMemoryLimitMB = 512
 
-	// DefaultJWTSecret keeps local development frictionless. cmd/api refuses
-	// to start with it once APP_ENV is production.
+	// DefaultJWTSecret makes local dev easy. cmd/api refuses to start with it when APP_ENV is
+	// production.
 	DefaultJWTSecret = "secret"
 )
 
@@ -25,7 +25,7 @@ type Config struct {
 	JWTSecret  string
 	HTTPAddr   string
 
-	// AppEnv gates the production safety checks in cmd/api.
+	// AppEnv turns on the production safety checks in cmd/api.
 	AppEnv string
 
 	AccessTokenTTL  time.Duration
@@ -35,49 +35,46 @@ type Config struct {
 
 	CookieSecure bool
 
-	// Admin seed used on first boot when nobody holds the admin role.
+	// admin seed, used on first boot when nobody has the admin role
 	AdminUsername string
 	AdminEmail    string
 	AdminPassword string
 
-	// OIDC. FrontendURL is where the callback sends the browser after a
-	// successful sign-in; AuthPublicURL is the browser-facing base the IdP
-	// redirects back to (nginx strips /auth-api/ before it reaches the api).
+	// OIDC. FrontendURL is where the callback sends the browser after sign-in. AuthPublicURL
+	// is the browser base that the IdP redirects to (nginx strips /auth-api/ before the api).
 	FrontendURL   string
 	AuthPublicURL string
 
-	// SandboxAddr is where the worker sends every dynamic node
-	// (ConnectorRuntime gRPC on cmd/sandbox).
+	// SandboxAddr is where the worker sends every dynamic node (ConnectorRuntime gRPC on
+	// cmd/sandbox).
 	SandboxAddr string
 
 	SandboxListenAddr string
 
-	// ConnectorsDir is the unified connectors tree (a directory literally
-	// named "connectors": <id>/{info.json, connector.py|connector.ts|
-	// connector.js, configs/}). The API serves metadata from it; the sandbox
-	// executes from it. Empty disables connectors.
+	// ConnectorsDir is the unified connectors tree (a directory named "connectors" with
+	// <id>/{info.json, connector.py|connector.ts|connector.js, configs/}). The API serves the
+	// metadata, and the sandbox runs from it. Empty disables connectors.
 	ConnectorsDir string
 
-	// Worker execution tuning.
+	// worker tuning
 	MaxParallelNodes    int           // nodes run concurrently within one playbook run
 	PlaybookConcurrency int           // playbook runs one worker runs concurrently
 	RunTimeout          time.Duration // cap for one whole playbook run
 	WorkerStopGrace     time.Duration // time that running playbooks get to finish when the worker stops
 	NodeTimeout         time.Duration // per-node execution timeout (sandbox fallback too)
 
-	// Sandbox subprocess memory caps. Keep concurrency x cap under the
-	// sandbox container's memory limit.
+	// sandbox subprocess memory caps. Keep concurrency x cap under the memory limit of the
+	// sandbox container.
 	NodeMemoryLimitMB   int // V8 --max-old-space-size for JS/TS subprocesses
 	PythonMemoryLimitMB int // RLIMIT_AS the python harnesses apply to themselves
 }
 
-// Load reads .env (when present) and assembles the root configuration.
+// Load reads .env (if it exists) and builds the root configuration.
 func Load() Config {
 	return LoadFrom("")
 }
 
-// LoadFrom loads configuration using the given dotenv file path. An empty
-// path falls back to ./.env.
+// LoadFrom loads the configuration with the given dotenv path. An empty path uses ./.env.
 func LoadFrom(dest string) Config {
 	if dest == "" {
 		_ = godotenv.Load("./.env")
@@ -136,7 +133,7 @@ func getEnvOr(key string, fallback string) string {
 	return fallback
 }
 
-// getEnvIntOr parses an integer env var; unset or unparsable values fall back.
+// getEnvIntOr parses an integer env var. Unset or invalid values use the fallback.
 func getEnvIntOr(key string, fallback int) int {
 	val := os.Getenv(key)
 	if val == "" {
@@ -149,8 +146,8 @@ func getEnvIntOr(key string, fallback int) int {
 	return n
 }
 
-// getEnvPositiveIntOr is for limits. A value of 0 or less would turn the limit into
-// River's own default (1 minute) or into "no limit", so it uses the fallback instead.
+// getEnvPositiveIntOr is for limits. 0 or less would become the River default (1 minute)
+// or "no limit", so it uses the fallback.
 func getEnvPositiveIntOr(key string, fallback int) int {
 	if n := getEnvIntOr(key, fallback); n > 0 {
 		return n
@@ -170,7 +167,7 @@ func getEnvBoolOr(key string, fallback bool) bool {
 	return b
 }
 
-// getEnvListOr reads a comma-separated env var, trimming blanks.
+// getEnvListOr reads a comma-separated env var and trims blanks.
 func getEnvListOr(key string, fallback []string) []string {
 	val := os.Getenv(key)
 	if val == "" {

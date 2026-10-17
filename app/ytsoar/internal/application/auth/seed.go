@@ -6,12 +6,12 @@ import (
 	"github.com/yuudev14/ytsoar/internal/domain"
 )
 
-// EnsureAdminUser gives a fresh deployment someone who can log in. The check
-// is "does anyone hold the admin role" rather than "is the users table empty",
-// so leftover rows from earlier work can't lock everyone out.
+// EnsureAdminUser gives a new deployment someone who can log in. It checks "does anyone
+// hold the admin role", not "is the users table empty", so old rows cannot lock everyone
+// out.
 //
-// A missing ADMIN_PASSWORD is a warning, not a failure: the API still boots,
-// it just has no way to hash a first password.
+// A missing ADMIN_PASSWORD is a warning, not a failure: the API still boots, but it cannot
+// hash a first password.
 func (s *Service) EnsureAdminUser(ctx context.Context) error {
 	count, err := s.users.CountWithRole(ctx, domain.RoleAdmin)
 	if err != nil {

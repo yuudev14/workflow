@@ -29,8 +29,8 @@ func TestAlertRouteGrants(t *testing.T) {
 		{http.MethodPost, "/api/alerts/v1", "alerts.create"},
 		{http.MethodPost, "/api/alerts/v1/batch", "alerts.create"},
 
-		// Running automation is its own grant: alerts:update must not be enough
-		// to execute a playbook, and neither should playbooks:update.
+		// Running automation is its own grant: alerts:update is not enough to run a playbook, and
+		// neither is playbooks:update.
 		{http.MethodPost, "/api/alerts/v1/run", "alerts.execute"},
 
 		{http.MethodPatch, "/api/alerts/v1/abc", "alerts.update"},
@@ -39,8 +39,7 @@ func TestAlertRouteGrants(t *testing.T) {
 		{http.MethodPatch, "/api/alerts/v1/abc/notes/def", "alerts.update"},
 		{http.MethodDelete, "/api/alerts/v1/abc/notes/def", "alerts.update"},
 
-		// Escalation creates an incident, so it must not be reachable with only
-		// alerts:update.
+		// Escalation creates an incident, so alerts:update alone must not reach it.
 		{http.MethodPost, "/api/alerts/v1/abc/escalate", "incidents.create"},
 	}
 

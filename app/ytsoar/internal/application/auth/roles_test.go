@@ -14,8 +14,8 @@ import (
 	"github.com/yuudev14/ytsoar/internal/types"
 )
 
-// The columns are TEXT, so the database accepts any string. A typo would be
-// stored happily and then grant nothing, forever - this is the only guard.
+// The columns are TEXT, so the database accepts any string. A typo would be stored and
+// grant nothing, forever. This is the only guard.
 func TestCreateRoleRejectsUnknownModule(t *testing.T) {
 	env := setupTest(t)
 
@@ -39,11 +39,10 @@ func TestCreateRoleRejectsUnknownAction(t *testing.T) {
 	assert.ErrorIs(t, err, auth.ErrValidation)
 }
 
-// Validation must run before anything is written, or a bad matrix leaves a
-// role behind with no grants.
+// Validation must run before any write, or a bad matrix leaves a role with no grants.
 func TestCreateRoleValidatesBeforeWriting(t *testing.T) {
 	env := setupTest(t)
-	// No Create expectation: gomock fails if the repository is touched.
+	// no Create expectation: gomock fails if the repository is touched
 
 	_, err := env.service.CreateRole(context.Background(), uuid.New(), auth.RoleInput{
 		Name:        "auditor",
@@ -75,8 +74,8 @@ func TestCreateRoleWritesValidMatrix(t *testing.T) {
 	require.NoError(t, err)
 }
 
-// Builtin roles are the seeded admin/analyst/viewer. Editing them out from
-// under the seed would break the bootstrap guarantee.
+// Builtin roles are the seeded admin, analyst and viewer. Editing them would break the
+// bootstrap guarantee of the seed.
 func TestBuiltinRoleCannotBeModified(t *testing.T) {
 	roleID := uuid.New()
 	builtin := domain.Role{ID: roleID, Name: domain.RoleAdmin, IsBuiltin: true}
@@ -120,8 +119,8 @@ func TestDeleteCustomRoleSucceeds(t *testing.T) {
 	require.NoError(t, env.service.DeleteRole(context.Background(), uuid.New(), roleID))
 }
 
-// The DELETE query also filters on is_builtin, so zero rows means the role was
-// already gone rather than silently succeeding.
+// The DELETE query also filters on is_builtin, so zero rows means the role was already
+// gone, not a silent success.
 func TestDeleteRoleReportsMissingRow(t *testing.T) {
 	env := setupTest(t)
 	roleID := uuid.New()
@@ -134,8 +133,8 @@ func TestDeleteRoleReportsMissingRow(t *testing.T) {
 	assert.ErrorIs(t, err, auth.ErrRoleNotFound)
 }
 
-// ReplacePermissions is a delete followed by N inserts. Outside a transaction
-// a failure partway leaves the role holding a matrix nobody chose.
+// ReplacePermissions is a delete and N inserts. Without a transaction, a failure in the
+// middle leaves the role with a matrix nobody chose.
 func TestSetRolePermissionsIsTransactional(t *testing.T) {
 	env := setupTest(t)
 	roleID := uuid.New()
@@ -167,7 +166,7 @@ func TestSetRolePermissionsPropagatesRollback(t *testing.T) {
 	assert.Error(t, err)
 }
 
-// An empty matrix is legitimate - a role that grants nothing.
+// An empty matrix is valid: a role that grants nothing.
 func TestSetRolePermissionsAcceptsEmptyMatrix(t *testing.T) {
 	env := setupTest(t)
 	roleID := uuid.New()

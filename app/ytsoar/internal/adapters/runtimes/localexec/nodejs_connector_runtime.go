@@ -16,14 +16,13 @@ import (
 //go:embed harness/node_connector_harness.ts
 var nodeConnectorHarness string
 
-// nodeConnectorEntries are the implementation files a node connector may
-// ship, in resolution order - TypeScript runs via Node's native type
-// stripping, so both work without a build step.
+// nodeConnectorEntries: the files a node connector can ship, in lookup order. TypeScript
+// runs with Node's type stripping, so both work with no build step.
 var nodeConnectorEntries = []string{"connector.ts", "connector.js"}
 
 // NodeJSConnectorRuntime runs a JS or TS connector from <tree>/<id>/connector.{ts,js} in a
-// fresh `node` process. It runs in the SANDBOX and fits execution.TaskRuntime. The connector's
-// TOML config is parsed here in Go (same layout as the Python tree: <id>/configs/<name>.toml)
+// new `node` process. It runs in the SANDBOX and fits execution.TaskRuntime. The TOML
+// config is parsed here in Go (same layout as the Python tree: <id>/configs/<name>.toml)
 // and passed to the harness as JSON.
 type NodeJSConnectorRuntime struct {
 	logger        logger.Logger
@@ -99,9 +98,9 @@ func (r *NodeJSConnectorRuntime) loadConfig(connectorID string, configName *stri
 	return config, nil
 }
 
-// IsNodeJSConnector reports whether the connector's info.json declares
-// "runtime": "node" and it ships a connector.ts or connector.js. Checked per
-// request so connectors uploaded after boot route correctly without a restart.
+// IsNodeJSConnector says if info.json has "runtime": "node" and the connector ships a
+// connector.ts or connector.js. It is checked per request, so a connector uploaded after
+// boot works without a restart.
 func IsNodeJSConnector(dir, id string) bool {
 	raw, err := os.ReadFile(filepath.Join(dir, id, "info.json"))
 	if err != nil {
@@ -121,8 +120,7 @@ func IsNodeJSConnector(dir, id string) bool {
 	return false
 }
 
-// ListNodeConnectors returns the connector ids in the unified tree that
-// IsNodeJSConnector accepts.
+// ListNodeConnectors returns the connector ids in the tree that IsNodeJSConnector accepts.
 func ListNodeConnectors(dir string) ([]string, error) {
 	entries, err := os.ReadDir(dir)
 	if err != nil {

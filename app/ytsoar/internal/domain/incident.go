@@ -28,10 +28,10 @@ func IsValidIncidentStatus(s string) bool {
 
 var ClosedIncidentStatuses = []IncidentStatus{IncidentStatusResolved, IncidentStatusClosed}
 
-// incidentTransitions is the stepper, plus the reverse edges a real SOC needs:
-// an incident can be reopened, and containment can fail back to investigating.
-// Skipping forward is allowed (open -> contained) because analysts often
-// contain before recording that they were investigating.
+// incidentTransitions is the stepper plus the reverse edges a real SOC needs: an incident
+// can be reopened, and containment can fail back to investigating. Skipping forward is
+// allowed (open -> contained), because analysts often contain first and record the
+// investigation later.
 var incidentTransitions = map[IncidentStatus][]IncidentStatus{
 	IncidentStatusOpen:          {IncidentStatusInvestigating, IncidentStatusContained, IncidentStatusResolved, IncidentStatusClosed},
 	IncidentStatusInvestigating: {IncidentStatusContained, IncidentStatusResolved, IncidentStatusClosed, IncidentStatusOpen},
@@ -40,8 +40,8 @@ var incidentTransitions = map[IncidentStatus][]IncidentStatus{
 	IncidentStatusClosed:        {IncidentStatusInvestigating},
 }
 
-// CanTransitionTo reports whether the stepper permits next. Staying put is
-// allowed so an idempotent retry is not an error.
+// CanTransitionTo says if the stepper allows next. Staying in place is allowed, so an
+// idempotent retry is not an error.
 func (s IncidentStatus) CanTransitionTo(next IncidentStatus) bool {
 	if s == next {
 		return true

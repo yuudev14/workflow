@@ -1,8 +1,8 @@
 package auth_test
 
-// Reuse detection and expiry are clock-bound, but nothing here needs to
-// control the clock: the stored row's timestamps are relative to now, so
-// -1h lands outside the grace window and -2s lands inside it.
+// Reuse detection and expiry depend on the clock, but nothing here needs to control it: the
+// timestamps of the stored row are relative to now, so -1h is outside the grace window and
+// -2s is inside.
 
 import (
 	"context"
@@ -37,15 +37,15 @@ func signRefreshToken(t *testing.T, userID uuid.UUID) string {
 	return signed
 }
 
-// hashOf is the lookup key the service is expected to use. Matching on this
-// instead of gomock.Any() is what proves the raw token never reaches the
-// database - the reason a leaked refresh_tokens table is worthless.
+// hashOf is the lookup key that the service must use. Matching on it, not on
+// gomock.Any(), proves that the raw token never reaches the database (a leaked
+// refresh_tokens table is worthless).
 func hashOf(rawToken string) string {
 	sum := sha256.Sum256([]byte(rawToken))
 	return hex.EncodeToString(sum[:])
 }
 
-// The stored token_hash must be a SHA-256 digest, never the token itself.
+// The stored token_hash must be a SHA-256 digest, never the token.
 func TestRefreshLooksUpByHashNotRawToken(t *testing.T) {
 	env := setupTest(t)
 	userID := uuid.New()
@@ -67,7 +67,7 @@ func TestRefreshLooksUpByHashNotRawToken(t *testing.T) {
 	assert.Len(t, lookedUp, 64, "sha256 hex digest")
 }
 
-// Rotation must store the hash of the *new* token, not the new token itself.
+// Rotation must store the hash of the *new* token, not the token itself.
 func TestRefreshStoresHashOfNewToken(t *testing.T) {
 	env := setupTest(t)
 	user := activeUser()
@@ -94,8 +94,8 @@ func TestRefreshStoresHashOfNewToken(t *testing.T) {
 	assert.Equal(t, hashOf(pair.RefreshToken), stored)
 }
 
-// A token revoked long ago and presented again means the cookie leaked, so
-// every session for that user is killed.
+// A token revoked long ago and presented again means the cookie leaked, so every session
+// of that user is killed.
 func TestRefreshReuseOutsideGraceWindowRevokesEverything(t *testing.T) {
 	env := setupTest(t)
 	userID := uuid.New()
@@ -114,10 +114,9 @@ func TestRefreshReuseOutsideGraceWindowRevokesEverything(t *testing.T) {
 	assert.ErrorIs(t, err, auth.ErrInvalidCredentials)
 }
 
-// Two tabs refreshing at once both send the same cookie; the loser arrives
-// just after rotation revoked it. That is not theft, so the other tab's
-// session must survive - RevokeAllForUser is deliberately not expected here,
-// so calling it fails this test.
+// Two tabs refresh at once with the same cookie, and the loser arrives just after the
+// rotation revoked it. That is not theft, so the other tab's session must stay.
+// RevokeAllForUser is not expected here on purpose, calling it fails the test.
 func TestRefreshReuseInsideGraceWindowKeepsSessions(t *testing.T) {
 	env := setupTest(t)
 	userID := uuid.New()

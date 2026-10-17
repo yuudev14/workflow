@@ -6,9 +6,8 @@ import (
 	"github.com/yuudev14/ytsoar/internal/domain"
 )
 
-// RegisterRoutes mounts the settings module. Everything here administers who
-// may do what, so it all maps to `settings.*` - §10 has no separate users or
-// roles module.
+// RegisterRoutes mounts the settings module. Everything here controls who can do what, so
+// it all maps to `settings.*` (§10 has no separate users or roles module).
 func (h *AdminHandler) RegisterRoutes(
 	route *gin.RouterGroup,
 	requirePermission middleware.PermissionMiddleware,
@@ -21,16 +20,15 @@ func (h *AdminHandler) RegisterRoutes(
 	users := route.Group("users/v1")
 	{
 		users.GET("", read, h.ListUsers)
-		// Ungated on purpose: filling an assignee picker is not a settings
-		// operation. Static sibling before /:user_id, same as /summary beside
-		// /:alert_id.
+		// ungated on purpose: filling an assignee picker is not a settings operation. Static
+		// sibling before /:user_id, like /summary beside /:alert_id.
 		users.GET("/assignable", h.ListAssignableUsers)
 		users.GET("/:user_id", read, h.GetUser)
 		users.POST("", create, h.CreateUser)
 		users.PUT("/:user_id", update, h.UpdateUser)
 		users.PUT("/:user_id/roles", update, h.SetUserRoles)
 		users.PUT("/:user_id/password", update, h.SetUserPassword)
-		// Deactivation, not deletion - see the handler.
+		// deactivation, not deletion, see the handler
 		users.DELETE("/:user_id", remove, h.DeactivateUser)
 	}
 
@@ -55,7 +53,7 @@ func (h *AdminHandler) RegisterRoutes(
 		teams.DELETE("/:team_id", remove, h.DeleteTeam)
 	}
 
-	// Read-only by design: an editable audit trail is not an audit trail.
+	// read-only on purpose: an audit trail that you can edit is not an audit trail
 	route.Group("audit/v1").GET("", read, h.ListAuditLogs)
 
 	providers := route.Group("auth-providers/v1")

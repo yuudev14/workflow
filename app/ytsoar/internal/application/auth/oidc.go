@@ -19,12 +19,12 @@ import (
 
 const (
 	typeOIDCState = "oidc_state"
-	// oidcStateTTLSeconds bounds how long a login attempt may sit at the IdP.
+	// oidcStateTTLSeconds: how long a login can stay at the IdP
 	oidcStateTTLSeconds = 600
 )
 
-// ListProviders returns the enabled providers for the login screen. Secrets
-// never appear here - only what the browser needs to start a redirect.
+// ListProviders returns the enabled providers for the login screen. No secrets, only what
+// the browser needs.
 func (s *Service) ListProviders(ctx context.Context) ([]ProviderSummary, error) {
 	rows, err := s.providers.ListEnabled(ctx)
 	if err != nil {
@@ -42,9 +42,8 @@ func (s *Service) ListProviders(ctx context.Context) ([]ProviderSummary, error) 
 	return out, nil
 }
 
-// StartOIDC builds the redirect to the IdP and the signed state cookie value
-// that the callback checks. The verifier (PKCE) and state live only in that
-// cookie - there is no server-side session store.
+// StartOIDC builds the IdP redirect and the signed state cookie value. State and PKCE
+// verifier live only in that cookie, so there is no server session store.
 func (s *Service) StartOIDC(ctx context.Context, providerID uuid.UUID) (redirectURL, stateCookie string, err error) {
 	cfg, err := s.oidcConfigFor(ctx, providerID)
 	if err != nil {
@@ -74,9 +73,9 @@ func (s *Service) StartOIDC(ctx context.Context, providerID uuid.UUID) (redirect
 	return redirectURL, stateCookie, nil
 }
 
-// CompleteOIDC handles the callback: validate state against the signed cookie,
-// exchange the code, provision/sync the user, and issue a session pair. Every
-// failure the browser could cause collapses to ErrOIDCState so nothing leaks.
+// CompleteOIDC handles the callback: check the state against the signed cookie, exchange
+// the code, create or sync the user and issue the session. Any failure caused by the
+// browser returns ErrOIDCState, so nothing leaks.
 func (s *Service) CompleteOIDC(ctx context.Context, providerID uuid.UUID, code, state, stateCookie string) (TokenPair, error) {
 	verifier, err := s.verifyStateCookie(providerID, state, stateCookie)
 	if err != nil {
@@ -102,8 +101,7 @@ func (s *Service) CompleteOIDC(ctx context.Context, providerID uuid.UUID, code, 
 		return TokenPair{}, err
 	}
 
-	// A failed role sync must not strand a just-provisioned user with no way in;
-	// it is logged, and the next login re-syncs.
+	// a failed role sync must not lock out a new user. Log it, the next login syncs again.
 	if err := s.syncOIDCRoles(ctx, user.ID, cfg, identity.Groups, isNew); err != nil {
 		s.logger.Errorf("oidc role sync failed for %s: %v", user.ID, err)
 	}
@@ -132,9 +130,8 @@ func (s *Service) CompleteOIDC(ctx context.Context, providerID uuid.UUID, code, 
 	return pair, nil
 }
 
-// resolveOIDCUser looks a user up by external id, or JIT-provisions one. It
-// never links by email: an IdP that lets a user set an unverified address could
-// otherwise take over an existing local account.
+// resolveOIDCUser finds the user by external id or creates one. It never links by email:
+// an IdP with unverified emails could take over a local account.
 func (s *Service) resolveOIDCUser(ctx context.Context, providerID uuid.UUID, cfg OIDCConfig, id OIDCIdentity) (domain.User, bool, error) {
 	externalID := providerID.String() + "|" + id.Subject
 
@@ -171,8 +168,7 @@ func (s *Service) resolveOIDCUser(ctx context.Context, providerID uuid.UUID, cfg
 	return created, true, nil
 }
 
-// uniqueUsername derives a login name from the IdP claims and suffixes it until
-// it is free, so a JIT create can never collide with an existing account.
+// uniqueUsername builds a login name from the claims and adds a suffix until it is free
 func (s *Service) uniqueUsername(ctx context.Context, id OIDCIdentity) (string, error) {
 	base := id.PreferredUsername
 	if base == "" {
@@ -200,17 +196,15 @@ func (s *Service) uniqueUsername(ctx context.Context, id OIDCIdentity) (string, 
 	return "", ErrValidation
 }
 
-// syncOIDCRoles replaces the user's roles from the groups claim on every login,
-// unless the provider's sync_mode leaves roles to an admin. OIDC users only - a
-// local user's manual roles are never touched by this path.
+// syncOIDCRoles replaces the roles from the groups claim on each login, unless sync_mode
+// leaves roles to an admin. OIDC users only.
 func (s *Service) syncOIDCRoles(ctx context.Context, userID uuid.UUID, cfg OIDCConfig, groups []string, isNew bool) error {
 	if !cfg.SyncsRoles() {
 		if !isNew {
 			return nil
 		}
-		// A just-provisioned account still needs a starting role, or it signs in
-		// with zero permissions and nobody is told. Only default_role applies
-		// here - in this mode the IdP's groups are never consulted.
+		// a new account needs a starting role, or it signs in with no permissions. Only
+		// default_role applies here, the IdP groups are not used in this mode.
 		groups = nil
 	}
 
@@ -218,15 +212,13 @@ func (s *Service) syncOIDCRoles(ctx context.Context, userID uuid.UUID, cfg OIDCC
 	for _, name := range desiredRoleNames(cfg, groups) {
 		role, err := s.roles.GetByName(ctx, name)
 		if err != nil {
-			// A passthrough candidate that isn't a real role (most IdP groups
-			// aren't) is inert - skip it, never fail the login on it.
+			// a candidate that is not a real role (most IdP groups) is skipped, never fail the login
 			continue
 		}
 		roleIDs = append(roleIDs, role.ID)
 	}
-	// Nothing resolved → the provider default. Decided on resolved roles, not
-	// candidate names, so a group that maps to no real role still lands on the
-	// default rather than leaving the user with nothing.
+	// nothing resolved: use the provider default. Check resolved roles, not candidate names,
+	// so a group with no real role still gets the default.
 	if len(roleIDs) == 0 && cfg.DefaultRole != "" {
 		if role, err := s.roles.GetByName(ctx, cfg.DefaultRole); err != nil {
 			s.logger.Warnf("oidc default_role %q is not a known role", cfg.DefaultRole)
@@ -248,12 +240,9 @@ func (s *Service) syncOIDCRoles(ctx context.Context, userID uuid.UUID, cfg OIDCC
 	})
 }
 
-// syncOIDCAttributes refreshes the stored profile from the IdP when the
-// provider's sync_mode asks for it. Only non-empty claims are pushed, so an IdP
-// that omits given_name cannot blank a name someone set by hand, and an
-// unchanged profile costs no write. The username is deliberately never
-// re-synced: it is the login identifier, it was collision-checked once at
-// provision time, and renaming it would break the audit trail's legibility.
+// syncOIDCAttributes updates the stored profile when sync_mode asks for it. Only non-empty
+// claims are written, so a missing given_name cannot blank a name set by hand. The username
+// is never synced: it is the login id, and renaming it would confuse the audit trail.
 func (s *Service) syncOIDCAttributes(ctx context.Context, user domain.User, cfg OIDCConfig, id OIDCIdentity) error {
 	if !cfg.SyncsAttributes() {
 		return nil
@@ -289,12 +278,9 @@ func optionalString(s string) *string {
 	return new(s)
 }
 
-// desiredRoleNames resolves IdP group/role values to candidate YTSoar role
-// names: an explicit group_role_mapping entry (one-to-many) wins; otherwise the
-// raw value passes through as a candidate, so an IdP that already emits role
-// names (Azure app roles, Okta roles) needs no mapping table. Unknown candidates
-// are filtered by the role lookup in the caller. The default is NOT applied here
-// - that belongs to the caller, decided on resolved roles.
+// desiredRoleNames turns IdP groups into candidate role names. A group_role_mapping entry
+// (one to many) wins. Otherwise the raw value is the candidate, so IdPs that send role names
+// (Azure, Okta) need no mapping. The caller drops unknown names and applies the default.
 func desiredRoleNames(cfg OIDCConfig, groups []string) []string {
 	seen := map[string]bool{}
 	names := make([]string, 0, len(groups))
@@ -316,9 +302,8 @@ func desiredRoleNames(cfg OIDCConfig, groups []string) []string {
 	return names
 }
 
-// verifyStateCookie is the CSRF check on the one state-changing GET: the state
-// in the query must match the one sealed in the signed cookie, and the cookie
-// must be for this provider and unexpired. Returns the PKCE verifier on success.
+// verifyStateCookie is the CSRF check for the callback GET. The state in the query must
+// match the signed cookie, for this provider and not expired. Returns the PKCE verifier.
 func (s *Service) verifyStateCookie(providerID uuid.UUID, state, stateCookie string) (string, error) {
 	if state == "" || stateCookie == "" {
 		return "", ErrOIDCState

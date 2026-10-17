@@ -49,7 +49,7 @@ func TestFSWriterExtractAndReplace(t *testing.T) {
 	assert.Equal(t, "// v1", string(content))
 	assert.FileExists(t, filepath.Join(dir, "my_conn", "configs", "default.toml"))
 
-	// re-upload replaces the folder wholesale: old files must be gone
+	// a re-upload replaces the whole folder: old files must be gone
 	replacement := zipReader(t, map[string]string{
 		"info.json":    `{"id":"my_conn"}`,
 		"connector.py": "# v2",
@@ -75,8 +75,8 @@ func TestFSWriterRemove(t *testing.T) {
 	assert.Error(t, writer.Remove(context.Background(), "../escape"))
 }
 
-// The size caps upstream trust the zip's declared UncompressedSize64, so
-// extraction must reject an entry whose stream expands past what it declared.
+// The size caps before this trust the UncompressedSize64 of the zip, so extraction must
+// reject an entry whose stream grows past what it declared.
 func TestFSWriterRejectsLyingUncompressedSize(t *testing.T) {
 	payload := bytes.Repeat([]byte("A"), 1<<20) // 1 MiB that deflates tiny
 	var deflated bytes.Buffer

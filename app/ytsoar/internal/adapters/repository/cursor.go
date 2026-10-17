@@ -12,16 +12,15 @@ import (
 
 var errInvalidCursor = apperr.New(apperr.Invalid, "invalid cursor")
 
-// sortableColumns gates which column a cursor may name. A sort key reaching
-// squirrel's OrderBy is raw SQL, so anything not in this map is an injection
-// vector, not a 404.
+// sortableColumns limits which column a cursor can name. A sort key that reaches
+// squirrel's OrderBy is raw SQL, so anything not in this map is an injection risk, not a
+// 404.
 var sortableColumns = map[string]bool{
 	"created_at": true,
 }
 
-// pageCursor is deliberately opaque on the wire: callers hand back the token
-// verbatim, which lets a new sort ship as one map entry plus one index instead
-// of an API change.
+// pageCursor is opaque on the wire on purpose: callers return the token as it is, so a new
+// sort is one map entry and one index, not an API change.
 type pageCursor struct {
 	Sort  string    `json:"s"`
 	Dir   string    `json:"d"`
@@ -57,9 +56,9 @@ func decodeCursor(token string) (pageCursor, error) {
 	return c, nil
 }
 
-// applyKeyset compares (sort, id) as a row value rather than the timestamp
-// alone: NOW() is fixed at transaction start, so a batch insert gives every row
-// an identical created_at and a timestamp-only predicate cannot page past it.
+// applyKeyset compares (sort, id) as a row value, not only the timestamp. NOW() is fixed
+// at the start of the transaction, so a batch insert gives all rows the same created_at,
+// and a timestamp-only predicate cannot page past them.
 func applyKeyset(stmt sq.SelectBuilder, alias string, token *string) (sq.SelectBuilder, error) {
 	if token == nil || *token == "" {
 		return stmt, nil

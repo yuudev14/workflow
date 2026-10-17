@@ -11,8 +11,8 @@ import (
 )
 
 // NOTE: uuid fields bind as *string here on purpose. gin's query binder has no
-// TextUnmarshaler support and treats uuid.UUID ([16]byte) as an array, which
-// fails; the `uuid` validator rule still rejects malformed values.
+// TextUnmarshaler support and treats uuid.UUID ([16]byte) as an array, which fails. The
+// `uuid` validator rule still rejects bad values.
 type PlaybookFilter struct {
 	Name       *string `form:"name" binding:"omitempty"`
 	PlaybookID *string `form:"playbook_id" binding:"omitempty,uuid"`
@@ -21,15 +21,14 @@ type PlaybookFilter struct {
 type PlaybookHistoryFilter struct {
 	Name       *string `form:"name" binding:"omitempty"`
 	PlaybookID *string `form:"playbook_id" binding:"omitempty,uuid"`
-	// ModuleType and RecordID answer "what has run against this alert?", which
-	// is the direction both detail pages ask in.
+	// ModuleType and RecordID answer "what ran against this alert?", the question both detail
+	// pages ask
 	ModuleType *string `form:"module_type" binding:"omitempty,oneof=alert incident"`
 	RecordID   *string `form:"record_id" binding:"omitempty,uuid"`
 }
 
-// RunStamp is the provenance written onto a playbook_history row: who started
-// the run, how, and against what. All fields are optional - an editor trigger
-// stamps only the trigger type.
+// RunStamp is the provenance written on a playbook_history row: who started the run, how,
+// and against what. All fields are optional. An editor trigger stamps only the trigger type.
 type RunStamp struct {
 	TriggerType *string
 	TriggeredBy *uuid.UUID
@@ -38,21 +37,19 @@ type RunStamp struct {
 
 // RunPlaybookPayload is the body of the module-side run endpoints.
 //
-// Records are capped at 100 because the hydrated payload rides in `input_json`
-// on *every* node's gRPC call: 100 records at ~2KB is ~200KB per node against
-// gRPC's 4MB default.
+// Records are capped at 100 because the loaded payload goes in `input_json` of every node's
+// gRPC call: 100 records at ~2KB is ~200KB per node, and the gRPC default limit is 4MB.
 type RunPlaybookPayload struct {
 	PlaybookID string         `json:"playbook_id" binding:"required,uuid"`
 	RecordIDs  []string       `json:"record_ids" binding:"required,min=1,max=100,dive,uuid"`
 	Parameters map[string]any `json:"parameters,omitempty"`
 }
 
-// PlaybooksSummary backs the automation KPI row. Every figure is paired with the
-// preceding window of equal length, which is what makes a rendered delta mean
-// something - the deleted metrics mock had a bare "+2" with no baseline at all.
+// PlaybooksSummary feeds the automation KPI row. Every figure has the previous window of
+// the same length, so the delta means something (the old mock had a bare "+2").
 //
-// Playbooks.Previous is the count that existed before the window opened, so the
-// delta reads as "playbooks added in this window".
+// Playbooks.Previous is the count before the window opened, so the delta is "playbooks
+// added in this window".
 type PlaybooksSummary struct {
 	Range       types.ResolvedRange `json:"range"`
 	Playbooks   types.WindowCount   `json:"playbooks"`
@@ -61,8 +58,8 @@ type PlaybooksSummary struct {
 	SuccessRate types.WindowRate    `json:"success_rate"`
 }
 
-// TriggerType is validated with domain.IsValidTriggerType in the service -
-// gin's binding rules can't look inside types.Nullable.
+// TriggerType is validated with domain.IsValidTriggerType in the service, because gin
+// binding cannot look inside types.Nullable
 type UpdatePlaybookData struct {
 	Name              types.Nullable[string]          `json:"name,omitempty"`
 	Description       types.Nullable[string]          `json:"description,omitempty"`

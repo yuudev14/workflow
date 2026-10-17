@@ -59,8 +59,8 @@ func (r *RefreshTokenRepositoryImpl) GetByHash(ctx context.Context, tokenHash st
 	}, nil
 }
 
-// Revoke reports ErrTokenNotFound when nothing was updated, so logout can tell
-// "already revoked" from "revoked now" without a second query.
+// Revoke returns ErrTokenNotFound when nothing was updated, so logout can tell "already
+// revoked" from "revoked now" without a second query.
 func (r *RefreshTokenRepositoryImpl) Revoke(ctx context.Context, tokenHash string) error {
 	rows, err := r.queriesFromContext(ctx).RevokeRefreshToken(ctx, tokenHash)
 	if err != nil {
@@ -76,13 +76,13 @@ func (r *RefreshTokenRepositoryImpl) RevokeAllForUser(ctx context.Context, userI
 	return r.queriesFromContext(ctx).RevokeAllRefreshTokensForUser(ctx, toPgUUID(userID))
 }
 
-// DeleteExpired drops rows past their expiry. Every reload rotates the refresh
-// token, so without periodic cleanup the table grows unbounded; expired rows are
-// already useless for auth (validation checks expiry).
+// DeleteExpired drops rows past their expiry. Each reload rotates the refresh token, so
+// without cleanup the table grows forever. Expired rows are already useless for auth
+// (validation checks expiry).
 //
-// TODO(scheduler): intentionally uncalled for now. A per-replica ticker here
-// would sweep N times over with N replicas, so this must run as a singleton job
-// from the scheduler binary (see domain.Schedulers) once it exists. Not dead code.
+// TODO(scheduler): not called on purpose. A ticker per replica would sweep N times with N
+// replicas, so this must run as a singleton job from the scheduler binary (see
+// domain.Schedulers) when it exists. Not dead code.
 func (r *RefreshTokenRepositoryImpl) DeleteExpired(ctx context.Context) error {
 	return r.queriesFromContext(ctx).DeleteExpiredRefreshTokens(ctx)
 }

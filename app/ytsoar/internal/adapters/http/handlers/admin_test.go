@@ -29,8 +29,8 @@ func adminContext(t *testing.T, actor *domain.AuthUser) (*AdminHandler, *gin.Con
 	return &AdminHandler{logger: logger.NewNop()}, c, recorder
 }
 
-// Deactivating yourself is easy to do by accident and awkward to undo - the
-// admin who does it may be the only one who could have reversed it.
+// Deactivating yourself is easy to do by accident and hard to undo: the admin who does it
+// may be the only one who could undo it.
 func TestDeactivateSelfIsRejected(t *testing.T) {
 	actorID := uuid.New()
 	handler, c, recorder := adminContext(t, &domain.AuthUser{ID: actorID, Username: "admin"})
@@ -44,8 +44,8 @@ func TestDeactivateSelfIsRejected(t *testing.T) {
 	assert.Contains(t, recorder.Body.String(), "your own account")
 }
 
-// gin's binder cannot bind a path param to uuid.UUID, so every handler parses
-// it by hand. A miss would reach postgres and come back as a 500.
+// gin's binder cannot bind a path param to uuid.UUID, so every handler parses it by hand.
+// A miss would reach postgres and come back as a 500.
 func TestAdminRejectsMalformedPathIDs(t *testing.T) {
 	actor := domain.AuthUser{ID: uuid.New(), Username: "admin"}
 
@@ -82,9 +82,8 @@ func TestAdminRejectsMalformedPathIDs(t *testing.T) {
 			c.Request.Header.Set("Content-Type", "application/json")
 			c.Params = []gin.Param{{Key: tc.param, Value: "not-a-uuid"}}
 
-			// The handler holds a nil service, so reaching it panics. Catching
-			// that here reports the real defect - validation was skipped -
-			// instead of killing the binary and hiding the sibling cases.
+			// the handler has a nil service, so reaching it panics. Catching that here shows the real
+			// defect (validation was skipped) and does not kill the binary and hide the other cases.
 			func() {
 				defer func() {
 					if r := recover(); r != nil {
@@ -100,8 +99,8 @@ func TestAdminRejectsMalformedPathIDs(t *testing.T) {
 	}
 }
 
-// Without an authenticated actor there is nobody to attribute the audit row
-// to, so the mutation must not proceed.
+// Without an authenticated actor there is nobody to write in the audit row, so the
+// mutation must not go on.
 func TestAdminMutationsRequireAnActor(t *testing.T) {
 	handler, c, recorder := adminContext(t, nil)
 

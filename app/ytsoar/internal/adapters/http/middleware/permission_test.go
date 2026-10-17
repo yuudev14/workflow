@@ -25,8 +25,8 @@ func (s *stubPermissions) PermissionsFor(_ context.Context, _ uuid.UUID) (domain
 	return s.set, s.err
 }
 
-// runGuarded plays a request through Auth + RequirePermission and reports
-// whether the handler behind them ran.
+// runGuarded sends a request through Auth + RequirePermission and reports if the handler
+// behind them ran.
 func runGuarded(t *testing.T, src middleware.PermissionSource, module, action string, authenticated bool) (*httptest.ResponseRecorder, bool) {
 	t.Helper()
 	gin.SetMode(gin.TestMode)
@@ -78,7 +78,7 @@ func TestRequirePermissionDeniesMissingAction(t *testing.T) {
 	assert.False(t, ran, "handler must not run without the grant")
 }
 
-// Holding an action on one module must not grant it on another.
+// An action on one module must not give the same action on another.
 func TestRequirePermissionDeniesAcrossModules(t *testing.T) {
 	src := &stubPermissions{set: domain.PermissionSet{
 		{Module: domain.ModulePlaybooks, Action: domain.ActionDelete},
@@ -111,8 +111,7 @@ func TestRequirePermissionRejectsUnauthenticated(t *testing.T) {
 	assert.False(t, ran)
 }
 
-// A failed lookup must fail closed - this is the one that turns an outage into
-// a breach if it regresses.
+// A failed lookup must fail closed. If this breaks, an outage becomes a breach.
 func TestRequirePermissionFailsClosedOnError(t *testing.T) {
 	src := &stubPermissions{err: errors.New("connection refused")}
 
@@ -122,7 +121,7 @@ func TestRequirePermissionFailsClosedOnError(t *testing.T) {
 	assert.False(t, ran, "handler must not run when permissions could not be loaded")
 }
 
-// RequirePermission without Auth in front of it must not fall through.
+// RequirePermission without Auth in front must not fall through.
 func TestRequirePermissionWithoutAuthMiddleware(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	src := &stubPermissions{set: domain.PermissionSet{

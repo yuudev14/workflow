@@ -70,9 +70,9 @@ func (s *Service) Summary(ctx context.Context, rng types.ResolvedRange) (AlertsS
 	return s.repo.Summary(ctx, rng)
 }
 
-// A fingerprint collision against a still-open alert is the same finding
-// recurring, so it publishes alert.updated rather than alert.created - otherwise
-// a storm fires every on_create playbook once per occurrence.
+// A fingerprint collision with a still-open alert is the same finding again, so publish
+// alert.updated, not alert.created. Otherwise a storm fires every on_create playbook once
+// per occurrence.
 func (s *Service) Create(ctx context.Context, payload CreateAlertPayload, actorID *uuid.UUID) (domain.Alert, error) {
 	params, err := s.toUpsertParams(payload)
 	if err != nil {
@@ -111,8 +111,8 @@ func (s *Service) Create(ctx context.Context, payload CreateAlertPayload, actorI
 	return alert, nil
 }
 
-// Each item gets its own transaction so one malformed alert cannot roll back a
-// whole forwarder batch.
+// each item has its own transaction, so one bad alert cannot roll back a whole forwarder
+// batch
 func (s *Service) CreateBatch(ctx context.Context, payload BatchCreateAlertPayload, actorID *uuid.UUID) ([]domain.Alert, int, error) {
 	created := make([]domain.Alert, 0, len(payload.Alerts))
 	failed := 0
@@ -301,8 +301,8 @@ func (s *Service) DeleteNote(ctx context.Context, noteID uuid.UUID, actorID *uui
 	return s.repo.DeleteNote(ctx, noteID)
 }
 
-// A note is evidence in a post-incident review, so only its author may rewrite
-// it. A note whose author was deleted becomes permanently read-only.
+// A note is evidence in a post-incident review, so only its author can rewrite it. A note
+// whose author was deleted is read-only forever.
 func (s *Service) assertNoteAuthor(ctx context.Context, noteID uuid.UUID, actorID *uuid.UUID) error {
 	note, err := s.repo.GetNote(ctx, noteID)
 	if err != nil {
@@ -314,8 +314,8 @@ func (s *Service) assertNoteAuthor(ctx context.Context, noteID uuid.UUID, actorI
 	return nil
 }
 
-// Fire-and-log: the write already committed, so failing the request here would
-// report nothing happened when something did.
+// Fire and log: the write already committed, so failing the request would say nothing
+// happened when something did.
 func (s *Service) publish(module, event string, entity any) {
 	if err := s.events.Publish(module, event, entity); err != nil {
 		s.logger.Errorw("failed to publish module event",
@@ -368,9 +368,9 @@ var primaryEntityPaths = [][]string{
 	{"src_ip"},
 }
 
-// Excludes timestamps and volumes: they differ on every occurrence, which would
-// defeat deduplication. Includes the primary entity, without which one rule
-// firing on 200 hosts would collapse into a single row.
+// Leave out timestamps and volumes: they change on every occurrence and would break
+// deduplication. Include the primary entity, or one rule firing on 200 hosts would become
+// one row.
 func Fingerprint(kind domain.SourceKind, reporter *string, title string, payload json.RawMessage) string {
 	rep := ""
 	if reporter != nil {
@@ -456,7 +456,7 @@ func toUpdateParams(payload UpdateAlertPayload) (UpdateParams, error) {
 	return params, nil
 }
 
-// Unset leaves the column alone; an explicit null clears it.
+// Unset leaves the column alone, an explicit null clears it.
 func nullableUUID(in types.Nullable[string], field string) (types.Nullable[uuid.UUID], error) {
 	if !in.Set {
 		return types.Nullable[uuid.UUID]{}, nil
@@ -491,9 +491,8 @@ func mustJSON(v any) json.RawMessage {
 	return raw
 }
 
-// appendUpdateEvent records a field-level edit on the timeline. It returns
-// without writing when nothing actually changed, so a no-op PATCH leaves the
-// audit log alone.
+// appendUpdateEvent writes a field-level edit to the timeline. It writes nothing when
+// nothing changed, so a no-op PATCH leaves the audit log alone.
 func (s *Service) appendUpdateEvent(ctx context.Context, id uuid.UUID, before, after domain.Alert, actorID *uuid.UUID) error {
 	changes := domain.DiffAssignable(
 		before.Severity, after.Severity,
@@ -515,8 +514,8 @@ func (s *Service) appendUpdateEvent(ctx context.Context, id uuid.UUID, before, a
 	})
 }
 
-// A missing directory is not worth failing an edit over: the event still records
-// the change, just with uuids instead of names.
+// a missing directory is not worth failing an edit: the event still records the change,
+// with uuids instead of names
 func (s *Service) labelAssignees(ctx context.Context, changes []domain.FieldChange) {
 	if s.users == nil {
 		return

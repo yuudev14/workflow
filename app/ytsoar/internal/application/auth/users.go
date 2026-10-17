@@ -23,10 +23,9 @@ func (s *Service) ListUsers(ctx context.Context, offset, limit int, filter UserF
 	return types.Entries[domain.UserWithRoles]{Entries: users, Total: total}, nil
 }
 
-// ListAssignableUsers backs the assignee pickers. It is deliberately not gated on
-// settings:read: an analyst who can update an alert has to be able to name who
-// they are assigning it to, and this projection carries nothing but id and
-// username.
+// ListAssignableUsers feeds the assignee pickers. It is not gated on settings:read: an
+// analyst who can update an alert must be able to name the assignee, and this projection
+// has only id and username.
 func (s *Service) ListAssignableUsers(ctx context.Context) ([]domain.AssignableUser, error) {
 	return s.users.ListAssignable(ctx)
 }
@@ -35,8 +34,8 @@ func (s *Service) GetUser(ctx context.Context, id uuid.UUID) (domain.UserWithRol
 	return s.users.GetWithRoles(ctx, id)
 }
 
-// CreateUser hashes the password and assigns the roles in one transaction: a
-// user that exists with no roles would be a live account nobody granted.
+// CreateUser hashes the password and assigns the roles in one transaction. A user with no
+// roles would be a live account that nobody granted.
 func (s *Service) CreateUser(ctx context.Context, actorID uuid.UUID, input CreateUserInput) (domain.UserWithRoles, error) {
 	roleIDs, err := parseUUIDs(input.RoleIDs, "role_ids")
 	if err != nil {
@@ -80,9 +79,8 @@ func (s *Service) CreateUser(ctx context.Context, actorID uuid.UUID, input Creat
 	return s.users.GetWithRoles(ctx, created.ID)
 }
 
-// UpdateUser applies a partial update. Deactivating also kills every live
-// session - without that the user keeps working until their refresh token
-// expires, which can be a week.
+// UpdateUser does a partial update. Deactivating also kills every live session, or the
+// user keeps working until the refresh token expires (up to a week).
 func (s *Service) UpdateUser(ctx context.Context, actorID, id uuid.UUID, input UpdateUserInput) (domain.UserWithRoles, error) {
 	deactivating := input.IsActive.Set && input.IsActive.Value != nil && !*input.IsActive.Value
 
@@ -114,8 +112,8 @@ func (s *Service) UpdateUser(ctx context.Context, actorID, id uuid.UUID, input U
 	return s.users.GetWithRoles(ctx, id)
 }
 
-// DeactivateUser is what DELETE maps to. Users are never hard-deleted: audit
-// rows and uploaded connectors reference them.
+// DeactivateUser is what DELETE maps to. Users are never hard-deleted, because audit rows
+// and uploaded connectors point to them.
 func (s *Service) DeactivateUser(ctx context.Context, actorID, id uuid.UUID) error {
 	inactive := false
 	_, err := s.UpdateUser(ctx, actorID, id, UpdateUserInput{
@@ -151,9 +149,8 @@ func (s *Service) SetUserRoles(ctx context.Context, actorID, id uuid.UUID, roleI
 	return s.users.GetWithRoles(ctx, id)
 }
 
-// SetUserPassword revokes every session too: an admin resetting a password is
-// usually responding to a compromise, so leaving the old sessions alive would
-// defeat the point.
+// SetUserPassword also revokes every session. An admin resets a password usually after a
+// compromise, so old sessions must not stay alive.
 func (s *Service) SetUserPassword(ctx context.Context, actorID, id uuid.UUID, password string) error {
 	hash, err := s.hasher.Hash(password)
 	if err != nil {
@@ -179,8 +176,8 @@ func (s *Service) SetUserPassword(ctx context.Context, actorID, id uuid.UUID, pa
 	return nil
 }
 
-// assignRoles verifies each role exists before granting it - an unknown id
-// would otherwise fail on the FK with an opaque database error.
+// assignRoles checks that each role exists. An unknown id would fail on the FK with an
+// unclear database error.
 func (s *Service) assignRoles(ctx context.Context, userID uuid.UUID, roleIDs []uuid.UUID) error {
 	for _, roleID := range roleIDs {
 		if _, err := s.roles.GetByID(ctx, roleID); err != nil {

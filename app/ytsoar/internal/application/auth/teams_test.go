@@ -36,8 +36,7 @@ func TestCreateTeamAssignsMembers(t *testing.T) {
 	require.NoError(t, err)
 }
 
-// A malformed id must fail before the team row is written, or a create leaves
-// an empty team behind.
+// A bad id must fail before the team row is written, or a create leaves an empty team.
 func TestCreateTeamRejectsMalformedMemberID(t *testing.T) {
 	env := setupTest(t)
 
@@ -83,8 +82,7 @@ func TestSetTeamMembersIsTransactional(t *testing.T) {
 	assert.Greater(t, *env.txCalls, before, "the member rewrite must run inside a transaction")
 }
 
-// Clearing a team is legitimate and must reach the repository as an empty
-// list, not be skipped.
+// Clearing a team is valid and must reach the repository as an empty list, not be skipped.
 func TestSetTeamMembersAcceptsEmptyList(t *testing.T) {
 	env := setupTest(t)
 	teamID := uuid.New()
@@ -138,8 +136,8 @@ func TestSetTeamRolesReplacesWholesaleInTx(t *testing.T) {
 	assert.Greater(t, *env.txCalls, before, "delete-then-insert must not half-apply")
 }
 
-// An empty list clears the grants rather than no-opping - otherwise a team's
-// privileges could never be taken away through the API.
+// An empty list clears the grants and is not a no-op, or the privileges of a team could
+// never be removed through the API.
 func TestSetTeamRolesEmptyListClears(t *testing.T) {
 	env := setupTest(t)
 	teamID := uuid.New()
@@ -152,14 +150,14 @@ func TestSetTeamRolesEmptyListClears(t *testing.T) {
 	require.NoError(t, err)
 }
 
-// An unknown role must fail before any write, or it surfaces as an opaque FK
-// violation after the delete has already landed.
+// An unknown role must fail before any write, or it shows as an unclear FK error after the
+// delete already happened.
 func TestSetTeamRolesRejectsUnknownRole(t *testing.T) {
 	env := setupTest(t)
 	teamID, roleID := uuid.New(), uuid.New()
 
 	env.mockRoles.EXPECT().GetByID(gomock.Any(), roleID).Return(domain.Role{}, auth.ErrRoleNotFound)
-	// no ReplaceRoles expectation: gomock fails if the write is attempted.
+	// no ReplaceRoles expectation: gomock fails if the write is tried
 
 	_, err := env.service.SetTeamRoles(context.Background(), uuid.New(), teamID, []string{roleID.String()})
 	assert.ErrorIs(t, err, auth.ErrRoleNotFound)
@@ -171,8 +169,8 @@ func TestSetTeamRolesRejectsMalformedID(t *testing.T) {
 	assert.Error(t, err)
 }
 
-// A builtin role may be GRANTED to a team - that only uses the role. Only
-// editing a builtin's own matrix is forbidden.
+// A builtin role can be GRANTED to a team, because that only uses the role. Only editing
+// the matrix of a builtin is forbidden.
 func TestSetTeamRolesAllowsBuiltinRole(t *testing.T) {
 	env := setupTest(t)
 	teamID, adminRole := uuid.New(), uuid.New()
