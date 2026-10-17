@@ -35,7 +35,7 @@ func TestStatusTransitionsAreGuardedInSQL(t *testing.T) {
 
 	var playbookID, taskID, historyID uuid.UUID
 	require.NoError(t, pool.QueryRow(ctx, `INSERT INTO playbooks (name) VALUES ('transitions') RETURNING id`).Scan(&playbookID))
-	t.Cleanup(func() { pool.Exec(ctx, `DELETE FROM playbooks WHERE id = $1`, playbookID) })
+	t.Cleanup(func() { _, _ = pool.Exec(ctx, `DELETE FROM playbooks WHERE id = $1`, playbookID) })
 	require.NoError(t, pool.QueryRow(ctx,
 		`INSERT INTO tasks (playbook_id, name, description, parameters, operation) VALUES ($1, 'a', '', '{}', 'op') RETURNING id`, playbookID).Scan(&taskID))
 	require.NoError(t, pool.QueryRow(ctx,
@@ -98,7 +98,7 @@ func TestGetPlaybookHistoryByIdReturnsTheTriggerInput(t *testing.T) {
 
 	var playbookID, historyID uuid.UUID
 	require.NoError(t, pool.QueryRow(ctx, `INSERT INTO playbooks (name) VALUES ('input') RETURNING id`).Scan(&playbookID))
-	t.Cleanup(func() { pool.Exec(ctx, `DELETE FROM playbooks WHERE id = $1`, playbookID) })
+	t.Cleanup(func() { _, _ = pool.Exec(ctx, `DELETE FROM playbooks WHERE id = $1`, playbookID) })
 	require.NoError(t, pool.QueryRow(ctx,
 		`INSERT INTO playbook_history (playbook_id, triggered_at, edges, status, trigger_type, input)
 		 VALUES ($1, NOW(), '[]', 'queued', 'manual', '{"module_type":"alert","records":[{"id":"r1"}]}') RETURNING id`, playbookID).Scan(&historyID))

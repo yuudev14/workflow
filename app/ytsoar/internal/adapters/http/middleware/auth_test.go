@@ -112,9 +112,9 @@ func TestAuthRejectsNonBearerSchemes(t *testing.T) {
 	stub.validAccessToken = "good-access-token"
 
 	for _, header := range []string{
-		"good-access-token",        // no scheme
-		"Basic good-access-token",  // wrong scheme
-		"Bearer",                   // scheme only
+		"good-access-token",       // no scheme
+		"Basic good-access-token", // wrong scheme
+		"Bearer",                  // scheme only
 	} {
 		req := httptest.NewRequest(http.MethodGet, "/probe", nil)
 		req.Header.Set("Authorization", header)
@@ -138,7 +138,6 @@ func TestAuthAcceptsLowercaseBearer(t *testing.T) {
 	assert.Equal(t, http.StatusOK, rec.Code)
 	assert.NotNil(t, seen)
 }
-
 
 func TestAuthIgnoresRefreshCookie(t *testing.T) {
 	stub := newStub()
@@ -178,7 +177,6 @@ func TestAuthRejectsBadAccessCookie(t *testing.T) {
 
 	assert.Equal(t, http.StatusUnauthorized, rec.Code)
 }
-
 
 func TestAuthPrefersHeaderOverCookie(t *testing.T) {
 	stub := newStub()

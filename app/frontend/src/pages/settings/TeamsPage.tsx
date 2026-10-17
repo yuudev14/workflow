@@ -153,7 +153,6 @@ export default function TeamsPage() {
         ),
       }),
     ],
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     [canUpdate, canDelete]
   );
 

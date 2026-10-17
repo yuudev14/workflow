@@ -15,7 +15,7 @@ import (
 func main() {
 	cfg := config.Load()
 	appLogger := logger.SetupLogger()
-	defer appLogger.Sync()
+	defer func() { _ = appLogger.Sync() }()
 
 	server, err := app.NewSandbox(cfg, appLogger)
 	if err != nil {

@@ -17,7 +17,6 @@ import PlaybookOperationProvider, {
 } from "./providers/PlaybookOperationProvider";
 import PlaybookOperations from "./components/options/PlaybookOperations/PlaybookOperations";
 import usePlaybookTrigger from "@/hooks/usePlaybookTrigger";
-import { FLOW_START_ID } from "@/settings/reactFlowIds";
 import { Check, History, Workflow as PlaybookIcon, Zap } from "lucide-react";
 
 import PlaybookHistoryModal from "@/components/executions/PlaybookHistoryModal";
@@ -91,7 +90,6 @@ const PlaybookPlayground: React.FC<{ playbookId: string }> = ({
     if (node.id !== "select_start") {
       setCurrentNode(node);
       setConnectorToNodesConnector(node);
-    } else if (node.data.name == FLOW_START_ID) {
     }
   };
 

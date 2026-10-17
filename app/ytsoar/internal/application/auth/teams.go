@@ -73,10 +73,7 @@ func (s *Service) CreateTeam(ctx context.Context, actorID uuid.UUID, input TeamI
 }
 
 func (s *Service) UpdateTeam(ctx context.Context, actorID, id uuid.UUID, input UpdateTeamInput) (domain.TeamWithMembers, error) {
-	if _, err := s.teams.Update(ctx, id, UpdateTeamParams{
-		Name:        input.Name,
-		Description: input.Description,
-	}); err != nil {
+	if _, err := s.teams.Update(ctx, id, UpdateTeamParams(input)); err != nil {
 		return domain.TeamWithMembers{}, err
 	}
 

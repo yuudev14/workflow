@@ -82,7 +82,7 @@ func TestRuns(t *testing.T) {
 			called := make(chan string, 1)
 			target := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				called <- r.URL.Path
-				w.Write([]byte(`{"ok":true}`))
+				_, _ = w.Write([]byte(`{"ok":true}`))
 			}))
 			defer target.Close()
 
@@ -136,7 +136,7 @@ func TestRuns(t *testing.T) {
 			defer socket.Close()
 
 			run, _ := runPlaybook(t, c, []J{step("hello", "code_snippet_py", "print('hi')")}, J{"start": []string{"hello"}})
-			socket.SetReadDeadline(time.Now().Add(10 * time.Second))
+			require.NoError(t, socket.SetReadDeadline(time.Now().Add(10*time.Second)))
 			for {
 				var event J
 				require.NoError(t, socket.ReadJSON(&event), "no success event")
