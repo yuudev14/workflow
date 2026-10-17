@@ -689,16 +689,17 @@ type Playbook struct {
 }
 
 type PlaybookHistory struct {
-	ID          pgtype.UUID      `json:"id"`
-	PlaybookID  pgtype.UUID      `json:"playbook_id"`
-	Status      PlaybookStatus   `json:"status"`
-	Error       pgtype.Text      `json:"error"`
-	Result      []byte           `json:"result"`
-	TriggeredAt pgtype.Timestamp `json:"triggered_at"`
-	Edges       []byte           `json:"edges"`
-	TriggerType NullTriggerType  `json:"trigger_type"`
-	TriggeredBy pgtype.UUID      `json:"triggered_by"`
-	Input       []byte           `json:"input"`
+	ID          pgtype.UUID        `json:"id"`
+	PlaybookID  pgtype.UUID        `json:"playbook_id"`
+	Status      PlaybookStatus     `json:"status"`
+	Error       pgtype.Text        `json:"error"`
+	Result      []byte             `json:"result"`
+	TriggeredAt pgtype.Timestamp   `json:"triggered_at"`
+	Edges       []byte             `json:"edges"`
+	TriggerType NullTriggerType    `json:"trigger_type"`
+	TriggeredBy pgtype.UUID        `json:"triggered_by"`
+	Input       []byte             `json:"input"`
+	FinishedAt  pgtype.Timestamptz `json:"finished_at"`
 }
 
 type PlaybookRunRecord struct {

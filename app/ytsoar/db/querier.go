@@ -73,6 +73,9 @@ type Querier interface {
 	ListAlertNotes(ctx context.Context, alertID pgtype.UUID) ([]ListAlertNotesRow, error)
 	ListAuthProviders(ctx context.Context) ([]AuthProvider, error)
 	ListEnabledAuthProviders(ctx context.Context) ([]AuthProvider, error)
+	// A playbook is skipped when its run on this record was going at the time of the event,
+	// so a run that updates its own record does not start itself again.
+	ListEventPlaybookIDs(ctx context.Context, arg ListEventPlaybookIDsParams) ([]pgtype.UUID, error)
 	ListIncidentAlerts(ctx context.Context, incidentID pgtype.UUID) ([]ListIncidentAlertsRow, error)
 	ListIncidentEvents(ctx context.Context, incidentID pgtype.UUID) ([]ListIncidentEventsRow, error)
 	ListIncidentNotes(ctx context.Context, incidentID pgtype.UUID) ([]ListIncidentNotesRow, error)

@@ -12,6 +12,7 @@ package mocks
 import (
 	context "context"
 	reflect "reflect"
+	time "time"
 
 	uuid "github.com/google/uuid"
 	playbooks "github.com/yuudev14/ytsoar/internal/application/playbooks"
@@ -100,6 +101,20 @@ func (m *MockPlaybookApplicationService) PreparePlaybookMessage(arg0 []domain.Ta
 func (mr *MockPlaybookApplicationServiceMockRecorder) PreparePlaybookMessage(arg0, edges any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PreparePlaybookMessage", reflect.TypeOf((*MockPlaybookApplicationService)(nil).PreparePlaybookMessage), arg0, edges)
+}
+
+// RunForEvent mocks base method.
+func (m *MockPlaybookApplicationService) RunForEvent(ctx context.Context, moduleType, event string, recordID uuid.UUID, occurredAt time.Time) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "RunForEvent", ctx, moduleType, event, recordID, occurredAt)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// RunForEvent indicates an expected call of RunForEvent.
+func (mr *MockPlaybookApplicationServiceMockRecorder) RunForEvent(ctx, moduleType, event, recordID, occurredAt any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RunForEvent", reflect.TypeOf((*MockPlaybookApplicationService)(nil).RunForEvent), ctx, moduleType, event, recordID, occurredAt)
 }
 
 // RunPlaybook mocks base method.

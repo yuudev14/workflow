@@ -12,6 +12,7 @@ package mocks
 import (
 	context "context"
 	reflect "reflect"
+	time "time"
 
 	uuid "github.com/google/uuid"
 	playbooks "github.com/yuudev14/ytsoar/internal/application/playbooks"
@@ -191,6 +192,21 @@ func (m *MockPlaybookRepository) GetPlaybooksCount(ctx context.Context, filter p
 func (mr *MockPlaybookRepositoryMockRecorder) GetPlaybooksCount(ctx, filter any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetPlaybooksCount", reflect.TypeOf((*MockPlaybookRepository)(nil).GetPlaybooksCount), ctx, filter)
+}
+
+// ListEventPlaybookIDs mocks base method.
+func (m *MockPlaybookRepository) ListEventPlaybookIDs(ctx context.Context, triggerType domain.TriggerType, moduleType string, recordID uuid.UUID, occurredAt time.Time) ([]uuid.UUID, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ListEventPlaybookIDs", ctx, triggerType, moduleType, recordID, occurredAt)
+	ret0, _ := ret[0].([]uuid.UUID)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ListEventPlaybookIDs indicates an expected call of ListEventPlaybookIDs.
+func (mr *MockPlaybookRepositoryMockRecorder) ListEventPlaybookIDs(ctx, triggerType, moduleType, recordID, occurredAt any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListEventPlaybookIDs", reflect.TypeOf((*MockPlaybookRepository)(nil).ListEventPlaybookIDs), ctx, triggerType, moduleType, recordID, occurredAt)
 }
 
 // Summary mocks base method.

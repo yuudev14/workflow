@@ -170,7 +170,7 @@ func TestEnqueueRunIsTransactional(t *testing.T) {
 	}))
 	assert.Equal(t, 1, count(id))
 
-	workerClient, err := NewWorkerClient(pool, NewRunWorker(logger.NewNop(), fakeLoader{}, exec), 1, time.Minute, time.Second)
+	workerClient, err := NewWorkerClient(pool, NewRunWorker(logger.NewNop(), fakeLoader{}, exec), NewRunForEventWorker(logger.NewNop(), nil), 1, time.Minute, time.Second)
 	require.NoError(t, err)
 	require.NoError(t, workerClient.Start(ctx))
 	defer func() { _ = workerClient.Stop(ctx) }()

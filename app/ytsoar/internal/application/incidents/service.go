@@ -100,19 +100,17 @@ func (s *Service) Create(ctx context.Context, payload CreateIncidentPayload, act
 				return err
 			}
 		}
-		return nil
+		return s.events.Publish(txCtx, domain.ModuleEventIncident, domain.ModuleEventCreated, incident.ID)
 	})
 	if err != nil {
 		return domain.Incident{}, err
 	}
 
-	s.publish(domain.ModuleEventIncident, domain.ModuleEventCreated, incident)
 	return incident, nil
 }
 
 // CreateForEscalation runs inside the transaction of the alert service. It must not
-// publish or open its own one, the caller announces both entities after the whole
-// escalation commits.
+// publish or open its own one, the caller announces both entities.
 func (s *Service) CreateForEscalation(ctx context.Context, params alerts.EscalationParams) (domain.Incident, error) {
 	incident, err := s.repo.Create(ctx, CreateParams{
 		Title:      params.Title,
@@ -169,13 +167,15 @@ func (s *Service) Update(ctx context.Context, id uuid.UUID, payload UpdateIncide
 			return err
 		}
 
-		return s.appendUpdateEvent(txCtx, id, before, incident, actorID)
+		if err = s.appendUpdateEvent(txCtx, id, before, incident, actorID); err != nil {
+			return err
+		}
+		return s.events.Publish(txCtx, domain.ModuleEventIncident, domain.ModuleEventUpdated, id)
 	})
 	if err != nil {
 		return domain.Incident{}, err
 	}
 
-	s.publish(domain.ModuleEventIncident, domain.ModuleEventUpdated, incident)
 	return incident, nil
 }
 
@@ -202,19 +202,20 @@ func (s *Service) UpdateStatus(ctx context.Context, id uuid.UUID, payload Update
 			return err
 		}
 
-		err = s.repo.AppendEvent(txCtx, AppendEventParams{
+		if err = s.repo.AppendEvent(txCtx, AppendEventParams{
 			IncidentID: id,
 			Type:       domain.EventTypeStatusChanged,
 			ActorID:    actorID,
 			Body:       mustJSON(map[string]any{"from": current.Status, "to": next}),
-		})
-		return err
+		}); err != nil {
+			return err
+		}
+		return s.events.Publish(txCtx, domain.ModuleEventIncident, domain.ModuleEventUpdated, id)
 	})
 	if err != nil {
 		return domain.Incident{}, err
 	}
 
-	s.publish(domain.ModuleEventIncident, domain.ModuleEventUpdated, incident)
 	return incident, nil
 }
 
@@ -268,27 +269,21 @@ func (s *Service) LinkAlert(ctx context.Context, incidentID uuid.UUID, payload L
 		return apperr.Wrap(apperr.Invalid, "alert_id must be a uuid", ErrValidation)
 	}
 
-	var incident domain.Incident
-	err = s.txManager.WithinTransaction(ctx, func(txCtx context.Context) error {
-		incident, err = s.repo.GetByID(txCtx, incidentID)
+	return s.txManager.WithinTransaction(ctx, func(txCtx context.Context) error {
+		incident, err := s.repo.GetByID(txCtx, incidentID)
 		if err != nil {
 			return err
 		}
-		return s.link(txCtx, incident, alertID, domain.LinkSourceManual, actorID)
+		if err = s.link(txCtx, incident, alertID, domain.LinkSourceManual, actorID); err != nil {
+			return err
+		}
+		return s.events.Publish(txCtx, domain.ModuleEventIncident, domain.ModuleEventUpdated, incidentID)
 	})
-	if err != nil {
-		return err
-	}
-
-	s.publish(domain.ModuleEventIncident, domain.ModuleEventUpdated, incident)
-	return nil
 }
 
 func (s *Service) UnlinkAlert(ctx context.Context, incidentID, alertID uuid.UUID, actorID *uuid.UUID) error {
-	var incident domain.Incident
-	err := s.txManager.WithinTransaction(ctx, func(txCtx context.Context) error {
-		var err error
-		incident, err = s.repo.GetByID(txCtx, incidentID)
+	return s.txManager.WithinTransaction(ctx, func(txCtx context.Context) error {
+		incident, err := s.repo.GetByID(txCtx, incidentID)
 		if err != nil {
 			return err
 		}
@@ -306,15 +301,12 @@ func (s *Service) UnlinkAlert(ctx context.Context, incidentID, alertID uuid.UUID
 			return err
 		}
 
-		return s.alerts.AppendAlertEvent(txCtx, alertID, domain.EventTypeUnlinked, actorID,
-			mustJSON(map[string]any{"incident_id": incidentID, "incident_title": incident.Title}))
+		if err = s.alerts.AppendAlertEvent(txCtx, alertID, domain.EventTypeUnlinked, actorID,
+			mustJSON(map[string]any{"incident_id": incidentID, "incident_title": incident.Title})); err != nil {
+			return err
+		}
+		return s.events.Publish(txCtx, domain.ModuleEventIncident, domain.ModuleEventUpdated, incidentID)
 	})
-	if err != nil {
-		return err
-	}
-
-	s.publish(domain.ModuleEventIncident, domain.ModuleEventUpdated, incident)
-	return nil
 }
 
 // A repeat link does nothing and is not an error. It must not add a second pair of
@@ -342,15 +334,6 @@ func (s *Service) link(
 
 	return s.alerts.AppendAlertEvent(ctx, alertID, domain.EventTypeLinked, actorID,
 		mustJSON(map[string]any{"incident_id": incident.ID, "incident_title": incident.Title, "source": source}))
-}
-
-// Fire and log: the write already committed, so failing the request would say nothing
-// happened when something did.
-func (s *Service) publish(module, event string, entity any) {
-	if err := s.events.Publish(module, event, entity); err != nil {
-		s.logger.Errorw("failed to publish module event",
-			"module", module, "event", event, "err", err)
-	}
 }
 
 func toCreateParams(payload CreateIncidentPayload) (CreateParams, error) {
