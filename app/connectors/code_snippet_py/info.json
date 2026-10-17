@@ -20,6 +20,13 @@
           "name": "code",
           "placeholder": "put your code here"
         }
+      ],
+      "output": [
+        {
+          "name": "code_output",
+          "type": "any",
+          "description": "Value of the result variable"
+        }
       ]
     }
   ]
