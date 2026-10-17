@@ -17,7 +17,7 @@ const apiClient = axios.create({
   paramsSerializer: { indexes: null },
 });
 
-const AUTH_BASE = settings.BASE_URL.AUTH_SERVICE_API + "/api/auth/v1";
+const AUTH_BASE = settings.BASE_URL.AUTH_SERVICE_API + "/api/v1/auth";
 const REFRESH_URL = `${AUTH_BASE}/refresh`;
 
 // A 401 from these is final: bad credentials, or the refresh itself failed.

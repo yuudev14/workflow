@@ -3,7 +3,7 @@ import { api, newPlaybook, unique } from "./helpers";
 
 type Task = { name: string; parameters: Record<string, unknown> };
 const tasksOf = async (page: Page, id: string): Promise<Task[]> =>
-  (await api(page.request).get(`/playbooks/v1/${id}/tasks`)).tasks;
+  (await api(page.request).get(`/playbooks/${id}/tasks`)).tasks;
 
 // The editor toolbar lies over the canvas, so the tests send the events to the
 // node and do not click at its position.
@@ -82,7 +82,7 @@ test.describe("playbook editor", () => {
   test("deletes a step", async ({ page }) => {
     const playbook = await newPlaybook(page.request);
     const step = (name: string) => ({ name, operation: "python_code", connector_id: "code_snippet_py", connector_name: "Code Snippet", parameters: { code: "" } });
-    await api(page.request).put(`/playbooks/v1/tasks/${playbook.id}`, {
+    await api(page.request).put(`/playbooks/tasks/${playbook.id}`, {
       nodes: [{ name: "start", operation: "start", parameters: {} }, step("first"), step("second")],
       edges: { start: ["first"], first: ["second"] },
     });
@@ -109,7 +109,7 @@ test.describe("runs", () => {
 
   test("shows the output of a step", async ({ page }) => {
     const playbook = await newPlaybook(page.request, unique("playbook"), "result = 'from the sandbox'");
-    const run = await api(page.request).post(`/playbooks/v1/trigger/${playbook.id}`);
+    const run = await api(page.request).post(`/playbooks/trigger/${playbook.id}`);
     await page.goto(`/playbooks/${playbook.id}/history/${run.playbook_history_id}`);
     await expect(page.getByRole("link", { name: /Success/ })).toBeVisible({ timeout: 30_000 });
     await page.reload();
@@ -119,14 +119,14 @@ test.describe("runs", () => {
 
   test("shows failed when a step fails", async ({ page }) => {
     const playbook = await newPlaybook(page.request, unique("playbook"), "raise Exception('boom')");
-    await api(page.request).post(`/playbooks/v1/trigger/${playbook.id}`);
+    await api(page.request).post(`/playbooks/trigger/${playbook.id}`);
     await page.goto(`/playbooks/${playbook.id}/history`);
     await expect(page.getByRole("link", { name: /Failed/ })).toBeVisible({ timeout: 30_000 });
   });
 
   test("filters the runs in the history window", async ({ page }) => {
     const playbook = await newPlaybook(page.request);
-    await api(page.request).post(`/playbooks/v1/trigger/${playbook.id}`);
+    await api(page.request).post(`/playbooks/trigger/${playbook.id}`);
     await page.goto(`/playbooks/${playbook.id}`);
     await page.getByRole("button", { name: "History" }).click();
     const dialog = page.getByRole("dialog");
@@ -137,7 +137,7 @@ test.describe("runs", () => {
 
   test("lists the runs on the executions page", async ({ page }) => {
     const playbook = await newPlaybook(page.request);
-    await api(page.request).post(`/playbooks/v1/trigger/${playbook.id}`);
+    await api(page.request).post(`/playbooks/trigger/${playbook.id}`);
     await page.goto("/playbooks/executions");
     await expect(page.getByRole("link", { name: new RegExp(playbook.name) })).toBeVisible();
   });
