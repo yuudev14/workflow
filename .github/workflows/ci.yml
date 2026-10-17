@@ -57,6 +57,16 @@ jobs:
       # -p 1: the job queue tests and the integration tests share the queue.
       - run: go test -p 1 ./...
 
+  # No compose file uses the prod Dockerfile yet, so this catches a broken stage.
+  backend-images:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      - run: |
+          for target in api worker sandbox; do
+            docker build --target "$target" -t "ytsoar/$target:ci" app/ytsoar
+          done
+
   frontend-lint:
     runs-on: ubuntu-24.04
     defaults:

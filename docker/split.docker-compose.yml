@@ -72,6 +72,9 @@ services:
         "go build -o ./tmp/sandbox ./cmd/sandbox",
         "--build.bin",
         "tmp/sandbox",
+        # run outside /app, so the sandbox does not load the DB_* settings of /app/.env
+        "--build.full_bin",
+        "cd / && exec /app/tmp/sandbox",
       ]
     restart: unless-stopped
     mem_limit: 1g
