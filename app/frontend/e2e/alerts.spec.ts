@@ -83,6 +83,7 @@ test.describe("alert detail", () => {
     await page.goto(`/alerts/${alert.id}`);
     await page.getByRole("button", { name: "Escalate" }).click();
     await expect(page).toHaveURL(/\/incidents\/[0-9a-f-]{36}$/);
+    await page.getByRole("tab", { name: /Related/ }).click();
     await expect(page.getByRole("link", { name: new RegExp(alert.title) })).toBeVisible();
   });
 
