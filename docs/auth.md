@@ -13,6 +13,7 @@ Five ideas. Learn these first.
 | **Role** | A named set of permissions. Example: `analyst`. |
 | **Team** | A named group of users. A team can have roles. Every member gets them. |
 | **Session** | An access token and a refresh token, saved in cookies after sign-in. |
+| **API key** | A long secret for a machine (SIEM, script). It acts as one user. |
 
 A user gets permissions in two ways. The system joins both ways, so there is no clash.
 
@@ -70,6 +71,7 @@ sequenceDiagram
 Important points:
 
 - **Auth middleware** reads the access token. It reads the cookie `ytsoar_at`. It also accepts the header `Authorization: Bearer ...` (for scripts and services). The header wins.
+- **API keys.** A value that starts with `ytsoar_` is an API key, not a JWT (a JWT starts with `eyJ`). See section 6.
 - **RequirePermission** asks the database on every request. It does not read roles from the token. A role change or a deactivation works at once.
 - If the database fails, the answer is an error. The system never gives access when it cannot check (fail closed).
 - Each route file declares its grant. Example: `requirePermission(domain.ModulePlaybooks, domain.ActionRead)`. A test checks the grants of all routes.
@@ -122,9 +124,24 @@ flowchart TD
 - **Reuse detection.** A revoked token that comes back after more than 10 seconds (`reuseGraceWindow`) means a thief used a copy. The system revokes every session of that user.
 - **Logout** (`POST /api/auth/v1/logout`) revokes the refresh token and clears both cookies. It has no auth check on purpose. It works with an expired access token. It can only revoke the cookie of the caller.
 - **WebSocket.** `/ws/playbook` cannot send headers from a browser. It uses the refresh cookie. The token is read and checked in the database. It is never rotated here.
-- **Old rows.** `DeleteExpired` exists, but nothing calls it yet. It needs a single scheduled job.
+- **Old rows.** Each refresh adds a row. A River periodic job (`auth_delete_expired_tokens`) deletes the expired rows once a day and when the worker starts. River runs periodic jobs only on the elected leader, so many workers still delete once.
 
-## 6. SSO with OIDC
+## 6. API keys
+
+A machine (a SIEM, a script, another service) cannot sign in with a browser. An admin makes an API key for it.
+
+```
+curl -H "Authorization: Bearer ytsoar_3q2k8..." https://soar.example.com/api/alerts/v1
+```
+
+- **A key acts as one user.** It has the roles of that user, and permissions are checked on every request as usual. For a machine, make a user with few roles (for example only `alerts: create`) and give the key to that user.
+- **Shown once.** `POST /api/api-keys/v1` returns the key one time. The table `api_keys` keeps only the SHA-256 hash and the first characters (`prefix`), so people can tell keys apart.
+- **Stops at once.** Delete the key, or deactivate its user. The lookup joins `users` and checks `is_active`.
+- **Expiry.** `expires_at` is optional. Without it the key works until it is deleted.
+- **Last use.** `last_used_at` is updated at most once a minute, so most requests do no write.
+- Each create and delete writes a row in `audit_logs`.
+
+## 7. SSO with OIDC
 
 An admin adds a provider (Keycloak, Google, Azure and so on). The provider is a row in `auth_providers`. It is not an environment variable. The `config` column is JSON.
 
@@ -181,7 +198,7 @@ When roles come from the IdP, they replace the old roles at each login. When the
 
 The password and the secret in a provider config are masked in admin responses. If the admin saves the masked value back, the stored secret stays.
 
-## 7. Manage users, roles and teams
+## 8. Manage users, roles and teams
 
 All these routes need the `settings` module.
 
@@ -191,6 +208,7 @@ All these routes need the `settings` module.
 | Roles | `GET/POST roles/v1`, `GET/PUT roles/v1/:id`, `PUT roles/v1/:id/permissions`, `DELETE roles/v1/:id` | same |
 | Teams | `GET/POST teams/v1`, `GET/PUT teams/v1/:id`, `PUT teams/v1/:id/members`, `PUT teams/v1/:id/roles`, `DELETE teams/v1/:id` | same |
 | Audit log | `GET audit/v1` | `settings` read |
+| API keys | `GET/POST api-keys/v1`, `DELETE api-keys/v1/:id` | `settings` read, create, delete |
 | SSO providers | `GET/POST auth-providers/v1`, `PUT auth-providers/v1/:id` | same |
 | Assignee list | `GET users/v1/assignable` | none (any signed-in user) |
 
@@ -205,14 +223,14 @@ Rules to remember:
 - **Assignee list.** `users/v1/assignable` has no `settings` check on purpose. An analyst must be able to name the assignee. It returns only `id` and `username`.
 - **Teams on alerts.** `alerts.team_id` and `incidents.team_id` are labels for ownership. Only `team_roles` gives rights.
 
-## 8. The first admin
+## 9. The first admin
 
 A new database has roles but no users. At start, `EnsureAdminUser` checks: "Does anyone hold the admin role?" If not, it creates the user from `ADMIN_USERNAME`, `ADMIN_EMAIL` and `ADMIN_PASSWORD`.
 
 - If `ADMIN_PASSWORD` is empty, the API starts and writes a warning. Nobody can sign in.
 - The check is "any admin", not "the table is empty". Old rows cannot lock everyone out.
 
-## 9. Settings
+## 10. Settings
 
 | Setting | Default | Meaning |
 |---|---|---|

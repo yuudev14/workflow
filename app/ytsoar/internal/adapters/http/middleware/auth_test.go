@@ -24,7 +24,15 @@ var errRejected = errors.New("rejected")
 type stubVerifier struct {
 	validAccessToken  string
 	validRefreshToken string
+	validAPIKey       string
 	user              domain.AuthUser
+}
+
+func (s *stubVerifier) VerifyAPIKey(_ context.Context, key string) (domain.AuthUser, error) {
+	if s.validAPIKey != "" && key == s.validAPIKey {
+		return s.user, nil
+	}
+	return domain.AuthUser{}, errRejected
 }
 
 func (s *stubVerifier) VerifyAccessToken(tokenString string) (domain.AuthUser, error) {
@@ -80,6 +88,31 @@ func TestAuthAcceptsBearerToken(t *testing.T) {
 	require.NotNil(t, seen, "CurrentUser should be populated")
 	assert.Equal(t, stub.user.ID, seen.ID)
 	assert.Equal(t, "alice", seen.Username)
+}
+
+func TestAuthAPIKey(t *testing.T) {
+	stub := newStub()
+	stub.validAPIKey = domain.APIKeyPrefix + "good"
+	stub.validAccessToken = domain.APIKeyPrefix + "also-a-jwt"
+
+	for _, tc := range []struct {
+		name   string
+		header string
+		want   int
+	}{
+		{"accepts a valid key", "Bearer " + domain.APIKeyPrefix + "good", http.StatusOK},
+		{"returns 401 for a wrong key", "Bearer " + domain.APIKeyPrefix + "bad", http.StatusUnauthorized},
+		{"never sends a key to the access token check", "Bearer " + domain.APIKeyPrefix + "also-a-jwt", http.StatusUnauthorized},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			req := httptest.NewRequest(http.MethodGet, "/probe", nil)
+			req.Header.Set("Authorization", tc.header)
+
+			rec, _ := runRequest(t, middleware.Auth(logger.NewNop(), stub), req)
+
+			assert.Equal(t, tc.want, rec.Code)
+		})
+	}
 }
 
 func TestAuthRejectsMissingHeader(t *testing.T) {
