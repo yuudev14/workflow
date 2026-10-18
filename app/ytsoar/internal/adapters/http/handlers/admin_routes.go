@@ -56,6 +56,13 @@ func (h *AdminHandler) RegisterRoutes(
 	// read-only on purpose: an audit trail that you can edit is not an audit trail
 	route.Group("audit/v1").GET("", read, h.ListAuditLogs)
 
+	apiKeys := route.Group("api-keys/v1")
+	{
+		apiKeys.GET("", read, h.ListAPIKeys)
+		apiKeys.POST("", create, h.CreateAPIKey)
+		apiKeys.DELETE("/:api_key_id", remove, h.DeleteAPIKey)
+	}
+
 	providers := route.Group("auth-providers/v1")
 	{
 		providers.GET("", read, h.ListAuthProviders)

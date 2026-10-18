@@ -173,6 +173,23 @@ type RefreshToken struct {
 	CreatedAt time.Time
 }
 
+// APIKeyPrefix starts every API key. A JWT starts with "eyJ", so the prefix tells the two
+// apart in the Authorization header.
+const APIKeyPrefix = "ytsoar_"
+
+// APIKey is the read shape. The key itself is never stored, only its hash.
+type APIKey struct {
+	ID         uuid.UUID  `json:"id"`
+	UserID     uuid.UUID  `json:"user_id"`
+	Username   string     `json:"username"`
+	Name       string     `json:"name"`
+	Prefix     string     `json:"prefix"`
+	CreatedBy  *uuid.UUID `json:"created_by"`
+	ExpiresAt  *time.Time `json:"expires_at"`
+	LastUsedAt *time.Time `json:"last_used_at"`
+	CreatedAt  time.Time  `json:"created_at"`
+}
+
 // AuditLog is the read shape. ActorUsername is joined in. It is nil for system rows and
 // for actors whose account was deleted later (actor_id is ON DELETE SET NULL, the trail
 // outlives the user).

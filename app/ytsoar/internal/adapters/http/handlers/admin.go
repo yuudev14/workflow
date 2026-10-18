@@ -495,3 +495,58 @@ func (h *AdminHandler) ListAuditLogs(c *gin.Context) {
 	}
 	response.ResponseSuccess(logs)
 }
+
+func (h *AdminHandler) ListAPIKeys(c *gin.Context) {
+	response := rest.Response{C: c}
+
+	var filter auth.APIKeyFilter
+	if ok, code, err := rest.BindQueryAndValidate(c, &filter); !ok {
+		response.ResponseError(code, err)
+		return
+	}
+
+	keys, err := h.authService.ListAPIKeys(c.Request.Context(), filter)
+	if err != nil {
+		response.Fail(h.logger, err)
+		return
+	}
+	response.ResponseSuccess(keys)
+}
+
+// CreateAPIKey is the only response that holds the key. The client must save it now.
+func (h *AdminHandler) CreateAPIKey(c *gin.Context) {
+	response := rest.Response{C: c}
+
+	actorID, ok := h.actor(c)
+	if !ok {
+		return
+	}
+
+	var body auth.CreateAPIKeyInput
+	if err := c.ShouldBindJSON(&body); err != nil {
+		response.ResponseError(http.StatusBadRequest, err.Error())
+		return
+	}
+
+	key, err := h.authService.CreateAPIKey(c.Request.Context(), actorID, body)
+	if err != nil {
+		response.Fail(h.logger, err)
+		return
+	}
+	c.IndentedJSON(http.StatusCreated, key)
+}
+
+func (h *AdminHandler) DeleteAPIKey(c *gin.Context) {
+	response := rest.Response{C: c}
+
+	actorID, keyID, ok := h.actorAndTarget(c, "api_key_id")
+	if !ok {
+		return
+	}
+
+	if err := h.authService.DeleteAPIKey(c.Request.Context(), actorID, keyID); err != nil {
+		response.Fail(h.logger, err)
+		return
+	}
+	c.Status(http.StatusNoContent)
+}

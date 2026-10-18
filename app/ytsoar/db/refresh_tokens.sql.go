@@ -12,11 +12,11 @@ import (
 )
 
 const deleteExpiredRefreshTokens = `-- name: DeleteExpiredRefreshTokens :exec
-DELETE FROM refresh_tokens WHERE expires_at < NOW()
+DELETE FROM refresh_tokens WHERE expires_at < $1
 `
 
-func (q *Queries) DeleteExpiredRefreshTokens(ctx context.Context) error {
-	_, err := q.db.Exec(ctx, deleteExpiredRefreshTokens)
+func (q *Queries) DeleteExpiredRefreshTokens(ctx context.Context, expiresAt pgtype.Timestamp) error {
+	_, err := q.db.Exec(ctx, deleteExpiredRefreshTokens, expiresAt)
 	return err
 }
 

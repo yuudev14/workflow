@@ -2,7 +2,10 @@ package auth_test
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
+	"strings"
 	"testing"
 	"time"
 
@@ -27,6 +30,7 @@ type testEnv struct {
 	mockUsers     *mock_auth.MockUserRepository
 	mockRoles     *mock_auth.MockRoleRepository
 	mockTokens    *mock_auth.MockRefreshTokenRepository
+	mockAPIKeys   *mock_auth.MockAPIKeyRepository
 	mockTeams     *mock_auth.MockTeamRepository
 	mockProviders *mock_auth.MockAuthProviderRepository
 	mockOIDC      *mock_auth.MockOIDCClient
@@ -47,6 +51,7 @@ func setupTest(t *testing.T) *testEnv {
 	mockUsers := mock_auth.NewMockUserRepository(ctrl)
 	mockRoles := mock_auth.NewMockRoleRepository(ctrl)
 	mockTokens := mock_auth.NewMockRefreshTokenRepository(ctrl)
+	mockAPIKeys := mock_auth.NewMockAPIKeyRepository(ctrl)
 	mockTeams := mock_auth.NewMockTeamRepository(ctrl)
 	mockProviders := mock_auth.NewMockAuthProviderRepository(ctrl)
 	mockOIDC := mock_auth.NewMockOIDCClient(ctrl)
@@ -73,6 +78,7 @@ func setupTest(t *testing.T) *testEnv {
 		mockUsers,
 		mockRoles,
 		mockTokens,
+		mockAPIKeys,
 		mockTeams,
 		mockAudit,
 		mockProviders,
@@ -96,6 +102,7 @@ func setupTest(t *testing.T) *testEnv {
 		mockUsers:     mockUsers,
 		mockRoles:     mockRoles,
 		mockTokens:    mockTokens,
+		mockAPIKeys:   mockAPIKeys,
 		mockTeams:     mockTeams,
 		mockProviders: mockProviders,
 		mockOIDC:      mockOIDC,
@@ -384,4 +391,111 @@ func issueRefreshToken(t *testing.T, env *testEnv, user domain.User) string {
 	pair, err := env.service.Login(context.Background(), user.Username, "correct-password")
 	require.NoError(t, err)
 	return pair.RefreshToken
+}
+
+func TestAPIKeys(t *testing.T) {
+	ctx := context.Background()
+	sha := func(key string) string {
+		sum := sha256.Sum256([]byte(key))
+		return hex.EncodeToString(sum[:])
+	}
+
+	t.Run("CreateAPIKey", func(t *testing.T) {
+		t.Run("returns the key one time and stores only its hash", func(t *testing.T) {
+			env := setupTest(t)
+			user := activeUser()
+			var stored auth.CreateAPIKeyParams
+			env.mockUsers.EXPECT().GetByID(gomock.Any(), user.ID).Return(user, nil)
+			env.mockAPIKeys.EXPECT().Create(gomock.Any(), gomock.Any()).
+				DoAndReturn(func(_ context.Context, p auth.CreateAPIKeyParams) (domain.APIKey, error) {
+					stored = p
+					return domain.APIKey{ID: uuid.New(), UserID: p.UserID, Name: p.Name, Prefix: p.Prefix}, nil
+				})
+
+			created, err := env.service.CreateAPIKey(ctx, uuid.New(), auth.CreateAPIKeyInput{UserID: user.ID.String(), Name: "splunk"})
+
+			require.NoError(t, err)
+			assert.True(t, strings.HasPrefix(created.Key, domain.APIKeyPrefix))
+			assert.Equal(t, sha(created.Key), stored.KeyHash)
+			assert.Equal(t, created.Key[:len(domain.APIKeyPrefix)+4], created.Prefix)
+			assert.Equal(t, "alice", created.Username)
+		})
+
+		t.Run("returns an error when expires_at is in the past", func(t *testing.T) {
+			env := setupTest(t)
+			past := time.Now().Add(-time.Hour)
+
+			_, err := env.service.CreateAPIKey(ctx, uuid.New(), auth.CreateAPIKeyInput{UserID: uuid.NewString(), Name: "old", ExpiresAt: &past})
+
+			assert.ErrorIs(t, err, auth.ErrAPIKeyExpiry)
+		})
+	})
+
+	t.Run("VerifyAPIKey", func(t *testing.T) {
+		key := domain.APIKeyPrefix + "secret"
+
+		t.Run("returns the owner of the key and saves the time of use", func(t *testing.T) {
+			env := setupTest(t)
+			stored := domain.APIKey{ID: uuid.New(), UserID: uuid.New(), Username: "siem"}
+			env.mockAPIKeys.EXPECT().GetByHash(gomock.Any(), sha(key)).Return(stored, nil)
+			env.mockAPIKeys.EXPECT().Touch(gomock.Any(), stored.ID, gomock.Any()).Return(nil)
+
+			user, err := env.service.VerifyAPIKey(ctx, key)
+
+			require.NoError(t, err)
+			assert.Equal(t, domain.AuthUser{ID: stored.UserID, Username: "siem"}, user)
+		})
+
+		t.Run("does not save the time of use again within a minute", func(t *testing.T) {
+			env := setupTest(t)
+			recent := time.Now().Add(-10 * time.Second)
+			env.mockAPIKeys.EXPECT().GetByHash(gomock.Any(), sha(key)).Return(domain.APIKey{LastUsedAt: &recent}, nil)
+
+			_, err := env.service.VerifyAPIKey(ctx, key)
+
+			assert.NoError(t, err)
+		})
+
+		t.Run("rejects an expired key", func(t *testing.T) {
+			env := setupTest(t)
+			past := time.Now().Add(-time.Second)
+			env.mockAPIKeys.EXPECT().GetByHash(gomock.Any(), sha(key)).Return(domain.APIKey{ExpiresAt: &past}, nil)
+
+			_, err := env.service.VerifyAPIKey(ctx, key)
+
+			assert.ErrorIs(t, err, auth.ErrInvalidCredentials)
+		})
+
+		t.Run("rejects an unknown or deleted key", func(t *testing.T) {
+			env := setupTest(t)
+			env.mockAPIKeys.EXPECT().GetByHash(gomock.Any(), sha(key)).Return(domain.APIKey{}, auth.ErrAPIKeyNotFound)
+
+			_, err := env.service.VerifyAPIKey(ctx, key)
+
+			assert.ErrorIs(t, err, auth.ErrInvalidCredentials)
+		})
+	})
+
+	t.Run("DeleteAPIKey", func(t *testing.T) {
+		t.Run("returns not found when the key does not exist", func(t *testing.T) {
+			env := setupTest(t)
+			env.mockAPIKeys.EXPECT().Delete(gomock.Any(), gomock.Any()).Return(int64(0), nil)
+
+			assert.ErrorIs(t, env.service.DeleteAPIKey(ctx, uuid.New(), uuid.New()), auth.ErrAPIKeyNotFound)
+		})
+	})
+}
+
+func TestDeleteExpiredTokens(t *testing.T) {
+	t.Run("deletes the refresh tokens that expired before now", func(t *testing.T) {
+		env := setupTest(t)
+		before := time.Now()
+		env.mockTokens.EXPECT().DeleteExpired(gomock.Any(), gomock.Any()).
+			DoAndReturn(func(_ context.Context, cutoff time.Time) error {
+				assert.WithinDuration(t, before, cutoff, time.Second)
+				return nil
+			})
+
+		assert.NoError(t, env.service.DeleteExpiredTokens(context.Background()))
+	})
 }
