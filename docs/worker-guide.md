@@ -62,7 +62,7 @@ The service never creates its own repository. So you can replace the repository 
 | 6 | Services | `playbooks.NewPlaybookService`, `tasks.NewTaskServiceImpl` | repositories | executor, loader | Small business logic over the repositories. |
 | 7 | Sandbox runtime | `grpcruntime.NewSandboxRuntime` | `SANDBOX_ADDR` | resolver | Sends a task to the sandbox over gRPC (`SandboxRuntime`). |
 | 8 | Templating engine | `templating.NewGonjaEngine` | none | built-in runtime | Fills `{{ ... }}` in parameters. |
-| 9 | Built-in runtime | `goconnectors.NewBuiltinRuntime` + `Register` | engine, connectors dir | resolver | Runs trusted connectors (`http_request`, `condition`) inside the worker (`BuiltinRuntime`). |
+| 9 | Built-in runtime | `goconnectors.NewBuiltinRuntime` + `Register` | engine, connectors dir | resolver | Runs the trusted connector `http_request` inside the worker (`BuiltinRuntime`). |
 | 10 | Resolver | `execution.NewStaticResolver` | sandbox runtime, built-in runtime | executor | Decides where a node runs. See [runtime-resolver.md](runtime-resolver.md). |
 | 11 | Status notifier | `pgstatus.NewNotifier` | pool | executor | Sends a Postgres `NOTIFY` when a status changes. |
 | 12 | **Executor** | `execution.NewExecutor` | services, resolver, notifier, limits | job worker | Runs the graph of one playbook. |
@@ -108,7 +108,7 @@ flowchart LR
 |---|---|---|
 | `start` | none | A no-op node. Every playbook begins here. |
 | `lookup` | `http_request` (built-in) | Calls a threat-intel URL. Result example: `{"score": 92}`. |
-| `decide` | `condition` (built-in) | If `score > 80`, it returns `{"result": "bad"}`. Otherwise `{"result": "else"}`. |
+| `decide` | `condition` (Python connector) | If `score > 80`, it returns `{"result": "bad"}`. Otherwise `{"result": "else"}`. |
 | `block` | `firewall` (Python connector) | Blocks the IP address. |
 | `note` | `slack` (Python connector) | Writes a message. |
 | `report` | `slack` (Python connector) | Reports the result. |
@@ -273,7 +273,7 @@ For `lookup` (`http_request`), the resolver returns the **BuiltinRuntime** (`int
 4. Call the connector: `HTTPRequestConnector.Execute(ctx, config, params, "get_request")`.
 5. Turn the result into JSON.
 
-Only first-party code is registered here (`http_request`, `condition`). The worker trusts it.
+Only first-party code is registered here (`http_request`). The worker trusts it.
 
 ### 5.2 Path B: user code runs in the sandbox
 

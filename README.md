@@ -115,7 +115,7 @@ The system has four parts. Three parts are Go programs. They come from one modul
 ```
 
 1. **Playbook API** (`cmd/api`) - The API gives the REST and WebSocket interfaces. It saves playbooks. When a user triggers a playbook, the API queues a run in Postgres (River). The API sends status updates to the browser.
-2. **Worker** (`cmd/worker`) - The worker takes queued runs and runs the graph node by node. It runs independent nodes at the same time. For most nodes, the worker sends the work to the sandbox over gRPC and saves the result. Two first-party connectors (`http_request` and `condition`) are trusted. The worker runs them directly.
+2. **Worker** (`cmd/worker`) - The worker takes queued runs and runs the graph node by node. It runs independent nodes at the same time. For most nodes, the worker sends the work to the sandbox over gRPC and saves the result. One first-party connector (`http_request`) is trusted. The worker runs it directly.
 3. **Sandbox** (`cmd/sandbox`) - The sandbox runs connectors and code snippets. Each run gets a new `python3` or `node` process. The process has no credentials, a clean environment and a time limit. Untrusted code cannot reach the database or the job queue.
 4. **Frontend** - The visual editor. The Vite dev server serves it behind nginx.
 
@@ -138,7 +138,7 @@ Other docs:
 - [Connector upload](docs/connector-upload.md): how a zip becomes a connector.
 - [Connector dependencies](docs/connector-dependencies.md): how each connector gets its own libraries.
 - [Event triggers](docs/event-triggers.md): how a new or changed alert or incident starts a playbook, and the loop guard.
-- [The condition task](docs/condition.md): how branching works, the limits of the Go template engine, and the plan to move to Python.
+- [The condition task](docs/condition.md): how branching works, and why it runs in Python with jinja2.
 
 ### One run, step by step
 
@@ -204,7 +204,7 @@ Run `make connector-deps` to install the libraries. The stack must already run. 
 
 ## Branching
 
-The `condition` built-in works like a switch statement. It checks an ordered list of cases. It takes the first case that matches. If no case matches, it takes **else**. It has two modes:
+The `condition` connector works like a switch statement. It checks an ordered list of cases. It takes the first case that matches. If no case matches, it takes **else**. It has two modes:
 
 - **Switch** - Each case is a simple comparison: left value, operator (`==`, `!=`, `>`, `contains` and others) and right value. You do not need templates.
 - **Switch (advanced expression)** - Each case is a full template expression, for example `{{ var.steps["scan"].score > 90 }}`. The system takes the case when the expression is true.
