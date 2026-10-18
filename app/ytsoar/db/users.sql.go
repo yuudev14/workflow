@@ -31,7 +31,7 @@ INSERT INTO users (
     auth_provider, external_id, is_active, email_verified_at
 )
 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-RETURNING id, username, email, password_hash, first_name, last_name, auth_provider, external_id, is_active, last_login_at, created_at, updated_at, email_verified_at
+RETURNING id, username, email, password_hash, first_name, last_name, auth_provider, external_id, is_active, last_login_at, created_at, updated_at, email_verified_at, link_token_hash, link_purpose, link_sent_at
 `
 
 type CreateUserParams struct {
@@ -73,12 +73,15 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, e
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.EmailVerifiedAt,
+		&i.LinkTokenHash,
+		&i.LinkPurpose,
+		&i.LinkSentAt,
 	)
 	return i, err
 }
 
 const getUserByEmail = `-- name: GetUserByEmail :one
-SELECT id, username, email, password_hash, first_name, last_name, auth_provider, external_id, is_active, last_login_at, created_at, updated_at, email_verified_at FROM users WHERE email = $1
+SELECT id, username, email, password_hash, first_name, last_name, auth_provider, external_id, is_active, last_login_at, created_at, updated_at, email_verified_at, link_token_hash, link_purpose, link_sent_at FROM users WHERE email = $1
 `
 
 func (q *Queries) GetUserByEmail(ctx context.Context, email string) (User, error) {
@@ -98,12 +101,15 @@ func (q *Queries) GetUserByEmail(ctx context.Context, email string) (User, error
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.EmailVerifiedAt,
+		&i.LinkTokenHash,
+		&i.LinkPurpose,
+		&i.LinkSentAt,
 	)
 	return i, err
 }
 
 const getUserByExternalId = `-- name: GetUserByExternalId :one
-SELECT id, username, email, password_hash, first_name, last_name, auth_provider, external_id, is_active, last_login_at, created_at, updated_at, email_verified_at FROM users WHERE auth_provider = $1 AND external_id = $2
+SELECT id, username, email, password_hash, first_name, last_name, auth_provider, external_id, is_active, last_login_at, created_at, updated_at, email_verified_at, link_token_hash, link_purpose, link_sent_at FROM users WHERE auth_provider = $1 AND external_id = $2
 `
 
 type GetUserByExternalIdParams struct {
@@ -128,12 +134,15 @@ func (q *Queries) GetUserByExternalId(ctx context.Context, arg GetUserByExternal
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.EmailVerifiedAt,
+		&i.LinkTokenHash,
+		&i.LinkPurpose,
+		&i.LinkSentAt,
 	)
 	return i, err
 }
 
 const getUserById = `-- name: GetUserById :one
-SELECT id, username, email, password_hash, first_name, last_name, auth_provider, external_id, is_active, last_login_at, created_at, updated_at, email_verified_at FROM users WHERE id = $1
+SELECT id, username, email, password_hash, first_name, last_name, auth_provider, external_id, is_active, last_login_at, created_at, updated_at, email_verified_at, link_token_hash, link_purpose, link_sent_at FROM users WHERE id = $1
 `
 
 func (q *Queries) GetUserById(ctx context.Context, id pgtype.UUID) (User, error) {
@@ -153,12 +162,15 @@ func (q *Queries) GetUserById(ctx context.Context, id pgtype.UUID) (User, error)
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.EmailVerifiedAt,
+		&i.LinkTokenHash,
+		&i.LinkPurpose,
+		&i.LinkSentAt,
 	)
 	return i, err
 }
 
 const getUserByUsername = `-- name: GetUserByUsername :one
-SELECT id, username, email, password_hash, first_name, last_name, auth_provider, external_id, is_active, last_login_at, created_at, updated_at, email_verified_at FROM users WHERE username = $1
+SELECT id, username, email, password_hash, first_name, last_name, auth_provider, external_id, is_active, last_login_at, created_at, updated_at, email_verified_at, link_token_hash, link_purpose, link_sent_at FROM users WHERE username = $1
 `
 
 func (q *Queries) GetUserByUsername(ctx context.Context, username string) (User, error) {
@@ -178,6 +190,9 @@ func (q *Queries) GetUserByUsername(ctx context.Context, username string) (User,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.EmailVerifiedAt,
+		&i.LinkTokenHash,
+		&i.LinkPurpose,
+		&i.LinkSentAt,
 	)
 	return i, err
 }
@@ -196,6 +211,34 @@ func (q *Queries) MarkUserEmailVerified(ctx context.Context, arg MarkUserEmailVe
 	return err
 }
 
+const setUserLink = `-- name: SetUserLink :execrows
+UPDATE users SET link_token_hash = $2, link_purpose = $3, link_sent_at = $4
+WHERE id = $1 AND (link_sent_at IS NULL OR link_sent_at < $5)
+`
+
+type SetUserLinkParams struct {
+	ID            pgtype.UUID      `json:"id"`
+	LinkTokenHash pgtype.Text      `json:"link_token_hash"`
+	LinkPurpose   pgtype.Text      `json:"link_purpose"`
+	LinkSentAt    pgtype.Timestamp `json:"link_sent_at"`
+	ResendAfter   pgtype.Timestamp `json:"resend_after"`
+}
+
+// the WHERE skips the update when the last link is newer than the limit, so a user cannot get many emails
+func (q *Queries) SetUserLink(ctx context.Context, arg SetUserLinkParams) (int64, error) {
+	result, err := q.db.Exec(ctx, setUserLink,
+		arg.ID,
+		arg.LinkTokenHash,
+		arg.LinkPurpose,
+		arg.LinkSentAt,
+		arg.ResendAfter,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const setUserPassword = `-- name: SetUserPassword :exec
 UPDATE users SET password_hash = $2, updated_at = NOW() WHERE id = $1
 `
@@ -208,6 +251,27 @@ type SetUserPasswordParams struct {
 func (q *Queries) SetUserPassword(ctx context.Context, arg SetUserPasswordParams) error {
 	_, err := q.db.Exec(ctx, setUserPassword, arg.ID, arg.PasswordHash)
 	return err
+}
+
+const takeUserLink = `-- name: TakeUserLink :one
+UPDATE users u SET link_token_hash = NULL, link_purpose = NULL, link_sent_at = NULL
+FROM (SELECT o.id, o.link_purpose, o.link_sent_at FROM users o WHERE o.link_token_hash = $1 FOR UPDATE) old
+WHERE u.id = old.id
+RETURNING old.id, old.link_purpose, old.link_sent_at
+`
+
+type TakeUserLinkRow struct {
+	ID          pgtype.UUID      `json:"id"`
+	LinkPurpose pgtype.Text      `json:"link_purpose"`
+	LinkSentAt  pgtype.Timestamp `json:"link_sent_at"`
+}
+
+// clears the link and returns its old values, so a link works one time
+func (q *Queries) TakeUserLink(ctx context.Context, linkTokenHash pgtype.Text) (TakeUserLinkRow, error) {
+	row := q.db.QueryRow(ctx, takeUserLink, linkTokenHash)
+	var i TakeUserLinkRow
+	err := row.Scan(&i.ID, &i.LinkPurpose, &i.LinkSentAt)
+	return i, err
 }
 
 const touchUserLastLogin = `-- name: TouchUserLastLogin :exec
@@ -240,7 +304,7 @@ SET
     END,
     updated_at = NOW()
 WHERE id = $9
-RETURNING id, username, email, password_hash, first_name, last_name, auth_provider, external_id, is_active, last_login_at, created_at, updated_at, email_verified_at
+RETURNING id, username, email, password_hash, first_name, last_name, auth_provider, external_id, is_active, last_login_at, created_at, updated_at, email_verified_at, link_token_hash, link_purpose, link_sent_at
 `
 
 type UpdateUserParams struct {
@@ -282,6 +346,9 @@ func (q *Queries) UpdateUser(ctx context.Context, arg UpdateUserParams) (User, e
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.EmailVerifiedAt,
+		&i.LinkTokenHash,
+		&i.LinkPurpose,
+		&i.LinkSentAt,
 	)
 	return i, err
 }

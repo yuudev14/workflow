@@ -121,6 +121,25 @@ func (r *UserRepositoryImpl) MarkEmailVerified(ctx context.Context, id uuid.UUID
 	})
 }
 
+func (r *UserRepositoryImpl) SetLink(ctx context.Context, params auth.SetLinkParams) (bool, error) {
+	rows, err := r.queriesFromContext(ctx).SetUserLink(ctx, db.SetUserLinkParams{
+		ID:            toPgUUID(params.UserID),
+		LinkTokenHash: pgtype.Text{String: params.TokenHash, Valid: true},
+		LinkPurpose:   pgtype.Text{String: params.Purpose, Valid: true},
+		LinkSentAt:    pgtype.Timestamp{Time: params.SentAt, Valid: true},
+		ResendAfter:   pgtype.Timestamp{Time: params.ResendAfter, Valid: true},
+	})
+	return rows > 0, err
+}
+
+func (r *UserRepositoryImpl) TakeLink(ctx context.Context, tokenHash string) (auth.UserLink, error) {
+	row, err := r.queriesFromContext(ctx).TakeUserLink(ctx, pgtype.Text{String: tokenHash, Valid: true})
+	if err != nil {
+		return auth.UserLink{}, mapNoRows(err, auth.ErrInvalidLink)
+	}
+	return auth.UserLink{UserID: fromPgUUID(row.ID), Purpose: row.LinkPurpose.String, SentAt: row.LinkSentAt.Time}, nil
+}
+
 // applyUserFilter is shared by List and Count, so a filter never applies to the page but
 // not the total. It assumes the users table has the alias `u`.
 func applyUserFilter(stmt sq.SelectBuilder, filter auth.UserFilter) sq.SelectBuilder {
@@ -150,12 +169,16 @@ const rolesAggregate = `COALESCE((
     WHERE ur.user_id = u.id
 ), '{}') AS roles`
 
+// userColumns are named, because the link columns are not part of domain.User.
+const userColumns = `u.id, u.username, u.email, u.password_hash, u.first_name, u.last_name, u.auth_provider,
+    u.external_id, u.is_active, u.last_login_at, u.created_at, u.updated_at, u.email_verified_at, `
+
 func selectUsers(columns string) sq.SelectBuilder {
 	return sq.Select(columns).From("users u").PlaceholderFormat(sq.Dollar)
 }
 
 func (r *UserRepositoryImpl) List(ctx context.Context, offset, limit int, filter auth.UserFilter) ([]domain.UserWithRoles, error) {
-	stmt := applyUserFilter(selectUsers("u.*, "+rolesAggregate), filter).
+	stmt := applyUserFilter(selectUsers(userColumns+rolesAggregate), filter).
 		OrderBy("u.username").
 		Offset(uint64(offset)).
 		Limit(uint64(limit))
@@ -200,7 +223,7 @@ func (r *UserRepositoryImpl) UsernamesByIDs(ctx context.Context, ids []uuid.UUID
 }
 
 func (r *UserRepositoryImpl) GetWithRoles(ctx context.Context, id uuid.UUID) (domain.UserWithRoles, error) {
-	stmt := selectUsers("u.*, " + rolesAggregate).Where(sq.Eq{"u.id": id})
+	stmt := selectUsers(userColumns + rolesAggregate).Where(sq.Eq{"u.id": id})
 
 	rows, err := CollectRowsFromSqlizer[domain.UserWithRoles](ctx, stmt, r.pool, r.logger)
 	if err != nil {
