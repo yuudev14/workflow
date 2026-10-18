@@ -40,7 +40,7 @@ sequenceDiagram
 
     loop Each node (processNode)
         X->>DB: Task pending -> in_progress
-        alt Built-in connector (http_request, condition)
+        alt Built-in connector (http_request)
             X->>X: Run in the worker (goconnectors/builtin_runtime.go)
         else Other connector or code snippet
             X->>SB: gRPC ExecuteOperation
