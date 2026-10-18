@@ -93,6 +93,7 @@ func (c *Client) Exchange(ctx context.Context, cfg auth.OIDCConfig, redirectURL,
 		FirstName:         stringFromClaim(claims, claimNameOr(cfg.FirstNameClaim, "given_name")),
 		LastName:          stringFromClaim(claims, claimNameOr(cfg.LastNameClaim, "family_name")),
 		Groups:            stringsFromClaim(claims, claimNameOr(cfg.GroupsClaim, "groups")),
+		EmailVerified:     claims["email_verified"] == true,
 	}, nil
 }
 

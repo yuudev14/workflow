@@ -13,7 +13,7 @@ flowchart TD
     subgraph Adapters ["Adapters (talk to the outside)"]
         REPO["PlaybookRepository<br/>TaskRepository<br/>adapters/repository"]
         GRPC["grpcruntime.NewSandboxRuntime<br/>(sends tasks to the sandbox)"]
-        REG["goconnectors.NewBuiltinRuntime<br/>(runs http_request, condition)"]
+        REG["goconnectors.NewBuiltinRuntime<br/>(runs http_request)"]
         NOTE["pgstatus.NewNotifier"]
     end
 
@@ -54,7 +54,7 @@ flowchart TD
 | 5 | `repository.NewPlaybookRepository`, `NewTaskRepositoryImpl` | The adapters that read and write the history tables. |
 | 6 | `playbooks.NewPlaybookService`, `tasks.NewTaskServiceImpl` | The services. They get the repositories. |
 | 7 | `grpcruntime.NewSandboxRuntime(cfg.SandboxAddr)` | `SandboxRuntime`: it sends tasks to the sandbox over gRPC. The sandbox runs user code. |
-| 8 | `goconnectors.NewBuiltinRuntime` and `Register` | `BuiltinRuntime`: the trusted connectors that run in the worker (`http_request`, `condition`). |
+| 8 | `goconnectors.NewBuiltinRuntime` and `Register` | `BuiltinRuntime`: the trusted connector that runs in the worker (`http_request`). |
 | 9 | `execution.NewStaticResolver(sandbox, byConnector)` | A node with a built-in connector runs in the worker. Every other node goes to the sandbox. |
 | 10 | `execution.NewExecutor(...)` | It gets the services, the resolver, the status notifier and the limits. |
 | 11 | `playbooks.NewRunLoader(...)`, `jobs.NewRunWorker(...)` | The loader builds the message. The worker calls the loader and the executor. |

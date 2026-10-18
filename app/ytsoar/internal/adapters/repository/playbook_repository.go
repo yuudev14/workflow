@@ -5,10 +5,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"time"
 
 	sq "github.com/Masterminds/squirrel"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/yuudev14/ytsoar/db"
 	"github.com/yuudev14/ytsoar/internal/application/playbooks"
@@ -212,6 +214,7 @@ func (w *PlaybookRepositoryImpl) GetPlaybookHistoryById(ctx context.Context, pla
 		TriggerType:  fromNullTriggerType(row.TriggerType),
 		TriggeredBy:  fromPgUUIDPtr(row.TriggeredBy),
 		Input:        row.Input,
+		FinishedAt:   fromPgTimestamptzPtr(row.FinishedAt),
 	}, nil
 }
 
@@ -371,6 +374,23 @@ func (w *PlaybookRepositoryImpl) CreatePlaybookRunRecords(ctx context.Context, h
 		}
 	}
 	return nil
+}
+
+func (w *PlaybookRepositoryImpl) ListEventPlaybookIDs(ctx context.Context, triggerType domain.TriggerType, moduleType string, recordID uuid.UUID, occurredAt time.Time) ([]uuid.UUID, error) {
+	rows, err := w.queriesFromContext(ctx).ListEventPlaybookIDs(ctx, db.ListEventPlaybookIDsParams{
+		TriggerType: db.TriggerType(triggerType),
+		Module:      moduleType,
+		RecordID:    toPgUUID(recordID),
+		OccurredAt:  pgtype.Timestamptz{Time: occurredAt, Valid: true},
+	})
+	if err != nil {
+		return nil, err
+	}
+	ids := make([]uuid.UUID, len(rows))
+	for i, row := range rows {
+		ids[i] = fromPgUUID(row)
+	}
+	return ids, nil
 }
 
 func (w *PlaybookRepositoryImpl) UpdatePlaybookHistory(ctx context.Context, playbookHistoryId string, playbookHistory playbooks.UpdatePlaybookHistoryData) (*domain.PlaybookHistory, error) {

@@ -150,3 +150,40 @@ func (h *AuthHandler) Me(c *gin.Context) {
 
 	response.ResponseSuccess(me)
 }
+
+// ForgotPassword godoc
+// @Summary Email a password reset link. The reply is always 204, so it does not show if the email exists.
+// @Tags auth
+// @Router /api/v1/auth/password/forgot [post]
+func (h *AuthHandler) ForgotPassword(c *gin.Context) {
+	response := rest.Response{C: c}
+
+	var body auth.ForgotPasswordInput
+	if err := c.ShouldBindJSON(&body); err != nil {
+		response.ResponseError(http.StatusBadRequest, err.Error())
+		return
+	}
+
+	h.authService.ForgotPassword(c.Request.Context(), body.Email)
+	c.Status(http.StatusNoContent)
+}
+
+// ResetPassword godoc
+// @Summary Set a password with an invite or a reset link
+// @Tags auth
+// @Router /api/v1/auth/password/reset [post]
+func (h *AuthHandler) ResetPassword(c *gin.Context) {
+	response := rest.Response{C: c}
+
+	var body auth.ResetPasswordInput
+	if err := c.ShouldBindJSON(&body); err != nil {
+		response.ResponseError(http.StatusBadRequest, err.Error())
+		return
+	}
+
+	if err := h.authService.ResetPassword(c.Request.Context(), body); err != nil {
+		response.Fail(h.logger, err)
+		return
+	}
+	c.Status(http.StatusNoContent)
+}

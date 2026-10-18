@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"testing"
 
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -37,6 +38,100 @@ func TestAuth(t *testing.T) {
 			assert.NotEmpty(t, refreshed["access_token"])
 			c.expect(t, http.StatusOK, http.MethodPost, "/api/v1/auth/logout", nil)
 			c.expect(t, http.StatusUnauthorized, http.MethodPost, "/api/v1/auth/refresh", nil)
+		})
+	})
+
+	t.Run("API keys", func(t *testing.T) {
+		c := admin(t)
+		base := "/api/v1/api-keys"
+		userID, _ := newUser(t)
+		withKey := func(t *testing.T) (string, *client) {
+			created := c.create(t, base, J{"user_id": userID, "name": unique("siem")})
+			return created["id"].(string), &client{http: http.DefaultClient, token: created["key"].(string)}
+		}
+
+		t.Run("POST /api-keys", func(t *testing.T) {
+			c.expectAll(t, []request{
+				{"returns 400 when the name is missing", http.MethodPost, base, J{"user_id": userID}, http.StatusBadRequest},
+				{"returns 400 when the expiry is in the past", http.MethodPost, base, J{"user_id": userID, "name": "old", "expires_at": "2020-01-01T00:00:00Z"}, http.StatusBadRequest},
+				{"returns 404 when the user does not exist", http.MethodPost, base, J{"user_id": uuid.NewString(), "name": "x"}, http.StatusNotFound},
+			})
+		})
+
+		t.Run("signs in as the owner of the key", func(t *testing.T) {
+			_, key := withKey(t)
+			me := key.get(t, "/api/v1/auth/me").(J)
+			assert.Equal(t, userID, me["user"].(J)["id"])
+		})
+
+		t.Run("lists the key without the key itself", func(t *testing.T) {
+			id, _ := withKey(t)
+			list := c.get(t, base+"?user_id="+userID)
+			assert.Contains(t, ids(list), id)
+			for _, item := range items(list) {
+				assert.NotContains(t, item.(J), "key")
+			}
+		})
+
+		t.Run("returns 401 after the key is deleted", func(t *testing.T) {
+			id, key := withKey(t)
+			c.expect(t, http.StatusNoContent, http.MethodDelete, base+"/"+id, nil)
+			key.expect(t, http.StatusUnauthorized, http.MethodGet, "/api/v1/auth/me", nil)
+		})
+
+		t.Run("returns 401 after the owner is deactivated", func(t *testing.T) {
+			_, key := withKey(t)
+			c.expect(t, http.StatusNoContent, http.MethodDelete, "/api/v1/users/"+userID, nil)
+			key.expect(t, http.StatusUnauthorized, http.MethodGet, "/api/v1/auth/me", nil)
+		})
+	})
+
+	t.Run("invite and password reset", func(t *testing.T) {
+		c := admin(t)
+		reset, forgot := "/api/v1/auth/password/reset", "/api/v1/auth/password/forgot"
+		username := unique("invited")
+		email := username + "@ytsoar.test"
+		user := c.create(t, "/api/v1/users", J{"username": username, "email": email})
+		id := user["id"].(string)
+		assert.Nil(t, user["email_verified_at"])
+		token := linkFor(t, email)
+
+		t.Run("POST /users/:id/invite", func(t *testing.T) {
+			t.Run("returns 409 when the last email is less than a minute old", func(t *testing.T) {
+				c.expect(t, http.StatusConflict, http.MethodPost, "/api/v1/users/"+id+"/invite", nil)
+			})
+		})
+
+		t.Run("POST /login before the invite is used", func(t *testing.T) {
+			login := "/api/v1/auth/login"
+			anonymous(t).expectAll(t, []request{
+				{"returns 400 when the password is empty", http.MethodPost, login, J{"username": username, "password": ""}, http.StatusBadRequest},
+				{"returns 401 because the user has no password yet", http.MethodPost, login, J{"username": username, "password": "password123"}, http.StatusUnauthorized},
+			})
+		})
+
+		t.Run("POST /password/reset", func(t *testing.T) {
+			anonymous(t).expectAll(t, []request{
+				{"returns 400 when the password is too short", http.MethodPost, reset, J{"token": token, "password": "short"}, http.StatusBadRequest},
+				{"sets the password with the invite link", http.MethodPost, reset, J{"token": token, "password": "password123"}, http.StatusNoContent},
+				{"returns 400 when the link is used again", http.MethodPost, reset, J{"token": token, "password": "password123"}, http.StatusBadRequest},
+			})
+			signIn(t, username, "password123")
+			assert.NotNil(t, c.get(t, "/api/v1/users/"+id).(J)["email_verified_at"])
+		})
+
+		t.Run("POST /password/forgot", func(t *testing.T) {
+			t.Run("returns 204 when the email does not exist", func(t *testing.T) {
+				anonymous(t).expect(t, http.StatusNoContent, http.MethodPost, forgot, J{"email": unique("nobody") + "@ytsoar.test"})
+			})
+
+			t.Run("sends a link that sets a new password and ends the old sessions", func(t *testing.T) {
+				old := signIn(t, username, "password123")
+				anonymous(t).expect(t, http.StatusNoContent, http.MethodPost, forgot, J{"email": email})
+				anonymous(t).expect(t, http.StatusNoContent, http.MethodPost, reset, J{"token": linkFor(t, email), "password": "password456"})
+				old.expect(t, http.StatusUnauthorized, http.MethodPost, "/api/v1/auth/refresh", nil)
+				signIn(t, username, "password456")
+			})
 		})
 	})
 

@@ -48,7 +48,7 @@ func (q *Queries) CreatePlaybook(ctx context.Context, arg CreatePlaybookParams) 
 const createPlaybookHistory = `-- name: CreatePlaybookHistory :one
 INSERT INTO playbook_history (playbook_id, triggered_at, edges, trigger_type, triggered_by, input, status)
 VALUES ($1, NOW(), $2, $3, $4, $5, 'queued')
-RETURNING id, playbook_id, status, error, result, triggered_at, edges, trigger_type, triggered_by, input
+RETURNING id, playbook_id, status, error, result, triggered_at, edges, trigger_type, triggered_by, input, finished_at
 `
 
 type CreatePlaybookHistoryParams struct {
@@ -79,6 +79,7 @@ func (q *Queries) CreatePlaybookHistory(ctx context.Context, arg CreatePlaybookH
 		&i.TriggerType,
 		&i.TriggeredBy,
 		&i.Input,
+		&i.FinishedAt,
 	)
 	return i, err
 }
@@ -161,24 +162,25 @@ func (q *Queries) GetPlaybookGraphById(ctx context.Context, id pgtype.UUID) (Get
 }
 
 const getPlaybookHistoryById = `-- name: GetPlaybookHistoryById :one
-SELECT playbook_history.id, playbook_history.playbook_id, playbook_history.status, playbook_history.error, playbook_history.result, playbook_history.triggered_at, playbook_history.edges, playbook_history.trigger_type, playbook_history.triggered_by, playbook_history.input, to_jsonb(playbooks) AS playbook_data
+SELECT playbook_history.id, playbook_history.playbook_id, playbook_history.status, playbook_history.error, playbook_history.result, playbook_history.triggered_at, playbook_history.edges, playbook_history.trigger_type, playbook_history.triggered_by, playbook_history.input, playbook_history.finished_at, to_jsonb(playbooks) AS playbook_data
 FROM playbook_history
 JOIN playbooks ON playbooks.id = playbook_history.playbook_id
 WHERE playbook_history.id = $1
 `
 
 type GetPlaybookHistoryByIdRow struct {
-	ID           pgtype.UUID      `json:"id"`
-	PlaybookID   pgtype.UUID      `json:"playbook_id"`
-	Status       PlaybookStatus   `json:"status"`
-	Error        pgtype.Text      `json:"error"`
-	Result       []byte           `json:"result"`
-	TriggeredAt  pgtype.Timestamp `json:"triggered_at"`
-	Edges        []byte           `json:"edges"`
-	TriggerType  NullTriggerType  `json:"trigger_type"`
-	TriggeredBy  pgtype.UUID      `json:"triggered_by"`
-	Input        []byte           `json:"input"`
-	PlaybookData json.RawMessage  `json:"playbook_data"`
+	ID           pgtype.UUID        `json:"id"`
+	PlaybookID   pgtype.UUID        `json:"playbook_id"`
+	Status       PlaybookStatus     `json:"status"`
+	Error        pgtype.Text        `json:"error"`
+	Result       []byte             `json:"result"`
+	TriggeredAt  pgtype.Timestamp   `json:"triggered_at"`
+	Edges        []byte             `json:"edges"`
+	TriggerType  NullTriggerType    `json:"trigger_type"`
+	TriggeredBy  pgtype.UUID        `json:"triggered_by"`
+	Input        []byte             `json:"input"`
+	FinishedAt   pgtype.Timestamptz `json:"finished_at"`
+	PlaybookData json.RawMessage    `json:"playbook_data"`
 }
 
 func (q *Queries) GetPlaybookHistoryById(ctx context.Context, id pgtype.UUID) (GetPlaybookHistoryByIdRow, error) {
@@ -195,9 +197,59 @@ func (q *Queries) GetPlaybookHistoryById(ctx context.Context, id pgtype.UUID) (G
 		&i.TriggerType,
 		&i.TriggeredBy,
 		&i.Input,
+		&i.FinishedAt,
 		&i.PlaybookData,
 	)
 	return i, err
+}
+
+const listEventPlaybookIDs = `-- name: ListEventPlaybookIDs :many
+SELECT p.id FROM playbooks p
+WHERE p.trigger_type = $1::trigger_type
+  AND p.trigger_parameters ->> 'module' = $2::text
+  AND NOT EXISTS (
+    SELECT 1 FROM playbook_history h
+    JOIN playbook_run_records r ON r.playbook_history_id = h.id
+    WHERE h.playbook_id = p.id
+      AND r.module_type = $2::text
+      AND r.record_id = $3
+      AND h.triggered_at <= $4::timestamptz
+      AND (h.status IN ('queued', 'in_progress') OR h.finished_at >= $4::timestamptz)
+  )
+`
+
+type ListEventPlaybookIDsParams struct {
+	TriggerType TriggerType        `json:"trigger_type"`
+	Module      string             `json:"module"`
+	RecordID    pgtype.UUID        `json:"record_id"`
+	OccurredAt  pgtype.Timestamptz `json:"occurred_at"`
+}
+
+// A playbook is skipped when its run on this record was going at the time of the event,
+// so a run that updates its own record does not start itself again.
+func (q *Queries) ListEventPlaybookIDs(ctx context.Context, arg ListEventPlaybookIDsParams) ([]pgtype.UUID, error) {
+	rows, err := q.db.Query(ctx, listEventPlaybookIDs,
+		arg.TriggerType,
+		arg.Module,
+		arg.RecordID,
+		arg.OccurredAt,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []pgtype.UUID
+	for rows.Next() {
+		var id pgtype.UUID
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		items = append(items, id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const updatePlaybook = `-- name: UpdatePlaybook :one
@@ -272,11 +324,15 @@ SET
         WHEN $3::boolean THEN $4
         ELSE error
     END,
-    result = $5
+    result = $5,
+    finished_at = CASE
+        WHEN $1::boolean AND $2::playbook_status IN ('success', 'failed') THEN NOW()
+        ELSE finished_at
+    END
 WHERE id = $6
   -- State rule: the new status must be allowed from the current status.
   AND (NOT $1::boolean OR status::text = ANY($7::text[]))
-RETURNING id, playbook_id, status, error, result, triggered_at, edges, trigger_type, triggered_by, input
+RETURNING id, playbook_id, status, error, result, triggered_at, edges, trigger_type, triggered_by, input, finished_at
 `
 
 type UpdatePlaybookHistoryParams struct {
@@ -311,15 +367,17 @@ func (q *Queries) UpdatePlaybookHistory(ctx context.Context, arg UpdatePlaybookH
 		&i.TriggerType,
 		&i.TriggeredBy,
 		&i.Input,
+		&i.FinishedAt,
 	)
 	return i, err
 }
 
 const updatePlaybookHistoryStatus = `-- name: UpdatePlaybookHistoryStatus :one
 UPDATE playbook_history
-SET status = $2
+SET status = $2,
+    finished_at = CASE WHEN $2::playbook_status IN ('success', 'failed') THEN NOW() ELSE finished_at END
 WHERE id = $1 AND status::text = ANY($3::text[])
-RETURNING id, playbook_id, status, error, result, triggered_at, edges, trigger_type, triggered_by, input
+RETURNING id, playbook_id, status, error, result, triggered_at, edges, trigger_type, triggered_by, input, finished_at
 `
 
 type UpdatePlaybookHistoryStatusParams struct {
@@ -342,6 +400,7 @@ func (q *Queries) UpdatePlaybookHistoryStatus(ctx context.Context, arg UpdatePla
 		&i.TriggerType,
 		&i.TriggeredBy,
 		&i.Input,
+		&i.FinishedAt,
 	)
 	return i, err
 }

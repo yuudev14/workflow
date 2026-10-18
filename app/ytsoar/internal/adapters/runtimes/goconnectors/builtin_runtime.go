@@ -25,13 +25,13 @@ type TemplateEngine interface {
 	Render(value any, variables map[string]any) (any, error)
 }
 
-// BuiltinConnector is one built-in connector (for example http_request or condition).
+// BuiltinConnector is one built-in connector (for example http_request).
 // configs is the parsed TOML file. params are already templated.
 type BuiltinConnector interface {
 	Execute(ctx context.Context, configs map[string]any, params map[string]any, operation string) (any, error)
 }
 
-// BuiltinRuntime runs the built-in connectors (http_request, condition). They are our
+// BuiltinRuntime runs the built-in connectors (http_request). They are our
 // code, so they run inside the WORKER, with no sandbox. It fits execution.TaskRuntime. The
 // StaticResolver of the worker returns it for the connector ids you Register here.
 type BuiltinRuntime struct {
