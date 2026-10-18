@@ -141,6 +141,11 @@ erDiagram
         text external_id "provider id + subject"
         boolean is_active
         timestamp last_login_at
+        timestamp email_verified_at "information only"
+        text invitation_token UK "sha256 of the invite link"
+        timestamp invitation_sent_at
+        text reset_password_token UK "sha256 of the reset link"
+        timestamp reset_password_sent_at
     }
     roles {
         uuid id PK
