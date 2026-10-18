@@ -164,7 +164,7 @@ sequenceDiagram
 - **One link of each kind.** As in Devise, each kind has 2 columns on `users`: `invitation_token` and `invitation_sent_at`, `reset_password_token` and `reset_password_sent_at`. The token columns hold the sha256 hash. A new link replaces the old one of the same kind, but not when the old one is less than 1 minute old. Then nothing is sent (the invite route answers `409`).
 - **One use.** `POST /api/auth/v1/password/reset` takes both kinds of link and clears the 2 columns. A wrong, used or expired link gives the same `400`.
 - **`email_verified_at`** is information only. It blocks nothing. A link sets it, because only the owner of the address can open the link. For SSO users, the `email_verified` claim sets it. The migration set it for all users that existed before.
-- **Email.** `SMTP_*` settings. The mailer uses STARTTLS when the server offers it. Port 465 (TLS from the start) is not supported. With an empty `SMTP_HOST`, the email goes to the log.
+- **Email.** `SMTP_*` settings. The mailer uses STARTTLS when the server offers it. Port 465 (TLS from the start) is not supported. With an empty `SMTP_HOST`, the email goes to the log. The dev Docker setup sends to Mailpit: read the emails at http://localhost:8025.
 - An expired link stays in the row. It does no harm: the app checks the time, and the next link replaces it. Thus no job deletes links.
 
 ## 8. SSO with OIDC
