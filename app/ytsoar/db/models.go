@@ -855,22 +855,23 @@ type TeamRole struct {
 }
 
 type User struct {
-	ID              pgtype.UUID      `json:"id"`
-	Username        string           `json:"username"`
-	Email           string           `json:"email"`
-	PasswordHash    pgtype.Text      `json:"password_hash"`
-	FirstName       pgtype.Text      `json:"first_name"`
-	LastName        pgtype.Text      `json:"last_name"`
-	AuthProvider    AuthProviderType `json:"auth_provider"`
-	ExternalID      pgtype.Text      `json:"external_id"`
-	IsActive        bool             `json:"is_active"`
-	LastLoginAt     pgtype.Timestamp `json:"last_login_at"`
-	CreatedAt       pgtype.Timestamp `json:"created_at"`
-	UpdatedAt       pgtype.Timestamp `json:"updated_at"`
-	EmailVerifiedAt pgtype.Timestamp `json:"email_verified_at"`
-	LinkTokenHash   pgtype.Text      `json:"link_token_hash"`
-	LinkPurpose     pgtype.Text      `json:"link_purpose"`
-	LinkSentAt      pgtype.Timestamp `json:"link_sent_at"`
+	ID                  pgtype.UUID      `json:"id"`
+	Username            string           `json:"username"`
+	Email               string           `json:"email"`
+	PasswordHash        pgtype.Text      `json:"password_hash"`
+	FirstName           pgtype.Text      `json:"first_name"`
+	LastName            pgtype.Text      `json:"last_name"`
+	AuthProvider        AuthProviderType `json:"auth_provider"`
+	ExternalID          pgtype.Text      `json:"external_id"`
+	IsActive            bool             `json:"is_active"`
+	LastLoginAt         pgtype.Timestamp `json:"last_login_at"`
+	CreatedAt           pgtype.Timestamp `json:"created_at"`
+	UpdatedAt           pgtype.Timestamp `json:"updated_at"`
+	EmailVerifiedAt     pgtype.Timestamp `json:"email_verified_at"`
+	InvitationToken     pgtype.Text      `json:"invitation_token"`
+	InvitationSentAt    pgtype.Timestamp `json:"invitation_sent_at"`
+	ResetPasswordToken  pgtype.Text      `json:"reset_password_token"`
+	ResetPasswordSentAt pgtype.Timestamp `json:"reset_password_sent_at"`
 }
 
 type UserRole struct {

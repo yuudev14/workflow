@@ -1153,19 +1153,19 @@ func (mr *MockQuerierTxMockRecorder) RevokeRefreshToken(ctx, tokenHash any) *gom
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RevokeRefreshToken", reflect.TypeOf((*MockQuerierTx)(nil).RevokeRefreshToken), ctx, tokenHash)
 }
 
-// SetUserLink mocks base method.
-func (m *MockQuerierTx) SetUserLink(ctx context.Context, arg db.SetUserLinkParams) (int64, error) {
+// SetUserInvitationToken mocks base method.
+func (m *MockQuerierTx) SetUserInvitationToken(ctx context.Context, arg db.SetUserInvitationTokenParams) (int64, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "SetUserLink", ctx, arg)
+	ret := m.ctrl.Call(m, "SetUserInvitationToken", ctx, arg)
 	ret0, _ := ret[0].(int64)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-// SetUserLink indicates an expected call of SetUserLink.
-func (mr *MockQuerierTxMockRecorder) SetUserLink(ctx, arg any) *gomock.Call {
+// SetUserInvitationToken indicates an expected call of SetUserInvitationToken.
+func (mr *MockQuerierTxMockRecorder) SetUserInvitationToken(ctx, arg any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetUserLink", reflect.TypeOf((*MockQuerierTx)(nil).SetUserLink), ctx, arg)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetUserInvitationToken", reflect.TypeOf((*MockQuerierTx)(nil).SetUserInvitationToken), ctx, arg)
 }
 
 // SetUserPassword mocks base method.
@@ -1182,19 +1182,49 @@ func (mr *MockQuerierTxMockRecorder) SetUserPassword(ctx, arg any) *gomock.Call 
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetUserPassword", reflect.TypeOf((*MockQuerierTx)(nil).SetUserPassword), ctx, arg)
 }
 
-// TakeUserLink mocks base method.
-func (m *MockQuerierTx) TakeUserLink(ctx context.Context, linkTokenHash pgtype.Text) (db.TakeUserLinkRow, error) {
+// SetUserResetPasswordToken mocks base method.
+func (m *MockQuerierTx) SetUserResetPasswordToken(ctx context.Context, arg db.SetUserResetPasswordTokenParams) (int64, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "TakeUserLink", ctx, linkTokenHash)
-	ret0, _ := ret[0].(db.TakeUserLinkRow)
+	ret := m.ctrl.Call(m, "SetUserResetPasswordToken", ctx, arg)
+	ret0, _ := ret[0].(int64)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-// TakeUserLink indicates an expected call of TakeUserLink.
-func (mr *MockQuerierTxMockRecorder) TakeUserLink(ctx, linkTokenHash any) *gomock.Call {
+// SetUserResetPasswordToken indicates an expected call of SetUserResetPasswordToken.
+func (mr *MockQuerierTxMockRecorder) SetUserResetPasswordToken(ctx, arg any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "TakeUserLink", reflect.TypeOf((*MockQuerierTx)(nil).TakeUserLink), ctx, linkTokenHash)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetUserResetPasswordToken", reflect.TypeOf((*MockQuerierTx)(nil).SetUserResetPasswordToken), ctx, arg)
+}
+
+// TakeUserInvitationToken mocks base method.
+func (m *MockQuerierTx) TakeUserInvitationToken(ctx context.Context, invitationToken pgtype.Text) (db.TakeUserInvitationTokenRow, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "TakeUserInvitationToken", ctx, invitationToken)
+	ret0, _ := ret[0].(db.TakeUserInvitationTokenRow)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// TakeUserInvitationToken indicates an expected call of TakeUserInvitationToken.
+func (mr *MockQuerierTxMockRecorder) TakeUserInvitationToken(ctx, invitationToken any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "TakeUserInvitationToken", reflect.TypeOf((*MockQuerierTx)(nil).TakeUserInvitationToken), ctx, invitationToken)
+}
+
+// TakeUserResetPasswordToken mocks base method.
+func (m *MockQuerierTx) TakeUserResetPasswordToken(ctx context.Context, resetPasswordToken pgtype.Text) (db.TakeUserResetPasswordTokenRow, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "TakeUserResetPasswordToken", ctx, resetPasswordToken)
+	ret0, _ := ret[0].(db.TakeUserResetPasswordTokenRow)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// TakeUserResetPasswordToken indicates an expected call of TakeUserResetPasswordToken.
+func (mr *MockQuerierTxMockRecorder) TakeUserResetPasswordToken(ctx, resetPasswordToken any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "TakeUserResetPasswordToken", reflect.TypeOf((*MockQuerierTx)(nil).TakeUserResetPasswordToken), ctx, resetPasswordToken)
 }
 
 // TouchAPIKey mocks base method.

@@ -93,11 +93,13 @@ type Querier interface {
 	MarkUserEmailVerified(ctx context.Context, arg MarkUserEmailVerifiedParams) error
 	RevokeAllRefreshTokensForUser(ctx context.Context, userID pgtype.UUID) error
 	RevokeRefreshToken(ctx context.Context, tokenHash string) (int64, error)
-	// the WHERE skips the update when the last link is newer than the limit, so a user cannot get many emails
-	SetUserLink(ctx context.Context, arg SetUserLinkParams) (int64, error)
+	// a WHERE ... sent_at < resend_after skips the update when the last link is too new, so a user cannot get many emails
+	SetUserInvitationToken(ctx context.Context, arg SetUserInvitationTokenParams) (int64, error)
 	SetUserPassword(ctx context.Context, arg SetUserPasswordParams) error
-	// clears the link and returns its old values, so a link works one time
-	TakeUserLink(ctx context.Context, linkTokenHash pgtype.Text) (TakeUserLinkRow, error)
+	SetUserResetPasswordToken(ctx context.Context, arg SetUserResetPasswordTokenParams) (int64, error)
+	// the Take queries clear the token and return its old values, so a link works one time
+	TakeUserInvitationToken(ctx context.Context, invitationToken pgtype.Text) (TakeUserInvitationTokenRow, error)
+	TakeUserResetPasswordToken(ctx context.Context, resetPasswordToken pgtype.Text) (TakeUserResetPasswordTokenRow, error)
 	TouchAPIKey(ctx context.Context, arg TouchAPIKeyParams) error
 	TouchUserLastLogin(ctx context.Context, id pgtype.UUID) error
 	UpdateAlert(ctx context.Context, arg UpdateAlertParams) (Alert, error)
