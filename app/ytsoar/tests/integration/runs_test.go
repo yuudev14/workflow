@@ -24,11 +24,15 @@ func step(name, connector, code string) J {
 
 // runPlaybook saves the graph, starts a run and waits until the run ends.
 // It returns the run and its tasks by name.
-func runPlaybook(t *testing.T, c *client, nodes []J, edges J) (J, map[string]J) {
+func runPlaybook(t *testing.T, c *client, nodes []J, edges J, handles ...J) (J, map[string]J) {
 	t.Helper()
 	id := newPlaybook(t, c)
 	nodes = append([]J{{"name": "start", "operation": "start", "parameters": J{}}}, nodes...)
-	c.expect(t, http.StatusOK, http.MethodPut, "/api/v1/playbooks/tasks/"+id, J{"nodes": nodes, "edges": edges})
+	graph := J{"nodes": nodes, "edges": edges}
+	if len(handles) > 0 {
+		graph["handles"] = handles[0]
+	}
+	c.expect(t, http.StatusOK, http.MethodPut, "/api/v1/playbooks/tasks/"+id, graph)
 	runID := c.expect(t, http.StatusAccepted, http.MethodPost, "/api/v1/playbooks/trigger/"+id, nil).(J)["playbook_history_id"].(string)
 
 	var run J
@@ -115,6 +119,23 @@ func TestRuns(t *testing.T) {
 			assert.Contains(t, toJSON(tasks["second"]["result"]), "hello world")
 		})
 
+		t.Run("follows only the branch that a condition picks", func(t *testing.T) {
+			run, tasks := runPlaybook(t, c, []J{
+				step("scan", "code_snippet_py", "result = {'score': 60}"),
+				{"name": "check", "operation": "switch_expression", "connector_id": "condition", "connector_name": "Condition", "parameters": J{"cases": []J{
+					{"id": "high", "expression": `{{ var.steps['scan'].code_output.score > 90 }}`},
+					{"id": "med", "expression": `{{ var.steps['scan'].code_output.score > 50 }}`},
+				}}},
+				step("high", "code_snippet_py", "print('high')"),
+				step("med", "code_snippet_py", "print('med')"),
+			}, J{"start": []string{"scan"}, "scan": []string{"check"}, "check": []string{"high", "med"}},
+				J{"check": J{"high": J{"source_handle": "high"}, "med": J{"source_handle": "med"}}})
+			assert.Equal(t, "success", run["status"], tasks["check"]["error"])
+			assert.Contains(t, toJSON(tasks["check"]["result"]), `"med"`)
+			assert.Equal(t, "success", tasks["med"]["status"])
+			assert.Equal(t, "skipped", tasks["high"]["status"])
+		})
+
 		t.Run("does not run the steps after a failed step", func(t *testing.T) {
 			run, tasks := runPlaybook(t, c, []J{
 				step("boom", "code_snippet_py", "raise Exception('boom')"),
@@ -122,6 +143,62 @@ func TestRuns(t *testing.T) {
 			}, J{"start": []string{"boom"}, "boom": []string{"after"}})
 			assert.Equal(t, "failed", run["status"])
 			assert.NotEqual(t, "success", tasks["after"]["status"])
+		})
+	})
+
+	t.Run("an event trigger", func(t *testing.T) {
+		// eventPlaybook saves a playbook that an alert event starts. Cleanup sets it back to
+		// manual, so the alerts of other tests do not start it.
+		eventPlaybook := func(t *testing.T, trigger string, node J) string {
+			id := c.expect(t, http.StatusOK, http.MethodPost, "/api/v1/playbooks", J{
+				"name": unique("playbook"), "trigger_type": trigger, "trigger_parameters": J{"module": "alert"},
+			}).(J)["id"].(string)
+			nodes := []J{{"name": "start", "operation": "start", "parameters": J{}}, node}
+			c.expect(t, http.StatusOK, http.MethodPut, "/api/v1/playbooks/tasks/"+id, J{"nodes": nodes, "edges": J{"start": []string{node["name"].(string)}}})
+			t.Cleanup(func() {
+				c.expect(t, http.StatusOK, http.MethodPut, "/api/v1/playbooks/"+id, J{"trigger_type": "manual"})
+			})
+			return id
+		}
+		alertRuns := func(playbookID, alertID string) []any {
+			return items(c.get(t, "/api/v1/playbooks/history?playbook_id="+playbookID+"&module_type=alert&record_id="+alertID))
+		}
+
+		t.Run("starts an on_create playbook with the new alert as input", func(t *testing.T) {
+			playbookID := eventPlaybook(t, "on_create", step("title", "code_snippet_py", "result = '{{ var.input.records[0].title }}'"))
+			title := unique("alert")
+			alertID := c.create(t, "/api/v1/alerts", J{"title": title, "severity": "high", "source_kind": "edr"})["id"].(string)
+
+			var run J
+			require.Eventually(t, func() bool {
+				runs := alertRuns(playbookID, alertID)
+				if len(runs) == 0 {
+					return false
+				}
+				run = runs[0].(J)
+				return run["status"] == "success" || run["status"] == "failed"
+			}, 30*time.Second, 200*time.Millisecond, "the alert did not start the playbook")
+			assert.Equal(t, "success", run["status"])
+			assert.Equal(t, "on_create", run["trigger_type"])
+
+			tasks := items(c.get(t, "/api/v1/playbooks/history/"+run["id"].(string)+"/tasks"))
+			assert.Contains(t, toJSON(tasks), title)
+		})
+
+		t.Run("does not start an on_update playbook again while its run on the alert is not done", func(t *testing.T) {
+			playbookID := eventPlaybook(t, "on_update", step("slow", "code_snippet_py", "import time\ntime.sleep(2)"))
+			alertID := newAlert(t, c)
+
+			c.expect(t, http.StatusOK, http.MethodPatch, "/api/v1/alerts/"+alertID, J{"severity": "low"})
+			require.Eventually(t, func() bool { return len(alertRuns(playbookID, alertID)) == 1 },
+				30*time.Second, 200*time.Millisecond, "the update did not start the playbook")
+
+			c.expect(t, http.StatusOK, http.MethodPatch, "/api/v1/alerts/"+alertID, J{"severity": "medium"})
+			require.Eventually(t, func() bool {
+				run := alertRuns(playbookID, alertID)[0].(J)
+				return run["status"] == "success" || run["status"] == "failed"
+			}, 30*time.Second, 200*time.Millisecond, "the run did not end")
+			assert.Len(t, alertRuns(playbookID, alertID), 1)
 		})
 	})
 

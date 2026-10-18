@@ -78,6 +78,13 @@
           "name": "task3",
           "placeholder": ""
         }
+      ],
+      "output": [
+        {
+          "name": "sample",
+          "type": "string",
+          "description": "Sample text"
+        }
       ]
     },
     {
@@ -97,6 +104,13 @@
           "tooltip": "",
           "name": "operation2",
           "placeholder": ""
+        }
+      ],
+      "output": [
+        {
+          "name": "sample",
+          "type": "string",
+          "description": "Sample text"
         }
       ]
     }

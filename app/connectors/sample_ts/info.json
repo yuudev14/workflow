@@ -46,6 +46,13 @@
           "name": "task1",
           "placeholder": ""
         }
+      ],
+      "output": [
+        {
+          "name": "sample",
+          "type": "string",
+          "description": "Sample text"
+        }
       ]
     }
   ]

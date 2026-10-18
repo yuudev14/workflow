@@ -28,21 +28,22 @@ func (q *Queries) CountUsersWithRole(ctx context.Context, name string) (int64, e
 const createUser = `-- name: CreateUser :one
 INSERT INTO users (
     username, email, password_hash, first_name, last_name,
-    auth_provider, external_id, is_active
+    auth_provider, external_id, is_active, email_verified_at
 )
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-RETURNING id, username, email, password_hash, first_name, last_name, auth_provider, external_id, is_active, last_login_at, created_at, updated_at
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+RETURNING id, username, email, password_hash, first_name, last_name, auth_provider, external_id, is_active, last_login_at, created_at, updated_at, email_verified_at, invitation_token, invitation_sent_at, reset_password_token, reset_password_sent_at
 `
 
 type CreateUserParams struct {
-	Username     string           `json:"username"`
-	Email        string           `json:"email"`
-	PasswordHash pgtype.Text      `json:"password_hash"`
-	FirstName    pgtype.Text      `json:"first_name"`
-	LastName     pgtype.Text      `json:"last_name"`
-	AuthProvider AuthProviderType `json:"auth_provider"`
-	ExternalID   pgtype.Text      `json:"external_id"`
-	IsActive     bool             `json:"is_active"`
+	Username        string           `json:"username"`
+	Email           string           `json:"email"`
+	PasswordHash    pgtype.Text      `json:"password_hash"`
+	FirstName       pgtype.Text      `json:"first_name"`
+	LastName        pgtype.Text      `json:"last_name"`
+	AuthProvider    AuthProviderType `json:"auth_provider"`
+	ExternalID      pgtype.Text      `json:"external_id"`
+	IsActive        bool             `json:"is_active"`
+	EmailVerifiedAt pgtype.Timestamp `json:"email_verified_at"`
 }
 
 func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, error) {
@@ -55,6 +56,7 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, e
 		arg.AuthProvider,
 		arg.ExternalID,
 		arg.IsActive,
+		arg.EmailVerifiedAt,
 	)
 	var i User
 	err := row.Scan(
@@ -70,12 +72,17 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, e
 		&i.LastLoginAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.EmailVerifiedAt,
+		&i.InvitationToken,
+		&i.InvitationSentAt,
+		&i.ResetPasswordToken,
+		&i.ResetPasswordSentAt,
 	)
 	return i, err
 }
 
 const getUserByEmail = `-- name: GetUserByEmail :one
-SELECT id, username, email, password_hash, first_name, last_name, auth_provider, external_id, is_active, last_login_at, created_at, updated_at FROM users WHERE email = $1
+SELECT id, username, email, password_hash, first_name, last_name, auth_provider, external_id, is_active, last_login_at, created_at, updated_at, email_verified_at, invitation_token, invitation_sent_at, reset_password_token, reset_password_sent_at FROM users WHERE email = $1
 `
 
 func (q *Queries) GetUserByEmail(ctx context.Context, email string) (User, error) {
@@ -94,12 +101,17 @@ func (q *Queries) GetUserByEmail(ctx context.Context, email string) (User, error
 		&i.LastLoginAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.EmailVerifiedAt,
+		&i.InvitationToken,
+		&i.InvitationSentAt,
+		&i.ResetPasswordToken,
+		&i.ResetPasswordSentAt,
 	)
 	return i, err
 }
 
 const getUserByExternalId = `-- name: GetUserByExternalId :one
-SELECT id, username, email, password_hash, first_name, last_name, auth_provider, external_id, is_active, last_login_at, created_at, updated_at FROM users WHERE auth_provider = $1 AND external_id = $2
+SELECT id, username, email, password_hash, first_name, last_name, auth_provider, external_id, is_active, last_login_at, created_at, updated_at, email_verified_at, invitation_token, invitation_sent_at, reset_password_token, reset_password_sent_at FROM users WHERE auth_provider = $1 AND external_id = $2
 `
 
 type GetUserByExternalIdParams struct {
@@ -123,12 +135,17 @@ func (q *Queries) GetUserByExternalId(ctx context.Context, arg GetUserByExternal
 		&i.LastLoginAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.EmailVerifiedAt,
+		&i.InvitationToken,
+		&i.InvitationSentAt,
+		&i.ResetPasswordToken,
+		&i.ResetPasswordSentAt,
 	)
 	return i, err
 }
 
 const getUserById = `-- name: GetUserById :one
-SELECT id, username, email, password_hash, first_name, last_name, auth_provider, external_id, is_active, last_login_at, created_at, updated_at FROM users WHERE id = $1
+SELECT id, username, email, password_hash, first_name, last_name, auth_provider, external_id, is_active, last_login_at, created_at, updated_at, email_verified_at, invitation_token, invitation_sent_at, reset_password_token, reset_password_sent_at FROM users WHERE id = $1
 `
 
 func (q *Queries) GetUserById(ctx context.Context, id pgtype.UUID) (User, error) {
@@ -147,12 +164,17 @@ func (q *Queries) GetUserById(ctx context.Context, id pgtype.UUID) (User, error)
 		&i.LastLoginAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.EmailVerifiedAt,
+		&i.InvitationToken,
+		&i.InvitationSentAt,
+		&i.ResetPasswordToken,
+		&i.ResetPasswordSentAt,
 	)
 	return i, err
 }
 
 const getUserByUsername = `-- name: GetUserByUsername :one
-SELECT id, username, email, password_hash, first_name, last_name, auth_provider, external_id, is_active, last_login_at, created_at, updated_at FROM users WHERE username = $1
+SELECT id, username, email, password_hash, first_name, last_name, auth_provider, external_id, is_active, last_login_at, created_at, updated_at, email_verified_at, invitation_token, invitation_sent_at, reset_password_token, reset_password_sent_at FROM users WHERE username = $1
 `
 
 func (q *Queries) GetUserByUsername(ctx context.Context, username string) (User, error) {
@@ -171,8 +193,54 @@ func (q *Queries) GetUserByUsername(ctx context.Context, username string) (User,
 		&i.LastLoginAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.EmailVerifiedAt,
+		&i.InvitationToken,
+		&i.InvitationSentAt,
+		&i.ResetPasswordToken,
+		&i.ResetPasswordSentAt,
 	)
 	return i, err
+}
+
+const markUserEmailVerified = `-- name: MarkUserEmailVerified :exec
+UPDATE users SET email_verified_at = $2 WHERE id = $1 AND email_verified_at IS NULL
+`
+
+type MarkUserEmailVerifiedParams struct {
+	ID              pgtype.UUID      `json:"id"`
+	EmailVerifiedAt pgtype.Timestamp `json:"email_verified_at"`
+}
+
+func (q *Queries) MarkUserEmailVerified(ctx context.Context, arg MarkUserEmailVerifiedParams) error {
+	_, err := q.db.Exec(ctx, markUserEmailVerified, arg.ID, arg.EmailVerifiedAt)
+	return err
+}
+
+const setUserInvitationToken = `-- name: SetUserInvitationToken :execrows
+
+UPDATE users SET invitation_token = $2, invitation_sent_at = $3
+WHERE id = $1 AND (invitation_sent_at IS NULL OR invitation_sent_at < $4)
+`
+
+type SetUserInvitationTokenParams struct {
+	ID               pgtype.UUID      `json:"id"`
+	InvitationToken  pgtype.Text      `json:"invitation_token"`
+	InvitationSentAt pgtype.Timestamp `json:"invitation_sent_at"`
+	ResendAfter      pgtype.Timestamp `json:"resend_after"`
+}
+
+// a WHERE ... sent_at < resend_after skips the update when the last link is too new, so a user cannot get many emails
+func (q *Queries) SetUserInvitationToken(ctx context.Context, arg SetUserInvitationTokenParams) (int64, error) {
+	result, err := q.db.Exec(ctx, setUserInvitationToken,
+		arg.ID,
+		arg.InvitationToken,
+		arg.InvitationSentAt,
+		arg.ResendAfter,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
 
 const setUserPassword = `-- name: SetUserPassword :exec
@@ -187,6 +255,71 @@ type SetUserPasswordParams struct {
 func (q *Queries) SetUserPassword(ctx context.Context, arg SetUserPasswordParams) error {
 	_, err := q.db.Exec(ctx, setUserPassword, arg.ID, arg.PasswordHash)
 	return err
+}
+
+const setUserResetPasswordToken = `-- name: SetUserResetPasswordToken :execrows
+UPDATE users SET reset_password_token = $2, reset_password_sent_at = $3
+WHERE id = $1 AND (reset_password_sent_at IS NULL OR reset_password_sent_at < $4)
+`
+
+type SetUserResetPasswordTokenParams struct {
+	ID                  pgtype.UUID      `json:"id"`
+	ResetPasswordToken  pgtype.Text      `json:"reset_password_token"`
+	ResetPasswordSentAt pgtype.Timestamp `json:"reset_password_sent_at"`
+	ResendAfter         pgtype.Timestamp `json:"resend_after"`
+}
+
+func (q *Queries) SetUserResetPasswordToken(ctx context.Context, arg SetUserResetPasswordTokenParams) (int64, error) {
+	result, err := q.db.Exec(ctx, setUserResetPasswordToken,
+		arg.ID,
+		arg.ResetPasswordToken,
+		arg.ResetPasswordSentAt,
+		arg.ResendAfter,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const takeUserInvitationToken = `-- name: TakeUserInvitationToken :one
+
+UPDATE users u SET invitation_token = NULL, invitation_sent_at = NULL
+FROM (SELECT o.id, o.invitation_sent_at FROM users o WHERE o.invitation_token = $1 FOR UPDATE) old
+WHERE u.id = old.id
+RETURNING old.id, old.invitation_sent_at
+`
+
+type TakeUserInvitationTokenRow struct {
+	ID               pgtype.UUID      `json:"id"`
+	InvitationSentAt pgtype.Timestamp `json:"invitation_sent_at"`
+}
+
+// the Take queries clear the token and return its old values, so a link works one time
+func (q *Queries) TakeUserInvitationToken(ctx context.Context, invitationToken pgtype.Text) (TakeUserInvitationTokenRow, error) {
+	row := q.db.QueryRow(ctx, takeUserInvitationToken, invitationToken)
+	var i TakeUserInvitationTokenRow
+	err := row.Scan(&i.ID, &i.InvitationSentAt)
+	return i, err
+}
+
+const takeUserResetPasswordToken = `-- name: TakeUserResetPasswordToken :one
+UPDATE users u SET reset_password_token = NULL, reset_password_sent_at = NULL
+FROM (SELECT o.id, o.reset_password_sent_at FROM users o WHERE o.reset_password_token = $1 FOR UPDATE) old
+WHERE u.id = old.id
+RETURNING old.id, old.reset_password_sent_at
+`
+
+type TakeUserResetPasswordTokenRow struct {
+	ID                  pgtype.UUID      `json:"id"`
+	ResetPasswordSentAt pgtype.Timestamp `json:"reset_password_sent_at"`
+}
+
+func (q *Queries) TakeUserResetPasswordToken(ctx context.Context, resetPasswordToken pgtype.Text) (TakeUserResetPasswordTokenRow, error) {
+	row := q.db.QueryRow(ctx, takeUserResetPasswordToken, resetPasswordToken)
+	var i TakeUserResetPasswordTokenRow
+	err := row.Scan(&i.ID, &i.ResetPasswordSentAt)
+	return i, err
 }
 
 const touchUserLastLogin = `-- name: TouchUserLastLogin :exec
@@ -219,7 +352,7 @@ SET
     END,
     updated_at = NOW()
 WHERE id = $9
-RETURNING id, username, email, password_hash, first_name, last_name, auth_provider, external_id, is_active, last_login_at, created_at, updated_at
+RETURNING id, username, email, password_hash, first_name, last_name, auth_provider, external_id, is_active, last_login_at, created_at, updated_at, email_verified_at, invitation_token, invitation_sent_at, reset_password_token, reset_password_sent_at
 `
 
 type UpdateUserParams struct {
@@ -260,6 +393,11 @@ func (q *Queries) UpdateUser(ctx context.Context, arg UpdateUserParams) (User, e
 		&i.LastLoginAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.EmailVerifiedAt,
+		&i.InvitationToken,
+		&i.InvitationSentAt,
+		&i.ResetPasswordToken,
+		&i.ResetPasswordSentAt,
 	)
 	return i, err
 }

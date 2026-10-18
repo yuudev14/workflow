@@ -52,7 +52,8 @@ ON CONFLICT DO NOTHING;
 
 -- name: UpdatePlaybookHistoryStatus :one
 UPDATE playbook_history
-SET status = $2
+SET status = $2,
+    finished_at = CASE WHEN $2::playbook_status IN ('success', 'failed') THEN NOW() ELSE finished_at END
 WHERE id = $1 AND status::text = ANY(sqlc.arg('allowed_from')::text[])
 RETURNING *;
 
@@ -67,7 +68,11 @@ SET
         WHEN sqlc.arg('error_set')::boolean THEN sqlc.narg('error')
         ELSE error
     END,
-    result = sqlc.arg('result')
+    result = sqlc.arg('result'),
+    finished_at = CASE
+        WHEN sqlc.arg('status_set')::boolean AND sqlc.narg('status')::playbook_status IN ('success', 'failed') THEN NOW()
+        ELSE finished_at
+    END
 WHERE id = sqlc.arg('id')
   -- State rule: the new status must be allowed from the current status.
   AND (NOT sqlc.arg('status_set')::boolean OR status::text = ANY(sqlc.arg('allowed_from')::text[]))
@@ -79,3 +84,19 @@ FROM playbook_history
 JOIN playbooks ON playbooks.id = playbook_history.playbook_id
 WHERE playbook_history.id = $1;
 
+
+-- name: ListEventPlaybookIDs :many
+-- A playbook is skipped when its run on this record was going at the time of the event,
+-- so a run that updates its own record does not start itself again.
+SELECT p.id FROM playbooks p
+WHERE p.trigger_type = sqlc.arg('trigger_type')::trigger_type
+  AND p.trigger_parameters ->> 'module' = sqlc.arg('module')::text
+  AND NOT EXISTS (
+    SELECT 1 FROM playbook_history h
+    JOIN playbook_run_records r ON r.playbook_history_id = h.id
+    WHERE h.playbook_id = p.id
+      AND r.module_type = sqlc.arg('module')::text
+      AND r.record_id = sqlc.arg('record_id')
+      AND h.triggered_at <= sqlc.arg('occurred_at')::timestamptz
+      AND (h.status IN ('queued', 'in_progress') OR h.finished_at >= sqlc.arg('occurred_at')::timestamptz)
+  );

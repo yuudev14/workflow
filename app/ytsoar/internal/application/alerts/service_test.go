@@ -32,7 +32,7 @@ type testEnv struct {
 	published *[]publishedEvent
 	txCalls   *int
 	// txCommits counts the transactions whose closure returned nil, so a test can prove that a
-	// publish came after a successful commit
+	// publish was not rolled back
 	txCommits *int
 }
 
@@ -46,8 +46,8 @@ func setup(t *testing.T) *testEnv {
 	published := []publishedEvent{}
 	events := mock_contracts.NewMockModuleEventPublisher(ctrl)
 	events.EXPECT().
-		Publish(gomock.Any(), gomock.Any(), gomock.Any()).
-		DoAndReturn(func(module, event string, _ any) error {
+		Publish(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
+		DoAndReturn(func(_ context.Context, module, event string, _ uuid.UUID) error {
 			published = append(published, publishedEvent{module, event})
 			return nil
 		}).

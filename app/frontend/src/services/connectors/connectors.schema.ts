@@ -30,6 +30,13 @@ export interface Operation {
   annotation: string;
   enabled: boolean;
   parameters: Parameter[];
+  output?: OutputField[];
+}
+
+export interface OutputField {
+  name: string;
+  type: string;
+  description?: string;
 }
 
 export interface Parameter {

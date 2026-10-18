@@ -143,6 +143,7 @@ type OIDCIdentity struct {
 	FirstName         string
 	LastName          string
 	Groups            []string
+	EmailVerified     bool
 }
 
 type ProviderInput struct {
