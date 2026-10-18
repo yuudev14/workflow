@@ -196,7 +196,6 @@ func NewWorker(cfg config.Config, appLogger logger.Logger, pool *pgxpool.Pool) (
 
 	builtinRuntime := goconnectors.NewBuiltinRuntime(appLogger, templating.NewGonjaEngine(), cfg.ConnectorsDir)
 	builtinRuntime.Register("http_request", goconnectors.NewHTTPRequestConnector())
-	builtinRuntime.Register("condition", goconnectors.NewConditionConnector())
 	byConnector := map[string]execution.TaskRuntime{}
 	for _, id := range builtinRuntime.IDs() {
 		byConnector[id] = builtinRuntime

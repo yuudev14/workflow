@@ -18,7 +18,7 @@ func (f DynamicResolver) Resolve(task domain.Tasks) (TaskRuntime, error) {
 }
 
 // StaticResolver picks a runtime from a fixed list made at start-up. It runs in the
-// WORKER. The list has the built-in connectors (http_request, condition), which run in the
+// WORKER. The list has the built-in connectors (http_request), which run in the
 // worker (BuiltinRuntime). All other connectors go to the default runtime, SandboxRuntime,
 // which sends the task to the sandbox over gRPC. Compare DynamicResolver (runs in the
 // sandbox).
