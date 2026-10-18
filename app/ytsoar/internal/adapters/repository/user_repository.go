@@ -2,11 +2,13 @@ package repository
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
 	sq "github.com/Masterminds/squirrel"
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/yuudev14/ytsoar/db"
@@ -122,22 +124,43 @@ func (r *UserRepositoryImpl) MarkEmailVerified(ctx context.Context, id uuid.UUID
 }
 
 func (r *UserRepositoryImpl) SetLink(ctx context.Context, params auth.SetLinkParams) (bool, error) {
-	rows, err := r.queriesFromContext(ctx).SetUserLink(ctx, db.SetUserLinkParams{
-		ID:            toPgUUID(params.UserID),
-		LinkTokenHash: pgtype.Text{String: params.TokenHash, Valid: true},
-		LinkPurpose:   pgtype.Text{String: params.Purpose, Valid: true},
-		LinkSentAt:    pgtype.Timestamp{Time: params.SentAt, Valid: true},
-		ResendAfter:   pgtype.Timestamp{Time: params.ResendAfter, Valid: true},
-	})
+	q := r.queriesFromContext(ctx)
+	id := toPgUUID(params.UserID)
+	token := pgtype.Text{String: params.TokenHash, Valid: true}
+	sentAt := pgtype.Timestamp{Time: params.SentAt, Valid: true}
+	resendAfter := pgtype.Timestamp{Time: params.ResendAfter, Valid: true}
+
+	var rows int64
+	var err error
+	if params.Purpose == auth.TokenInvite {
+		rows, err = q.SetUserInvitationToken(ctx, db.SetUserInvitationTokenParams{
+			ID: id, InvitationToken: token, InvitationSentAt: sentAt, ResendAfter: resendAfter,
+		})
+	} else {
+		rows, err = q.SetUserResetPasswordToken(ctx, db.SetUserResetPasswordTokenParams{
+			ID: id, ResetPasswordToken: token, ResetPasswordSentAt: sentAt, ResendAfter: resendAfter,
+		})
+	}
 	return rows > 0, err
 }
 
+// TakeLink looks for an invitation first, then a reset, so one route takes both links.
 func (r *UserRepositoryImpl) TakeLink(ctx context.Context, tokenHash string) (auth.UserLink, error) {
-	row, err := r.queriesFromContext(ctx).TakeUserLink(ctx, pgtype.Text{String: tokenHash, Valid: true})
+	q := r.queriesFromContext(ctx)
+	token := pgtype.Text{String: tokenHash, Valid: true}
+
+	invite, err := q.TakeUserInvitationToken(ctx, token)
+	if err == nil {
+		return auth.UserLink{UserID: fromPgUUID(invite.ID), Purpose: auth.TokenInvite, SentAt: invite.InvitationSentAt.Time}, nil
+	}
+	if !errors.Is(err, pgx.ErrNoRows) {
+		return auth.UserLink{}, err
+	}
+	reset, err := q.TakeUserResetPasswordToken(ctx, token)
 	if err != nil {
 		return auth.UserLink{}, mapNoRows(err, auth.ErrInvalidLink)
 	}
-	return auth.UserLink{UserID: fromPgUUID(row.ID), Purpose: row.LinkPurpose.String, SentAt: row.LinkSentAt.Time}, nil
+	return auth.UserLink{UserID: fromPgUUID(reset.ID), Purpose: auth.TokenPasswordReset, SentAt: reset.ResetPasswordSentAt.Time}, nil
 }
 
 // applyUserFilter is shared by List and Count, so a filter never applies to the page but

@@ -56,14 +56,26 @@ JOIN user_roles ur ON ur.user_id = u.id
 JOIN roles r ON r.id = ur.role_id
 WHERE r.name = $1;
 
--- name: SetUserLink :execrows
--- the WHERE skips the update when the last link is newer than the limit, so a user cannot get many emails
-UPDATE users SET link_token_hash = $2, link_purpose = $3, link_sent_at = $4
-WHERE id = $1 AND (link_sent_at IS NULL OR link_sent_at < sqlc.arg('resend_after'));
+-- a WHERE ... sent_at < resend_after skips the update when the last link is too new, so a user cannot get many emails
 
--- name: TakeUserLink :one
--- clears the link and returns its old values, so a link works one time
-UPDATE users u SET link_token_hash = NULL, link_purpose = NULL, link_sent_at = NULL
-FROM (SELECT o.id, o.link_purpose, o.link_sent_at FROM users o WHERE o.link_token_hash = $1 FOR UPDATE) old
+-- name: SetUserInvitationToken :execrows
+UPDATE users SET invitation_token = $2, invitation_sent_at = $3
+WHERE id = $1 AND (invitation_sent_at IS NULL OR invitation_sent_at < sqlc.arg('resend_after'));
+
+-- name: SetUserResetPasswordToken :execrows
+UPDATE users SET reset_password_token = $2, reset_password_sent_at = $3
+WHERE id = $1 AND (reset_password_sent_at IS NULL OR reset_password_sent_at < sqlc.arg('resend_after'));
+
+-- the Take queries clear the token and return its old values, so a link works one time
+
+-- name: TakeUserInvitationToken :one
+UPDATE users u SET invitation_token = NULL, invitation_sent_at = NULL
+FROM (SELECT o.id, o.invitation_sent_at FROM users o WHERE o.invitation_token = $1 FOR UPDATE) old
 WHERE u.id = old.id
-RETURNING old.id, old.link_purpose, old.link_sent_at;
+RETURNING old.id, old.invitation_sent_at;
+
+-- name: TakeUserResetPasswordToken :one
+UPDATE users u SET reset_password_token = NULL, reset_password_sent_at = NULL
+FROM (SELECT o.id, o.reset_password_sent_at FROM users o WHERE o.reset_password_token = $1 FOR UPDATE) old
+WHERE u.id = old.id
+RETURNING old.id, old.reset_password_sent_at;

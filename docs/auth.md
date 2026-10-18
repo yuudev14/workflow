@@ -161,8 +161,8 @@ sequenceDiagram
 
 - **Invite.** `POST /api/users/v1` without a `password` sends an invite. The link works for 72 hours. `POST /api/users/v1/:id/invite` sends it again. If the email fails, the user is not created.
 - **Forgot password.** `POST /api/auth/v1/password/forgot` always answers `204`, so the reply does not show if the email exists. The email goes out in the background, so the reply time does not show it either. The link works for 1 hour. Only active local users get one.
-- **One link at a time.** The link is 3 columns on `users` (`link_token_hash`, `link_purpose`, `link_sent_at`), so a user has at most one link. A new link replaces the old one, but not when the old one is less than 1 minute old. Then nothing is sent (the invite route answers `409`).
-- **One use.** `POST /api/auth/v1/password/reset` clears the 3 columns. A wrong, used or expired link gives the same `400`.
+- **One link of each kind.** As in Devise, each kind has 2 columns on `users`: `invitation_token` and `invitation_sent_at`, `reset_password_token` and `reset_password_sent_at`. The token columns hold the sha256 hash. A new link replaces the old one of the same kind, but not when the old one is less than 1 minute old. Then nothing is sent (the invite route answers `409`).
+- **One use.** `POST /api/auth/v1/password/reset` takes both kinds of link and clears the 2 columns. A wrong, used or expired link gives the same `400`.
 - **`email_verified_at`** is information only. It blocks nothing. A link sets it, because only the owner of the address can open the link. For SSO users, the `email_verified` claim sets it. The migration set it for all users that existed before.
 - **Email.** `SMTP_*` settings. The mailer uses STARTTLS when the server offers it. Port 465 (TLS from the start) is not supported. With an empty `SMTP_HOST`, the email goes to the log.
 - An expired link stays in the row. It does no harm: the app checks the time, and the next link replaces it. Thus no job deletes links.
