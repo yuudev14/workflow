@@ -116,13 +116,11 @@ func NewAPI(ctx context.Context, cfg config.Config, appLogger logger.Logger, poo
 	connectorHandler := handlers.NewConnectorHandler(appLogger, connectorService)
 	adminHandler := handlers.NewAdminHandler(appLogger, authService)
 
-	moduleEventPublisher := jobs.NewModuleEventLogger(appLogger)
-
 	// the alert repository is also incidents.AlertTimeline, so a link writes to the alert too
 	incidentService := incidents.NewService(
-		appLogger, incidentRepository, alertRepository, txManager, moduleEventPublisher, userRepository)
+		appLogger, incidentRepository, alertRepository, txManager, runEnqueuer, userRepository)
 	alertService := alerts.NewService(
-		appLogger, alertRepository, incidentService, txManager, moduleEventPublisher, userRepository)
+		appLogger, alertRepository, incidentService, txManager, runEnqueuer, userRepository)
 
 	alertHandler := handlers.NewAlertHandler(appLogger, alertService, orchestrator)
 	incidentHandler := handlers.NewIncidentHandler(appLogger, incidentService, orchestrator)
@@ -213,11 +211,29 @@ func NewWorker(cfg config.Config, appLogger logger.Logger, pool *pgxpool.Pool) (
 	playbookRunLoader := playbooks.NewRunLoader(playbookService, taskService)
 	runWorker := jobs.NewRunWorker(appLogger, playbookRunLoader, executor)
 
+	runEnqueuer, err := jobs.NewEnqueuer(pool, repository.TxFromContext)
+	if err != nil {
+		return nil, fmt.Errorf("failed to setup job queue: %w", err)
+	}
+	// no StatusBroadcaster: RunForEvent does not broadcast, the executor sends the status
+	eventRunner := playbooks.NewPlaybookApplicationService(
+		appLogger,
+		playbookService,
+		taskService,
+		edges.NewEdgeServiceImpl(repository.NewEdgeRepositoryImpl(appLogger, queries, pool)),
+		repository.NewPgxTxManager(pool),
+		runEnqueuer,
+		nil,
+		repository.NewRecordResolverImpl(appLogger,
+			repository.NewAlertRepositoryImpl(appLogger, queries, pool),
+			repository.NewIncidentRepositoryImpl(appLogger, queries, pool)),
+	)
 	cleanupWorker := jobs.NewDeleteExpiredTokensWorker(appLogger, newAuthService(cfg, appLogger, queries, pool))
 
 	return jobs.NewWorkerClient(
 		pool,
 		runWorker,
+		jobs.NewRunForEventWorker(appLogger, eventRunner),
 		cleanupWorker,
 		cfg.PlaybookConcurrency, cfg.RunTimeout, cfg.WorkerStopGrace)
 }

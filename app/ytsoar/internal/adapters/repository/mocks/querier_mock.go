@@ -1005,6 +1005,21 @@ func (mr *MockQuerierTxMockRecorder) ListEnabledAuthProviders(ctx any) *gomock.C
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListEnabledAuthProviders", reflect.TypeOf((*MockQuerierTx)(nil).ListEnabledAuthProviders), ctx)
 }
 
+// ListEventPlaybookIDs mocks base method.
+func (m *MockQuerierTx) ListEventPlaybookIDs(ctx context.Context, arg db.ListEventPlaybookIDsParams) ([]pgtype.UUID, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ListEventPlaybookIDs", ctx, arg)
+	ret0, _ := ret[0].([]pgtype.UUID)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ListEventPlaybookIDs indicates an expected call of ListEventPlaybookIDs.
+func (mr *MockQuerierTxMockRecorder) ListEventPlaybookIDs(ctx, arg any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListEventPlaybookIDs", reflect.TypeOf((*MockQuerierTx)(nil).ListEventPlaybookIDs), ctx, arg)
+}
+
 // ListIncidentAlerts mocks base method.
 func (m *MockQuerierTx) ListIncidentAlerts(ctx context.Context, incidentID pgtype.UUID) ([]db.ListIncidentAlertsRow, error) {
 	m.ctrl.T.Helper()

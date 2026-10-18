@@ -137,6 +137,7 @@ Other docs:
 - [Database](docs/database.md): the tables as diagrams, and the enums.
 - [Connector upload](docs/connector-upload.md): how a zip becomes a connector.
 - [Connector dependencies](docs/connector-dependencies.md): how each connector gets its own libraries.
+- [Event triggers](docs/event-triggers.md): how a new or changed alert or incident starts a playbook, and the loop guard.
 - [The condition task](docs/condition.md): how branching works, the limits of the Go template engine, and the plan to move to Python.
 
 ### One run, step by step
