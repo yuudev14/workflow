@@ -117,4 +117,5 @@ type PlaybookHistoryResponse struct {
 	TriggerType  *string          `db:"trigger_type" json:"trigger_type"`
 	TriggeredBy  *uuid.UUID       `db:"triggered_by" json:"triggered_by"`
 	Input        json.RawMessage  `db:"input" json:"input"`
+	FinishedAt   *time.Time       `db:"finished_at" json:"finished_at"`
 }

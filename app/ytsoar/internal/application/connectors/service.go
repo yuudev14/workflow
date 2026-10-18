@@ -29,9 +29,10 @@ const (
 )
 
 // reservedIDs cannot be uploaded. "core" is the shared base-class package. The
-// code_snippet pair are virtual connectors of the sandbox. condition and http_request are
-// Go builtins in the worker, and the resolver routes builtins first, so an upload could
-// never replace them. Reject it, so nobody is confused.
+// code_snippet pair are virtual connectors of the sandbox. http_request is a Go builtin
+// that the resolver routes first, so an upload could never replace it. condition is our
+// own python connector, and an upload must not replace it. Reject them, so nobody is
+// confused.
 var reservedIDs = map[string]bool{
 	"core":            true,
 	"code_snippet_py": true,

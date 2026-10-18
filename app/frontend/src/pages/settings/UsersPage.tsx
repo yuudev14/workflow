@@ -2,7 +2,7 @@
 import * as React from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createColumnHelper } from "@tanstack/react-table";
-import { KeyRound, Pencil, Plus, UserCheck, UserMinus, Users } from "lucide-react";
+import { KeyRound, Mail, Pencil, Plus, UserCheck, UserMinus, Users } from "lucide-react";
 
 import AdminService from "@/services/admin/admin";
 import { UserWithRoles } from "@/services/admin/admin.schema";
@@ -73,6 +73,18 @@ export default function UsersPage() {
       toast({
         variant: "destructive",
         title: "Couldn't deactivate the user",
+        description: apiErrorMessage(error),
+      }),
+  });
+
+  const invite = useMutation({
+    mutationFn: (user: UserWithRoles) => AdminService.inviteUser(user.id),
+    onSuccess: (_, user) =>
+      toast({ variant: "success", title: "Invite sent", description: `A set-password link was sent to ${user.email}.` }),
+    onError: (error) =>
+      toast({
+        variant: "destructive",
+        title: "Couldn't send the invite",
         description: apiErrorMessage(error),
       }),
   });
@@ -158,6 +170,18 @@ export default function UsersPage() {
                 </Button>
               </>
             )}
+            {/* SSO users have no local password, so the api refuses them */}
+            {canUpdate && user.is_active && user.auth_provider === "local" && (
+              <Button
+                variant="ghost"
+                size="icon"
+                title="Send invite"
+                disabled={invite.isPending}
+                onClick={() => invite.mutate(user)}
+              >
+                <Mail />
+              </Button>
+            )}
             {canUpdate && !user.is_active && (
               <Button
                 variant="ghost"
@@ -181,7 +205,7 @@ export default function UsersPage() {
       }),
     ],
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [canUpdate, canDelete, currentUser?.id, reactivate.isPending]
+    [canUpdate, canDelete, currentUser?.id, reactivate.isPending, invite.isPending]
   );
 
   return (

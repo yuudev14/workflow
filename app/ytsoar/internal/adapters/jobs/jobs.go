@@ -1,6 +1,6 @@
-// Package jobs runs playbook runs on River (a job queue in Postgres). The API queues a run
-// in the same transaction as its history rows, so a run is never lost and never queued
-// without its history.
+// Package jobs runs playbook runs and the daily token cleanup on River (a job queue in
+// Postgres). The API queues a run in the same transaction as its history rows, so a run is
+// never lost and never queued without its history.
 package jobs
 
 import (
@@ -21,6 +21,8 @@ import (
 
 const (
 	queueName = "playbook"
+	// eventQueue has its own workers, so a long run does not hold back the events
+	eventQueue = "playbook_event"
 	// maxAttempts is 2. A failed run is not retried and a started run never starts again.
 	// Attempt 2 is for a job that River takes back (worker died, final status not saved, or
 	// Abort failed). If the run started, attempt 2 only marks it failed. If it never started
@@ -105,7 +107,49 @@ func (w *RunWorker) Work(ctx context.Context, job *river.Job[RunArgs]) error {
 	return w.executor.Abort(ctx, id, cause)
 }
 
-// Enqueuer queues runs. It implements contracts.RunEnqueuer.
+// RunForEventArgs is an alert or incident event. The worker finds the playbooks it
+// triggers.
+type RunForEventArgs struct {
+	ModuleType string    `json:"module_type"`
+	Event      string    `json:"event"`
+	RecordID   uuid.UUID `json:"record_id"`
+}
+
+func (RunForEventArgs) Kind() string { return "playbook_run_for_event" }
+
+// a retry is safe: all runs of one event are queued in one transaction
+func (RunForEventArgs) InsertOpts() river.InsertOpts {
+	return river.InsertOpts{Queue: eventQueue, MaxAttempts: 3}
+}
+
+// EventRunner queues the runs of an event. playbooks.PlaybookApplicationServiceImpl
+// implements it.
+type EventRunner interface {
+	RunForEvent(ctx context.Context, moduleType string, event string, recordID uuid.UUID, occurredAt time.Time) error
+}
+
+type RunForEventWorker struct {
+	river.WorkerDefaults[RunForEventArgs]
+	logger logger.Logger
+	runner EventRunner
+}
+
+func NewRunForEventWorker(log logger.Logger, runner EventRunner) *RunForEventWorker {
+	return &RunForEventWorker{logger: log, runner: runner}
+}
+
+func (w *RunForEventWorker) Work(ctx context.Context, job *river.Job[RunForEventArgs]) error {
+	a := job.Args
+	// CreatedAt is the time of the change: River sets it in the transaction of the change
+	err := w.runner.RunForEvent(ctx, a.ModuleType, a.Event, a.RecordID, job.CreatedAt)
+	if err != nil {
+		w.logger.Errorw("could not queue the runs of an event", "module", a.ModuleType, "event", a.Event, "record_id", a.RecordID, "error", err)
+	}
+	return err
+}
+
+// Enqueuer queues runs and module events. It implements contracts.RunEnqueuer and
+// contracts.ModuleEventPublisher.
 type Enqueuer struct {
 	client *river.Client[pgx.Tx]
 	// txFrom finds the transaction in ctx. main.go injects it, so this adapter does not
@@ -125,7 +169,16 @@ func NewEnqueuer(pool *pgxpool.Pool, txFrom func(context.Context) (pgx.Tx, bool)
 
 // EnqueueRun joins the transaction in ctx, if ctx has one.
 func (e *Enqueuer) EnqueueRun(ctx context.Context, playbookHistoryID uuid.UUID) error {
-	args := RunArgs{PlaybookHistoryID: playbookHistoryID}
+	return e.insert(ctx, RunArgs{PlaybookHistoryID: playbookHistoryID})
+}
+
+// Publish implements contracts.ModuleEventPublisher. It joins the transaction in ctx, if
+// ctx has one.
+func (e *Enqueuer) Publish(ctx context.Context, module, event string, recordID uuid.UUID) error {
+	return e.insert(ctx, RunForEventArgs{ModuleType: module, Event: event, RecordID: recordID})
+}
+
+func (e *Enqueuer) insert(ctx context.Context, args river.JobArgs) error {
 	var err error
 	if tx, ok := e.txFrom(ctx); ok {
 		_, err = e.client.InsertTx(ctx, tx, args, nil)
@@ -135,31 +188,59 @@ func (e *Enqueuer) EnqueueRun(ctx context.Context, playbookHistoryID uuid.UUID) 
 	return err
 }
 
+// DeleteExpiredTokensArgs has no fields: the job always cleans the whole table.
+type DeleteExpiredTokensArgs struct{}
+
+func (DeleteExpiredTokensArgs) Kind() string { return "auth_delete_expired_tokens" }
+
+// TokenCleaner deletes expired tokens. auth.Service implements it.
+type TokenCleaner interface {
+	DeleteExpiredTokens(ctx context.Context) error
+}
+
+type DeleteExpiredTokensWorker struct {
+	river.WorkerDefaults[DeleteExpiredTokensArgs]
+	logger  logger.Logger
+	cleaner TokenCleaner
+}
+
+func NewDeleteExpiredTokensWorker(log logger.Logger, cleaner TokenCleaner) *DeleteExpiredTokensWorker {
+	return &DeleteExpiredTokensWorker{logger: log, cleaner: cleaner}
+}
+
+func (w *DeleteExpiredTokensWorker) Work(ctx context.Context, _ *river.Job[DeleteExpiredTokensArgs]) error {
+	if err := w.cleaner.DeleteExpiredTokens(ctx); err != nil {
+		w.logger.Errorw("could not delete expired tokens", "error", err)
+		return err
+	}
+	return nil
+}
+
 // NewWorkerClient runs `concurrency` runs at the same time. runTimeout limits one run.
 // When the worker stops, River waits stopGrace, then cancels the runs. A cancelled run is
 // saved as failed.
-func NewWorkerClient(pool *pgxpool.Pool, worker *RunWorker, concurrency int, runTimeout, stopGrace time.Duration) (*river.Client[pgx.Tx], error) {
+func NewWorkerClient(pool *pgxpool.Pool, worker *RunWorker, eventWorker *RunForEventWorker, cleanup *DeleteExpiredTokensWorker, concurrency int, runTimeout, stopGrace time.Duration) (*river.Client[pgx.Tx], error) {
 	workers := river.NewWorkers()
 	river.AddWorker(workers, worker)
+	river.AddWorker(workers, eventWorker)
+	river.AddWorker(workers, cleanup)
 	return river.NewClient(riverpgxv5.New(pool), &river.Config{
-		Queues:               map[string]river.QueueConfig{queueName: {MaxWorkers: max(concurrency, 1)}},
+		Queues: map[string]river.QueueConfig{
+			queueName:          {MaxWorkers: max(concurrency, 1)},
+			eventQueue:         {MaxWorkers: 1},
+			river.QueueDefault: {MaxWorkers: 1},
+		},
+		// only the elected leader queues periodic jobs, so many workers still clean once a day
+		PeriodicJobs: []*river.PeriodicJob{
+			river.NewPeriodicJob(
+				river.PeriodicInterval(24*time.Hour),
+				func() (river.JobArgs, *river.InsertOpts) { return DeleteExpiredTokensArgs{}, nil },
+				&river.PeriodicJobOpts{RunOnStart: true},
+			),
+		},
 		Workers:              workers,
 		JobTimeout:           runTimeout,
 		RescueStuckJobsAfter: runTimeout + rescueGrace,
 		SoftStopTimeout:      stopGrace,
 	})
-}
-
-// ModuleEventLogger implements contracts.ModuleEventPublisher. It only logs alert and
-// incident events for now. Event-triggered playbooks (on_create, on_update) will queue
-// from here.
-type ModuleEventLogger struct{ logger logger.Logger }
-
-func NewModuleEventLogger(log logger.Logger) *ModuleEventLogger {
-	return &ModuleEventLogger{logger: log}
-}
-
-func (l *ModuleEventLogger) Publish(module, event string, _ any) error {
-	l.logger.Debugw("module event", "module", module, "event", event)
-	return nil
 }

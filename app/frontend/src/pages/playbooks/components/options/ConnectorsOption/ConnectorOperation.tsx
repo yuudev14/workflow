@@ -34,13 +34,14 @@ import {
   CONDITION_OUTPUT_HANDLE,
 } from "@/settings/reactFlowIds";
 
-import CodeMirror from '@uiw/react-codemirror';
+import CodeMirror, { ReactCodeMirrorRef } from '@uiw/react-codemirror';
 import { python } from '@codemirror/lang-python';
 import { javascript } from '@codemirror/lang-javascript';
 import { useTheme } from "next-themes";
 import { connectorGlyph, Glyph } from "@/components/soar";
 import { GripVertical, Plus, X } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { VariableInput, VariablePicker } from "./VariablePicker";
 
 const taskFormSchema = z.object({
   name: z.string().min(2, {
@@ -224,11 +225,12 @@ const CasesEditor: React.FC<{
               tone={ROUTE_TONES[i % ROUTE_TONES.length]}
             />
           }>
-          <Input
-            className="min-w-[120px] flex-1 font-mono text-[11.5px]"
+          <VariableInput
+            className="min-w-[120px] flex-1"
+            inputClassName="font-mono text-[11.5px]"
             placeholder={placeholder ?? '{{ var.steps["…"].field }}'}
             value={c.expression ?? ""}
-            onChange={(e) => update(i, e.target.value)}
+            onChange={(expression) => update(i, expression)}
           />
         </CaseCard>
       ))}
@@ -291,11 +293,12 @@ const ConditionsEditor: React.FC<{
               tone={ROUTE_TONES[i % ROUTE_TONES.length]}
             />
           }>
-          <input
-            className={cn(fieldCls, "min-w-[120px] flex-1")}
+          <VariableInput
+            className="min-w-[120px] flex-1"
+            inputClassName={fieldCls}
             placeholder={placeholder ?? "left"}
             value={c.left ?? ""}
-            onChange={(e) => update(i, { left: e.target.value })}
+            onChange={(left) => update(i, { left })}
           />
           <select
             className={cn(fieldCls, "shrink-0 font-semibold text-ink-soft")}
@@ -333,6 +336,7 @@ const ConnectorOperation: React.FC<{ connector: ConnectorInfo }> = ({
     PlaybookOperationContext
   );
   const { resolvedTheme } = useTheme();
+  const codeEditor = useRef<ReactCodeMirrorRef>(null);
   const glyph = connectorGlyph(connector.name);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [cachedParameter, setCachedParameter] = useState<Record<string, any>>(
@@ -615,13 +619,13 @@ const ConnectorOperation: React.FC<{ connector: ConnectorInfo }> = ({
                         </>
                       )}
                       {param.type === "text" && (
-                        <Input
+                        <VariableInput
                           placeholder={param.placeholder}
                           value={field.value?.[param.name] ?? ""}
-                          onChange={(e) =>
+                          onChange={(value) =>
                             field.onChange({
                               ...(field.value ? field.value : {}),
-                              [param.name]: e.target.value,
+                              [param.name]: value,
                             })
                           }
                         />
@@ -656,11 +660,21 @@ const ConnectorOperation: React.FC<{ connector: ConnectorInfo }> = ({
                             <span className="rounded-[5px] border border-line-strong bg-card px-1.5 py-0.5 font-mono text-[10.5px] font-semibold text-ink-soft">
                               {isJsCode ? "node" : "python3 -I"}
                             </span>
-                            <span className="font-mono text-[10.5px] text-ink-faint">
+                            <span className="ml-auto mr-1 font-mono text-[10.5px] text-ink-faint">
                               stdout is the result
                             </span>
+                            {/* the harness passes `steps` to the code, so no template text is needed */}
+                            <VariablePicker
+                              onPick={(ref) => {
+                                const view = codeEditor.current?.view;
+                                if (!view) return;
+                                view.dispatch(view.state.replaceSelection(ref));
+                                view.focus();
+                              }}
+                            />
                           </div>
                           <CodeMirror
+                            ref={codeEditor}
                             height="220px"
                             extensions={[isJsCode ? javascript() : python()]}
                             theme={resolvedTheme === "dark" ? "dark" : "light"}

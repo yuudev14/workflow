@@ -1,7 +1,7 @@
 {
   "name": "Condition",
   "id": "condition",
-  "runtime": "go",
+  "runtime": "python",
   "configuration": {
     "fields": []
   },
@@ -24,12 +24,19 @@
           "tooltip": "left / operator / right per case; falls through to else",
           "placeholder": "{{ var.steps[\"my task\"].status }}"
         }
+      ],
+      "output": [
+        {
+          "name": "result",
+          "type": "string",
+          "description": "Id of the case that matched, or else"
+        }
       ]
     },
     {
       "operation": "switch_expression",
       "title": "Switch (advanced expression)",
-      "description": "Route to the first case whose template expression is truthy, or to else when none match. Write full gonja/jinja expressions per case. Pick each case's destination node in the editor.",
+      "description": "Route to the first case whose template expression is truthy, or to else when none match. Write full jinja2 expressions per case. Pick each case's destination node in the editor.",
       "annotation": "switch_expression",
       "enabled": true,
       "parameters": [
@@ -43,6 +50,13 @@
           "type": "cases",
           "tooltip": "template expression per case; falls through to else",
           "placeholder": "{{ var.steps[\"scan\"].score > 90 }}"
+        }
+      ],
+      "output": [
+        {
+          "name": "result",
+          "type": "string",
+          "description": "Id of the case that matched, or else"
         }
       ]
     }

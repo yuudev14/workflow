@@ -1,0 +1,2 @@
+app/ytsoar/db/*.sql.go linguist-generated=true
+app/ytsoar/**/mocks/*_mock.go linguist-generated=true

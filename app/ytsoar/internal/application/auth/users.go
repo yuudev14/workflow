@@ -35,16 +35,21 @@ func (s *Service) GetUser(ctx context.Context, id uuid.UUID) (domain.UserWithRol
 }
 
 // CreateUser hashes the password and assigns the roles in one transaction. A user with no
-// roles would be a live account that nobody granted.
+// roles would be a live account that nobody granted. Without a password, the invite email
+// goes out in the same transaction: if it fails, no user is left without a way to sign in.
 func (s *Service) CreateUser(ctx context.Context, actorID uuid.UUID, input CreateUserInput) (domain.UserWithRoles, error) {
 	roleIDs, err := parseUUIDs(input.RoleIDs, "role_ids")
 	if err != nil {
 		return domain.UserWithRoles{}, err
 	}
 
-	hash, err := s.hasher.Hash(input.Password)
-	if err != nil {
-		return domain.UserWithRoles{}, err
+	var hash *string
+	if input.Password != "" {
+		h, err := s.hasher.Hash(input.Password)
+		if err != nil {
+			return domain.UserWithRoles{}, err
+		}
+		hash = &h
 	}
 
 	var created domain.User
@@ -52,7 +57,7 @@ func (s *Service) CreateUser(ctx context.Context, actorID uuid.UUID, input Creat
 		user, err := s.users.Create(ctx, CreateUserParams{
 			Username:     input.Username,
 			Email:        input.Email,
-			PasswordHash: &hash,
+			PasswordHash: hash,
 			FirstName:    input.FirstName,
 			LastName:     input.LastName,
 			AuthProvider: domain.AuthProviderLocal,
@@ -62,7 +67,13 @@ func (s *Service) CreateUser(ctx context.Context, actorID uuid.UUID, input Creat
 		}
 		created = user
 
-		return s.assignRoles(ctx, user.ID, roleIDs)
+		if err := s.assignRoles(ctx, user.ID, roleIDs); err != nil {
+			return err
+		}
+		if hash == nil {
+			return s.sendLink(ctx, user, TokenInvite)
+		}
+		return nil
 	})
 	if txErr != nil {
 		return domain.UserWithRoles{}, txErr
