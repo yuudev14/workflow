@@ -7,6 +7,7 @@ export interface AuthUser {
   auth_provider: "local" | "oidc" | "ldap";
   is_active: boolean;
   last_login_at?: string | null;
+  email_verified_at?: string | null;
   created_at: string;
   updated_at: string;
 }
