@@ -159,20 +159,19 @@ const (
 	TokenPasswordReset = "password_reset"
 )
 
-type IssueTokenParams struct {
+type SetLinkParams struct {
 	UserID    uuid.UUID
 	TokenHash string
 	Purpose   string
-	ExpiresAt time.Time
-	CreatedAt time.Time
-	// ResendAfter: an older link of the same purpose is replaced, a newer one is kept
+	SentAt    time.Time
+	// ResendAfter: an older link is replaced, a newer one is kept
 	ResendAfter time.Time
 }
 
-type UserToken struct {
-	UserID    uuid.UUID
-	Purpose   string
-	ExpiresAt time.Time
+type UserLink struct {
+	UserID  uuid.UUID
+	Purpose string
+	SentAt  time.Time
 }
 
 type ResetPasswordInput struct {

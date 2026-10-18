@@ -868,17 +868,12 @@ type User struct {
 	CreatedAt       pgtype.Timestamp `json:"created_at"`
 	UpdatedAt       pgtype.Timestamp `json:"updated_at"`
 	EmailVerifiedAt pgtype.Timestamp `json:"email_verified_at"`
+	LinkTokenHash   pgtype.Text      `json:"link_token_hash"`
+	LinkPurpose     pgtype.Text      `json:"link_purpose"`
+	LinkSentAt      pgtype.Timestamp `json:"link_sent_at"`
 }
 
 type UserRole struct {
 	UserID pgtype.UUID `json:"user_id"`
 	RoleID pgtype.UUID `json:"role_id"`
-}
-
-type UserToken struct {
-	TokenHash string           `json:"token_hash"`
-	UserID    pgtype.UUID      `json:"user_id"`
-	Purpose   string           `json:"purpose"`
-	ExpiresAt pgtype.Timestamp `json:"expires_at"`
-	CreatedAt pgtype.Timestamp `json:"created_at"`
 }

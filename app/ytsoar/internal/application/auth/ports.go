@@ -20,6 +20,10 @@ type UserRepository interface {
 	Update(ctx context.Context, id uuid.UUID, params UpdateUserParams) (domain.User, error)
 	SetPassword(ctx context.Context, id uuid.UUID, passwordHash string) error
 	MarkEmailVerified(ctx context.Context, id uuid.UUID, at time.Time) error
+	// SetLink says false when the last link is newer than ResendAfter.
+	SetLink(ctx context.Context, params SetLinkParams) (bool, error)
+	// TakeLink clears the link and returns it, so a link works one time.
+	TakeLink(ctx context.Context, tokenHash string) (UserLink, error)
 	TouchLastLogin(ctx context.Context, id uuid.UUID) error
 	CountWithRole(ctx context.Context, roleName string) (int64, error)
 	List(ctx context.Context, offset, limit int, filter UserFilter) ([]domain.UserWithRoles, error)
@@ -67,17 +71,6 @@ type RefreshTokenRepository interface {
 	GetByHash(ctx context.Context, tokenHash string) (domain.RefreshToken, error)
 	Revoke(ctx context.Context, tokenHash string) error
 	RevokeAllForUser(ctx context.Context, userID uuid.UUID) error
-	DeleteExpired(ctx context.Context, before time.Time) error
-}
-
-//go:generate mockgen -destination=mocks/user_token_repository_mock.go -package=mocks . UserTokenRepository
-
-// UserTokenRepository keeps the one-time links for an invite or a password reset.
-type UserTokenRepository interface {
-	// Issue says false when a link of the same purpose is newer than ResendAfter.
-	Issue(ctx context.Context, params IssueTokenParams) (bool, error)
-	// Take deletes the token and returns it, so a link works one time.
-	Take(ctx context.Context, tokenHash string) (UserToken, error)
 	DeleteExpired(ctx context.Context, before time.Time) error
 }
 

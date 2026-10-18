@@ -55,3 +55,15 @@ SELECT COUNT(*) FROM users u
 JOIN user_roles ur ON ur.user_id = u.id
 JOIN roles r ON r.id = ur.role_id
 WHERE r.name = $1;
+
+-- name: SetUserLink :execrows
+-- the WHERE skips the update when the last link is newer than the limit, so a user cannot get many emails
+UPDATE users SET link_token_hash = $2, link_purpose = $3, link_sent_at = $4
+WHERE id = $1 AND (link_sent_at IS NULL OR link_sent_at < sqlc.arg('resend_after'));
+
+-- name: TakeUserLink :one
+-- clears the link and returns its old values, so a link works one time
+UPDATE users u SET link_token_hash = NULL, link_purpose = NULL, link_sent_at = NULL
+FROM (SELECT o.id, o.link_purpose, o.link_sent_at FROM users o WHERE o.link_token_hash = $1 FOR UPDATE) old
+WHERE u.id = old.id
+RETURNING old.id, old.link_purpose, old.link_sent_at;

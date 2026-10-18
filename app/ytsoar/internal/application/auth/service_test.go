@@ -31,7 +31,6 @@ type testEnv struct {
 	mockRoles     *mock_auth.MockRoleRepository
 	mockTokens    *mock_auth.MockRefreshTokenRepository
 	mockAPIKeys   *mock_auth.MockAPIKeyRepository
-	mockLinks     *mock_auth.MockUserTokenRepository
 	mockMailer    *mock_auth.MockMailer
 	mockTeams     *mock_auth.MockTeamRepository
 	mockProviders *mock_auth.MockAuthProviderRepository
@@ -54,7 +53,6 @@ func setupTest(t *testing.T) *testEnv {
 	mockRoles := mock_auth.NewMockRoleRepository(ctrl)
 	mockTokens := mock_auth.NewMockRefreshTokenRepository(ctrl)
 	mockAPIKeys := mock_auth.NewMockAPIKeyRepository(ctrl)
-	mockLinks := mock_auth.NewMockUserTokenRepository(ctrl)
 	mockMailer := mock_auth.NewMockMailer(ctrl)
 	mockTeams := mock_auth.NewMockTeamRepository(ctrl)
 	mockProviders := mock_auth.NewMockAuthProviderRepository(ctrl)
@@ -83,7 +81,6 @@ func setupTest(t *testing.T) *testEnv {
 		mockRoles,
 		mockTokens,
 		mockAPIKeys,
-		mockLinks,
 		mockMailer,
 		mockTeams,
 		mockAudit,
@@ -109,7 +106,6 @@ func setupTest(t *testing.T) *testEnv {
 		mockRoles:     mockRoles,
 		mockTokens:    mockTokens,
 		mockAPIKeys:   mockAPIKeys,
-		mockLinks:     mockLinks,
 		mockMailer:    mockMailer,
 		mockTeams:     mockTeams,
 		mockProviders: mockProviders,
@@ -491,15 +487,14 @@ func TestAPIKeys(t *testing.T) {
 }
 
 func TestDeleteExpiredTokens(t *testing.T) {
-	t.Run("deletes the refresh tokens and the links that expired before now", func(t *testing.T) {
+	t.Run("deletes the refresh tokens that expired before now", func(t *testing.T) {
 		env := setupTest(t)
 		before := time.Now()
-		near := func(_ context.Context, cutoff time.Time) error {
-			assert.WithinDuration(t, before, cutoff, time.Second)
-			return nil
-		}
-		env.mockTokens.EXPECT().DeleteExpired(gomock.Any(), gomock.Any()).DoAndReturn(near)
-		env.mockLinks.EXPECT().DeleteExpired(gomock.Any(), gomock.Any()).DoAndReturn(near)
+		env.mockTokens.EXPECT().DeleteExpired(gomock.Any(), gomock.Any()).
+			DoAndReturn(func(_ context.Context, cutoff time.Time) error {
+				assert.WithinDuration(t, before, cutoff, time.Second)
+				return nil
+			})
 
 		assert.NoError(t, env.service.DeleteExpiredTokens(context.Background()))
 	})
@@ -523,9 +518,9 @@ func TestInviteAndPasswordReset(t *testing.T) {
 					assert.Nil(t, p.PasswordHash)
 					return user, nil
 				})
-			var issued auth.IssueTokenParams
-			env.mockLinks.EXPECT().Issue(gomock.Any(), gomock.Any()).
-				DoAndReturn(func(_ context.Context, p auth.IssueTokenParams) (bool, error) {
+			var issued auth.SetLinkParams
+			env.mockUsers.EXPECT().SetLink(gomock.Any(), gomock.Any()).
+				DoAndReturn(func(_ context.Context, p auth.SetLinkParams) (bool, error) {
 					issued = p
 					return true, nil
 				})
@@ -540,7 +535,6 @@ func TestInviteAndPasswordReset(t *testing.T) {
 
 			require.NoError(t, err)
 			assert.Equal(t, auth.TokenInvite, issued.Purpose)
-			assert.WithinDuration(t, time.Now().Add(72*time.Hour), issued.ExpiresAt, time.Minute)
 		})
 	})
 
@@ -558,7 +552,7 @@ func TestInviteAndPasswordReset(t *testing.T) {
 			env := setupTest(t)
 			user := activeUser()
 			env.mockUsers.EXPECT().GetByID(gomock.Any(), user.ID).Return(user, nil)
-			env.mockLinks.EXPECT().Issue(gomock.Any(), gomock.Any()).Return(false, nil)
+			env.mockUsers.EXPECT().SetLink(gomock.Any(), gomock.Any()).Return(false, nil)
 
 			assert.ErrorIs(t, env.service.InviteUser(ctx, uuid.New(), user.ID), auth.ErrEmailTooSoon)
 		})
@@ -572,15 +566,14 @@ func TestInviteAndPasswordReset(t *testing.T) {
 			env.service.ForgotPassword(ctx, "nobody@example.com")
 		})
 
-		t.Run("sends a reset link that expires in one hour", func(t *testing.T) {
+		t.Run("sends a reset link", func(t *testing.T) {
 			env := setupTest(t)
 			user := activeUser()
 			sent := make(chan struct{})
 			env.mockUsers.EXPECT().GetByEmail(gomock.Any(), user.Email).Return(user, nil)
-			env.mockLinks.EXPECT().Issue(gomock.Any(), gomock.Any()).
-				DoAndReturn(func(_ context.Context, p auth.IssueTokenParams) (bool, error) {
+			env.mockUsers.EXPECT().SetLink(gomock.Any(), gomock.Any()).
+				DoAndReturn(func(_ context.Context, p auth.SetLinkParams) (bool, error) {
 					assert.Equal(t, auth.TokenPasswordReset, p.Purpose)
-					assert.WithinDuration(t, time.Now().Add(time.Hour), p.ExpiresAt, time.Minute)
 					return true, nil
 				})
 			env.mockMailer.EXPECT().Send(gomock.Any(), user.Email, gomock.Any(), gomock.Any()).
@@ -606,8 +599,8 @@ func TestInviteAndPasswordReset(t *testing.T) {
 			env := setupTest(t)
 			userID := uuid.New()
 			env.mockHasher.EXPECT().Hash("new-password").Return("new-hash", nil)
-			env.mockLinks.EXPECT().Take(gomock.Any(), sha("link-token")).
-				Return(auth.UserToken{UserID: userID, Purpose: auth.TokenInvite, ExpiresAt: time.Now().Add(time.Hour)}, nil)
+			env.mockUsers.EXPECT().TakeLink(gomock.Any(), sha("link-token")).
+				Return(auth.UserLink{UserID: userID, Purpose: auth.TokenInvite, SentAt: time.Now()}, nil)
 			env.mockUsers.EXPECT().SetPassword(gomock.Any(), userID, "new-hash").Return(nil)
 			env.mockUsers.EXPECT().MarkEmailVerified(gomock.Any(), userID, gomock.Any()).Return(nil)
 			env.mockTokens.EXPECT().RevokeAllForUser(gomock.Any(), userID).Return(nil)
@@ -619,8 +612,8 @@ func TestInviteAndPasswordReset(t *testing.T) {
 		t.Run("rejects an expired link", func(t *testing.T) {
 			env := setupTest(t)
 			env.mockHasher.EXPECT().Hash("new-password").Return("new-hash", nil)
-			env.mockLinks.EXPECT().Take(gomock.Any(), sha("link-token")).
-				Return(auth.UserToken{UserID: uuid.New(), ExpiresAt: time.Now().Add(-time.Second)}, nil)
+			env.mockUsers.EXPECT().TakeLink(gomock.Any(), sha("link-token")).
+				Return(auth.UserLink{UserID: uuid.New(), Purpose: auth.TokenPasswordReset, SentAt: time.Now().Add(-61 * time.Minute)}, nil)
 
 			assert.ErrorIs(t, env.service.ResetPassword(ctx, input), auth.ErrInvalidLink)
 		})

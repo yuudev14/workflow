@@ -35,7 +35,6 @@ type Service struct {
 	roles      RoleRepository
 	tokens     RefreshTokenRepository
 	apiKeys    APIKeyRepository
-	userTokens UserTokenRepository
 	mailer     Mailer
 	teams      TeamRepository
 	audit      AuditLogRepository
@@ -55,7 +54,6 @@ func NewService(
 	roles RoleRepository,
 	tokens RefreshTokenRepository,
 	apiKeys APIKeyRepository,
-	userTokens UserTokenRepository,
 	mailer Mailer,
 	teams TeamRepository,
 	audit AuditLogRepository,
@@ -71,7 +69,6 @@ func NewService(
 		roles:      roles,
 		tokens:     tokens,
 		apiKeys:    apiKeys,
-		userTokens: userTokens,
 		mailer:     mailer,
 		teams:      teams,
 		audit:      audit,
@@ -226,13 +223,10 @@ func (s *Service) Logout(ctx context.Context, refreshToken string) error {
 	return nil
 }
 
-// DeleteExpiredTokens removes the refresh tokens and the one-time links past their expiry.
-// A daily job calls it, because each refresh adds a row.
+// DeleteExpiredTokens removes the refresh tokens past their expiry. A daily job calls it,
+// because each refresh adds a row.
 func (s *Service) DeleteExpiredTokens(ctx context.Context) error {
-	if err := s.tokens.DeleteExpired(ctx, s.now()); err != nil {
-		return err
-	}
-	return s.userTokens.DeleteExpired(ctx, s.now())
+	return s.tokens.DeleteExpired(ctx, s.now())
 }
 
 func (s *Service) Me(ctx context.Context, userID uuid.UUID) (Me, error) {

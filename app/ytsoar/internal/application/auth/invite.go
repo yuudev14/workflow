@@ -48,12 +48,11 @@ func (s *Service) sendLink(ctx context.Context, user domain.User, purpose string
 	token := randomToken()
 	now := s.now()
 
-	issued, err := s.userTokens.Issue(ctx, IssueTokenParams{
+	issued, err := s.users.SetLink(ctx, SetLinkParams{
 		UserID:      user.ID,
 		TokenHash:   hashToken(token),
 		Purpose:     purpose,
-		ExpiresAt:   now.Add(email.ttl),
-		CreatedAt:   now,
+		SentAt:      now,
 		ResendAfter: now.Add(-resendInterval),
 	})
 	if err != nil {
@@ -128,33 +127,33 @@ func (s *Service) ResetPassword(ctx context.Context, input ResetPasswordInput) e
 		return err
 	}
 
-	var token UserToken
+	var link UserLink
 	err = s.txManager.WithinTransaction(ctx, func(ctx context.Context) error {
-		token, err = s.userTokens.Take(ctx, hashToken(input.Token))
+		link, err = s.users.TakeLink(ctx, hashToken(input.Token))
 		if err != nil {
 			return err
 		}
-		// the rollback keeps the expired row, and the daily job deletes it
-		if !s.now().Before(token.ExpiresAt) {
+		// the rollback keeps an expired link, which is harmless: the next link replaces it
+		if !s.now().Before(link.SentAt.Add(linkEmails[link.Purpose].ttl)) {
 			return ErrInvalidLink
 		}
-		if err := s.users.SetPassword(ctx, token.UserID, hash); err != nil {
+		if err := s.users.SetPassword(ctx, link.UserID, hash); err != nil {
 			return err
 		}
-		if err := s.users.MarkEmailVerified(ctx, token.UserID, s.now()); err != nil {
+		if err := s.users.MarkEmailVerified(ctx, link.UserID, s.now()); err != nil {
 			return err
 		}
-		return s.tokens.RevokeAllForUser(ctx, token.UserID)
+		return s.tokens.RevokeAllForUser(ctx, link.UserID)
 	})
 	if err != nil {
 		return err
 	}
 
 	s.writeAudit(ctx, domain.AuditEntry{
-		ActorID: &token.UserID,
+		ActorID: &link.UserID,
 		Module:  "auth",
 		Action:  "password_set_by_link",
-		Detail:  map[string]any{"purpose": token.Purpose},
+		Detail:  map[string]any{"purpose": link.Purpose},
 	})
 	return nil
 }
