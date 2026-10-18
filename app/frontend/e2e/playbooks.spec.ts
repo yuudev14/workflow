@@ -97,7 +97,7 @@ test.describe("playbook editor", () => {
   test("inserts the result of an earlier step from the variable picker", async ({ page }) => {
     const playbook = await newPlaybook(page.request);
     const http = (name: string) => ({ name, operation: "get_request", connector_id: "http_request", connector_name: "HTTP Request", parameters: { url: "" } });
-    await api(page.request).put(`/playbooks/v1/tasks/${playbook.id}`, {
+    await api(page.request).put(`/playbooks/tasks/${playbook.id}`, {
       nodes: [
         { name: "start", operation: "start", parameters: {} },
         http("lookup"),
