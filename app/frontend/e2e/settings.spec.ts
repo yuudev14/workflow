@@ -13,23 +13,27 @@ async function signInElsewhere(browser: Browser, username: string, password: str
 }
 
 test.describe("users", () => {
-  test("creates a user who can sign in", async ({ page, browser }) => {
+  test("creates a user and sends an invite", async ({ page }) => {
     const username = unique("user");
     await page.goto("/settings/users");
     await page.getByRole("button", { name: "New user" }).click();
     const dialog = page.getByRole("dialog");
     await dialog.getByLabel("Username").fill(username);
     await dialog.getByLabel("Email").fill(`${username}@ytsoar.test`);
-    await dialog.getByLabel("Password").fill("password123");
     await dialog.getByRole("button", { name: "analyst" }).click();
     await dialog.getByRole("button", { name: "Create" }).click();
     await expect(dialog).toBeHidden();
+    await expect(page.getByText("An invite email with a set-password link was sent.").first()).toBeVisible();
     await page.getByPlaceholder("Search username or email…").fill(username);
     await expect(page.getByRole("row", { name: new RegExp(username) })).toContainText("analyst");
+  });
 
-    const other = await signInElsewhere(browser, username, "password123");
-    await expect(other.page).toHaveURL(/\/dashboard/);
-    await other.close();
+  test("sends an invite to a user", async ({ page }) => {
+    const user = await newUser(page.request, ["viewer"]);
+    await page.goto("/settings/users");
+    await page.getByPlaceholder("Search username or email…").fill(user.username);
+    await page.getByRole("row", { name: new RegExp(user.username) }).getByTitle("Send invite").click();
+    await expect(page.getByText("Invite sent").first()).toBeVisible();
   });
 
   test("shows an error when the username is in use", async ({ page }) => {
@@ -39,7 +43,6 @@ test.describe("users", () => {
     const dialog = page.getByRole("dialog");
     await dialog.getByLabel("Username").fill(user.username);
     await dialog.getByLabel("Email").fill(`${unique("other")}@ytsoar.test`);
-    await dialog.getByLabel("Password").fill("password123");
     await dialog.getByRole("button", { name: "Create" }).click();
     await expect(page.getByText("Couldn't create the user").first()).toBeVisible();
     await expect(dialog).toBeVisible();
@@ -192,6 +195,36 @@ test.describe("providers", () => {
     await dialog.getByLabel("Name").fill(`${name}-changed`);
     await dialog.getByRole("button", { name: "Save" }).click();
     await expect(page.getByText(`${name}-changed`)).toBeVisible();
+  });
+});
+
+test.describe("api keys", () => {
+  test("creates a key that the api accepts, then deletes it", async ({ page, playwright }) => {
+    const user = await newUser(page.request, ["viewer"]);
+    const name = unique("key");
+    await page.goto("/settings/api-keys");
+    await page.getByRole("button", { name: "New API key" }).click();
+    const dialog = page.getByRole("dialog");
+    await dialog.getByLabel("User").click();
+    await page.getByRole("option", { name: user.username }).click();
+    await dialog.getByLabel("Name").fill(name);
+    await dialog.getByRole("button", { name: "Create" }).click();
+    const key = await dialog.getByLabel("API key").inputValue();
+    expect(key).toMatch(/^ytsoar_/);
+    await dialog.getByRole("button", { name: "Done" }).click();
+
+    const machine = await playwright.request.newContext({
+      baseURL: "http://localhost:3000",
+      extraHTTPHeaders: { Authorization: `Bearer ${key}` },
+    });
+    const me = await machine.get("/playbook-api/api/auth/v1/me");
+    expect((await me.json()).user.username).toBe(user.username);
+
+    await page.getByRole("row", { name: new RegExp(name) }).getByTitle("Delete").click();
+    await page.getByRole("button", { name: "Delete" }).click();
+    await expect(page.getByRole("row", { name: new RegExp(name) })).toBeHidden();
+    expect((await machine.get("/playbook-api/api/auth/v1/me")).status()).toBe(401);
+    await machine.dispose();
   });
 });
 
