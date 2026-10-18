@@ -24,6 +24,13 @@
           "tooltip": "left / operator / right per case; falls through to else",
           "placeholder": "{{ var.steps[\"my task\"].status }}"
         }
+      ],
+      "output": [
+        {
+          "name": "result",
+          "type": "string",
+          "description": "Id of the case that matched, or else"
+        }
       ]
     },
     {
@@ -43,6 +50,13 @@
           "type": "cases",
           "tooltip": "template expression per case; falls through to else",
           "placeholder": "{{ var.steps[\"scan\"].score > 90 }}"
+        }
+      ],
+      "output": [
+        {
+          "name": "result",
+          "type": "string",
+          "description": "Id of the case that matched, or else"
         }
       ]
     }
