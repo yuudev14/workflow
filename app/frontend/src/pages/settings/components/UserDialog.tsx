@@ -74,7 +74,7 @@ export function UserDialog({
         await AdminService.createUser({
           username,
           email,
-          password,
+          password: password || undefined,
           first_name: firstName || null,
           last_name: lastName || null,
           role_ids: roleIds,
@@ -89,7 +89,11 @@ export function UserDialog({
       await AdminService.setUserRoles(user.id, roleIds);
     },
     onSuccess: () => {
-      toast({ variant: "success", title: editing ? "User updated" : "User created" });
+      toast({
+        variant: "success",
+        title: editing ? "User updated" : "User created",
+        description: !editing && !password ? "An invite email with a set-password link was sent." : undefined,
+      });
       queryClient.invalidateQueries({ queryKey: ["users"] });
       onOpenChange(false);
     },
@@ -112,7 +116,7 @@ export function UserDialog({
           <DialogDescription>
             {editing
               ? "The username cannot change - it identifies the account in the audit trail."
-              : "The user signs in with this username and password."}
+              : "Leave the password empty to send an invite email. The user then sets the password."}
           </DialogDescription>
         </DialogHeader>
 
@@ -152,7 +156,7 @@ export function UserDialog({
                 id="password"
                 type="password"
                 value={password}
-                required
+                placeholder="Empty: send an invite email"
                 minLength={8}
                 onChange={(e) => setPassword(e.target.value)}
               />

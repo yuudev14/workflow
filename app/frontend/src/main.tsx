@@ -10,6 +10,8 @@ import AppShell from "@/components/provider/app-shell";
 
 // One chunk per page, so the editor's heavy libraries load only on its routes.
 const LoginPage = lazy(() => import("@/pages/login/LoginPage"));
+const ForgotPasswordPage = lazy(() => import("@/pages/login/PasswordPages").then((m) => ({ default: m.ForgotPasswordPage })));
+const SetPasswordPage = lazy(() => import("@/pages/login/PasswordPages").then((m) => ({ default: m.SetPasswordPage })));
 const DashboardPage = lazy(() => import("@/pages/dashboard/DashboardPage"));
 const ConnectorsPage = lazy(() => import("@/pages/connectors/ConnectorsPage"));
 const AlertsPage = lazy(() => import("@/pages/alerts/AlertsPage"));
@@ -32,6 +34,7 @@ const TeamsPage = lazy(() => import("@/pages/settings/TeamsPage"));
 const RolesPage = lazy(() => import("@/pages/settings/RolesPage"));
 const ProvidersPage = lazy(() => import("@/pages/settings/ProvidersPage"));
 const AuditPage = lazy(() => import("@/pages/settings/AuditPage"));
+const APIKeysPage = lazy(() => import("@/pages/settings/APIKeysPage"));
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
@@ -46,6 +49,8 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
               <Routes>
                 <Route index element={<Navigate to="/dashboard" replace />} />
                 <Route path="login" element={<LoginPage />} />
+                <Route path="forgot-password" element={<ForgotPasswordPage />} />
+                <Route path="set-password" element={<SetPasswordPage />} />
                 <Route path="dashboard" element={<DashboardPage />} />
                 <Route path="connectors" element={<ConnectorsPage />} />
                 <Route path="alerts">
@@ -76,6 +81,7 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
                   <Route path="roles" element={<RolesPage />} />
                   <Route path="providers" element={<ProvidersPage />} />
                   <Route path="audit" element={<AuditPage />} />
+                  <Route path="api-keys" element={<APIKeysPage />} />
                 </Route>
                 <Route path="*" element={<Navigate to="/dashboard" replace />} />
               </Routes>

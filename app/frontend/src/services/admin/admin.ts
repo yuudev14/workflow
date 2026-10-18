@@ -2,7 +2,10 @@ import settings from "@/settings";
 import apiClient from "../common/client";
 import { EntryResponse } from "../common/schema";
 import {
+  APIKey,
   AssignableUser,
+  CreateAPIKeyPayload,
+  CreatedAPIKey,
   AuditFilter,
   AuditLog,
   AuthProviderAdmin,
@@ -64,6 +67,11 @@ export default class AdminService {
 
   public static setUserPassword = async (id: string, password: string): Promise<void> => {
     await apiClient.put(`${this.BASE_URL}/users/v1/${id}/password`, { password });
+  };
+
+  /** Sends a new set-password link to an active local user. */
+  public static inviteUser = async (id: string): Promise<void> => {
+    await apiClient.post(`${this.BASE_URL}/users/v1/${id}/invite`);
   };
 
   /** DELETE deactivates: users are never hard-deleted, the audit trail references them. */
@@ -146,6 +154,20 @@ export default class AdminService {
   ): Promise<EntryResponse<AuditLog>> => {
     const res = await apiClient.get(`${this.BASE_URL}/audit/v1`, { params: filter });
     return res.data;
+  };
+
+  public static listAPIKeys = async (): Promise<APIKey[]> => {
+    const res = await apiClient.get(`${this.BASE_URL}/api-keys/v1`);
+    return res.data;
+  };
+
+  public static createAPIKey = async (payload: CreateAPIKeyPayload): Promise<CreatedAPIKey> => {
+    const res = await apiClient.post(`${this.BASE_URL}/api-keys/v1`, payload);
+    return res.data;
+  };
+
+  public static deleteAPIKey = async (id: string): Promise<void> => {
+    await apiClient.delete(`${this.BASE_URL}/api-keys/v1/${id}`);
   };
 
   public static listAuthProviders = async (): Promise<AuthProviderAdmin[]> => {
