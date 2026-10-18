@@ -184,7 +184,7 @@ func TestEnqueueRunIsTransactional(t *testing.T) {
 	}))
 	assert.Equal(t, 1, count(id))
 
-	workerClient, err := NewWorkerClient(pool, NewRunWorker(logger.NewNop(), fakeLoader{}, exec), newCleanup(), 1, time.Minute, time.Second)
+	workerClient, err := NewWorkerClient(pool, NewRunWorker(logger.NewNop(), fakeLoader{}, exec), NewRunForEventWorker(logger.NewNop(), nil), newCleanup(), 1, time.Minute, time.Second)
 	require.NoError(t, err)
 	require.NoError(t, workerClient.Start(ctx))
 	defer func() { _ = workerClient.Stop(ctx) }()
@@ -216,7 +216,7 @@ func TestWorkerDeletesExpiredTokensAtStart(t *testing.T) {
 
 	cleaned := make(chan struct{}, 1)
 	cleanup := NewDeleteExpiredTokensWorker(logger.NewNop(), fakeCleaner{cleaned: cleaned})
-	workerClient, err := NewWorkerClient(pool, NewRunWorker(logger.NewNop(), fakeLoader{}, &fakeExecutor{}), cleanup, 1, time.Minute, time.Second)
+	workerClient, err := NewWorkerClient(pool, NewRunWorker(logger.NewNop(), fakeLoader{}, &fakeExecutor{}), NewRunForEventWorker(logger.NewNop(), nil), cleanup, 1, time.Minute, time.Second)
 	require.NoError(t, err)
 	require.NoError(t, workerClient.Start(ctx))
 	defer func() { _ = workerClient.Stop(ctx) }()

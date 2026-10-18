@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/yuudev14/ytsoar/internal/domain"
@@ -30,6 +31,7 @@ type PlaybookService interface {
 	UpdatePlaybook(ctx context.Context, id string, playbook UpdatePlaybookData) (*domain.Playbooks, error)
 	CreatePlaybookHistory(ctx context.Context, id string, edges []domain.ResponseEdges, run RunStamp) (*domain.PlaybookHistory, error)
 	CreatePlaybookRunRecords(ctx context.Context, historyID uuid.UUID, moduleType string, recordIDs []uuid.UUID) error
+	ListEventPlaybookIDs(ctx context.Context, triggerType domain.TriggerType, moduleType string, recordID uuid.UUID, occurredAt time.Time) ([]uuid.UUID, error)
 	Summary(ctx context.Context, rng types.ResolvedRange) (PlaybooksSummary, error)
 	UpdatePlaybookHistory(ctx context.Context, playbookHistoryId string, playbookHistory UpdatePlaybookHistoryData) (*domain.PlaybookHistory, error)
 	UpdatePlaybookHistoryStatus(ctx context.Context, playbookHistoryId string, status string) (*domain.PlaybookHistory, error)
@@ -111,6 +113,10 @@ func (w *PlaybookServiceImpl) Summary(ctx context.Context, rng types.ResolvedRan
 
 func (w *PlaybookServiceImpl) CreatePlaybookRunRecords(ctx context.Context, historyID uuid.UUID, moduleType string, recordIDs []uuid.UUID) error {
 	return w.PlaybookRepository.CreatePlaybookRunRecords(ctx, historyID, moduleType, recordIDs)
+}
+
+func (w *PlaybookServiceImpl) ListEventPlaybookIDs(ctx context.Context, triggerType domain.TriggerType, moduleType string, recordID uuid.UUID, occurredAt time.Time) ([]uuid.UUID, error) {
+	return w.PlaybookRepository.ListEventPlaybookIDs(ctx, triggerType, moduleType, recordID, occurredAt)
 }
 
 func (w *PlaybookServiceImpl) GetPlaybookById(ctx context.Context, id string) (*domain.Playbooks, error) {

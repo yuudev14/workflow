@@ -341,7 +341,7 @@ runEnqueuer, err := jobs.NewEnqueuer(pool, repository.TxFromContext)
 
 ### 5.7 What we did not change
 
-`contracts.ModuleEventPublisher` stays. We replaced its RabbitMQ adapter with `jobs.ModuleEventLogger`, which only writes to the log. The alerts and incidents services and their tests are the same. This keeps the place where event-triggered playbooks will plug in later.
+`contracts.ModuleEventPublisher` stays. `jobs.Enqueuer` implements it: the alerts and incidents services call it in their transaction, and it queues a `playbook_run_for_event` job. The worker calls `RunForEvent`, which queues one run for each playbook with a matching `on_create` or `on_update` trigger.
 
 ---
 
@@ -402,7 +402,7 @@ You do not change `orchestrator.go`. The compiler checks that the new type fits 
 
 Good design asks hard questions. These are open points in the code:
 
-- **`any` in some ports.** `StatusBroadcaster.Broadcast(data any)` and `ModuleEventPublisher.Publish(..., entity any)` use `any`. Callers can pass anything. A named type would be safer.
+- **`any` in some ports.** `StatusBroadcaster.Broadcast(data any)` uses `any`. Callers can pass anything. A named type would be safer.
 - **No compile-time check.** The compiler checks that `jobs.Enqueuer` fits `RunEnqueuer` only where `main.go` passes it. A line such as `var _ contracts.RunEnqueuer = (*Enqueuer)(nil)` would check it in the adapter file.
 - **Names.** We renamed the old runtime types so every `TaskRuntime` ends with `Runtime`, and every resolver ends with `Resolver`. Check that a new type follows the same rule.
 - **Too many interfaces?** An interface is a cost. Make one when you have a second implementation, a test fake, or a rule that blocks an import. Do not make one only because a rule says so.
