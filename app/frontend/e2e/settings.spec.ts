@@ -13,34 +13,19 @@ async function signInElsewhere(browser: Browser, username: string, password: str
 }
 
 test.describe("users", () => {
-  test("creates a user who can sign in", async ({ page, browser }) => {
+  test("creates a user and sends an invite", async ({ page }) => {
     const username = unique("user");
     await page.goto("/settings/users");
     await page.getByRole("button", { name: "New user" }).click();
     const dialog = page.getByRole("dialog");
     await dialog.getByLabel("Username").fill(username);
     await dialog.getByLabel("Email").fill(`${username}@ytsoar.test`);
-    await dialog.getByLabel("Password").fill("password123");
     await dialog.getByRole("button", { name: "analyst" }).click();
     await dialog.getByRole("button", { name: "Create" }).click();
     await expect(dialog).toBeHidden();
+    await expect(page.getByText("An invite email with a set-password link was sent.").first()).toBeVisible();
     await page.getByPlaceholder("Search username or email…").fill(username);
     await expect(page.getByRole("row", { name: new RegExp(username) })).toContainText("analyst");
-
-    const other = await signInElsewhere(browser, username, "password123");
-    await expect(other.page).toHaveURL(/\/dashboard/);
-    await other.close();
-  });
-
-  test("creates a user without a password and sends an invite", async ({ page }) => {
-    const username = unique("user");
-    await page.goto("/settings/users");
-    await page.getByRole("button", { name: "New user" }).click();
-    const dialog = page.getByRole("dialog");
-    await dialog.getByLabel("Username").fill(username);
-    await dialog.getByLabel("Email").fill(`${username}@ytsoar.test`);
-    await dialog.getByRole("button", { name: "Create" }).click();
-    await expect(page.getByText("An invite email with a set-password link was sent.").first()).toBeVisible();
   });
 
   test("sends an invite to a user", async ({ page }) => {
@@ -58,7 +43,6 @@ test.describe("users", () => {
     const dialog = page.getByRole("dialog");
     await dialog.getByLabel("Username").fill(user.username);
     await dialog.getByLabel("Email").fill(`${unique("other")}@ytsoar.test`);
-    await dialog.getByLabel("Password").fill("password123");
     await dialog.getByRole("button", { name: "Create" }).click();
     await expect(page.getByText("Couldn't create the user").first()).toBeVisible();
     await expect(dialog).toBeVisible();

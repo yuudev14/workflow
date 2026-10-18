@@ -21,7 +21,7 @@ import { RolePicker } from "./RolePicker";
 
 /**
  * Create and edit share this dialog because the fields are the same. They are
- * not the same request, though: creating takes the password and role ids in one
+ * not the same request, though: creating takes the profile and role ids in one
  * body, while editing sends the profile and the roles separately - the api has
  * no endpoint that changes both at once.
  */
@@ -39,7 +39,6 @@ export function UserDialog({
 
   const [username, setUsername] = React.useState("");
   const [email, setEmail] = React.useState("");
-  const [password, setPassword] = React.useState("");
   const [firstName, setFirstName] = React.useState("");
   const [lastName, setLastName] = React.useState("");
   const [roleIds, setRoleIds] = React.useState<string[]>([]);
@@ -59,7 +58,6 @@ export function UserDialog({
     setEmail(user?.email ?? "");
     setFirstName(user?.first_name ?? "");
     setLastName(user?.last_name ?? "");
-    setPassword("");
     setRoleIds([]);
   }, [open, user]);
 
@@ -74,7 +72,6 @@ export function UserDialog({
         await AdminService.createUser({
           username,
           email,
-          password: password || undefined,
           first_name: firstName || null,
           last_name: lastName || null,
           role_ids: roleIds,
@@ -92,7 +89,7 @@ export function UserDialog({
       toast({
         variant: "success",
         title: editing ? "User updated" : "User created",
-        description: !editing && !password ? "An invite email with a set-password link was sent." : undefined,
+        description: editing ? undefined : "An invite email with a set-password link was sent.",
       });
       queryClient.invalidateQueries({ queryKey: ["users"] });
       onOpenChange(false);
@@ -116,7 +113,7 @@ export function UserDialog({
           <DialogDescription>
             {editing
               ? "The username cannot change - it identifies the account in the audit trail."
-              : "Leave the password empty to send an invite email. The user then sets the password."}
+              : "The user gets an invite email and sets the password with the link."}
           </DialogDescription>
         </DialogHeader>
 
@@ -149,19 +146,6 @@ export function UserDialog({
             />
           </div>
 
-          {!editing && (
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="password">Password</Label>
-              <Input
-                id="password"
-                type="password"
-                value={password}
-                placeholder="Empty: send an invite email"
-                minLength={8}
-                onChange={(e) => setPassword(e.target.value)}
-              />
-            </div>
-          )}
 
           <div className="grid grid-cols-2 gap-3">
             <div className="flex flex-col gap-1.5">
