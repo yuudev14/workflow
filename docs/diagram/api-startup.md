@@ -53,6 +53,6 @@ If the connection drops, the listener reconnects after a growing delay. A browse
 
 | Part | Where | Note |
 |---|---|---|
-| `moduleEventPublisher` | `jobs.NewModuleEventLogger` | Alerts and incidents publish events here. It only writes them to the log for now. |
+| Module events | `jobs.Enqueuer.Publish` | Alerts and incidents queue a `playbook_run_for_event` job in their transaction. The worker starts the playbooks with a matching event trigger. |
 | Auth (JWT, OIDC, Argon2) | `application/auth` | Not part of the run flow. |
 | Connector store and installer | `adapters/connectorstore`, `adapters/depsinstall` | Serve and install connectors. |

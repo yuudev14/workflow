@@ -146,6 +146,62 @@ func TestRuns(t *testing.T) {
 		})
 	})
 
+	t.Run("an event trigger", func(t *testing.T) {
+		// eventPlaybook saves a playbook that an alert event starts. Cleanup sets it back to
+		// manual, so the alerts of other tests do not start it.
+		eventPlaybook := func(t *testing.T, trigger string, node J) string {
+			id := c.expect(t, http.StatusOK, http.MethodPost, "/api/playbooks/v1", J{
+				"name": unique("playbook"), "trigger_type": trigger, "trigger_parameters": J{"module": "alert"},
+			}).(J)["id"].(string)
+			nodes := []J{{"name": "start", "operation": "start", "parameters": J{}}, node}
+			c.expect(t, http.StatusOK, http.MethodPut, "/api/playbooks/v1/tasks/"+id, J{"nodes": nodes, "edges": J{"start": []string{node["name"].(string)}}})
+			t.Cleanup(func() {
+				c.expect(t, http.StatusOK, http.MethodPut, "/api/playbooks/v1/"+id, J{"trigger_type": "manual"})
+			})
+			return id
+		}
+		alertRuns := func(playbookID, alertID string) []any {
+			return items(c.get(t, "/api/playbooks/v1/history?playbook_id="+playbookID+"&module_type=alert&record_id="+alertID))
+		}
+
+		t.Run("starts an on_create playbook with the new alert as input", func(t *testing.T) {
+			playbookID := eventPlaybook(t, "on_create", step("title", "code_snippet_py", "result = '{{ var.input.records[0].title }}'"))
+			title := unique("alert")
+			alertID := c.create(t, "/api/alerts/v1", J{"title": title, "severity": "high", "source_kind": "edr"})["id"].(string)
+
+			var run J
+			require.Eventually(t, func() bool {
+				runs := alertRuns(playbookID, alertID)
+				if len(runs) == 0 {
+					return false
+				}
+				run = runs[0].(J)
+				return run["status"] == "success" || run["status"] == "failed"
+			}, 30*time.Second, 200*time.Millisecond, "the alert did not start the playbook")
+			assert.Equal(t, "success", run["status"])
+			assert.Equal(t, "on_create", run["trigger_type"])
+
+			tasks := items(c.get(t, "/api/playbooks/v1/history/"+run["id"].(string)+"/tasks"))
+			assert.Contains(t, toJSON(tasks), title)
+		})
+
+		t.Run("does not start an on_update playbook again while its run on the alert is not done", func(t *testing.T) {
+			playbookID := eventPlaybook(t, "on_update", step("slow", "code_snippet_py", "import time\ntime.sleep(2)"))
+			alertID := newAlert(t, c)
+
+			c.expect(t, http.StatusOK, http.MethodPatch, "/api/alerts/v1/"+alertID, J{"severity": "low"})
+			require.Eventually(t, func() bool { return len(alertRuns(playbookID, alertID)) == 1 },
+				30*time.Second, 200*time.Millisecond, "the update did not start the playbook")
+
+			c.expect(t, http.StatusOK, http.MethodPatch, "/api/alerts/v1/"+alertID, J{"severity": "medium"})
+			require.Eventually(t, func() bool {
+				run := alertRuns(playbookID, alertID)[0].(J)
+				return run["status"] == "success" || run["status"] == "failed"
+			}, 30*time.Second, 200*time.Millisecond, "the run did not end")
+			assert.Len(t, alertRuns(playbookID, alertID), 1)
+		})
+	})
+
 	t.Run("the WebSocket", func(t *testing.T) {
 		t.Run("sends the final status of a run", func(t *testing.T) {
 			header := http.Header{"Origin": {"http://localhost:9999"}}

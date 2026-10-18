@@ -10,8 +10,10 @@
 package mocks
 
 import (
+	context "context"
 	reflect "reflect"
 
+	uuid "github.com/google/uuid"
 	gomock "go.uber.org/mock/gomock"
 )
 
@@ -40,15 +42,15 @@ func (m *MockModuleEventPublisher) EXPECT() *MockModuleEventPublisherMockRecorde
 }
 
 // Publish mocks base method.
-func (m *MockModuleEventPublisher) Publish(module, event string, entity any) error {
+func (m *MockModuleEventPublisher) Publish(ctx context.Context, module, event string, recordID uuid.UUID) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Publish", module, event, entity)
+	ret := m.ctrl.Call(m, "Publish", ctx, module, event, recordID)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // Publish indicates an expected call of Publish.
-func (mr *MockModuleEventPublisherMockRecorder) Publish(module, event, entity any) *gomock.Call {
+func (mr *MockModuleEventPublisherMockRecorder) Publish(ctx, module, event, recordID any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Publish", reflect.TypeOf((*MockModuleEventPublisher)(nil).Publish), module, event, entity)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Publish", reflect.TypeOf((*MockModuleEventPublisher)(nil).Publish), ctx, module, event, recordID)
 }

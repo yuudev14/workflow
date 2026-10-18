@@ -108,6 +108,11 @@ func (s *Service) CompleteOIDC(ctx context.Context, providerID uuid.UUID, code, 
 	if err := s.syncOIDCAttributes(ctx, user, cfg, identity); err != nil {
 		s.logger.Errorf("oidc attribute sync failed for %s: %v", user.ID, err)
 	}
+	if identity.EmailVerified && user.EmailVerifiedAt == nil {
+		if err := s.users.MarkEmailVerified(ctx, user.ID, s.now()); err != nil {
+			s.logger.Warnf("could not mark the email of %s as verified: %v", user.ID, err)
+		}
+	}
 
 	pair, err := s.issuePair(ctx, user)
 	if err != nil {

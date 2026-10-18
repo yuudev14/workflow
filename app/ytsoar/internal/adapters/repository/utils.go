@@ -201,6 +201,13 @@ func fromPgTimestampPtr(t pgtype.Timestamp) *time.Time {
 	return &t.Time
 }
 
+func fromPgTimestamptzPtr(t pgtype.Timestamptz) *time.Time {
+	if !t.Valid {
+		return nil
+	}
+	return &t.Time
+}
+
 func toPgFloat8(f float32) pgtype.Float8 {
 	return pgtype.Float8{Float64: float64(f), Valid: true}
 }

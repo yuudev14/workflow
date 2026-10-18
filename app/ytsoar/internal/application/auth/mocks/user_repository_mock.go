@@ -12,6 +12,7 @@ package mocks
 import (
 	context "context"
 	reflect "reflect"
+	time "time"
 
 	uuid "github.com/google/uuid"
 	auth "github.com/yuudev14/ytsoar/internal/application/auth"
@@ -86,6 +87,21 @@ func (m *MockUserRepository) Create(ctx context.Context, params auth.CreateUserP
 func (mr *MockUserRepositoryMockRecorder) Create(ctx, params any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Create", reflect.TypeOf((*MockUserRepository)(nil).Create), ctx, params)
+}
+
+// GetByEmail mocks base method.
+func (m *MockUserRepository) GetByEmail(ctx context.Context, email string) (domain.User, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetByEmail", ctx, email)
+	ret0, _ := ret[0].(domain.User)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetByEmail indicates an expected call of GetByEmail.
+func (mr *MockUserRepositoryMockRecorder) GetByEmail(ctx, email any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetByEmail", reflect.TypeOf((*MockUserRepository)(nil).GetByEmail), ctx, email)
 }
 
 // GetByExternalID mocks base method.
@@ -178,6 +194,35 @@ func (mr *MockUserRepositoryMockRecorder) ListAssignable(ctx any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListAssignable", reflect.TypeOf((*MockUserRepository)(nil).ListAssignable), ctx)
 }
 
+// MarkEmailVerified mocks base method.
+func (m *MockUserRepository) MarkEmailVerified(ctx context.Context, id uuid.UUID, at time.Time) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "MarkEmailVerified", ctx, id, at)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// MarkEmailVerified indicates an expected call of MarkEmailVerified.
+func (mr *MockUserRepositoryMockRecorder) MarkEmailVerified(ctx, id, at any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "MarkEmailVerified", reflect.TypeOf((*MockUserRepository)(nil).MarkEmailVerified), ctx, id, at)
+}
+
+// SetLink mocks base method.
+func (m *MockUserRepository) SetLink(ctx context.Context, params auth.SetLinkParams) (bool, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "SetLink", ctx, params)
+	ret0, _ := ret[0].(bool)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// SetLink indicates an expected call of SetLink.
+func (mr *MockUserRepositoryMockRecorder) SetLink(ctx, params any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetLink", reflect.TypeOf((*MockUserRepository)(nil).SetLink), ctx, params)
+}
+
 // SetPassword mocks base method.
 func (m *MockUserRepository) SetPassword(ctx context.Context, id uuid.UUID, passwordHash string) error {
 	m.ctrl.T.Helper()
@@ -190,6 +235,21 @@ func (m *MockUserRepository) SetPassword(ctx context.Context, id uuid.UUID, pass
 func (mr *MockUserRepositoryMockRecorder) SetPassword(ctx, id, passwordHash any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetPassword", reflect.TypeOf((*MockUserRepository)(nil).SetPassword), ctx, id, passwordHash)
+}
+
+// TakeLink mocks base method.
+func (m *MockUserRepository) TakeLink(ctx context.Context, tokenHash string) (auth.UserLink, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "TakeLink", ctx, tokenHash)
+	ret0, _ := ret[0].(auth.UserLink)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// TakeLink indicates an expected call of TakeLink.
+func (mr *MockUserRepositoryMockRecorder) TakeLink(ctx, tokenHash any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "TakeLink", reflect.TypeOf((*MockUserRepository)(nil).TakeLink), ctx, tokenHash)
 }
 
 // TouchLastLogin mocks base method.

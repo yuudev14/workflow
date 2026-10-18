@@ -89,24 +89,21 @@ func (s *Service) Create(ctx context.Context, payload CreateAlertPayload, actorI
 			return err
 		}
 		if !inserted {
-			return nil
+			return s.events.Publish(txCtx, domain.ModuleEventAlert, domain.ModuleEventUpdated, alert.ID)
 		}
-		return s.repo.AppendEvent(txCtx, AppendEventParams{
+		if err = s.repo.AppendEvent(txCtx, AppendEventParams{
 			AlertID: alert.ID,
 			Type:    domain.EventTypeCreated,
 			ActorID: actorID,
 			Body:    mustJSON(map[string]any{"reporter": alert.Reporter, "source_kind": alert.SourceKind}),
-		})
+		}); err != nil {
+			return err
+		}
+		return s.events.Publish(txCtx, domain.ModuleEventAlert, domain.ModuleEventCreated, alert.ID)
 	})
 	if err != nil {
 		return domain.Alert{}, err
 	}
-
-	event := domain.ModuleEventUpdated
-	if inserted {
-		event = domain.ModuleEventCreated
-	}
-	s.publish(domain.ModuleEventAlert, event, alert)
 
 	return alert, nil
 }
@@ -148,13 +145,15 @@ func (s *Service) Update(ctx context.Context, id uuid.UUID, payload UpdateAlertP
 			return err
 		}
 
-		return s.appendUpdateEvent(txCtx, id, before, alert, actorID)
+		if err = s.appendUpdateEvent(txCtx, id, before, alert, actorID); err != nil {
+			return err
+		}
+		return s.events.Publish(txCtx, domain.ModuleEventAlert, domain.ModuleEventUpdated, id)
 	})
 	if err != nil {
 		return domain.Alert{}, err
 	}
 
-	s.publish(domain.ModuleEventAlert, domain.ModuleEventUpdated, alert)
 	return alert, nil
 }
 
@@ -196,18 +195,20 @@ func (s *Service) UpdateStatus(
 			body["closure_note"] = *closureNote
 		}
 
-		return s.repo.AppendEvent(txCtx, AppendEventParams{
+		if err = s.repo.AppendEvent(txCtx, AppendEventParams{
 			AlertID: id,
 			Type:    domain.EventTypeStatusChanged,
 			ActorID: actorID,
 			Body:    mustJSON(body),
-		})
+		}); err != nil {
+			return err
+		}
+		return s.events.Publish(txCtx, domain.ModuleEventAlert, domain.ModuleEventUpdated, id)
 	})
 	if err != nil {
 		return domain.Alert{}, err
 	}
 
-	s.publish(domain.ModuleEventAlert, domain.ModuleEventUpdated, alert)
 	return alert, nil
 }
 
@@ -253,19 +254,22 @@ func (s *Service) Escalate(
 			}
 		}
 
-		return s.repo.AppendEvent(txCtx, AppendEventParams{
+		if err = s.repo.AppendEvent(txCtx, AppendEventParams{
 			AlertID: id,
 			Type:    domain.EventTypeEscalated,
 			ActorID: actorID,
 			Body:    mustJSON(map[string]any{"incident_id": incident.ID, "incident_title": incident.Title}),
-		})
+		}); err != nil {
+			return err
+		}
+		if err = s.events.Publish(txCtx, domain.ModuleEventIncident, domain.ModuleEventCreated, incident.ID); err != nil {
+			return err
+		}
+		return s.events.Publish(txCtx, domain.ModuleEventAlert, domain.ModuleEventUpdated, id)
 	})
 	if err != nil {
 		return domain.Incident{}, err
 	}
-
-	s.publish(domain.ModuleEventIncident, domain.ModuleEventCreated, incident)
-	s.publish(domain.ModuleEventAlert, domain.ModuleEventUpdated, alert)
 
 	return incident, nil
 }
@@ -312,15 +316,6 @@ func (s *Service) assertNoteAuthor(ctx context.Context, noteID uuid.UUID, actorI
 		return ErrNotNoteAuthor
 	}
 	return nil
-}
-
-// Fire and log: the write already committed, so failing the request would say nothing
-// happened when something did.
-func (s *Service) publish(module, event string, entity any) {
-	if err := s.events.Publish(module, event, entity); err != nil {
-		s.logger.Errorw("failed to publish module event",
-			"module", module, "event", event, "err", err)
-	}
 }
 
 func (s *Service) toUpsertParams(payload CreateAlertPayload) (UpsertParams, error) {

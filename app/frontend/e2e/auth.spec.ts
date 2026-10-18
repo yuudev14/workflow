@@ -30,6 +30,22 @@ test.describe("sign in", () => {
     await expect(page.getByText("admin@ytsoar.local").first()).toBeVisible();
   });
 
+  test("forgot password gives the same answer for any email", async ({ page }) => {
+    await page.goto("/login");
+    await page.getByRole("link", { name: "Forgot password?" }).click();
+    await page.getByLabel("Email").fill("nobody@ytsoar.test");
+    await page.getByRole("button", { name: "Send link" }).click();
+    await expect(page.getByRole("status")).toContainText("If an account uses nobody@ytsoar.test");
+  });
+
+  test("a wrong set-password link shows an error", async ({ page }) => {
+    await page.goto("/set-password?token=wrong");
+    await page.getByLabel("New password").fill("password123");
+    await page.getByLabel("Confirm password").fill("password123");
+    await page.getByRole("button", { name: "Set password" }).click();
+    await expect(page.getByRole("alert")).toHaveText("the link is not valid or has expired");
+  });
+
   test("log out ends the session", async ({ page }) => {
     await signIn(page, admin.username, admin.password);
     await page.getByRole("button", { name: /admin@ytsoar\.local/ }).first().click();

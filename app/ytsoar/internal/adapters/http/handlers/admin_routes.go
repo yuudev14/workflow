@@ -28,6 +28,7 @@ func (h *AdminHandler) RegisterRoutes(
 		users.PUT("/:user_id", update, h.UpdateUser)
 		users.PUT("/:user_id/roles", update, h.SetUserRoles)
 		users.PUT("/:user_id/password", update, h.SetUserPassword)
+		users.POST("/:user_id/invite", update, h.InviteUser)
 		// deactivation, not deletion, see the handler
 		users.DELETE("/:user_id", remove, h.DeactivateUser)
 	}
@@ -55,6 +56,13 @@ func (h *AdminHandler) RegisterRoutes(
 
 	// read-only on purpose: an audit trail that you can edit is not an audit trail
 	route.Group("audit/v1").GET("", read, h.ListAuditLogs)
+
+	apiKeys := route.Group("api-keys/v1")
+	{
+		apiKeys.GET("", read, h.ListAPIKeys)
+		apiKeys.POST("", create, h.CreateAPIKey)
+		apiKeys.DELETE("/:api_key_id", remove, h.DeleteAPIKey)
+	}
 
 	providers := route.Group("auth-providers/v1")
 	{

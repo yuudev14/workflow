@@ -11,6 +11,7 @@
 package integration
 
 import (
+	"bufio"
 	"bytes"
 	"context"
 	"encoding/json"
@@ -24,6 +25,7 @@ import (
 	"regexp"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -72,6 +74,7 @@ func run(m *testing.M, dbURL string) int {
 	cfg := config.LoadFrom(os.DevNull)
 	cfg.AdminUsername, cfg.AdminPassword = adminUsername, adminPassword
 	cfg.ConnectorsDir = connectorsDir
+	cfg.SMTPHost, cfg.SMTPPort = fakeSMTP()
 	gin.SetMode(gin.TestMode)
 	router, err := app.NewAPI(ctx, cfg, logger.NewNop(), pool)
 	if err != nil {
@@ -199,6 +202,70 @@ func (c *client) expectAll(t *testing.T, requests []request) {
 }
 
 // freeAddr returns a local address with a free port.
+// mailbox gets each email that the API sends to the SMTP server of fakeSMTP
+var mailbox = make(chan string, 16)
+
+func fakeSMTP() (string, int) {
+	l := must(net.Listen("tcp", "127.0.0.1:0"))
+	go func() {
+		for {
+			conn, err := l.Accept()
+			if err != nil {
+				return
+			}
+			go serveSMTP(conn)
+		}
+	}()
+	return "127.0.0.1", l.Addr().(*net.TCPAddr).Port
+}
+
+// serveSMTP knows only what net/smtp.SendMail needs. It offers no STARTTLS and no AUTH.
+func serveSMTP(conn net.Conn) {
+	defer conn.Close()
+	r := bufio.NewReader(conn)
+	reply := func(line string) { _, _ = fmt.Fprint(conn, line+"\r\n") }
+	reply("220 test")
+	for {
+		line, err := r.ReadString('\n')
+		if err != nil {
+			return
+		}
+		switch cmd := strings.ToUpper(strings.TrimSpace(line)); cmd {
+		case "DATA":
+			reply("354 send the message")
+			var msg strings.Builder
+			for line, err = r.ReadString('\n'); err == nil && line != ".\r\n"; line, err = r.ReadString('\n') {
+				msg.WriteString(line)
+			}
+			mailbox <- msg.String()
+			reply("250 ok")
+		case "QUIT":
+			reply("221 bye")
+			return
+		default:
+			reply("250 ok")
+		}
+	}
+}
+
+var linkToken = regexp.MustCompile(`/set-password\?token=([A-Za-z0-9_-]+)`)
+
+// linkFor waits for the email to the address and returns the token of its link.
+func linkFor(t *testing.T, to string) string {
+	t.Helper()
+	timeout := time.After(5 * time.Second)
+	for {
+		select {
+		case msg := <-mailbox:
+			if strings.Contains(msg, "To: "+to+"\r\n") {
+				return linkToken.FindStringSubmatch(msg)[1]
+			}
+		case <-timeout:
+			t.Fatalf("no email to %s", to)
+		}
+	}
+}
+
 func freeAddr() string {
 	l := must(net.Listen("tcp", "127.0.0.1:0"))
 	defer l.Close()
@@ -250,5 +317,6 @@ func fill(route string) string {
 func public(route string) bool {
 	return strings.HasPrefix(route, "/swagger/") ||
 		route == "/api/auth/v1/login" || route == "/api/auth/v1/refresh" || route == "/api/auth/v1/logout" ||
-		route == "/api/auth/v1/providers" || strings.HasPrefix(route, "/api/auth/v1/oidc/")
+		route == "/api/auth/v1/providers" || strings.HasPrefix(route, "/api/auth/v1/oidc/") ||
+		strings.HasPrefix(route, "/api/auth/v1/password/")
 }
