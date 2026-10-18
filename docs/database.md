@@ -129,6 +129,7 @@ erDiagram
     teams ||--o{ team_roles : ""
     roles ||--o{ team_roles : ""
     users ||--o{ refresh_tokens : "sessions"
+    users ||--o{ api_keys : "machine access"
     users |o--o{ audit_logs : "actor_id"
 
     users {
@@ -173,6 +174,15 @@ erDiagram
         text token_hash UK "sha256, never the token"
         timestamp expires_at
         timestamp revoked_at
+    }
+    api_keys {
+        uuid id PK
+        uuid user_id FK
+        text name
+        text key_hash UK "sha256, never the key"
+        text prefix "shown in the list"
+        timestamp expires_at "null = no expiry"
+        timestamp last_used_at
     }
     auth_providers {
         uuid id PK

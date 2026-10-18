@@ -21,11 +21,12 @@ type Querier interface {
 	CreateTaskHistory(ctx context.Context, arg CreateTaskHistoryParams) (TaskHistory, error)
 	CreateTeam(ctx context.Context, arg CreateTeamParams) (Team, error)
 	CreateUser(ctx context.Context, arg CreateUserParams) (User, error)
+	DeleteAPIKey(ctx context.Context, id pgtype.UUID) (int64, error)
 	DeleteAlertNote(ctx context.Context, id pgtype.UUID) (int64, error)
 	DeleteAllPlaybookEdges(ctx context.Context, playbookID pgtype.UUID) error
 	DeleteConnectorRecord(ctx context.Context, id string) (int64, error)
 	DeleteEdges(ctx context.Context, ids []pgtype.UUID) error
-	DeleteExpiredRefreshTokens(ctx context.Context) error
+	DeleteExpiredRefreshTokens(ctx context.Context, expiresAt pgtype.Timestamp) error
 	DeleteIncidentAlert(ctx context.Context, arg DeleteIncidentAlertParams) (int64, error)
 	DeleteIncidentNote(ctx context.Context, id pgtype.UUID) (int64, error)
 	DeleteRole(ctx context.Context, id pgtype.UUID) (int64, error)
@@ -37,6 +38,8 @@ type Querier interface {
 	DeleteUserRoles(ctx context.Context, userID pgtype.UUID) error
 	// Crash recovery: the tasks of a stopped run never finish.
 	FailUnfinishedTaskHistory(ctx context.Context, arg FailUnfinishedTaskHistoryParams) ([]TaskHistory, error)
+	// the join drops the keys of a deactivated user, so deactivation stops them at once
+	GetActiveAPIKeyByHash(ctx context.Context, keyHash string) (GetActiveAPIKeyByHashRow, error)
 	GetAlertById(ctx context.Context, id pgtype.UUID) (Alert, error)
 	GetAlertNoteById(ctx context.Context, id pgtype.UUID) (AlertNote, error)
 	GetAuthProviderByID(ctx context.Context, id pgtype.UUID) (AuthProvider, error)
@@ -58,6 +61,7 @@ type Querier interface {
 	GetUserByExternalId(ctx context.Context, arg GetUserByExternalIdParams) (User, error)
 	GetUserById(ctx context.Context, id pgtype.UUID) (User, error)
 	GetUserByUsername(ctx context.Context, username string) (User, error)
+	InsertAPIKey(ctx context.Context, arg InsertAPIKeyParams) (ApiKey, error)
 	InsertAlertEvent(ctx context.Context, arg InsertAlertEventParams) (AlertEvent, error)
 	InsertAlertNote(ctx context.Context, arg InsertAlertNoteParams) (AlertNote, error)
 	InsertAuditLog(ctx context.Context, arg InsertAuditLogParams) (AuditLog, error)
@@ -69,6 +73,7 @@ type Querier interface {
 	InsertTeamMember(ctx context.Context, arg InsertTeamMemberParams) error
 	InsertTeamRole(ctx context.Context, arg InsertTeamRoleParams) error
 	InsertUserRole(ctx context.Context, arg InsertUserRoleParams) error
+	ListAPIKeys(ctx context.Context, userID pgtype.UUID) ([]ListAPIKeysRow, error)
 	ListAlertEvents(ctx context.Context, alertID pgtype.UUID) ([]ListAlertEventsRow, error)
 	ListAlertNotes(ctx context.Context, alertID pgtype.UUID) ([]ListAlertNotesRow, error)
 	ListAuthProviders(ctx context.Context) ([]AuthProvider, error)
@@ -88,6 +93,7 @@ type Querier interface {
 	RevokeAllRefreshTokensForUser(ctx context.Context, userID pgtype.UUID) error
 	RevokeRefreshToken(ctx context.Context, tokenHash string) (int64, error)
 	SetUserPassword(ctx context.Context, arg SetUserPasswordParams) error
+	TouchAPIKey(ctx context.Context, arg TouchAPIKeyParams) error
 	TouchUserLastLogin(ctx context.Context, id pgtype.UUID) error
 	UpdateAlert(ctx context.Context, arg UpdateAlertParams) (Alert, error)
 	UpdateAlertNote(ctx context.Context, arg UpdateAlertNoteParams) (AlertNote, error)
