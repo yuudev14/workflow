@@ -596,6 +596,18 @@ type AlertNote struct {
 	UpdatedAt pgtype.Timestamp `json:"updated_at"`
 }
 
+type ApiKey struct {
+	ID         pgtype.UUID      `json:"id"`
+	UserID     pgtype.UUID      `json:"user_id"`
+	Name       string           `json:"name"`
+	KeyHash    string           `json:"key_hash"`
+	Prefix     string           `json:"prefix"`
+	CreatedBy  pgtype.UUID      `json:"created_by"`
+	ExpiresAt  pgtype.Timestamp `json:"expires_at"`
+	LastUsedAt pgtype.Timestamp `json:"last_used_at"`
+	CreatedAt  pgtype.Timestamp `json:"created_at"`
+}
+
 type AuditLog struct {
 	ID        pgtype.UUID      `json:"id"`
 	ActorID   pgtype.UUID      `json:"actor_id"`

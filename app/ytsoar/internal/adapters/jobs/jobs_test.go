@@ -46,6 +46,20 @@ func (f *fakeExecutor) Abort(_ context.Context, id uuid.UUID, cause error) error
 	return f.abortErr
 }
 
+type fakeCleaner struct{ cleaned chan struct{} }
+
+func (f fakeCleaner) DeleteExpiredTokens(context.Context) error {
+	select {
+	case f.cleaned <- struct{}{}:
+	default:
+	}
+	return nil
+}
+
+func newCleanup() *DeleteExpiredTokensWorker {
+	return NewDeleteExpiredTokensWorker(logger.NewNop(), fakeCleaner{cleaned: make(chan struct{}, 1)})
+}
+
 func job(id uuid.UUID, attempt int) *river.Job[RunArgs] {
 	return &river.Job[RunArgs]{JobRow: &rivertype.JobRow{Attempt: attempt, MaxAttempts: maxAttempts}, Args: RunArgs{id}}
 }
@@ -170,7 +184,7 @@ func TestEnqueueRunIsTransactional(t *testing.T) {
 	}))
 	assert.Equal(t, 1, count(id))
 
-	workerClient, err := NewWorkerClient(pool, NewRunWorker(logger.NewNop(), fakeLoader{}, exec), NewRunForEventWorker(logger.NewNop(), nil), 1, time.Minute, time.Second)
+	workerClient, err := NewWorkerClient(pool, NewRunWorker(logger.NewNop(), fakeLoader{}, exec), NewRunForEventWorker(logger.NewNop(), nil), newCleanup(), 1, time.Minute, time.Second)
 	require.NoError(t, err)
 	require.NoError(t, workerClient.Start(ctx))
 	defer func() { _ = workerClient.Stop(ctx) }()
@@ -185,5 +199,31 @@ func TestEnqueueRunIsTransactional(t *testing.T) {
 		case <-timeout:
 			t.Fatal("the committed run was never worked")
 		}
+	}
+}
+
+// The cleanup is a periodic job that also runs when the worker starts, so a worker that
+// restarts often still cleans.
+func TestWorkerDeletesExpiredTokensAtStart(t *testing.T) {
+	url := os.Getenv("TEST_DATABASE_URL")
+	if url == "" {
+		t.Skip("TEST_DATABASE_URL is not set")
+	}
+	ctx := context.Background()
+	pool, err := db.NewPool(ctx, url)
+	require.NoError(t, err)
+	defer pool.Close()
+
+	cleaned := make(chan struct{}, 1)
+	cleanup := NewDeleteExpiredTokensWorker(logger.NewNop(), fakeCleaner{cleaned: cleaned})
+	workerClient, err := NewWorkerClient(pool, NewRunWorker(logger.NewNop(), fakeLoader{}, &fakeExecutor{}), NewRunForEventWorker(logger.NewNop(), nil), cleanup, 1, time.Minute, time.Second)
+	require.NoError(t, err)
+	require.NoError(t, workerClient.Start(ctx))
+	defer func() { _ = workerClient.Stop(ctx) }()
+
+	select {
+	case <-cleaned:
+	case <-time.After(15 * time.Second):
+		t.Fatal("the cleanup job did not run at start")
 	}
 }
