@@ -217,13 +217,13 @@ test.describe("api keys", () => {
       baseURL: "http://localhost:3000",
       extraHTTPHeaders: { Authorization: `Bearer ${key}` },
     });
-    const me = await machine.get("/playbook-api/api/auth/v1/me");
+    const me = await machine.get("/playbook-api/api/v1/auth/me");
     expect((await me.json()).user.username).toBe(user.username);
 
     await page.getByRole("row", { name: new RegExp(name) }).getByTitle("Delete").click();
     await page.getByRole("button", { name: "Delete" }).click();
     await expect(page.getByRole("row", { name: new RegExp(name) })).toBeHidden();
-    expect((await machine.get("/playbook-api/api/auth/v1/me")).status()).toBe(401);
+    expect((await machine.get("/playbook-api/api/v1/auth/me")).status()).toBe(401);
     await machine.dispose();
   });
 });
