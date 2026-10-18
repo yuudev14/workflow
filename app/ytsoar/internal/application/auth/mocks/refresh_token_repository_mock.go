@@ -43,6 +43,20 @@ func (m *MockRefreshTokenRepository) EXPECT() *MockRefreshTokenRepositoryMockRec
 	return m.recorder
 }
 
+// DeleteExpired mocks base method.
+func (m *MockRefreshTokenRepository) DeleteExpired(ctx context.Context, before time.Time) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DeleteExpired", ctx, before)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// DeleteExpired indicates an expected call of DeleteExpired.
+func (mr *MockRefreshTokenRepositoryMockRecorder) DeleteExpired(ctx, before any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteExpired", reflect.TypeOf((*MockRefreshTokenRepository)(nil).DeleteExpired), ctx, before)
+}
+
 // GetByHash mocks base method.
 func (m *MockRefreshTokenRepository) GetByHash(ctx context.Context, tokenHash string) (domain.RefreshToken, error) {
 	m.ctrl.T.Helper()

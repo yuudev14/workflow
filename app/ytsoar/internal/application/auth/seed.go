@@ -36,12 +36,15 @@ func (s *Service) EnsureAdminUser(ctx context.Context) error {
 		return err
 	}
 
+	// there is no mail server at install, so the seeded admin counts as verified
+	now := s.now()
 	err = s.txManager.WithinTransaction(ctx, func(txCtx context.Context) error {
 		user, err := s.users.Create(txCtx, CreateUserParams{
-			Username:     s.cfg.AdminUsername,
-			Email:        s.cfg.AdminEmail,
-			PasswordHash: &hash,
-			AuthProvider: domain.AuthProviderLocal,
+			Username:        s.cfg.AdminUsername,
+			Email:           s.cfg.AdminEmail,
+			PasswordHash:    &hash,
+			AuthProvider:    domain.AuthProviderLocal,
+			EmailVerifiedAt: &now,
 		})
 		if err != nil {
 			return err

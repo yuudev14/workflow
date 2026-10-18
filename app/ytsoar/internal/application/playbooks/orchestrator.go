@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/yuudev14/ytsoar/internal/application/contracts"
@@ -20,6 +21,7 @@ import (
 type PlaybookApplicationService interface {
 	TriggerPlaybook(ctx context.Context, playbookId string) (*domain.TaskMessage, error)
 	RunPlaybook(ctx context.Context, playbookId string, moduleType string, payload RunPlaybookPayload, actorID *uuid.UUID) (*domain.TaskMessage, error)
+	RunForEvent(ctx context.Context, moduleType string, event string, recordID uuid.UUID, occurredAt time.Time) error
 	PreparePlaybookMessage(tasks []domain.Tasks, edges []domain.ResponseEdges) (map[string]domain.Tasks, map[string][]string, []domain.EdgeRef)
 	UpsertTasks(ctx context.Context, playbookUUID uuid.UUID, nodes []tasks.TaskPayload) ([]domain.Tasks, error)
 	InsertEdges(ctx context.Context, playbookUUID uuid.UUID, edges map[string][]string, tasks []domain.Tasks, handles map[string]map[string]domain.EdgeHandle) error
@@ -354,6 +356,48 @@ func (w *PlaybookApplicationServiceImpl) RunPlaybook(ctx context.Context, playbo
 	}, moduleType, recordIDs)
 }
 
+var eventTriggers = map[string]domain.TriggerType{
+	domain.ModuleEventCreated: domain.TriggerTypeOnCreate,
+	domain.ModuleEventUpdated: domain.TriggerTypeOnUpdate,
+}
+
+// RunForEvent implements PlaybookApplicationService. It queues one run for each playbook
+// that the event triggers. All runs share one transaction, so a retried job does not
+// queue them twice.
+func (w *PlaybookApplicationServiceImpl) RunForEvent(ctx context.Context, moduleType string, event string, recordID uuid.UUID, occurredAt time.Time) error {
+	triggerType, ok := eventTriggers[event]
+	if !ok {
+		return nil
+	}
+
+	return w.Tx.WithinTransaction(ctx, func(ctx context.Context) error {
+		playbookIDs, err := w.PlaybookService.ListEventPlaybookIDs(ctx, triggerType, moduleType, recordID, occurredAt)
+		if err != nil || len(playbookIDs) == 0 {
+			return err
+		}
+
+		recordIDs := []uuid.UUID{recordID}
+		records, err := w.Records.Resolve(ctx, moduleType, recordIDs)
+		if err != nil {
+			return err
+		}
+
+		for _, playbookID := range playbookIDs {
+			if _, _, err := w.queueRun(ctx, playbookID.String(), RunStamp{
+				TriggerType: new(string(triggerType)),
+				Input: &domain.RunInput{
+					ModuleType: &moduleType,
+					Records:    records,
+					Parameters: map[string]any{},
+				},
+			}, moduleType, recordIDs); err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+}
+
 func parseRecordIDs(raw []string) ([]uuid.UUID, error) {
 	ids := make([]uuid.UUID, 0, len(raw))
 	for _, s := range raw {
@@ -367,43 +411,14 @@ func parseRecordIDs(raw []string) ([]uuid.UUID, error) {
 }
 
 func (w *PlaybookApplicationServiceImpl) runPlaybook(ctx context.Context, playbookId string, run RunStamp, moduleType string, recordIDs []uuid.UUID) (*domain.TaskMessage, error) {
-	_, playbookErr := w.PlaybookService.GetPlaybookById(ctx, playbookId)
-	if playbookErr != nil {
-		return nil, playbookErr
-	}
-
-	taskData, tasksErr := w.TaskService.GetTasksByPlaybookId(ctx, playbookId)
-	if tasksErr != nil {
-		return nil, tasksErr
-	}
-
-	edges, edgesErr := w.EdgeService.GetEdgesByPlaybookId(ctx, playbookId)
-	if edgesErr != nil {
-		return nil, edgesErr
-	}
-
-	tasksMap, graph, edgeRefs := w.PreparePlaybookMessage(taskData, edges)
-
-	var playbookHistory *domain.PlaybookHistory
+	var (
+		msg     *domain.TaskMessage
+		history *domain.PlaybookHistory
+	)
 	txErr := w.Tx.WithinTransaction(ctx, func(ctx context.Context) error {
-		history, historyErr := w.PlaybookService.CreatePlaybookHistory(ctx, playbookId, edges, run)
-		if historyErr != nil {
-			return historyErr
-		}
-		playbookHistory = history
-
-		if len(recordIDs) > 0 {
-			if err := w.PlaybookService.CreatePlaybookRunRecords(ctx, playbookHistory.ID, moduleType, recordIDs); err != nil {
-				return err
-			}
-		}
-
-		w.Logger.Infof("Created playbook history with ID: %v", playbookHistory.ID)
-		if _, err := w.TaskService.CreateTaskHistory(ctx, playbookHistory.ID.String(), taskData, GetGraphUUIDS(edges)); err != nil {
-			return err
-		}
-		// same transaction as the history rows, so the run is queued only if its history exists
-		return w.RunEnqueuer.EnqueueRun(ctx, playbookHistory.ID)
+		var err error
+		msg, history, err = w.queueRun(ctx, playbookId, run, moduleType, recordIDs)
+		return err
 	})
 	if txErr != nil {
 		return nil, txErr
@@ -414,8 +429,49 @@ func (w *PlaybookApplicationServiceImpl) runPlaybook(ctx context.Context, playbo
 	// consumer, or clients drop the row.
 	w.StatusBroadcaster.Broadcast(map[string]any{
 		"event": "playbook_status",
-		"data":  playbookHistory,
+		"data":  history,
 	})
+
+	return msg, nil
+}
+
+// queueRun must run in a transaction: the run is queued only if its history exists.
+func (w *PlaybookApplicationServiceImpl) queueRun(ctx context.Context, playbookId string, run RunStamp, moduleType string, recordIDs []uuid.UUID) (*domain.TaskMessage, *domain.PlaybookHistory, error) {
+	_, playbookErr := w.PlaybookService.GetPlaybookById(ctx, playbookId)
+	if playbookErr != nil {
+		return nil, nil, playbookErr
+	}
+
+	taskData, tasksErr := w.TaskService.GetTasksByPlaybookId(ctx, playbookId)
+	if tasksErr != nil {
+		return nil, nil, tasksErr
+	}
+
+	edges, edgesErr := w.EdgeService.GetEdgesByPlaybookId(ctx, playbookId)
+	if edgesErr != nil {
+		return nil, nil, edgesErr
+	}
+
+	tasksMap, graph, edgeRefs := w.PreparePlaybookMessage(taskData, edges)
+
+	playbookHistory, historyErr := w.PlaybookService.CreatePlaybookHistory(ctx, playbookId, edges, run)
+	if historyErr != nil {
+		return nil, nil, historyErr
+	}
+
+	if len(recordIDs) > 0 {
+		if err := w.PlaybookService.CreatePlaybookRunRecords(ctx, playbookHistory.ID, moduleType, recordIDs); err != nil {
+			return nil, nil, err
+		}
+	}
+
+	w.Logger.Infof("Created playbook history with ID: %v", playbookHistory.ID)
+	if _, err := w.TaskService.CreateTaskHistory(ctx, playbookHistory.ID.String(), taskData, GetGraphUUIDS(edges)); err != nil {
+		return nil, nil, err
+	}
+	if err := w.RunEnqueuer.EnqueueRun(ctx, playbookHistory.ID); err != nil {
+		return nil, nil, err
+	}
 
 	return &domain.TaskMessage{
 		Graph:             graph,
@@ -423,7 +479,7 @@ func (w *PlaybookApplicationServiceImpl) runPlaybook(ctx context.Context, playbo
 		PlaybookHistoryId: playbookHistory.ID,
 		Edges:             edgeRefs,
 		Input:             run.Input.Resolved(),
-	}, nil
+	}, playbookHistory, nil
 }
 
 // RunLoader builds the TaskMessage of a queued run from its history rows (edges and input

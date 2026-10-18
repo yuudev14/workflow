@@ -1,4 +1,4 @@
-import { KeyRound, ScrollText, ShieldCheck, Users, UsersRound, type LucideIcon } from "lucide-react";
+import { KeyRound, KeySquare, ScrollText, ShieldCheck, Users, UsersRound, type LucideIcon } from "lucide-react";
 
 /**
  * The settings area's own navigation. These used to sit in the main sidebar as
@@ -20,7 +20,7 @@ export const SETTINGS_SECTIONS: SettingsSection[] = [
     title: "Users",
     url: "/settings/users",
     icon: Users,
-    description: "Accounts, their roles, and password resets. Deactivate instead of deleting.",
+    description: "Accounts, their roles, invites and password resets. Deactivate instead of deleting.",
   },
   {
     title: "Roles",
@@ -39,6 +39,12 @@ export const SETTINGS_SECTIONS: SettingsSection[] = [
     url: "/settings/providers",
     icon: KeyRound,
     description: "Single sign-on sources. Users are provisioned and role-synced on first login.",
+  },
+  {
+    title: "API keys",
+    url: "/settings/api-keys",
+    icon: KeySquare,
+    description: "Keys for scripts and other systems. Each key acts as one user.",
   },
   {
     title: "Audit",

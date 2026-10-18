@@ -6,8 +6,8 @@ A playbook task must run somewhere. The **runtime resolver** decides where. This
 
 A playbook has nodes. Each node is a **task** that uses a connector, for example `http_request` or `my_python_connector`. The executor must pick the code that runs the task:
 
-- A built-in connector (`http_request`, `condition`) runs inside the worker.
-- A Python connector, a JavaScript connector or a code snippet runs in the sandbox.
+- A built-in connector (`http_request`) runs inside the worker.
+- A Python connector (this includes `condition`), a JavaScript connector or a code snippet runs in the sandbox.
 
 The executor does not want to know these details. It asks one question: "Which runtime runs this task?"
 
@@ -72,7 +72,7 @@ raw, err := runtime.Execute(ctx, request)  // 2. run it
 
 | Name | What it is |
 |---|---|
-| `goconnectors.BuiltinConnector` | The interface of one built-in connector (`HTTPRequestConnector`, `ConditionConnector`). Not the same as `TaskRuntime`. |
+| `goconnectors.BuiltinConnector` | The interface of one built-in connector (`HTTPRequestConnector`). Not the same as `TaskRuntime`. |
 | `jobs.MessageLoader` | The interface that the job worker uses to build the message of a run. The struct `playbooks.RunLoader` fits it. |
 | `localexec.IsNodeJSConnector` | Reads `info.json` and says if a connector runs on Node.js. |
 
@@ -84,7 +84,7 @@ Executor (a struct, the main service)
 │   ├── StaticResolver        fixed list       (WORKER)
 │   │    ├── default:  SandboxRuntime
 │   │    └── list:     BuiltinRuntime
-│   │                    ├── BuiltinConnector: HTTPRequest, Condition
+│   │                    ├── BuiltinConnector: HTTPRequest
 │   │                    └── TemplateEngine:   GonjaEngine
 │   └── DynamicResolver       code each time   (SANDBOX, behind gRPC)
 │        ├── PythonSnippetRuntime,  NodeJSSnippetRuntime
@@ -100,7 +100,7 @@ Executor (a struct, the main service)
 flowchart LR
     subgraph WORKER ["Worker process"]
         EX[Executor] --> SR["StaticResolver<br/>fixed list"]
-        SR -- "http_request, condition" --> BR[BuiltinRuntime]
+        SR -- "http_request" --> BR[BuiltinRuntime]
         SR -- "everything else" --> SBR[SandboxRuntime]
     end
     subgraph SANDBOX ["Sandbox process"]
@@ -126,7 +126,6 @@ resolver := execution.NewStaticResolver(
     sandboxRuntime,                          // default: send to the sandbox
     map[string]execution.TaskRuntime{        // exceptions: run in the worker
         "http_request": builtinRuntime,
-        "condition":    builtinRuntime,
     },
 )
 ```
@@ -134,7 +133,7 @@ resolver := execution.NewStaticResolver(
 | Connector ID of the task | Where it runs |
 |---|---|
 | `http_request` | In the worker |
-| `condition` | In the worker |
+| `condition` | The sandbox (a Python connector) |
 | `my_python_connector` | The sandbox (the default) |
 | `anything_else` | The sandbox (the default) |
 
@@ -221,8 +220,8 @@ Each type has a comment that says what it is and where it runs.
 
 ```go
 // StaticResolver chooses a runtime from a fixed list that is made at start-up.
-// It runs in the WORKER. The list holds the built-in connectors (http_request,
-// condition), which run inside the worker (BuiltinRuntime). Every other
+// It runs in the WORKER. The list holds the built-in connectors (http_request),
+// which run inside the worker (BuiltinRuntime). Every other
 // connector goes to the default runtime, SandboxRuntime, which sends the task
 // to the sandbox over gRPC.
 type StaticResolver struct { ... }

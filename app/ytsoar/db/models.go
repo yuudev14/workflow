@@ -596,6 +596,18 @@ type AlertNote struct {
 	UpdatedAt pgtype.Timestamp `json:"updated_at"`
 }
 
+type ApiKey struct {
+	ID         pgtype.UUID      `json:"id"`
+	UserID     pgtype.UUID      `json:"user_id"`
+	Name       string           `json:"name"`
+	KeyHash    string           `json:"key_hash"`
+	Prefix     string           `json:"prefix"`
+	CreatedBy  pgtype.UUID      `json:"created_by"`
+	ExpiresAt  pgtype.Timestamp `json:"expires_at"`
+	LastUsedAt pgtype.Timestamp `json:"last_used_at"`
+	CreatedAt  pgtype.Timestamp `json:"created_at"`
+}
+
 type AuditLog struct {
 	ID        pgtype.UUID      `json:"id"`
 	ActorID   pgtype.UUID      `json:"actor_id"`
@@ -689,16 +701,17 @@ type Playbook struct {
 }
 
 type PlaybookHistory struct {
-	ID          pgtype.UUID      `json:"id"`
-	PlaybookID  pgtype.UUID      `json:"playbook_id"`
-	Status      PlaybookStatus   `json:"status"`
-	Error       pgtype.Text      `json:"error"`
-	Result      []byte           `json:"result"`
-	TriggeredAt pgtype.Timestamp `json:"triggered_at"`
-	Edges       []byte           `json:"edges"`
-	TriggerType NullTriggerType  `json:"trigger_type"`
-	TriggeredBy pgtype.UUID      `json:"triggered_by"`
-	Input       []byte           `json:"input"`
+	ID          pgtype.UUID        `json:"id"`
+	PlaybookID  pgtype.UUID        `json:"playbook_id"`
+	Status      PlaybookStatus     `json:"status"`
+	Error       pgtype.Text        `json:"error"`
+	Result      []byte             `json:"result"`
+	TriggeredAt pgtype.Timestamp   `json:"triggered_at"`
+	Edges       []byte             `json:"edges"`
+	TriggerType NullTriggerType    `json:"trigger_type"`
+	TriggeredBy pgtype.UUID        `json:"triggered_by"`
+	Input       []byte             `json:"input"`
+	FinishedAt  pgtype.Timestamptz `json:"finished_at"`
 }
 
 type PlaybookRunRecord struct {
@@ -843,18 +856,23 @@ type TeamRole struct {
 }
 
 type User struct {
-	ID           pgtype.UUID      `json:"id"`
-	Username     string           `json:"username"`
-	Email        string           `json:"email"`
-	PasswordHash pgtype.Text      `json:"password_hash"`
-	FirstName    pgtype.Text      `json:"first_name"`
-	LastName     pgtype.Text      `json:"last_name"`
-	AuthProvider AuthProviderType `json:"auth_provider"`
-	ExternalID   pgtype.Text      `json:"external_id"`
-	IsActive     bool             `json:"is_active"`
-	LastLoginAt  pgtype.Timestamp `json:"last_login_at"`
-	CreatedAt    pgtype.Timestamp `json:"created_at"`
-	UpdatedAt    pgtype.Timestamp `json:"updated_at"`
+	ID                  pgtype.UUID      `json:"id"`
+	Username            string           `json:"username"`
+	Email               string           `json:"email"`
+	PasswordHash        pgtype.Text      `json:"password_hash"`
+	FirstName           pgtype.Text      `json:"first_name"`
+	LastName            pgtype.Text      `json:"last_name"`
+	AuthProvider        AuthProviderType `json:"auth_provider"`
+	ExternalID          pgtype.Text      `json:"external_id"`
+	IsActive            bool             `json:"is_active"`
+	LastLoginAt         pgtype.Timestamp `json:"last_login_at"`
+	CreatedAt           pgtype.Timestamp `json:"created_at"`
+	UpdatedAt           pgtype.Timestamp `json:"updated_at"`
+	EmailVerifiedAt     pgtype.Timestamp `json:"email_verified_at"`
+	InvitationToken     pgtype.Text      `json:"invitation_token"`
+	InvitationSentAt    pgtype.Timestamp `json:"invitation_sent_at"`
+	ResetPasswordToken  pgtype.Text      `json:"reset_password_token"`
+	ResetPasswordSentAt pgtype.Timestamp `json:"reset_password_sent_at"`
 }
 
 type UserRole struct {

@@ -45,6 +45,13 @@ type Config struct {
 	FrontendURL   string
 	AuthPublicURL string
 
+	// SMTP for the invite and password reset emails. An empty host writes them to the log.
+	SMTPHost     string
+	SMTPPort     int
+	SMTPUsername string
+	SMTPPassword string
+	SMTPFrom     string
+
 	// SandboxAddr is where the worker sends every dynamic node (ConnectorRuntime gRPC on
 	// cmd/sandbox).
 	SandboxAddr string
@@ -99,6 +106,12 @@ func LoadFrom(dest string) Config {
 
 		FrontendURL:   getEnvOr("FRONTEND_URL", "http://localhost:9999"),
 		AuthPublicURL: getEnvOr("AUTH_PUBLIC_URL", "http://localhost:9999/auth-api"),
+
+		SMTPHost:     os.Getenv("SMTP_HOST"),
+		SMTPPort:     getEnvIntOr("SMTP_PORT", 587),
+		SMTPUsername: os.Getenv("SMTP_USERNAME"),
+		SMTPPassword: os.Getenv("SMTP_PASSWORD"),
+		SMTPFrom:     getEnvOr("SMTP_FROM", "ytsoar@localhost"),
 
 		SandboxAddr:       getEnvOr("SANDBOX_ADDR", "localhost:50052"),
 		SandboxListenAddr: getEnvOr("SANDBOX_LISTEN_ADDR", ":50052"),

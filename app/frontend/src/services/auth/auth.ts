@@ -32,6 +32,16 @@ export default class AuthService {
     return res.data;
   };
 
+  /** Always 204, so the reply does not show if the email has an account. */
+  public static forgotPassword = async (email: string): Promise<void> => {
+    await apiClient.post(`${this.BASE_URL}/password/forgot`, { email });
+  };
+
+  /** Takes the token of an invite link or a reset link. */
+  public static resetPassword = async (token: string, password: string): Promise<void> => {
+    await apiClient.post(`${this.BASE_URL}/password/reset`, { token, password });
+  };
+
   public static getProviders = async (): Promise<AuthProviderSummary[]> => {
     const res = await apiClient.get(`${this.BASE_URL}/providers`);
     return res.data;

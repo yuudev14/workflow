@@ -27,10 +27,10 @@ type StatusBroadcaster interface {
 // ModuleEventPublisher announces an entity event (alert.created, incident.updated, ...),
 // so consumers can react without the alerts and incidents services knowing them.
 //
-// Publish only after the transaction commits. A publish inside WithinTransaction announces
-// state that a rollback throws away, and there is no un-publish.
+// Publish inside the transaction of the change. It joins the transaction in ctx, so a
+// rollback also drops the event, and a commit never loses it.
 type ModuleEventPublisher interface {
-	Publish(module, event string, entity any) error
+	Publish(ctx context.Context, module, event string, recordID uuid.UUID) error
 }
 
 //go:generate mockgen -destination=mocks/tx_manager_mock.go -package=mocks . TxManager

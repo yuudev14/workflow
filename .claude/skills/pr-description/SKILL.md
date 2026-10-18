@@ -1,6 +1,6 @@
 ---
 name: pr-description
-description: Write the pull request description for the current branch in six sections (Problem, Solution, What we added, What we removed, Test plan, Note) in ASD-STE100 Simplified Technical English. Use when the user says "PR description", "write the PR", "describe this branch", or "add this to the PR".
+description: Write the pull request description for the current branch in seven sections (Problem, Solution, What we added, What we removed, Acceptance criteria, Test plan, Note) in ASD-STE100 Simplified Technical English. Use when the user says "PR description", "write the PR", "describe this branch", or "add this to the PR".
 ---
 
 # pr-description
@@ -11,7 +11,7 @@ This skill is for this project only. The user asked for Simplified Technical Eng
 
 1. Run `git rev-parse --abbrev-ref HEAD`, `git log main..HEAD --no-merges --format=%s`, `git diff --stat main...HEAD` and `git status --short`. Use `origin/main` if it exists.
 2. Read the diff only when the commits and the file list do not make the change clear.
-3. Write the six sections below. Skip a section only when it is empty, except Problem and Solution.
+3. Write the seven sections below. Skip a section only when it is empty, except Problem and Solution.
 4. Show the text in one fenced block, so the user can copy it.
 5. Add `Fixes #<n>` on its own line if the branch name has an issue number. If the issue needs a backend PR and a frontend PR, use `Refs #<n>` in the backend PR and `Fixes #<n>` in the frontend PR. Name the other PR in the text.
 6. If the change alters the UI, add this line after the last section: "Add a before and after screenshot."
@@ -22,6 +22,7 @@ This skill is for this project only. The user asked for Simplified Technical Eng
 - `## Solution`: The fix in two to four sentences. Say what changed, not how the code works.
 - `## What we added`: A list. One item for each feature, behavior, setting or migration. Say what it does.
 - `## What we removed`: A list. Name each service, package, setting or behavior that is gone. Say what replaced it.
+- `## Acceptance criteria`: A checklist (`- [x]` for done, `- [ ]` for not done). One line for each thing that is true now. Each line must be easy to test. Copy them from the issue when it has them. Four to six lines is enough.
 - `## Test plan`: A list. Say what you tested and the result. Say what you did not test.
 - `## Note`: A list of what the reviewer must do or know. Include the commands to run (migrations, settings) and the known limits.
 
