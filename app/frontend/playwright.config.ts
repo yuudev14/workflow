@@ -58,7 +58,7 @@ export default defineConfig({
       command: `go run github.com/pressly/goose/v3/cmd/goose@v3.29.0 -dir db/migrations postgres "${dbUrl}" up && go run ./cmd/api`,
       cwd: backendDir,
       env: backend,
-      url: "http://localhost:8090/api/auth/v1/providers",
+      url: "http://localhost:8090/api/v1/auth/providers",
       timeout: 300_000,
       reuseExistingServer: !env.CI,
     },
