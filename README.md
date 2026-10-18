@@ -45,7 +45,7 @@ cd app/frontend && npm install && npm run dev
 
 Open http://localhost:9999. Create a playbook, add nodes and trigger it. The statuses appear live.
 
-Ports: API `:8080`, Postgres `:5433`, nginx `:9999`.
+Ports: API `:8080`, Postgres `:5433`, nginx `:9999`, Mailpit `:8025` (the invite and reset emails; `make dev` starts it too).
 
 In dev, one Go program (`cmd/dev`) runs the api, the worker and the sandbox in one process. One `air` builds it again after each change. This mode is for dev only: the sandbox can read the database settings. Production runs the three programs apart.
 
@@ -137,6 +137,7 @@ Other docs:
 - [Database](docs/database.md): the tables as diagrams, and the enums.
 - [Connector upload](docs/connector-upload.md): how a zip becomes a connector.
 - [Connector dependencies](docs/connector-dependencies.md): how each connector gets its own libraries.
+- [Event triggers](docs/event-triggers.md): how a new or changed alert or incident starts a playbook, and the loop guard.
 - [The condition task](docs/condition.md): how branching works, and why it runs in Python with jinja2.
 
 ### One run, step by step

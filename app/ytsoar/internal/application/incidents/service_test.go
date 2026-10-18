@@ -45,8 +45,8 @@ func setup(t *testing.T) *testEnv {
 	published := []publishedEvent{}
 	events := mock_contracts.NewMockModuleEventPublisher(ctrl)
 	events.EXPECT().
-		Publish(gomock.Any(), gomock.Any(), gomock.Any()).
-		DoAndReturn(func(module, event string, _ any) error {
+		Publish(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
+		DoAndReturn(func(_ context.Context, module, event string, _ uuid.UUID) error {
 			published = append(published, publishedEvent{module, event})
 			return nil
 		}).
@@ -282,7 +282,7 @@ func TestUpdateStatusRejectsUnknownStatus(t *testing.T) {
 }
 
 // Escalation runs inside the transaction of the alert service, so it must not open its own
-// or publish. The caller announces both entities after the commit.
+// or publish. The caller announces both entities in its own transaction.
 func TestCreateForEscalationDoesNotOpenATransactionOrPublish(t *testing.T) {
 	env := setup(t)
 	incident := domain.Incident{ID: uuid.New(), Title: "Encoded PowerShell execution"}
@@ -311,7 +311,7 @@ func TestCreateForEscalationDoesNotOpenATransactionOrPublish(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, incident.ID, got.ID)
 	assert.Equal(t, 0, *env.txCalls, "it must join the caller's transaction, not start one")
-	assert.Empty(t, *env.published, "the caller publishes once the whole escalation commits")
+	assert.Empty(t, *env.published, "the caller publishes both entities")
 }
 
 func TestLinkAlertWritesBothTimelines(t *testing.T) {

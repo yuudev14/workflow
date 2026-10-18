@@ -14,10 +14,16 @@ import (
 type UserRepository interface {
 	GetByID(ctx context.Context, id uuid.UUID) (domain.User, error)
 	GetByUsername(ctx context.Context, username string) (domain.User, error)
+	GetByEmail(ctx context.Context, email string) (domain.User, error)
 	GetByExternalID(ctx context.Context, provider domain.AuthProvider, externalID string) (domain.User, error)
 	Create(ctx context.Context, params CreateUserParams) (domain.User, error)
 	Update(ctx context.Context, id uuid.UUID, params UpdateUserParams) (domain.User, error)
 	SetPassword(ctx context.Context, id uuid.UUID, passwordHash string) error
+	MarkEmailVerified(ctx context.Context, id uuid.UUID, at time.Time) error
+	// SetLink says false when the last link is newer than ResendAfter.
+	SetLink(ctx context.Context, params SetLinkParams) (bool, error)
+	// TakeLink clears the link and returns it, so a link works one time.
+	TakeLink(ctx context.Context, tokenHash string) (UserLink, error)
 	TouchLastLogin(ctx context.Context, id uuid.UUID) error
 	CountWithRole(ctx context.Context, roleName string) (int64, error)
 	List(ctx context.Context, offset, limit int, filter UserFilter) ([]domain.UserWithRoles, error)
@@ -65,6 +71,24 @@ type RefreshTokenRepository interface {
 	GetByHash(ctx context.Context, tokenHash string) (domain.RefreshToken, error)
 	Revoke(ctx context.Context, tokenHash string) error
 	RevokeAllForUser(ctx context.Context, userID uuid.UUID) error
+	DeleteExpired(ctx context.Context, before time.Time) error
+}
+
+//go:generate mockgen -destination=mocks/mailer_mock.go -package=mocks . Mailer
+
+type Mailer interface {
+	Send(ctx context.Context, to, subject, body string) error
+}
+
+//go:generate mockgen -destination=mocks/api_key_repository_mock.go -package=mocks . APIKeyRepository
+
+type APIKeyRepository interface {
+	Create(ctx context.Context, params CreateAPIKeyParams) (domain.APIKey, error)
+	// GetByHash finds only the keys of active users.
+	GetByHash(ctx context.Context, keyHash string) (domain.APIKey, error)
+	List(ctx context.Context, userID *uuid.UUID) ([]domain.APIKey, error)
+	Touch(ctx context.Context, id uuid.UUID, at time.Time) error
+	Delete(ctx context.Context, id uuid.UUID) (int64, error)
 }
 
 //go:generate mockgen -destination=mocks/audit_log_repository_mock.go -package=mocks . AuditLogRepository

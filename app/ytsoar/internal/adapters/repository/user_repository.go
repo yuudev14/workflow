@@ -2,10 +2,14 @@ package repository
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"time"
 
 	sq "github.com/Masterminds/squirrel"
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/yuudev14/ytsoar/db"
 	"github.com/yuudev14/ytsoar/internal/application/auth"
@@ -47,6 +51,14 @@ func (r *UserRepositoryImpl) GetByUsername(ctx context.Context, username string)
 	return toDomainUser(row), nil
 }
 
+func (r *UserRepositoryImpl) GetByEmail(ctx context.Context, email string) (domain.User, error) {
+	row, err := r.queriesFromContext(ctx).GetUserByEmail(ctx, email)
+	if err != nil {
+		return domain.User{}, mapNoRows(err, auth.ErrUserNotFound)
+	}
+	return toDomainUser(row), nil
+}
+
 func (r *UserRepositoryImpl) GetByExternalID(ctx context.Context, provider domain.AuthProvider, externalID string) (domain.User, error) {
 	row, err := r.queriesFromContext(ctx).GetUserByExternalId(ctx, db.GetUserByExternalIdParams{
 		AuthProvider: db.AuthProviderType(provider),
@@ -60,14 +72,15 @@ func (r *UserRepositoryImpl) GetByExternalID(ctx context.Context, provider domai
 
 func (r *UserRepositoryImpl) Create(ctx context.Context, params auth.CreateUserParams) (domain.User, error) {
 	row, err := r.queriesFromContext(ctx).CreateUser(ctx, db.CreateUserParams{
-		Username:     params.Username,
-		Email:        params.Email,
-		PasswordHash: toPgText(params.PasswordHash),
-		FirstName:    toPgText(params.FirstName),
-		LastName:     toPgText(params.LastName),
-		AuthProvider: db.AuthProviderType(params.AuthProvider),
-		ExternalID:   toPgText(params.ExternalID),
-		IsActive:     true,
+		Username:        params.Username,
+		Email:           params.Email,
+		PasswordHash:    toPgText(params.PasswordHash),
+		FirstName:       toPgText(params.FirstName),
+		LastName:        toPgText(params.LastName),
+		AuthProvider:    db.AuthProviderType(params.AuthProvider),
+		ExternalID:      toPgText(params.ExternalID),
+		IsActive:        true,
+		EmailVerifiedAt: toPgTimestampPtr(params.EmailVerifiedAt),
 	})
 	if err != nil {
 		return domain.User{}, mapUniqueViolation(err, auth.ErrUserTaken)
@@ -102,6 +115,54 @@ func (r *UserRepositoryImpl) SetPassword(ctx context.Context, id uuid.UUID, pass
 	})
 }
 
+// MarkEmailVerified keeps the first time. A second link does not move it.
+func (r *UserRepositoryImpl) MarkEmailVerified(ctx context.Context, id uuid.UUID, at time.Time) error {
+	return r.queriesFromContext(ctx).MarkUserEmailVerified(ctx, db.MarkUserEmailVerifiedParams{
+		ID:              toPgUUID(id),
+		EmailVerifiedAt: pgtype.Timestamp{Time: at, Valid: true},
+	})
+}
+
+func (r *UserRepositoryImpl) SetLink(ctx context.Context, params auth.SetLinkParams) (bool, error) {
+	q := r.queriesFromContext(ctx)
+	id := toPgUUID(params.UserID)
+	token := pgtype.Text{String: params.TokenHash, Valid: true}
+	sentAt := pgtype.Timestamp{Time: params.SentAt, Valid: true}
+	resendAfter := pgtype.Timestamp{Time: params.ResendAfter, Valid: true}
+
+	var rows int64
+	var err error
+	if params.Purpose == auth.TokenInvite {
+		rows, err = q.SetUserInvitationToken(ctx, db.SetUserInvitationTokenParams{
+			ID: id, InvitationToken: token, InvitationSentAt: sentAt, ResendAfter: resendAfter,
+		})
+	} else {
+		rows, err = q.SetUserResetPasswordToken(ctx, db.SetUserResetPasswordTokenParams{
+			ID: id, ResetPasswordToken: token, ResetPasswordSentAt: sentAt, ResendAfter: resendAfter,
+		})
+	}
+	return rows > 0, err
+}
+
+// TakeLink looks for an invitation first, then a reset, so one route takes both links.
+func (r *UserRepositoryImpl) TakeLink(ctx context.Context, tokenHash string) (auth.UserLink, error) {
+	q := r.queriesFromContext(ctx)
+	token := pgtype.Text{String: tokenHash, Valid: true}
+
+	invite, err := q.TakeUserInvitationToken(ctx, token)
+	if err == nil {
+		return auth.UserLink{UserID: fromPgUUID(invite.ID), Purpose: auth.TokenInvite, SentAt: invite.InvitationSentAt.Time}, nil
+	}
+	if !errors.Is(err, pgx.ErrNoRows) {
+		return auth.UserLink{}, err
+	}
+	reset, err := q.TakeUserResetPasswordToken(ctx, token)
+	if err != nil {
+		return auth.UserLink{}, mapNoRows(err, auth.ErrInvalidLink)
+	}
+	return auth.UserLink{UserID: fromPgUUID(reset.ID), Purpose: auth.TokenPasswordReset, SentAt: reset.ResetPasswordSentAt.Time}, nil
+}
+
 // applyUserFilter is shared by List and Count, so a filter never applies to the page but
 // not the total. It assumes the users table has the alias `u`.
 func applyUserFilter(stmt sq.SelectBuilder, filter auth.UserFilter) sq.SelectBuilder {
@@ -131,12 +192,16 @@ const rolesAggregate = `COALESCE((
     WHERE ur.user_id = u.id
 ), '{}') AS roles`
 
+// userColumns are named, because the link columns are not part of domain.User.
+const userColumns = `u.id, u.username, u.email, u.password_hash, u.first_name, u.last_name, u.auth_provider,
+    u.external_id, u.is_active, u.last_login_at, u.created_at, u.updated_at, u.email_verified_at, `
+
 func selectUsers(columns string) sq.SelectBuilder {
 	return sq.Select(columns).From("users u").PlaceholderFormat(sq.Dollar)
 }
 
 func (r *UserRepositoryImpl) List(ctx context.Context, offset, limit int, filter auth.UserFilter) ([]domain.UserWithRoles, error) {
-	stmt := applyUserFilter(selectUsers("u.*, "+rolesAggregate), filter).
+	stmt := applyUserFilter(selectUsers(userColumns+rolesAggregate), filter).
 		OrderBy("u.username").
 		Offset(uint64(offset)).
 		Limit(uint64(limit))
@@ -181,7 +246,7 @@ func (r *UserRepositoryImpl) UsernamesByIDs(ctx context.Context, ids []uuid.UUID
 }
 
 func (r *UserRepositoryImpl) GetWithRoles(ctx context.Context, id uuid.UUID) (domain.UserWithRoles, error) {
-	stmt := selectUsers("u.*, " + rolesAggregate).Where(sq.Eq{"u.id": id})
+	stmt := selectUsers(userColumns + rolesAggregate).Where(sq.Eq{"u.id": id})
 
 	rows, err := CollectRowsFromSqlizer[domain.UserWithRoles](ctx, stmt, r.pool, r.logger)
 	if err != nil {
@@ -203,17 +268,18 @@ func (r *UserRepositoryImpl) CountWithRole(ctx context.Context, roleName string)
 
 func toDomainUser(row db.User) domain.User {
 	return domain.User{
-		ID:           fromPgUUID(row.ID),
-		Username:     row.Username,
-		Email:        row.Email,
-		PasswordHash: fromPgText(row.PasswordHash),
-		FirstName:    fromPgText(row.FirstName),
-		LastName:     fromPgText(row.LastName),
-		AuthProvider: domain.AuthProvider(row.AuthProvider),
-		ExternalID:   fromPgText(row.ExternalID),
-		IsActive:     row.IsActive,
-		LastLoginAt:  fromPgTimestampPtr(row.LastLoginAt),
-		CreatedAt:    row.CreatedAt.Time,
-		UpdatedAt:    row.UpdatedAt.Time,
+		ID:              fromPgUUID(row.ID),
+		Username:        row.Username,
+		Email:           row.Email,
+		PasswordHash:    fromPgText(row.PasswordHash),
+		FirstName:       fromPgText(row.FirstName),
+		LastName:        fromPgText(row.LastName),
+		AuthProvider:    domain.AuthProvider(row.AuthProvider),
+		ExternalID:      fromPgText(row.ExternalID),
+		IsActive:        row.IsActive,
+		LastLoginAt:     fromPgTimestampPtr(row.LastLoginAt),
+		CreatedAt:       row.CreatedAt.Time,
+		UpdatedAt:       row.UpdatedAt.Time,
+		EmailVerifiedAt: fromPgTimestampPtr(row.EmailVerifiedAt),
 	}
 }

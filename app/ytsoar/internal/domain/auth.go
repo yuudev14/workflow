@@ -88,6 +88,8 @@ type User struct {
 	LastLoginAt  *time.Time   `db:"last_login_at" json:"last_login_at"`
 	CreatedAt    time.Time    `db:"created_at" json:"created_at"`
 	UpdatedAt    time.Time    `db:"updated_at" json:"updated_at"`
+	// EmailVerifiedAt is information only. A set-password link or the IdP sets it.
+	EmailVerifiedAt *time.Time `db:"email_verified_at" json:"email_verified_at"`
 }
 
 // UserWithRoles is the list and detail shape for the admin UI. Roles come from an
@@ -171,6 +173,23 @@ type RefreshToken struct {
 	ExpiresAt time.Time
 	RevokedAt *time.Time
 	CreatedAt time.Time
+}
+
+// APIKeyPrefix starts every API key. A JWT starts with "eyJ", so the prefix tells the two
+// apart in the Authorization header.
+const APIKeyPrefix = "ytsoar_"
+
+// APIKey is the read shape. The key itself is never stored, only its hash.
+type APIKey struct {
+	ID         uuid.UUID  `json:"id"`
+	UserID     uuid.UUID  `json:"user_id"`
+	Username   string     `json:"username"`
+	Name       string     `json:"name"`
+	Prefix     string     `json:"prefix"`
+	CreatedBy  *uuid.UUID `json:"created_by"`
+	ExpiresAt  *time.Time `json:"expires_at"`
+	LastUsedAt *time.Time `json:"last_used_at"`
+	CreatedAt  time.Time  `json:"created_at"`
 }
 
 // AuditLog is the read shape. ActorUsername is joined in. It is nil for system rows and
