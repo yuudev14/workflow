@@ -126,18 +126,18 @@ test.describe("roles", () => {
 
   test("changes the permissions of a role", async ({ page }) => {
     const name = unique("role");
-    const { id } = await api(page.request).post("/roles/v1", { name, permissions: { alerts: ["read"] } });
+    const { id } = await api(page.request).post("/roles", { name, permissions: { alerts: ["read"] } });
     await page.goto("/settings/roles");
     await page.getByRole("button", { name: new RegExp(name) }).click();
     await page.getByRole("button", { name: "incidents.read" }).click();
     await page.getByRole("button", { name: "Save permissions" }).click();
     await expect(page.getByText("Permissions updated").first()).toBeVisible();
-    await expect.poll(async () => (await api(page.request).get(`/roles/v1/${id}`)).permissions.incidents).toContain("read");
+    await expect.poll(async () => (await api(page.request).get(`/roles/${id}`)).permissions.incidents).toContain("read");
   });
 
   test("deletes a role", async ({ page }) => {
     const name = unique("role");
-    await api(page.request).post("/roles/v1", { name });
+    await api(page.request).post("/roles", { name });
     await page.goto("/settings/roles");
     await page.getByRole("button", { name: new RegExp(name) }).click();
     await page.getByTitle("Delete role").click();
@@ -164,7 +164,7 @@ test.describe("teams", () => {
 
   test("changes and deletes a team", async ({ page }) => {
     const name = unique("team");
-    await api(page.request).post("/teams/v1", { name });
+    await api(page.request).post("/teams", { name });
     await page.goto("/settings/teams");
     await page.getByPlaceholder("Search teams…").fill(name);
     await page.getByRole("row", { name: new RegExp(name) }).getByTitle("Edit").click();
@@ -217,13 +217,13 @@ test.describe("api keys", () => {
       baseURL: "http://localhost:3000",
       extraHTTPHeaders: { Authorization: `Bearer ${key}` },
     });
-    const me = await machine.get("/playbook-api/api/auth/v1/me");
+    const me = await machine.get("/playbook-api/api/v1/auth/me");
     expect((await me.json()).user.username).toBe(user.username);
 
     await page.getByRole("row", { name: new RegExp(name) }).getByTitle("Delete").click();
     await page.getByRole("button", { name: "Delete" }).click();
     await expect(page.getByRole("row", { name: new RegExp(name) })).toBeHidden();
-    expect((await machine.get("/playbook-api/api/auth/v1/me")).status()).toBe(401);
+    expect((await machine.get("/playbook-api/api/v1/auth/me")).status()).toBe(401);
     await machine.dispose();
   });
 });

@@ -17,7 +17,7 @@ import {
  * Incidents. Same api binary as alerts, hence the same base url.
  */
 export default class IncidentService {
-  private static BASE_URL = settings.BASE_URL.AUTH_SERVICE_API + "/api/incidents/v1";
+  private static BASE_URL = settings.BASE_URL.AUTH_SERVICE_API + "/api/v1/incidents";
 
   public static getIncidents = async (
     filter: IncidentFilter = {},

@@ -14,7 +14,7 @@ import { InitialsAvatar } from "./InitialsAvatar";
 
 const UNASSIGNED = "__unassigned__";
 
-/** Assignee picker, backed by the ungated `GET /users/v1/assignable`. */
+/** Assignee picker, backed by the ungated `GET /users/assignable`. */
 export function AssigneeField({
   assigneeId,
   assignee,
