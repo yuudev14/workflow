@@ -25,6 +25,7 @@ The backend is Go (`app/ytsoar`). It has three programs: `api`, `worker` and `sa
 - Keep a clear service boundary. A service does not need to know the details of the model objects. Ideally the service returns state that the model can then adopt.
 - Never commit or push unless asked. The user reviews, tests and commits.
 - Write each PR description with the `/pr-description` skill.
+- One PR holds one feature or one fix. Do not combine two in one PR. Make a new branch and a new PR for each.
 - Do not mix frontend and backend changes in one PR. If an issue needs both, make two branches and two PRs: one for the backend and one for the frontend.
   - Make the backend PR first. The frontend uses the new API.
   - Each PR names the issue and the other PR in its description.
