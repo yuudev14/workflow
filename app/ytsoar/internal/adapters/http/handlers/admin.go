@@ -194,6 +194,22 @@ func (h *AdminHandler) SetUserPassword(c *gin.Context) {
 	c.Status(http.StatusNoContent)
 }
 
+// InviteUser sends the set-password email again.
+func (h *AdminHandler) InviteUser(c *gin.Context) {
+	response := rest.Response{C: c}
+
+	actorID, userID, ok := h.actorAndTarget(c, "user_id")
+	if !ok {
+		return
+	}
+
+	if err := h.authService.InviteUser(c.Request.Context(), actorID, userID); err != nil {
+		response.Fail(h.logger, err)
+		return
+	}
+	c.Status(http.StatusNoContent)
+}
+
 // DeactivateUser is what DELETE means here. Users are never hard-deleted, because audit
 // rows and uploaded connectors point to them.
 func (h *AdminHandler) DeactivateUser(c *gin.Context) {

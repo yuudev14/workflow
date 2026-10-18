@@ -35,6 +35,7 @@ type Service struct {
 	roles      RoleRepository
 	tokens     RefreshTokenRepository
 	apiKeys    APIKeyRepository
+	mailer     Mailer
 	teams      TeamRepository
 	audit      AuditLogRepository
 	providers  AuthProviderRepository
@@ -53,6 +54,7 @@ func NewService(
 	roles RoleRepository,
 	tokens RefreshTokenRepository,
 	apiKeys APIKeyRepository,
+	mailer Mailer,
 	teams TeamRepository,
 	audit AuditLogRepository,
 	providers AuthProviderRepository,
@@ -67,6 +69,7 @@ func NewService(
 		roles:      roles,
 		tokens:     tokens,
 		apiKeys:    apiKeys,
+		mailer:     mailer,
 		teams:      teams,
 		audit:      audit,
 		providers:  providers,

@@ -63,7 +63,8 @@ export interface AuditLog {
 export interface CreateUserPayload {
   username: string;
   email: string;
-  password: string;
+  /** Without a password, the user gets an invite email to set one. */
+  password?: string;
   first_name?: string | null;
   last_name?: string | null;
   role_ids?: string[];
@@ -151,4 +152,27 @@ export interface AuditFilter {
   action?: string;
   from?: string;
   to?: string;
+}
+
+/** The key itself is never returned again after create - only its prefix. */
+export interface APIKey {
+  id: string;
+  user_id: string;
+  username: string;
+  name: string;
+  prefix: string;
+  created_by: string | null;
+  expires_at: string | null;
+  last_used_at: string | null;
+  created_at: string;
+}
+
+export interface CreatedAPIKey extends APIKey {
+  key: string;
+}
+
+export interface CreateAPIKeyPayload {
+  user_id: string;
+  name: string;
+  expires_at?: string;
 }

@@ -42,6 +42,16 @@ services:
       - ./keycloak:/opt/keycloak/data/import:ro
     networks:
       - ytsoar
+  # Catches every email in dev. Read them at http://localhost:8025.
+  ytsoar_mailpit:
+    image: axllent/mailpit:v1.31
+    container_name: ytsoar_mailpit
+    ports:
+      - "8025:8025"
+      # SMTP, for the API that make dev runs on the host
+      - "1025:1025"
+    networks:
+      - ytsoar
   # One process: the api, the worker and the sandbox (cmd/dev). Dev only: the
   # sandbox shares the DB_* settings here. For the three programs apart, add
   # -f docker/split.docker-compose.yml (make start-split).
@@ -87,11 +97,15 @@ services:
       # /auth-api/ before it reaches the api).
       - FRONTEND_URL=http://localhost:9999
       - AUTH_PUBLIC_URL=http://localhost:9999/auth-api
+      - SMTP_HOST=ytsoar_mailpit
+      - SMTP_PORT=1025
     networks:
       - ytsoar
     depends_on:
       ytsoar_postgres:
         condition: service_healthy
+      ytsoar_mailpit:
+        condition: service_started
   ytsoar_nginx:
     build: ../app/nginx
     container_name: ytsoar_nginx

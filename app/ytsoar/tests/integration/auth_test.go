@@ -86,6 +86,55 @@ func TestAuth(t *testing.T) {
 		})
 	})
 
+	t.Run("invite and password reset", func(t *testing.T) {
+		c := admin(t)
+		reset, forgot := "/api/auth/v1/password/reset", "/api/auth/v1/password/forgot"
+		username := unique("invited")
+		email := username + "@ytsoar.test"
+		user := c.create(t, "/api/users/v1", J{"username": username, "email": email})
+		id := user["id"].(string)
+		assert.Nil(t, user["email_verified_at"])
+		token := linkFor(t, email)
+
+		t.Run("POST /users/:id/invite", func(t *testing.T) {
+			t.Run("returns 409 when the last email is less than a minute old", func(t *testing.T) {
+				c.expect(t, http.StatusConflict, http.MethodPost, "/api/users/v1/"+id+"/invite", nil)
+			})
+		})
+
+		t.Run("POST /login before the invite is used", func(t *testing.T) {
+			login := "/api/auth/v1/login"
+			anonymous(t).expectAll(t, []request{
+				{"returns 400 when the password is empty", http.MethodPost, login, J{"username": username, "password": ""}, http.StatusBadRequest},
+				{"returns 401 because the user has no password yet", http.MethodPost, login, J{"username": username, "password": "password123"}, http.StatusUnauthorized},
+			})
+		})
+
+		t.Run("POST /password/reset", func(t *testing.T) {
+			anonymous(t).expectAll(t, []request{
+				{"returns 400 when the password is too short", http.MethodPost, reset, J{"token": token, "password": "short"}, http.StatusBadRequest},
+				{"sets the password with the invite link", http.MethodPost, reset, J{"token": token, "password": "password123"}, http.StatusNoContent},
+				{"returns 400 when the link is used again", http.MethodPost, reset, J{"token": token, "password": "password123"}, http.StatusBadRequest},
+			})
+			signIn(t, username, "password123")
+			assert.NotNil(t, c.get(t, "/api/users/v1/"+id).(J)["email_verified_at"])
+		})
+
+		t.Run("POST /password/forgot", func(t *testing.T) {
+			t.Run("returns 204 when the email does not exist", func(t *testing.T) {
+				anonymous(t).expect(t, http.StatusNoContent, http.MethodPost, forgot, J{"email": unique("nobody") + "@ytsoar.test"})
+			})
+
+			t.Run("sends a link that sets a new password and ends the old sessions", func(t *testing.T) {
+				old := signIn(t, username, "password123")
+				anonymous(t).expect(t, http.StatusNoContent, http.MethodPost, forgot, J{"email": email})
+				anonymous(t).expect(t, http.StatusNoContent, http.MethodPost, reset, J{"token": linkFor(t, email), "password": "password456"})
+				old.expect(t, http.StatusUnauthorized, http.MethodPost, "/api/auth/v1/refresh", nil)
+				signIn(t, username, "password456")
+			})
+		})
+	})
+
 	t.Run("OIDC", func(t *testing.T) {
 		c := anonymous(t)
 		t.Run("returns 400 when the provider id is not a uuid", func(t *testing.T) {
