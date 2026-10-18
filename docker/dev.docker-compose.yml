@@ -48,6 +48,8 @@ services:
     container_name: ytsoar_mailpit
     ports:
       - "8025:8025"
+      # SMTP, for the API that make dev runs on the host
+      - "1025:1025"
     networks:
       - ytsoar
   # One process: the api, the worker and the sandbox (cmd/dev). Dev only: the
