@@ -14,7 +14,7 @@ This page explains how an alert or an incident starts a playbook on its own. It 
 
 ```mermaid
 flowchart LR
-    U["Analyst or forwarder"] -->|"POST or PATCH /api/alerts/v1"| API["API"]
+    U["Analyst or forwarder"] -->|"POST or PATCH /api/v1/alerts"| API["API"]
     API -->|"one transaction:<br/>alert row + event job"| DB[("Postgres")]
     DB -->|"queue playbook_event"| EW["Worker:<br/>RunForEventWorker"]
     EW -->|"find matching playbooks,<br/>queue one run each"| DB
@@ -51,7 +51,7 @@ sequenceDiagram
     actor C as Client
     participant S as Alerts service
     participant DB as Postgres
-    C->>S: POST /api/alerts/v1
+    C->>S: POST /api/v1/alerts
     rect rgb(235, 245, 255)
     Note over S,DB: One transaction
     S->>DB: INSERT alert (or update the open alert<br/>with the same fingerprint)

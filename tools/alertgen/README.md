@@ -28,7 +28,7 @@ Python stdlib only: no venv, no `requirements.txt`. Run it on the host.
 
 ```bash
 make seed-alerts          # ~40 alerts, all 5 source kinds, all severities, + 3 incidents
-make seed-alerts N=200    # bulk via POST /api/alerts/v1/batch - exercises keyset paging
+make seed-alerts N=200    # bulk via POST /api/v1/alerts/batch - exercises keyset paging
 make drip-alerts          # one alert every ~20s until Ctrl-C - watch the UI update live
 make storm-alerts         # 200 byte-identical alerts - must collapse to ONE row
 make storm-alerts N=50    # same, smaller

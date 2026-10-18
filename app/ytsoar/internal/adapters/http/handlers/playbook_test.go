@@ -72,7 +72,7 @@ func TestControllerGetPlaybooksSuccess(t *testing.T) {
 
 	req := httptest.NewRequest(
 		http.MethodGet,
-		"/playbooks/v1?offset=0&limit=10",
+		"/playbooks?offset=0&limit=10",
 		nil,
 	)
 
@@ -106,7 +106,7 @@ func TestControllerGetPlaybooksError(t *testing.T) {
 
 	req := httptest.NewRequest(
 		http.MethodGet,
-		"/playbooks/v1?offset=0&limit=10",
+		"/playbooks?offset=0&limit=10",
 		nil,
 	)
 
@@ -133,12 +133,12 @@ func TestControllerGetPlaybooksInvalidQuery(t *testing.T) {
 	}{
 		{
 			name:           "invalid offset",
-			query:          "/playbooks/v1?offset=invalid&limit=10",
+			query:          "/playbooks?offset=invalid&limit=10",
 			expectedStatus: http.StatusBadRequest,
 		},
 		{
 			name:           "invalid playbook_id",
-			query:          "/playbooks/v1?offset=0&limit=10&playbook_id=invalid-uuid",
+			query:          "/playbooks?offset=0&limit=10&playbook_id=invalid-uuid",
 			expectedStatus: http.StatusBadRequest,
 		},
 	}
@@ -168,7 +168,7 @@ func TestControllerGetPlaybookGraphByIdSuccess(t *testing.T) {
 
 	req := httptest.NewRequest(
 		http.MethodGet,
-		"/playbooks/v1/"+uuid.String(),
+		"/playbooks/"+uuid.String(),
 		nil,
 	)
 
@@ -224,7 +224,7 @@ func TestControllerGetPlaybookGraphByIdError(t *testing.T) {
 
 			req := httptest.NewRequest(
 				http.MethodGet,
-				"/playbooks/v1/"+uuid.String(),
+				"/playbooks/"+uuid.String(),
 				nil,
 			)
 
@@ -254,7 +254,7 @@ func TestControllerGetPlaybookHistorySuccess(t *testing.T) {
 
 	req := httptest.NewRequest(
 		http.MethodGet,
-		"/playbooks/v1/history?offset=0&limit=10",
+		"/playbooks/history?offset=0&limit=10",
 		nil,
 	)
 	c.Request = req
@@ -287,7 +287,7 @@ func TestControllerGetPlaybooksHistoryError(t *testing.T) {
 
 	req := httptest.NewRequest(
 		http.MethodGet,
-		"/playbooks/v1/history?offset=0&limit=10",
+		"/playbooks/history?offset=0&limit=10",
 		nil,
 	)
 
@@ -312,12 +312,12 @@ func TestControllerGetPlaybooksHistoryInvalidQuery(t *testing.T) {
 	}{
 		{
 			name:           "invalid offset",
-			query:          "/playbooks/v1/history?offset=invalid&limit=10",
+			query:          "/playbooks/history?offset=invalid&limit=10",
 			expectedStatus: http.StatusBadRequest,
 		},
 		{
 			name:           "invalid playbook_id",
-			query:          "/playbooks/v1/history?offset=0&limit=10&playbook_id=invalid-uuid",
+			query:          "/playbooks/history?offset=0&limit=10&playbook_id=invalid-uuid",
 			expectedStatus: http.StatusBadRequest,
 		},
 	}
@@ -375,7 +375,7 @@ func TestControllerCreatePlaybookSuccess(t *testing.T) {
 
 	req := httptest.NewRequest(
 		http.MethodPost,
-		"/playbooks/v1",
+		"/playbooks",
 		strings.NewReader(body),
 	)
 
@@ -402,7 +402,7 @@ func TestControllerUpdatePlaybookSuccess(t *testing.T) {
 
 	req := httptest.NewRequest(
 		http.MethodPut,
-		"/playbooks/v1/"+id,
+		"/playbooks/"+id,
 		strings.NewReader(body),
 	)
 
@@ -429,7 +429,7 @@ func TestControllerGetTasksByPlaybookIdSuccess(t *testing.T) {
 
 	id := uuid.New().String()
 
-	req := httptest.NewRequest(http.MethodGet, "/playbooks/v1/"+id+"/tasks", nil)
+	req := httptest.NewRequest(http.MethodGet, "/playbooks/"+id+"/tasks", nil)
 
 	c.Request = req
 	c.Params = []gin.Param{
@@ -494,7 +494,7 @@ func TestControllerTrigger(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			controller, mockService, c, recorder := setupController(t)
 
-			c.Request = httptest.NewRequest(http.MethodPost, "/playbooks/v1/trigger/"+tt.playbookId, nil)
+			c.Request = httptest.NewRequest(http.MethodPost, "/playbooks/trigger/"+tt.playbookId, nil)
 			c.Params = []gin.Param{
 				{Key: "playbook_id", Value: tt.playbookId},
 			}

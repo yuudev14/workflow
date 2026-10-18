@@ -29,26 +29,26 @@ import {
  * `settings.*` grants and the same api binary as auth, hence the same base url.
  */
 export default class AdminService {
-  private static BASE_URL = settings.BASE_URL.AUTH_SERVICE_API + "/api";
+  private static BASE_URL = settings.BASE_URL.AUTH_SERVICE_API + "/api/v1";
 
   public static listUsers = async (filter: UserFilter = {}): Promise<EntryResponse<UserWithRoles>> => {
-    const res = await apiClient.get(`${this.BASE_URL}/users/v1`, { params: filter });
+    const res = await apiClient.get(`${this.BASE_URL}/users`, { params: filter });
     return res.data;
   };
 
   /** Authenticated but ungated, unlike listUsers - see AssignableUser. */
   public static listAssignableUsers = async (): Promise<AssignableUser[]> => {
-    const res = await apiClient.get(`${this.BASE_URL}/users/v1/assignable`);
+    const res = await apiClient.get(`${this.BASE_URL}/users/assignable`);
     return res.data;
   };
 
   public static getUser = async (id: string): Promise<UserWithRoles> => {
-    const res = await apiClient.get(`${this.BASE_URL}/users/v1/${id}`);
+    const res = await apiClient.get(`${this.BASE_URL}/users/${id}`);
     return res.data;
   };
 
   public static createUser = async (payload: CreateUserPayload): Promise<UserWithRoles> => {
-    const res = await apiClient.post(`${this.BASE_URL}/users/v1`, payload);
+    const res = await apiClient.post(`${this.BASE_URL}/users`, payload);
     return res.data;
   };
 
@@ -56,46 +56,46 @@ export default class AdminService {
     id: string,
     payload: UpdateUserPayload,
   ): Promise<UserWithRoles> => {
-    const res = await apiClient.put(`${this.BASE_URL}/users/v1/${id}`, payload);
+    const res = await apiClient.put(`${this.BASE_URL}/users/${id}`, payload);
     return res.data;
   };
 
   public static setUserRoles = async (id: string, roleIds: string[]): Promise<UserWithRoles> => {
-    const res = await apiClient.put(`${this.BASE_URL}/users/v1/${id}/roles`, { role_ids: roleIds });
+    const res = await apiClient.put(`${this.BASE_URL}/users/${id}/roles`, { role_ids: roleIds });
     return res.data;
   };
 
   public static setUserPassword = async (id: string, password: string): Promise<void> => {
-    await apiClient.put(`${this.BASE_URL}/users/v1/${id}/password`, { password });
+    await apiClient.put(`${this.BASE_URL}/users/${id}/password`, { password });
   };
 
   /** Sends a new set-password link to an active local user. */
   public static inviteUser = async (id: string): Promise<void> => {
-    await apiClient.post(`${this.BASE_URL}/users/v1/${id}/invite`);
+    await apiClient.post(`${this.BASE_URL}/users/${id}/invite`);
   };
 
   /** DELETE deactivates: users are never hard-deleted, the audit trail references them. */
   public static deactivateUser = async (id: string): Promise<void> => {
-    await apiClient.delete(`${this.BASE_URL}/users/v1/${id}`);
+    await apiClient.delete(`${this.BASE_URL}/users/${id}`);
   };
 
   public static listRoles = async (): Promise<Role[]> => {
-    const res = await apiClient.get(`${this.BASE_URL}/roles/v1`);
+    const res = await apiClient.get(`${this.BASE_URL}/roles`);
     return res.data;
   };
 
   public static getRole = async (id: string): Promise<Role> => {
-    const res = await apiClient.get(`${this.BASE_URL}/roles/v1/${id}`);
+    const res = await apiClient.get(`${this.BASE_URL}/roles/${id}`);
     return res.data;
   };
 
   public static createRole = async (payload: RolePayload): Promise<Role> => {
-    const res = await apiClient.post(`${this.BASE_URL}/roles/v1`, payload);
+    const res = await apiClient.post(`${this.BASE_URL}/roles`, payload);
     return res.data;
   };
 
   public static updateRole = async (id: string, payload: UpdateRolePayload): Promise<Role> => {
-    const res = await apiClient.put(`${this.BASE_URL}/roles/v1/${id}`, payload);
+    const res = await apiClient.put(`${this.BASE_URL}/roles/${id}`, payload);
     return res.data;
   };
 
@@ -103,82 +103,82 @@ export default class AdminService {
     id: string,
     permissions: Record<string, string[]>,
   ): Promise<Role> => {
-    const res = await apiClient.put(`${this.BASE_URL}/roles/v1/${id}/permissions`, { permissions });
+    const res = await apiClient.put(`${this.BASE_URL}/roles/${id}/permissions`, { permissions });
     return res.data;
   };
 
   public static deleteRole = async (id: string): Promise<void> => {
-    await apiClient.delete(`${this.BASE_URL}/roles/v1/${id}`);
+    await apiClient.delete(`${this.BASE_URL}/roles/${id}`);
   };
 
   public static listTeams = async (filter: TeamFilter = {}): Promise<EntryResponse<Team>> => {
-    const res = await apiClient.get(`${this.BASE_URL}/teams/v1`, { params: filter });
+    const res = await apiClient.get(`${this.BASE_URL}/teams`, { params: filter });
     return res.data;
   };
 
   public static getTeam = async (id: string): Promise<Team> => {
-    const res = await apiClient.get(`${this.BASE_URL}/teams/v1/${id}`);
+    const res = await apiClient.get(`${this.BASE_URL}/teams/${id}`);
     return res.data;
   };
 
   public static createTeam = async (payload: TeamPayload): Promise<Team> => {
-    const res = await apiClient.post(`${this.BASE_URL}/teams/v1`, payload);
+    const res = await apiClient.post(`${this.BASE_URL}/teams`, payload);
     return res.data;
   };
 
   public static updateTeam = async (id: string, payload: UpdateTeamPayload): Promise<Team> => {
-    const res = await apiClient.put(`${this.BASE_URL}/teams/v1/${id}`, payload);
+    const res = await apiClient.put(`${this.BASE_URL}/teams/${id}`, payload);
     return res.data;
   };
 
   public static setTeamMembers = async (id: string, memberIds: string[]): Promise<Team> => {
-    const res = await apiClient.put(`${this.BASE_URL}/teams/v1/${id}/members`, {
+    const res = await apiClient.put(`${this.BASE_URL}/teams/${id}/members`, {
       member_ids: memberIds,
     });
     return res.data;
   };
 
   public static setTeamRoles = async (id: string, roleIds: string[]): Promise<Team> => {
-    const res = await apiClient.put(`${this.BASE_URL}/teams/v1/${id}/roles`, {
+    const res = await apiClient.put(`${this.BASE_URL}/teams/${id}/roles`, {
       role_ids: roleIds,
     });
     return res.data;
   };
 
   public static deleteTeam = async (id: string): Promise<void> => {
-    await apiClient.delete(`${this.BASE_URL}/teams/v1/${id}`);
+    await apiClient.delete(`${this.BASE_URL}/teams/${id}`);
   };
 
   public static listAuditLogs = async (
     filter: AuditFilter = {},
   ): Promise<EntryResponse<AuditLog>> => {
-    const res = await apiClient.get(`${this.BASE_URL}/audit/v1`, { params: filter });
+    const res = await apiClient.get(`${this.BASE_URL}/audit`, { params: filter });
     return res.data;
   };
 
   public static listAPIKeys = async (): Promise<APIKey[]> => {
-    const res = await apiClient.get(`${this.BASE_URL}/api-keys/v1`);
+    const res = await apiClient.get(`${this.BASE_URL}/api-keys`);
     return res.data;
   };
 
   public static createAPIKey = async (payload: CreateAPIKeyPayload): Promise<CreatedAPIKey> => {
-    const res = await apiClient.post(`${this.BASE_URL}/api-keys/v1`, payload);
+    const res = await apiClient.post(`${this.BASE_URL}/api-keys`, payload);
     return res.data;
   };
 
   public static deleteAPIKey = async (id: string): Promise<void> => {
-    await apiClient.delete(`${this.BASE_URL}/api-keys/v1/${id}`);
+    await apiClient.delete(`${this.BASE_URL}/api-keys/${id}`);
   };
 
   public static listAuthProviders = async (): Promise<AuthProviderAdmin[]> => {
-    const res = await apiClient.get(`${this.BASE_URL}/auth-providers/v1`);
+    const res = await apiClient.get(`${this.BASE_URL}/auth-providers`);
     return res.data;
   };
 
   public static createAuthProvider = async (
     payload: CreateProviderPayload,
   ): Promise<AuthProviderAdmin> => {
-    const res = await apiClient.post(`${this.BASE_URL}/auth-providers/v1`, payload);
+    const res = await apiClient.post(`${this.BASE_URL}/auth-providers`, payload);
     return res.data;
   };
 
@@ -186,7 +186,7 @@ export default class AdminService {
     id: string,
     payload: UpdateProviderPayload,
   ): Promise<AuthProviderAdmin> => {
-    const res = await apiClient.put(`${this.BASE_URL}/auth-providers/v1/${id}`, payload);
+    const res = await apiClient.put(`${this.BASE_URL}/auth-providers/${id}`, payload);
     return res.data;
   };
 }

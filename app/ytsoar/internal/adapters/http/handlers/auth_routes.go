@@ -6,7 +6,7 @@ import "github.com/gin-gonic/gin"
 // Refresh and logout use the refresh cookie, so they must not be behind the bearer
 // middleware.
 func (h *AuthHandler) RegisterPublicRoutes(route *gin.RouterGroup) {
-	group := route.Group("auth/v1")
+	group := route.Group("auth")
 	{
 		group.POST("/login", h.Login)
 		group.POST("/refresh", h.Refresh)
@@ -25,7 +25,7 @@ func (h *AuthHandler) RegisterPublicRoutes(route *gin.RouterGroup) {
 }
 
 func (h *AuthHandler) RegisterProtectedRoutes(route *gin.RouterGroup) {
-	group := route.Group("auth/v1")
+	group := route.Group("auth")
 	{
 		group.GET("/me", h.Me)
 	}

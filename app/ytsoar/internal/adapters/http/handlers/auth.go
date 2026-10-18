@@ -40,7 +40,7 @@ type SessionResponse struct {
 // Login godoc
 // @Summary Authenticate with a username and password
 // @Tags auth
-// @Router /api/auth/v1/login [post]
+// @Router /api/v1/auth/login [post]
 func (h *AuthHandler) Login(c *gin.Context) {
 	response := rest.Response{C: c}
 
@@ -73,7 +73,7 @@ func (h *AuthHandler) Login(c *gin.Context) {
 // Refresh godoc
 // @Summary Exchange the refresh cookie for a new access token
 // @Tags auth
-// @Router /api/auth/v1/refresh [post]
+// @Router /api/v1/auth/refresh [post]
 func (h *AuthHandler) Refresh(c *gin.Context) {
 	response := rest.Response{C: c}
 
@@ -108,7 +108,7 @@ func (h *AuthHandler) Refresh(c *gin.Context) {
 // Logout godoc
 // @Summary Revoke the current session
 // @Tags auth
-// @Router /api/auth/v1/logout [post]
+// @Router /api/v1/auth/logout [post]
 //
 // Deliberately unauthenticated: logout must work when the access token is expired, and it
 // can only revoke the cookie of the caller.
@@ -127,7 +127,7 @@ func (h *AuthHandler) Logout(c *gin.Context) {
 // @Summary Current user, roles and permissions
 // @Tags auth
 // @Security BearerAuth
-// @Router /api/auth/v1/me [get]
+// @Router /api/v1/auth/me [get]
 func (h *AuthHandler) Me(c *gin.Context) {
 	response := rest.Response{C: c}
 
@@ -154,7 +154,7 @@ func (h *AuthHandler) Me(c *gin.Context) {
 // ForgotPassword godoc
 // @Summary Email a password reset link. The reply is always 204, so it does not show if the email exists.
 // @Tags auth
-// @Router /api/auth/v1/password/forgot [post]
+// @Router /api/v1/auth/password/forgot [post]
 func (h *AuthHandler) ForgotPassword(c *gin.Context) {
 	response := rest.Response{C: c}
 
@@ -171,7 +171,7 @@ func (h *AuthHandler) ForgotPassword(c *gin.Context) {
 // ResetPassword godoc
 // @Summary Set a password with an invite or a reset link
 // @Tags auth
-// @Router /api/auth/v1/password/reset [post]
+// @Router /api/v1/auth/password/reset [post]
 func (h *AuthHandler) ResetPassword(c *gin.Context) {
 	response := rest.Response{C: c}
 

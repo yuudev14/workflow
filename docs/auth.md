@@ -80,7 +80,7 @@ One SQL query (`ListPermissionsForUser`) joins the direct roles and the team rol
 
 ## 4. Local sign-in
 
-`POST /api/auth/v1/login` with a username and a password.
+`POST /api/v1/auth/login` with a username and a password.
 
 ```mermaid
 sequenceDiagram
@@ -106,7 +106,7 @@ sequenceDiagram
 
 ## 5. Refresh, reuse and logout
 
-`POST /api/auth/v1/refresh` uses the refresh cookie. The frontend calls it when the access token ends.
+`POST /api/v1/auth/refresh` uses the refresh cookie. The frontend calls it when the access token ends.
 
 ```mermaid
 flowchart TD
@@ -122,7 +122,7 @@ flowchart TD
 
 - **Rotation.** Each refresh makes a new pair and revokes the old refresh token.
 - **Reuse detection.** A revoked token that comes back after more than 10 seconds (`reuseGraceWindow`) means a thief used a copy. The system revokes every session of that user.
-- **Logout** (`POST /api/auth/v1/logout`) revokes the refresh token and clears both cookies. It has no auth check on purpose. It works with an expired access token. It can only revoke the cookie of the caller.
+- **Logout** (`POST /api/v1/auth/logout`) revokes the refresh token and clears both cookies. It has no auth check on purpose. It works with an expired access token. It can only revoke the cookie of the caller.
 - **WebSocket.** `/ws/playbook` cannot send headers from a browser. It uses the refresh cookie. The token is read and checked in the database. It is never rotated here.
 - **Old rows.** Each refresh adds a row. A River periodic job (`auth_delete_expired_tokens`) deletes the expired rows once a day and when the worker starts. River runs periodic jobs only on the elected leader, so many workers still delete once.
 
@@ -131,11 +131,11 @@ flowchart TD
 A machine (a SIEM, a script, another service) cannot sign in with a browser. An admin makes an API key for it.
 
 ```
-curl -H "Authorization: Bearer ytsoar_3q2k8..." https://soar.example.com/api/alerts/v1
+curl -H "Authorization: Bearer ytsoar_3q2k8..." https://soar.example.com/api/v1/alerts
 ```
 
 - **A key acts as one user.** It has the roles of that user, and permissions are checked on every request as usual. For a machine, make a user with few roles (for example only `alerts: create`) and give the key to that user.
-- **Shown once.** `POST /api/api-keys/v1` returns the key one time. The table `api_keys` keeps only the SHA-256 hash and the first characters (`prefix`), so people can tell keys apart.
+- **Shown once.** `POST /api/v1/api-keys` returns the key one time. The table `api_keys` keeps only the SHA-256 hash and the first characters (`prefix`), so people can tell keys apart.
 - **Stops at once.** Delete the key, or deactivate its user. The lookup joins `users` and checks `is_active`.
 - **Expiry.** `expires_at` is optional. Without it the key works until it is deleted.
 - **Last use.** `last_used_at` is updated at most once a minute, so most requests do no write.
@@ -155,14 +155,14 @@ sequenceDiagram
     API->>API: save the sha256 of a random token on the user
     API->>M: email with the link
     M-->>U: link
-    U->>API: POST /api/auth/v1/password/reset (token + password)
+    U->>API: POST /api/v1/auth/password/reset (token + password)
     API->>API: clear the token, set the password, set email_verified_at, end all sessions
 ```
 
-- **Invite.** `POST /api/users/v1` without a `password` sends an invite. The link works for 72 hours. `POST /api/users/v1/:id/invite` sends it again. If the email fails, the user is not created.
-- **Forgot password.** `POST /api/auth/v1/password/forgot` always answers `204`, so the reply does not show if the email exists. The email goes out in the background, so the reply time does not show it either. The link works for 1 hour. Only active local users get one.
+- **Invite.** `POST /api/v1/users` without a `password` sends an invite. The link works for 72 hours. `POST /api/v1/users/:id/invite` sends it again. If the email fails, the user is not created.
+- **Forgot password.** `POST /api/v1/auth/password/forgot` always answers `204`, so the reply does not show if the email exists. The email goes out in the background, so the reply time does not show it either. The link works for 1 hour. Only active local users get one.
 - **One link of each kind.** As in Devise, each kind has 2 columns on `users`: `invitation_token` and `invitation_sent_at`, `reset_password_token` and `reset_password_sent_at`. The token columns hold the sha256 hash. A new link replaces the old one of the same kind, but not when the old one is less than 1 minute old. Then nothing is sent (the invite route answers `409`).
-- **One use.** `POST /api/auth/v1/password/reset` takes both kinds of link and clears the 2 columns. A wrong, used or expired link gives the same `400`.
+- **One use.** `POST /api/v1/auth/password/reset` takes both kinds of link and clears the 2 columns. A wrong, used or expired link gives the same `400`.
 - **`email_verified_at`** is information only. It blocks nothing. A link sets it, because only the owner of the address can open the link. For SSO users, the `email_verified` claim sets it. The migration set it for all users that existed before.
 - **Email.** `SMTP_*` settings. The mailer uses STARTTLS when the server offers it. Port 465 (TLS from the start) is not supported. With an empty `SMTP_HOST`, the email goes to the log. The dev Docker setup sends to Mailpit: read the emails at http://localhost:8025.
 - An expired link stays in the row. It does no harm: the app checks the time, and the next link replaces it. Thus no job deletes links.
@@ -189,7 +189,7 @@ sequenceDiagram
     participant B as Browser
     participant API as API
     participant IdP as Identity provider
-    B->>API: GET /api/auth/v1/oidc/{id}/start
+    B->>API: GET /api/v1/auth/oidc/{id}/start
     API-->>B: 302 to the IdP + signed cookie ytsoar_oidc (state + PKCE verifier)
     B->>IdP: user signs in
     IdP-->>B: 302 to /oidc/{id}/callback?code&state
@@ -228,15 +228,15 @@ The password and the secret in a provider config are masked in admin responses. 
 
 All these routes need the `settings` module.
 
-| Area | Routes (`/api/...`) | Grant |
+| Area | Routes (`/api/v1/...`) | Grant |
 |---|---|---|
-| Users | `GET/POST users/v1`, `GET/PUT users/v1/:id`, `PUT users/v1/:id/roles`, `PUT users/v1/:id/password`, `POST users/v1/:id/invite`, `DELETE users/v1/:id` | `settings` read, create, update, delete |
-| Roles | `GET/POST roles/v1`, `GET/PUT roles/v1/:id`, `PUT roles/v1/:id/permissions`, `DELETE roles/v1/:id` | same |
-| Teams | `GET/POST teams/v1`, `GET/PUT teams/v1/:id`, `PUT teams/v1/:id/members`, `PUT teams/v1/:id/roles`, `DELETE teams/v1/:id` | same |
-| Audit log | `GET audit/v1` | `settings` read |
-| API keys | `GET/POST api-keys/v1`, `DELETE api-keys/v1/:id` | `settings` read, create, delete |
-| SSO providers | `GET/POST auth-providers/v1`, `PUT auth-providers/v1/:id` | same |
-| Assignee list | `GET users/v1/assignable` | none (any signed-in user) |
+| Users | `GET/POST users`, `GET/PUT users/:id`, `PUT users/:id/roles`, `PUT users/:id/password`, `POST users/:id/invite`, `DELETE users/:id` | `settings` read, create, update, delete |
+| Roles | `GET/POST roles`, `GET/PUT roles/:id`, `PUT roles/:id/permissions`, `DELETE roles/:id` | same |
+| Teams | `GET/POST teams`, `GET/PUT teams/:id`, `PUT teams/:id/members`, `PUT teams/:id/roles`, `DELETE teams/:id` | same |
+| Audit log | `GET audit` | `settings` read |
+| API keys | `GET/POST api-keys`, `DELETE api-keys/:id` | `settings` read, create, delete |
+| SSO providers | `GET/POST auth-providers`, `PUT auth-providers/:id` | same |
+| Assignee list | `GET users/assignable` | none (any signed-in user) |
 
 Rules to remember:
 
@@ -246,7 +246,7 @@ Rules to remember:
 - **Check before write.** An unknown role id fails before any write, with a clear error.
 - **A team role is a big grant.** It raises the rights of every member. It needs `settings.update` and it is always written to the audit log.
 - **The audit log is read-only.** No route edits or deletes it.
-- **Assignee list.** `users/v1/assignable` has no `settings` check on purpose. An analyst must be able to name the assignee. It returns only `id` and `username`.
+- **Assignee list.** `users/assignable` has no `settings` check on purpose. An analyst must be able to name the assignee. It returns only `id` and `username`.
 - **Teams on alerts.** `alerts.team_id` and `incidents.team_id` are labels for ownership. Only `team_roles` gives rights.
 
 ## 10. The first admin

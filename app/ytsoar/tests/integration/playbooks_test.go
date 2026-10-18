@@ -10,11 +10,11 @@ import (
 
 func newPlaybook(t *testing.T, c *client) string {
 	t.Helper()
-	return c.expect(t, http.StatusOK, http.MethodPost, "/api/playbooks/v1", J{"name": unique("playbook")}).(J)["id"].(string)
+	return c.expect(t, http.StatusOK, http.MethodPost, "/api/v1/playbooks", J{"name": unique("playbook")}).(J)["id"].(string)
 }
 
 func TestPlaybooks(t *testing.T) {
-	const base = "/api/playbooks/v1"
+	const base = "/api/v1/playbooks"
 	c := admin(t)
 	id := newPlaybook(t, c)
 

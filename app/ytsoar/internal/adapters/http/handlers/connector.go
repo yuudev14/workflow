@@ -25,7 +25,7 @@ func NewConnectorHandler(log logger.Logger, connectorService connectors.Connecto
 // GetConnectors godoc
 // @Summary List available connectors
 // @Tags connectors
-// @Router /api/connectors/v1 [get]
+// @Router /api/v1/connectors [get]
 func (h *ConnectorHandler) GetConnectors(c *gin.Context) {
 	response := rest.Response{C: c}
 
@@ -40,7 +40,7 @@ func (h *ConnectorHandler) GetConnectors(c *gin.Context) {
 // GetConnector godoc
 // @Summary Get one connector's metadata
 // @Tags connectors
-// @Router /api/connectors/v1/{connector_id} [get]
+// @Router /api/v1/connectors/{connector_id} [get]
 func (h *ConnectorHandler) GetConnector(c *gin.Context) {
 	response := rest.Response{C: c}
 
@@ -55,7 +55,7 @@ func (h *ConnectorHandler) GetConnector(c *gin.Context) {
 // UploadConnector godoc
 // @Summary Upload a connector as a zip (multipart field "file")
 // @Tags connectors
-// @Router /api/connectors/v1 [post]
+// @Router /api/v1/connectors [post]
 func (h *ConnectorHandler) UploadConnector(c *gin.Context) {
 	response := rest.Response{C: c}
 
@@ -88,7 +88,7 @@ func (h *ConnectorHandler) UploadConnector(c *gin.Context) {
 // DeleteConnector godoc
 // @Summary Delete a connector from the tree
 // @Tags connectors
-// @Router /api/connectors/v1/{connector_id} [delete]
+// @Router /api/v1/connectors/{connector_id} [delete]
 func (h *ConnectorHandler) DeleteConnector(c *gin.Context) {
 	response := rest.Response{C: c}
 

@@ -187,7 +187,7 @@ Each language uses the same shape. Write a class that extends the base class in 
 
 If a connector has both `connector.ts` and `connector.js`, the system uses the `.ts` file. TypeScript must use only erasable syntax. Do not use enums, namespaces or parameter properties. To check the syntax, run `npx tsc --noEmit` in `app/connectors`.
 
-**To start a new connector**, copy a template: `app/connectors/sample` (Python), `sample_js` (JavaScript) or `sample_ts` (TypeScript). You can also upload a zip file with `POST /api/connectors/v1` (multipart field `file`). The API validates the zip file, installs its dependencies and records an audit row. `DELETE /api/connectors/v1/<id>` removes the connector.
+**To start a new connector**, copy a template: `app/connectors/sample` (Python), `sample_js` (JavaScript) or `sample_ts` (TypeScript). You can also upload a zip file with `POST /api/v1/connectors` (multipart field `file`). The API validates the zip file, installs its dependencies and records an audit row. `DELETE /api/v1/connectors/<id>` removes the connector.
 
 A parameter can use the output of an earlier node: `{{ var.steps["node name"] }}`.
 

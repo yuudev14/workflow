@@ -36,7 +36,7 @@ func grantFor(t *testing.T, register func(*gin.RouterGroup, middleware.Permissio
 	gin.SetMode(gin.TestMode)
 
 	router := gin.New()
-	register(router.Group("/api"), recordingPermission())
+	register(router.Group("/api/v1"), recordingPermission())
 
 	rec := httptest.NewRecorder()
 	router.ServeHTTP(rec, httptest.NewRequest(method, path, nil))
@@ -62,16 +62,16 @@ func TestPlaybookRouteGrants(t *testing.T) {
 		path   string
 		want   string
 	}{
-		{http.MethodGet, "/api/playbooks/v1", "playbooks.read"},
-		{http.MethodGet, "/api/playbooks/v1/history", "playbooks.read"},
-		{http.MethodGet, "/api/playbooks/v1/history/abc/tasks", "playbooks.read"},
-		{http.MethodGet, "/api/playbooks/v1/abc", "playbooks.read"},
-		{http.MethodGet, "/api/playbooks/v1/abc/tasks", "playbooks.read"},
-		{http.MethodPost, "/api/playbooks/v1", "playbooks.create"},
-		{http.MethodPut, "/api/playbooks/v1/abc", "playbooks.update"},
-		{http.MethodPut, "/api/playbooks/v1/tasks/abc", "playbooks.update"},
+		{http.MethodGet, "/api/v1/playbooks", "playbooks.read"},
+		{http.MethodGet, "/api/v1/playbooks/history", "playbooks.read"},
+		{http.MethodGet, "/api/v1/playbooks/history/abc/tasks", "playbooks.read"},
+		{http.MethodGet, "/api/v1/playbooks/abc", "playbooks.read"},
+		{http.MethodGet, "/api/v1/playbooks/abc/tasks", "playbooks.read"},
+		{http.MethodPost, "/api/v1/playbooks", "playbooks.create"},
+		{http.MethodPut, "/api/v1/playbooks/abc", "playbooks.update"},
+		{http.MethodPut, "/api/v1/playbooks/tasks/abc", "playbooks.update"},
 		// executing is not covered by update on purpose
-		{http.MethodPost, "/api/playbooks/v1/trigger/abc", "playbooks.execute"},
+		{http.MethodPost, "/api/v1/playbooks/trigger/abc", "playbooks.execute"},
 	}
 
 	for _, tc := range cases {
@@ -92,10 +92,10 @@ func TestConnectorRouteGrants(t *testing.T) {
 		path   string
 		want   string
 	}{
-		{http.MethodGet, "/api/connectors/v1", "connectors.read"},
-		{http.MethodGet, "/api/connectors/v1/abc", "connectors.read"},
-		{http.MethodPost, "/api/connectors/v1", "connectors.create"},
-		{http.MethodDelete, "/api/connectors/v1/abc", "connectors.delete"},
+		{http.MethodGet, "/api/v1/connectors", "connectors.read"},
+		{http.MethodGet, "/api/v1/connectors/abc", "connectors.read"},
+		{http.MethodPost, "/api/v1/connectors", "connectors.create"},
+		{http.MethodDelete, "/api/v1/connectors/abc", "connectors.delete"},
 	}
 
 	for _, tc := range cases {
@@ -118,39 +118,39 @@ func TestAdminRouteGrants(t *testing.T) {
 		path   string
 		want   string
 	}{
-		{http.MethodGet, "/api/users/v1", "settings.read"},
-		{http.MethodGet, "/api/users/v1/abc", "settings.read"},
-		{http.MethodPost, "/api/users/v1", "settings.create"},
-		{http.MethodPut, "/api/users/v1/abc", "settings.update"},
-		{http.MethodPut, "/api/users/v1/abc/roles", "settings.update"},
-		{http.MethodPut, "/api/users/v1/abc/password", "settings.update"},
-		{http.MethodPost, "/api/users/v1/abc/invite", "settings.update"},
-		{http.MethodDelete, "/api/users/v1/abc", "settings.delete"},
+		{http.MethodGet, "/api/v1/users", "settings.read"},
+		{http.MethodGet, "/api/v1/users/abc", "settings.read"},
+		{http.MethodPost, "/api/v1/users", "settings.create"},
+		{http.MethodPut, "/api/v1/users/abc", "settings.update"},
+		{http.MethodPut, "/api/v1/users/abc/roles", "settings.update"},
+		{http.MethodPut, "/api/v1/users/abc/password", "settings.update"},
+		{http.MethodPost, "/api/v1/users/abc/invite", "settings.update"},
+		{http.MethodDelete, "/api/v1/users/abc", "settings.delete"},
 
-		{http.MethodGet, "/api/roles/v1", "settings.read"},
-		{http.MethodGet, "/api/roles/v1/abc", "settings.read"},
-		{http.MethodPost, "/api/roles/v1", "settings.create"},
-		{http.MethodPut, "/api/roles/v1/abc", "settings.update"},
-		{http.MethodPut, "/api/roles/v1/abc/permissions", "settings.update"},
-		{http.MethodDelete, "/api/roles/v1/abc", "settings.delete"},
+		{http.MethodGet, "/api/v1/roles", "settings.read"},
+		{http.MethodGet, "/api/v1/roles/abc", "settings.read"},
+		{http.MethodPost, "/api/v1/roles", "settings.create"},
+		{http.MethodPut, "/api/v1/roles/abc", "settings.update"},
+		{http.MethodPut, "/api/v1/roles/abc/permissions", "settings.update"},
+		{http.MethodDelete, "/api/v1/roles/abc", "settings.delete"},
 
-		{http.MethodGet, "/api/teams/v1", "settings.read"},
-		{http.MethodGet, "/api/teams/v1/abc", "settings.read"},
-		{http.MethodPost, "/api/teams/v1", "settings.create"},
-		{http.MethodPut, "/api/teams/v1/abc", "settings.update"},
-		{http.MethodPut, "/api/teams/v1/abc/members", "settings.update"},
-		{http.MethodPut, "/api/teams/v1/abc/roles", "settings.update"},
-		{http.MethodDelete, "/api/teams/v1/abc", "settings.delete"},
+		{http.MethodGet, "/api/v1/teams", "settings.read"},
+		{http.MethodGet, "/api/v1/teams/abc", "settings.read"},
+		{http.MethodPost, "/api/v1/teams", "settings.create"},
+		{http.MethodPut, "/api/v1/teams/abc", "settings.update"},
+		{http.MethodPut, "/api/v1/teams/abc/members", "settings.update"},
+		{http.MethodPut, "/api/v1/teams/abc/roles", "settings.update"},
+		{http.MethodDelete, "/api/v1/teams/abc", "settings.delete"},
 
-		{http.MethodGet, "/api/audit/v1", "settings.read"},
+		{http.MethodGet, "/api/v1/audit", "settings.read"},
 
-		{http.MethodGet, "/api/api-keys/v1", "settings.read"},
-		{http.MethodPost, "/api/api-keys/v1", "settings.create"},
-		{http.MethodDelete, "/api/api-keys/v1/abc", "settings.delete"},
+		{http.MethodGet, "/api/v1/api-keys", "settings.read"},
+		{http.MethodPost, "/api/v1/api-keys", "settings.create"},
+		{http.MethodDelete, "/api/v1/api-keys/abc", "settings.delete"},
 
-		{http.MethodGet, "/api/auth-providers/v1", "settings.read"},
-		{http.MethodPost, "/api/auth-providers/v1", "settings.create"},
-		{http.MethodPut, "/api/auth-providers/v1/abc", "settings.update"},
+		{http.MethodGet, "/api/v1/auth-providers", "settings.read"},
+		{http.MethodPost, "/api/v1/auth-providers", "settings.create"},
+		{http.MethodPut, "/api/v1/auth-providers/abc", "settings.update"},
 	}
 
 	for _, tc := range cases {
@@ -176,7 +176,7 @@ func TestNoMutationIsExposedOverGET(t *testing.T) {
 
 	router := gin.New()
 	for _, register := range registrars {
-		register(router.Group("/api"), passthrough)
+		register(router.Group("/api/v1"), passthrough)
 	}
 
 	for _, route := range router.Routes() {
@@ -210,7 +210,7 @@ func TestRouteGrantsUseKnownVocabulary(t *testing.T) {
 
 	gin.SetMode(gin.TestMode)
 	for _, register := range registrars {
-		register(gin.New().Group("/api"), recorder)
+		register(gin.New().Group("/api/v1"), recorder)
 	}
 
 	assert.NotEmpty(t, seen, "no grants were declared - the registrars did not run")

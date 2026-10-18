@@ -9,7 +9,7 @@ import (
 )
 
 func TestUsers(t *testing.T) {
-	const base = "/api/users/v1"
+	const base = "/api/v1/users"
 	c := admin(t)
 	username := unique("analyst")
 	id := c.create(t, base, J{"username": username, "email": username + "@ytsoar.test", "password": "password123"})["id"].(string)
@@ -44,7 +44,7 @@ func TestUsers(t *testing.T) {
 	})
 
 	t.Run("PUT /users/:id", func(t *testing.T) {
-		adminEmail := c.get(t, "/api/auth/v1/me").(J)["user"].(J)["email"]
+		adminEmail := c.get(t, "/api/v1/auth/me").(J)["user"].(J)["email"]
 		c.expectAll(t, []request{
 			{"changes the name", http.MethodPut, base + "/" + id, J{"first_name": "Ana"}, http.StatusOK},
 			{"returns 409 when the email is in use", http.MethodPut, base + "/" + id, J{"email": adminEmail}, http.StatusConflict},
@@ -58,7 +58,7 @@ func TestUsers(t *testing.T) {
 		})
 		t.Run("replaces the old password", func(t *testing.T) {
 			c.expect(t, http.StatusNoContent, http.MethodPut, base+"/"+id+"/password", J{"password": "password456"})
-			anonymous(t).expect(t, http.StatusUnauthorized, http.MethodPost, "/api/auth/v1/login", J{"username": username, "password": "password123"})
+			anonymous(t).expect(t, http.StatusUnauthorized, http.MethodPost, "/api/v1/auth/login", J{"username": username, "password": "password123"})
 			signIn(t, username, "password456")
 		})
 	})
@@ -66,7 +66,7 @@ func TestUsers(t *testing.T) {
 	t.Run("DELETE /users/:id", func(t *testing.T) {
 		t.Run("deactivates the user", func(t *testing.T) {
 			c.expect(t, http.StatusNoContent, http.MethodDelete, base+"/"+id, nil)
-			anonymous(t).expect(t, http.StatusUnauthorized, http.MethodPost, "/api/auth/v1/login", J{"username": username, "password": "password456"})
+			anonymous(t).expect(t, http.StatusUnauthorized, http.MethodPost, "/api/v1/auth/login", J{"username": username, "password": "password456"})
 			assert.NotContains(t, ids(c.get(t, base+"/assignable")), id)
 		})
 	})
@@ -78,10 +78,10 @@ func TestAuditLog(t *testing.T) {
 	t.Run("GET /audit", func(t *testing.T) {
 		t.Run("lists the changes", func(t *testing.T) {
 			newUser(t)
-			assert.NotEmpty(t, items(c.get(t, "/api/audit/v1")))
+			assert.NotEmpty(t, items(c.get(t, "/api/v1/audit")))
 		})
 		t.Run("returns 400 when the actor id is not a uuid", func(t *testing.T) {
-			c.expect(t, http.StatusBadRequest, http.MethodGet, "/api/audit/v1?actor_id=x", nil)
+			c.expect(t, http.StatusBadRequest, http.MethodGet, "/api/v1/audit?actor_id=x", nil)
 		})
 	})
 }

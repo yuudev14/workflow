@@ -17,7 +17,7 @@ import {
  * Alerts. Same api binary as auth and playbooks, hence the same base url.
  */
 export default class AlertService {
-  private static BASE_URL = settings.BASE_URL.AUTH_SERVICE_API + "/api/alerts/v1";
+  private static BASE_URL = settings.BASE_URL.AUTH_SERVICE_API + "/api/v1/alerts";
 
   public static getAlerts = async (filter: AlertFilter = {}): Promise<CursorPage<Alert>> => {
     const res = await apiClient.get(this.BASE_URL, { params: filter });

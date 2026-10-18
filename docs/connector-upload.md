@@ -32,7 +32,7 @@ sequenceDiagram
     participant W as FSWriter
     participant I as depsinstall
     participant DB as Postgres
-    U->>H: POST /api/connectors/v1 (multipart field "file")
+    U->>H: POST /api/v1/connectors (multipart field "file")
     H->>S: UploadConnector(zip bytes, uploaded_by)
     S->>S: 1. check size, zip format, paths
     S->>S: 2. read and check info.json
@@ -48,7 +48,7 @@ If step 4 or step 5 fails, the service removes the new folder (`removeQuietly`).
 
 ### The route
 
-`POST /api/connectors/v1`. Multipart form. The zip is in the field `file`. An optional field `uploaded_by` is saved in the audit row.
+`POST /api/v1/connectors`. Multipart form. The zip is in the field `file`. An optional field `uploaded_by` is saved in the audit row.
 
 - The grant is `connectors` + `create`. This is the same as "may run code on the platform", because the upload installs libraries and the code runs in the sandbox.
 - The handler limits the body with `http.MaxBytesReader` (50 MB).
@@ -102,9 +102,9 @@ The response is `201` and the connector info (`info.json` plus a `configs` list)
 
 | Route | Grant | What it does |
 |---|---|---|
-| `GET /api/connectors/v1` | `connectors` read | List connectors from the tree. A broken connector is skipped. `core` is hidden. |
-| `GET /api/connectors/v1/:id` | `connectors` read | One connector. |
-| `DELETE /api/connectors/v1/:id` | `connectors` delete | Remove the folder and the audit row. A reserved id gives 400. A missing audit row is fine. |
+| `GET /api/v1/connectors` | `connectors` read | List connectors from the tree. A broken connector is skipped. `core` is hidden. |
+| `GET /api/v1/connectors/:id` | `connectors` read | One connector. |
+| `DELETE /api/v1/connectors/:id` | `connectors` delete | Remove the folder and the audit row. A reserved id gives 400. A missing audit row is fine. |
 
 ## 5. How a run finds the uploaded connector
 
