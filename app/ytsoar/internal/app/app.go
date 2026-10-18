@@ -58,25 +58,6 @@ func NewAPI(ctx context.Context, cfg config.Config, appLogger logger.Logger, poo
 	taskRepository := repository.NewTaskRepositoryImpl(appLogger, queries, pool)
 	edgeRepository := repository.NewEdgeRepositoryImpl(appLogger, queries, pool)
 	userRepository := repository.NewUserRepositoryImpl(appLogger, queries, pool)
-	roleRepository := repository.NewRoleRepositoryImpl(appLogger, queries, pool)
-	refreshTokenRepository := repository.NewRefreshTokenRepositoryImpl(appLogger, queries, pool)
-	teamRepository := repository.NewTeamRepositoryImpl(appLogger, queries, pool)
-	auditRepository := repository.NewAuditLogRepositoryImpl(appLogger, queries, pool)
-	authProviderRepository := repository.NewAuthProviderRepositoryImpl(appLogger, queries, pool)
-
-	argonHasher := security.NewArgon2Hasher()
-	oidcClient := oidcclient.New()
-
-	authConfig := auth.AuthConfig{
-		JWTSecret:       cfg.JWTSecret,
-		AccessTokenTTL:  cfg.AccessTokenTTL,
-		RefreshTokenTTL: cfg.RefreshTokenTTL,
-		AdminUsername:   cfg.AdminUsername,
-		AdminEmail:      cfg.AdminEmail,
-		AdminPassword:   cfg.AdminPassword,
-		FrontendURL:     cfg.FrontendURL,
-		AuthPublicURL:   cfg.AuthPublicURL,
-	}
 
 	playbookService := playbooks.NewPlaybookService(appLogger, playbookRepository)
 	taskService := tasks.NewTaskServiceImpl(taskRepository)
@@ -88,19 +69,7 @@ func NewAPI(ctx context.Context, cfg config.Config, appLogger logger.Logger, poo
 		}
 	}()
 	edgeService := edges.NewEdgeServiceImpl(edgeRepository)
-	authService := auth.NewService(
-		appLogger,
-		userRepository,
-		roleRepository,
-		refreshTokenRepository,
-		teamRepository,
-		auditRepository,
-		authProviderRepository,
-		argonHasher,
-		oidcClient,
-		txManager,
-		authConfig,
-	)
+	authService := newAuthService(cfg, appLogger, queries, pool)
 
 	// without this a new database has roles but no users, and nobody can sign in.
 	// It does nothing once someone has the admin role.
@@ -175,6 +144,33 @@ func NewAPI(ctx context.Context, cfg config.Config, appLogger logger.Logger, poo
 	), nil
 }
 
+// newAuthService is shared: the api signs users in, and the worker runs the token cleanup.
+func newAuthService(cfg config.Config, appLogger logger.Logger, queries *db.Queries, pool *pgxpool.Pool) *auth.Service {
+	return auth.NewService(
+		appLogger,
+		repository.NewUserRepositoryImpl(appLogger, queries, pool),
+		repository.NewRoleRepositoryImpl(appLogger, queries, pool),
+		repository.NewRefreshTokenRepositoryImpl(appLogger, queries, pool),
+		repository.NewAPIKeyRepositoryImpl(appLogger, queries, pool),
+		repository.NewTeamRepositoryImpl(appLogger, queries, pool),
+		repository.NewAuditLogRepositoryImpl(appLogger, queries, pool),
+		repository.NewAuthProviderRepositoryImpl(appLogger, queries, pool),
+		security.NewArgon2Hasher(),
+		oidcclient.New(),
+		repository.NewPgxTxManager(pool),
+		auth.AuthConfig{
+			JWTSecret:       cfg.JWTSecret,
+			AccessTokenTTL:  cfg.AccessTokenTTL,
+			RefreshTokenTTL: cfg.RefreshTokenTTL,
+			AdminUsername:   cfg.AdminUsername,
+			AdminEmail:      cfg.AdminEmail,
+			AdminPassword:   cfg.AdminPassword,
+			FrontendURL:     cfg.FrontendURL,
+			AuthPublicURL:   cfg.AuthPublicURL,
+		},
+	)
+}
+
 // NewWorker connects the parts of the worker program and returns its job queue client.
 // The caller starts and stops it.
 func NewWorker(cfg config.Config, appLogger logger.Logger, pool *pgxpool.Pool) (*river.Client[pgx.Tx], error) {
@@ -232,11 +228,13 @@ func NewWorker(cfg config.Config, appLogger logger.Logger, pool *pgxpool.Pool) (
 			repository.NewAlertRepositoryImpl(appLogger, queries, pool),
 			repository.NewIncidentRepositoryImpl(appLogger, queries, pool)),
 	)
+	cleanupWorker := jobs.NewDeleteExpiredTokensWorker(appLogger, newAuthService(cfg, appLogger, queries, pool))
 
 	return jobs.NewWorkerClient(
 		pool,
 		runWorker,
 		jobs.NewRunForEventWorker(appLogger, eventRunner),
+		cleanupWorker,
 		cfg.PlaybookConcurrency, cfg.RunTimeout, cfg.WorkerStopGrace)
 }
 

@@ -192,6 +192,21 @@ func (mr *MockQuerierTxMockRecorder) CreateUser(ctx, arg any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateUser", reflect.TypeOf((*MockQuerierTx)(nil).CreateUser), ctx, arg)
 }
 
+// DeleteAPIKey mocks base method.
+func (m *MockQuerierTx) DeleteAPIKey(ctx context.Context, id pgtype.UUID) (int64, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DeleteAPIKey", ctx, id)
+	ret0, _ := ret[0].(int64)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// DeleteAPIKey indicates an expected call of DeleteAPIKey.
+func (mr *MockQuerierTxMockRecorder) DeleteAPIKey(ctx, id any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteAPIKey", reflect.TypeOf((*MockQuerierTx)(nil).DeleteAPIKey), ctx, id)
+}
+
 // DeleteAlertNote mocks base method.
 func (m *MockQuerierTx) DeleteAlertNote(ctx context.Context, id pgtype.UUID) (int64, error) {
 	m.ctrl.T.Helper()
@@ -251,17 +266,17 @@ func (mr *MockQuerierTxMockRecorder) DeleteEdges(ctx, ids any) *gomock.Call {
 }
 
 // DeleteExpiredRefreshTokens mocks base method.
-func (m *MockQuerierTx) DeleteExpiredRefreshTokens(ctx context.Context) error {
+func (m *MockQuerierTx) DeleteExpiredRefreshTokens(ctx context.Context, expiresAt pgtype.Timestamp) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "DeleteExpiredRefreshTokens", ctx)
+	ret := m.ctrl.Call(m, "DeleteExpiredRefreshTokens", ctx, expiresAt)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // DeleteExpiredRefreshTokens indicates an expected call of DeleteExpiredRefreshTokens.
-func (mr *MockQuerierTxMockRecorder) DeleteExpiredRefreshTokens(ctx any) *gomock.Call {
+func (mr *MockQuerierTxMockRecorder) DeleteExpiredRefreshTokens(ctx, expiresAt any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteExpiredRefreshTokens", reflect.TypeOf((*MockQuerierTx)(nil).DeleteExpiredRefreshTokens), ctx)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteExpiredRefreshTokens", reflect.TypeOf((*MockQuerierTx)(nil).DeleteExpiredRefreshTokens), ctx, expiresAt)
 }
 
 // DeleteIncidentAlert mocks base method.
@@ -407,6 +422,21 @@ func (m *MockQuerierTx) FailUnfinishedTaskHistory(ctx context.Context, arg db.Fa
 func (mr *MockQuerierTxMockRecorder) FailUnfinishedTaskHistory(ctx, arg any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FailUnfinishedTaskHistory", reflect.TypeOf((*MockQuerierTx)(nil).FailUnfinishedTaskHistory), ctx, arg)
+}
+
+// GetActiveAPIKeyByHash mocks base method.
+func (m *MockQuerierTx) GetActiveAPIKeyByHash(ctx context.Context, keyHash string) (db.GetActiveAPIKeyByHashRow, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetActiveAPIKeyByHash", ctx, keyHash)
+	ret0, _ := ret[0].(db.GetActiveAPIKeyByHashRow)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetActiveAPIKeyByHash indicates an expected call of GetActiveAPIKeyByHash.
+func (mr *MockQuerierTxMockRecorder) GetActiveAPIKeyByHash(ctx, keyHash any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetActiveAPIKeyByHash", reflect.TypeOf((*MockQuerierTx)(nil).GetActiveAPIKeyByHash), ctx, keyHash)
 }
 
 // GetAlertById mocks base method.
@@ -724,6 +754,21 @@ func (mr *MockQuerierTxMockRecorder) GetUserByUsername(ctx, username any) *gomoc
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetUserByUsername", reflect.TypeOf((*MockQuerierTx)(nil).GetUserByUsername), ctx, username)
 }
 
+// InsertAPIKey mocks base method.
+func (m *MockQuerierTx) InsertAPIKey(ctx context.Context, arg db.InsertAPIKeyParams) (db.ApiKey, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "InsertAPIKey", ctx, arg)
+	ret0, _ := ret[0].(db.ApiKey)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// InsertAPIKey indicates an expected call of InsertAPIKey.
+func (mr *MockQuerierTxMockRecorder) InsertAPIKey(ctx, arg any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "InsertAPIKey", reflect.TypeOf((*MockQuerierTx)(nil).InsertAPIKey), ctx, arg)
+}
+
 // InsertAlertEvent mocks base method.
 func (m *MockQuerierTx) InsertAlertEvent(ctx context.Context, arg db.InsertAlertEventParams) (db.AlertEvent, error) {
 	m.ctrl.T.Helper()
@@ -883,6 +928,21 @@ func (m *MockQuerierTx) InsertUserRole(ctx context.Context, arg db.InsertUserRol
 func (mr *MockQuerierTxMockRecorder) InsertUserRole(ctx, arg any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "InsertUserRole", reflect.TypeOf((*MockQuerierTx)(nil).InsertUserRole), ctx, arg)
+}
+
+// ListAPIKeys mocks base method.
+func (m *MockQuerierTx) ListAPIKeys(ctx context.Context, userID pgtype.UUID) ([]db.ListAPIKeysRow, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ListAPIKeys", ctx, userID)
+	ret0, _ := ret[0].([]db.ListAPIKeysRow)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ListAPIKeys indicates an expected call of ListAPIKeys.
+func (mr *MockQuerierTxMockRecorder) ListAPIKeys(ctx, userID any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListAPIKeys", reflect.TypeOf((*MockQuerierTx)(nil).ListAPIKeys), ctx, userID)
 }
 
 // ListAlertEvents mocks base method.
@@ -1106,6 +1166,20 @@ func (m *MockQuerierTx) SetUserPassword(ctx context.Context, arg db.SetUserPassw
 func (mr *MockQuerierTxMockRecorder) SetUserPassword(ctx, arg any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetUserPassword", reflect.TypeOf((*MockQuerierTx)(nil).SetUserPassword), ctx, arg)
+}
+
+// TouchAPIKey mocks base method.
+func (m *MockQuerierTx) TouchAPIKey(ctx context.Context, arg db.TouchAPIKeyParams) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "TouchAPIKey", ctx, arg)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// TouchAPIKey indicates an expected call of TouchAPIKey.
+func (mr *MockQuerierTxMockRecorder) TouchAPIKey(ctx, arg any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "TouchAPIKey", reflect.TypeOf((*MockQuerierTx)(nil).TouchAPIKey), ctx, arg)
 }
 
 // TouchUserLastLogin mocks base method.

@@ -1,6 +1,6 @@
-// Package jobs runs playbook runs on River (a job queue in Postgres). The API queues a run
-// in the same transaction as its history rows, so a run is never lost and never queued
-// without its history.
+// Package jobs runs playbook runs and the daily token cleanup on River (a job queue in
+// Postgres). The API queues a run in the same transaction as its history rows, so a run is
+// never lost and never queued without its history.
 package jobs
 
 import (
@@ -188,17 +188,55 @@ func (e *Enqueuer) insert(ctx context.Context, args river.JobArgs) error {
 	return err
 }
 
+// DeleteExpiredTokensArgs has no fields: the job always cleans the whole table.
+type DeleteExpiredTokensArgs struct{}
+
+func (DeleteExpiredTokensArgs) Kind() string { return "auth_delete_expired_tokens" }
+
+// TokenCleaner deletes expired tokens. auth.Service implements it.
+type TokenCleaner interface {
+	DeleteExpiredTokens(ctx context.Context) error
+}
+
+type DeleteExpiredTokensWorker struct {
+	river.WorkerDefaults[DeleteExpiredTokensArgs]
+	logger  logger.Logger
+	cleaner TokenCleaner
+}
+
+func NewDeleteExpiredTokensWorker(log logger.Logger, cleaner TokenCleaner) *DeleteExpiredTokensWorker {
+	return &DeleteExpiredTokensWorker{logger: log, cleaner: cleaner}
+}
+
+func (w *DeleteExpiredTokensWorker) Work(ctx context.Context, _ *river.Job[DeleteExpiredTokensArgs]) error {
+	if err := w.cleaner.DeleteExpiredTokens(ctx); err != nil {
+		w.logger.Errorw("could not delete expired tokens", "error", err)
+		return err
+	}
+	return nil
+}
+
 // NewWorkerClient runs `concurrency` runs at the same time. runTimeout limits one run.
 // When the worker stops, River waits stopGrace, then cancels the runs. A cancelled run is
 // saved as failed.
-func NewWorkerClient(pool *pgxpool.Pool, worker *RunWorker, eventWorker *RunForEventWorker, concurrency int, runTimeout, stopGrace time.Duration) (*river.Client[pgx.Tx], error) {
+func NewWorkerClient(pool *pgxpool.Pool, worker *RunWorker, eventWorker *RunForEventWorker, cleanup *DeleteExpiredTokensWorker, concurrency int, runTimeout, stopGrace time.Duration) (*river.Client[pgx.Tx], error) {
 	workers := river.NewWorkers()
 	river.AddWorker(workers, worker)
 	river.AddWorker(workers, eventWorker)
+	river.AddWorker(workers, cleanup)
 	return river.NewClient(riverpgxv5.New(pool), &river.Config{
 		Queues: map[string]river.QueueConfig{
-			queueName:  {MaxWorkers: max(concurrency, 1)},
-			eventQueue: {MaxWorkers: 1},
+			queueName:          {MaxWorkers: max(concurrency, 1)},
+			eventQueue:         {MaxWorkers: 1},
+			river.QueueDefault: {MaxWorkers: 1},
+		},
+		// only the elected leader queues periodic jobs, so many workers still clean once a day
+		PeriodicJobs: []*river.PeriodicJob{
+			river.NewPeriodicJob(
+				river.PeriodicInterval(24*time.Hour),
+				func() (river.JobArgs, *river.InsertOpts) { return DeleteExpiredTokensArgs{}, nil },
+				&river.PeriodicJobOpts{RunOnStart: true},
+			),
 		},
 		Workers:              workers,
 		JobTimeout:           runTimeout,

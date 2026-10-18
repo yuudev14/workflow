@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"testing"
 
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -37,6 +38,51 @@ func TestAuth(t *testing.T) {
 			assert.NotEmpty(t, refreshed["access_token"])
 			c.expect(t, http.StatusOK, http.MethodPost, "/api/auth/v1/logout", nil)
 			c.expect(t, http.StatusUnauthorized, http.MethodPost, "/api/auth/v1/refresh", nil)
+		})
+	})
+
+	t.Run("API keys", func(t *testing.T) {
+		c := admin(t)
+		base := "/api/api-keys/v1"
+		userID, _ := newUser(t)
+		withKey := func(t *testing.T) (string, *client) {
+			created := c.create(t, base, J{"user_id": userID, "name": unique("siem")})
+			return created["id"].(string), &client{http: http.DefaultClient, token: created["key"].(string)}
+		}
+
+		t.Run("POST /api-keys", func(t *testing.T) {
+			c.expectAll(t, []request{
+				{"returns 400 when the name is missing", http.MethodPost, base, J{"user_id": userID}, http.StatusBadRequest},
+				{"returns 400 when the expiry is in the past", http.MethodPost, base, J{"user_id": userID, "name": "old", "expires_at": "2020-01-01T00:00:00Z"}, http.StatusBadRequest},
+				{"returns 404 when the user does not exist", http.MethodPost, base, J{"user_id": uuid.NewString(), "name": "x"}, http.StatusNotFound},
+			})
+		})
+
+		t.Run("signs in as the owner of the key", func(t *testing.T) {
+			_, key := withKey(t)
+			me := key.get(t, "/api/auth/v1/me").(J)
+			assert.Equal(t, userID, me["user"].(J)["id"])
+		})
+
+		t.Run("lists the key without the key itself", func(t *testing.T) {
+			id, _ := withKey(t)
+			list := c.get(t, base+"?user_id="+userID)
+			assert.Contains(t, ids(list), id)
+			for _, item := range items(list) {
+				assert.NotContains(t, item.(J), "key")
+			}
+		})
+
+		t.Run("returns 401 after the key is deleted", func(t *testing.T) {
+			id, key := withKey(t)
+			c.expect(t, http.StatusNoContent, http.MethodDelete, base+"/"+id, nil)
+			key.expect(t, http.StatusUnauthorized, http.MethodGet, "/api/auth/v1/me", nil)
+		})
+
+		t.Run("returns 401 after the owner is deactivated", func(t *testing.T) {
+			_, key := withKey(t)
+			c.expect(t, http.StatusNoContent, http.MethodDelete, "/api/users/v1/"+userID, nil)
+			key.expect(t, http.StatusUnauthorized, http.MethodGet, "/api/auth/v1/me", nil)
 		})
 	})
 
