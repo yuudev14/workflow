@@ -102,6 +102,14 @@ func TestAuth(t *testing.T) {
 			})
 		})
 
+		t.Run("POST /login before the invite is used", func(t *testing.T) {
+			login := "/api/auth/v1/login"
+			anonymous(t).expectAll(t, []request{
+				{"returns 400 when the password is empty", http.MethodPost, login, J{"username": username, "password": ""}, http.StatusBadRequest},
+				{"returns 401 because the user has no password yet", http.MethodPost, login, J{"username": username, "password": "password123"}, http.StatusUnauthorized},
+			})
+		})
+
 		t.Run("POST /password/reset", func(t *testing.T) {
 			anonymous(t).expectAll(t, []request{
 				{"returns 400 when the password is too short", http.MethodPost, reset, J{"token": token, "password": "short"}, http.StatusBadRequest},
