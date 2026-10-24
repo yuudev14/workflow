@@ -1,5 +1,5 @@
 -- name: GetPlaybookById :one
-SELECT * FROM playbooks WHERE id = $1;
+SELECT * FROM playbooks WHERE id = $1 AND deleted_at IS NULL;
 
 -- name: GetPlaybookGraphById :one
 SELECT
@@ -10,7 +10,7 @@ SELECT
     (SELECT JSON_AGG(edges.*)
         FROM edges
         WHERE edges.playbook_id = playbooks.id) AS edges
-FROM playbooks WHERE playbooks.id = $1;
+FROM playbooks WHERE playbooks.id = $1 AND playbooks.deleted_at IS NULL;
 
 -- name: CreatePlaybook :one
 INSERT INTO playbooks (name, description, trigger_type, trigger_parameters)
@@ -37,7 +37,12 @@ SET
         ELSE trigger_parameters
     END,
     updated_at = NOW()
-WHERE id = sqlc.arg('id')
+WHERE id = sqlc.arg('id') AND deleted_at IS NULL
+RETURNING *;
+
+-- name: SoftDeletePlaybook :one
+UPDATE playbooks SET deleted_at = NOW()
+WHERE id = $1 AND deleted_at IS NULL
 RETURNING *;
 
 -- name: CreatePlaybookHistory :one
@@ -89,7 +94,8 @@ WHERE playbook_history.id = $1;
 -- A playbook is skipped when its run on this record was going at the time of the event,
 -- so a run that updates its own record does not start itself again.
 SELECT p.id FROM playbooks p
-WHERE p.trigger_type = sqlc.arg('trigger_type')::trigger_type
+WHERE p.deleted_at IS NULL
+  AND p.trigger_type = sqlc.arg('trigger_type')::trigger_type
   AND p.trigger_parameters ->> 'module' = sqlc.arg('module')::text
   AND NOT EXISTS (
     SELECT 1 FROM playbook_history h

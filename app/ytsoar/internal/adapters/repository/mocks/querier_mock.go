@@ -1212,6 +1212,21 @@ func (mr *MockQuerierTxMockRecorder) SetUserResetPasswordToken(ctx, arg any) *go
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetUserResetPasswordToken", reflect.TypeOf((*MockQuerierTx)(nil).SetUserResetPasswordToken), ctx, arg)
 }
 
+// SoftDeletePlaybook mocks base method.
+func (m *MockQuerierTx) SoftDeletePlaybook(ctx context.Context, id pgtype.UUID) (db.Playbook, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "SoftDeletePlaybook", ctx, id)
+	ret0, _ := ret[0].(db.Playbook)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// SoftDeletePlaybook indicates an expected call of SoftDeletePlaybook.
+func (mr *MockQuerierTxMockRecorder) SoftDeletePlaybook(ctx, id any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SoftDeletePlaybook", reflect.TypeOf((*MockQuerierTx)(nil).SoftDeletePlaybook), ctx, id)
+}
+
 // TakeUserInvitationToken mocks base method.
 func (m *MockQuerierTx) TakeUserInvitationToken(ctx context.Context, invitationToken pgtype.Text) (db.TakeUserInvitationTokenRow, error) {
 	m.ctrl.T.Helper()

@@ -9,7 +9,7 @@ import (
 	"github.com/yuudev14/ytsoar/internal/types"
 )
 
-//go:generate mockgen -destination=mocks/repository_mock.go -package=mocks . PlaybookRepository,RecordResolver
+//go:generate mockgen -destination=mocks/repository_mock.go -package=mocks . PlaybookRepository,RecordResolver,AuditWriter
 
 // RecordResolver loads the module rows that a run acts on. It is declared here, in the
 // consumer package, so playbooks does not import alerts/incidents (same as IncidentLinker
@@ -19,6 +19,11 @@ import (
 // (which templates read), and a record from the client could be faked.
 type RecordResolver interface {
 	Resolve(ctx context.Context, moduleType string, ids []uuid.UUID) ([]map[string]any, error)
+}
+
+// AuditWriter is the audit log insert. The auth audit repository implements it.
+type AuditWriter interface {
+	Insert(ctx context.Context, entry domain.AuditEntry) error
 }
 
 type PlaybookRepository interface {
@@ -33,6 +38,7 @@ type PlaybookRepository interface {
 	GetPlaybookGraphById(ctx context.Context, id string) (*domain.PlaybookGraph, error)
 	CreatePlaybook(ctx context.Context, playbook PlaybookPayload) (*domain.Playbooks, error)
 	UpdatePlaybook(ctx context.Context, id string, playbook UpdatePlaybookData) (*domain.Playbooks, error)
+	SoftDeletePlaybook(ctx context.Context, id string) (*domain.Playbooks, error)
 	CreatePlaybookHistory(ctx context.Context, id string, edges []domain.ResponseEdges, run RunStamp) (*domain.PlaybookHistory, error)
 	CreatePlaybookRunRecords(ctx context.Context, historyID uuid.UUID, moduleType string, recordIDs []uuid.UUID) error
 	ListEventPlaybookIDs(ctx context.Context, triggerType domain.TriggerType, moduleType string, recordID uuid.UUID, occurredAt time.Time) ([]uuid.UUID, error)

@@ -691,13 +691,14 @@ type IncidentNote struct {
 }
 
 type Playbook struct {
-	ID                pgtype.UUID      `json:"id"`
-	Name              pgtype.Text      `json:"name"`
-	Description       pgtype.Text      `json:"description"`
-	TriggerType       NullTriggerType  `json:"trigger_type"`
-	TriggerParameters []byte           `json:"trigger_parameters"`
-	CreatedAt         pgtype.Timestamp `json:"created_at"`
-	UpdatedAt         pgtype.Timestamp `json:"updated_at"`
+	ID                pgtype.UUID        `json:"id"`
+	Name              pgtype.Text        `json:"name"`
+	Description       pgtype.Text        `json:"description"`
+	TriggerType       NullTriggerType    `json:"trigger_type"`
+	TriggerParameters []byte             `json:"trigger_parameters"`
+	CreatedAt         pgtype.Timestamp   `json:"created_at"`
+	UpdatedAt         pgtype.Timestamp   `json:"updated_at"`
+	DeletedAt         pgtype.Timestamptz `json:"deleted_at"`
 }
 
 type PlaybookHistory struct {

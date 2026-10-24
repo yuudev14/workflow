@@ -25,7 +25,7 @@ func setupService(t *testing.T) (playbooks.PlaybookService, *mock_playbooks.Mock
 	ctrl := gomock.NewController(t)
 
 	mockRepo := mock_playbooks.NewMockPlaybookRepository(ctrl)
-	service := playbooks.NewPlaybookService(logger.NewNop(), mockRepo)
+	service := playbooks.NewPlaybookService(logger.NewNop(), mockRepo, mock_playbooks.NewMockAuditWriter(ctrl))
 
 	t.Cleanup(ctrl.Finish)
 
