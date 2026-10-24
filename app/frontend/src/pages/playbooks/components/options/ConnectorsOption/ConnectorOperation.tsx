@@ -228,7 +228,7 @@ const CasesEditor: React.FC<{
           <VariableInput
             className="min-w-[120px] flex-1"
             inputClassName="font-mono text-[11.5px]"
-            placeholder={placeholder ?? '{{ var.steps["…"].field }}'}
+            placeholder={placeholder ?? "{{ var.steps.step.field }}"}
             value={c.expression ?? ""}
             onChange={(expression) => update(i, expression)}
           />
@@ -663,12 +663,11 @@ const ConnectorOperation: React.FC<{ connector: ConnectorInfo }> = ({
                             <span className="ml-auto mr-1 font-mono text-[10.5px] text-ink-faint">
                               stdout is the result
                             </span>
-                            {/* the harness passes `steps` to the code, so no template text is needed */}
                             <VariablePicker
-                              onPick={(ref) => {
+                              onPick={(text) => {
                                 const view = codeEditor.current?.view;
                                 if (!view) return;
-                                view.dispatch(view.state.replaceSelection(ref));
+                                view.dispatch(view.state.replaceSelection(text));
                                 view.focus();
                               }}
                             />
