@@ -81,10 +81,10 @@ func TestUpdateProviderKeepsMaskedBindPassword(t *testing.T) {
 	env := setupTest(t)
 	id := uuid.New()
 	env.mockProviders.EXPECT().GetByID(gomock.Any(), id).
-		Return(auth.AuthProvider{ID: id, Type: "ldap", Config: json.RawMessage(`{"bind_password":"real"}`)}, nil)
+		Return(auth.AuthProvider{ID: id, Type: "ldap", Config: json.RawMessage(`{"bind_password":"sealed:real"}`)}, nil)
 	env.mockProviders.EXPECT().Update(gomock.Any(), id, gomock.Any()).
 		DoAndReturn(func(_ context.Context, _ uuid.UUID, p auth.UpdateProviderParams) (auth.AuthProvider, error) {
-			assert.JSONEq(t, `{"bind_password":"real","host":"ldap2"}`, string(p.Config))
+			assert.JSONEq(t, `{"bind_password":"sealed:real","host":"sealed:ldap2"}`, string(p.Config))
 			return auth.AuthProvider{ID: id, Type: "ldap", Config: p.Config}, nil
 		})
 
