@@ -53,7 +53,7 @@ func (h *ConnectorHandler) GetConnector(c *gin.Context) {
 }
 
 // UploadConnector godoc
-// @Summary Upload a connector as a zip (multipart field "file")
+// @Summary Upload a connector as a zip (multipart field "file"). Returns 409 when the id exists, unless replace=true.
 // @Tags connectors
 // @Router /api/v1/connectors [post]
 func (h *ConnectorHandler) UploadConnector(c *gin.Context) {
@@ -77,7 +77,7 @@ func (h *ConnectorHandler) UploadConnector(c *gin.Context) {
 		return
 	}
 
-	info, err := h.ConnectorService.UploadConnector(c.Request.Context(), zipBytes, c.PostForm("uploaded_by"))
+	info, err := h.ConnectorService.UploadConnector(c.Request.Context(), zipBytes, c.PostForm("uploaded_by"), c.Query("replace") == "true")
 	if err != nil {
 		response.Fail(h.logger, err)
 		return

@@ -7,6 +7,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -46,7 +47,7 @@ var idPattern = regexp.MustCompile(`^[a-z0-9][a-z0-9_-]*$`)
 type ConnectorService interface {
 	GetConnectors(ctx context.Context) ([]domain.ConnectorInfo, error)
 	GetConnector(ctx context.Context, connectorID string) (domain.ConnectorInfo, error)
-	UploadConnector(ctx context.Context, zipBytes []byte, uploadedBy string) (domain.ConnectorInfo, error)
+	UploadConnector(ctx context.Context, zipBytes []byte, uploadedBy string, replace bool) (domain.ConnectorInfo, error)
 	DeleteConnector(ctx context.Context, connectorID string) error
 }
 
@@ -79,8 +80,8 @@ func (s *ConnectorServiceImpl) GetConnector(ctx context.Context, connectorID str
 
 // UploadConnector checks the zip, extracts it into the tree (replacing the old version),
 // vendors the declared dependencies and upserts the audit row. A validation failure wraps
-// ErrInvalidConnector.
-func (s *ConnectorServiceImpl) UploadConnector(ctx context.Context, zipBytes []byte, uploadedBy string) (domain.ConnectorInfo, error) {
+// ErrInvalidConnector. Without replace, an existing id returns ErrConnectorExists.
+func (s *ConnectorServiceImpl) UploadConnector(ctx context.Context, zipBytes []byte, uploadedBy string, replace bool) (domain.ConnectorInfo, error) {
 	if len(zipBytes) > MaxUploadBytes {
 		return nil, apperr.Wrap(apperr.Invalid, fmt.Sprintf("zip exceeds %d bytes", MaxUploadBytes), ErrInvalidConnector)
 	}
@@ -96,6 +97,14 @@ func (s *ConnectorServiceImpl) UploadConnector(ctx context.Context, zipBytes []b
 	meta, err := readArchiveInfo(archive, prefix)
 	if err != nil {
 		return nil, err
+	}
+
+	if !replace {
+		if _, err := s.store.Get(ctx, meta.id); err == nil {
+			return nil, ErrConnectorExists
+		} else if !errors.Is(err, ErrConnectorNotFound) {
+			return nil, err
+		}
 	}
 
 	if err := s.writer.Extract(ctx, meta.id, archive, prefix); err != nil {

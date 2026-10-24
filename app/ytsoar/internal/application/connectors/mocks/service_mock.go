@@ -86,16 +86,16 @@ func (mr *MockConnectorServiceMockRecorder) GetConnectors(ctx any) *gomock.Call 
 }
 
 // UploadConnector mocks base method.
-func (m *MockConnectorService) UploadConnector(ctx context.Context, zipBytes []byte, uploadedBy string) (domain.ConnectorInfo, error) {
+func (m *MockConnectorService) UploadConnector(ctx context.Context, zipBytes []byte, uploadedBy string, replace bool) (domain.ConnectorInfo, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "UploadConnector", ctx, zipBytes, uploadedBy)
+	ret := m.ctrl.Call(m, "UploadConnector", ctx, zipBytes, uploadedBy, replace)
 	ret0, _ := ret[0].(domain.ConnectorInfo)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // UploadConnector indicates an expected call of UploadConnector.
-func (mr *MockConnectorServiceMockRecorder) UploadConnector(ctx, zipBytes, uploadedBy any) *gomock.Call {
+func (mr *MockConnectorServiceMockRecorder) UploadConnector(ctx, zipBytes, uploadedBy, replace any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UploadConnector", reflect.TypeOf((*MockConnectorService)(nil).UploadConnector), ctx, zipBytes, uploadedBy)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UploadConnector", reflect.TypeOf((*MockConnectorService)(nil).UploadConnector), ctx, zipBytes, uploadedBy, replace)
 }

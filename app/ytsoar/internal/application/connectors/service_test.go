@@ -72,7 +72,7 @@ func TestUploadConnectorPython(t *testing.T) {
 	m.store.EXPECT().Get(gomock.Any(), "my_conn").
 		Return(domain.ConnectorInfo{"id": "my_conn"}, nil)
 
-	info, err := svc.UploadConnector(context.Background(), zipBytes, "alice")
+	info, err := svc.UploadConnector(context.Background(), zipBytes, "alice", true)
 
 	require.NoError(t, err)
 	assert.Equal(t, "my_conn", info["id"])
@@ -93,7 +93,7 @@ func TestUploadConnectorStripsTopLevelFolder(t *testing.T) {
 	m.store.EXPECT().Get(gomock.Any(), "my_conn").
 		Return(domain.ConnectorInfo{"id": "my_conn"}, nil)
 
-	_, err := svc.UploadConnector(context.Background(), zipBytes, "")
+	_, err := svc.UploadConnector(context.Background(), zipBytes, "", true)
 
 	require.NoError(t, err)
 }
@@ -131,7 +131,7 @@ func TestUploadConnectorValidation(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			svc, _ := newService(t) // no mock expectations: nothing may be written
-			_, err := svc.UploadConnector(context.Background(), buildZip(t, tc.files), "")
+			_, err := svc.UploadConnector(context.Background(), buildZip(t, tc.files), "", true)
 			assert.ErrorIs(t, err, connectors.ErrInvalidConnector)
 		})
 	}
@@ -140,7 +140,7 @@ func TestUploadConnectorValidation(t *testing.T) {
 func TestUploadConnectorNotAZip(t *testing.T) {
 	svc, _ := newService(t)
 
-	_, err := svc.UploadConnector(context.Background(), []byte("plain text"), "")
+	_, err := svc.UploadConnector(context.Background(), []byte("plain text"), "", true)
 
 	assert.ErrorIs(t, err, connectors.ErrInvalidConnector)
 }
@@ -156,7 +156,7 @@ func TestUploadConnectorInstallFailureCleansUp(t *testing.T) {
 	m.installer.EXPECT().Install(gomock.Any(), "my_conn").Return(errors.New("pip exploded"))
 	m.writer.EXPECT().Remove(gomock.Any(), "my_conn").Return(nil)
 
-	_, err := svc.UploadConnector(context.Background(), zipBytes, "")
+	_, err := svc.UploadConnector(context.Background(), zipBytes, "", true)
 
 	assert.ErrorContains(t, err, "pip exploded")
 }
