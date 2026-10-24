@@ -94,7 +94,7 @@ test.describe("playbook editor", () => {
     await expect.poll(async () => (await tasksOf(page, playbook.id)).map((t) => t.name).sort()).toEqual(["first", "start"]);
   });
 
-  test("inserts templates of earlier steps and the run input from the variable picker", async ({ page }) => {
+  test("inserts templates of earlier steps and the run input from the variables panel", async ({ page }) => {
     const playbook = await newPlaybook(page.request);
     const http = (name: string) => ({ name, operation: "get_request", connector_id: "http_request", connector_name: "HTTP Request", parameters: { url: "" } });
     await api(page.request).put(`/playbooks/tasks/${playbook.id}`, {
@@ -109,15 +109,16 @@ test.describe("playbook editor", () => {
     await page.goto(`/playbooks/${playbook.id}`);
 
     await node(page, "fetch").dispatchEvent("dblclick");
-    await page.getByRole("button", { name: "Insert variable" }).click();
-    await page.getByRole("menuitem", { name: "body" }).click();
+    const variables = page.getByRole("complementary", { name: "Variables" });
+    await page.getByPlaceholder("https://api.example.com/items").focus();
+    await variables.getByRole("button", { name: "Insert var.steps.lookup.body" }).click();
     await page.getByRole("button", { name: "Save step" }).click();
 
     await node(page, "check").dispatchEvent("dblclick");
-    await page.getByRole("button", { name: "Insert variable" }).click();
-    await page.getByRole("menuitem", { name: "fetch" }).click();
-    await page.getByRole("button", { name: "Insert variable" }).click();
-    await page.getByRole("menuitem", { name: "title" }).click();
+    await page.locator(".cm-content").click();
+    await variables.getByRole("button", { name: "Insert var.steps.fetch", exact: true }).click();
+    await variables.getByPlaceholder("Search variables").fill("title");
+    await variables.getByRole("button", { name: "Insert var.input.records[0].title" }).click();
     await page.getByRole("button", { name: "Save step" }).click();
     await page.getByRole("button", { name: "Save", exact: true }).click();
 
