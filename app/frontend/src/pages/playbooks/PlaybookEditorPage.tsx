@@ -1,11 +1,11 @@
-import { Link, useParams } from "react-router";
+import { Link, useNavigate, useParams } from "react-router";
 import React, { useContext } from "react";
 
 import ReactFlowPlayground from "@/components/react-flow/ReactFlowPlayground";
 import { PlaybookTaskNode } from "@/components/react-flow/schema";
 import { Node, ReactFlowProvider } from "@xyflow/react";
 
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import PlaybookService from "@/services/playbooks/playbooks";
 import { Button } from "@/components/ui/button";
 import {
@@ -21,6 +21,9 @@ import { Check, History, Workflow as PlaybookIcon, Zap } from "lucide-react";
 
 import PlaybookHistoryModal from "@/components/executions/PlaybookHistoryModal";
 import { PermissionGate } from "@/components/auth/PermissionGate";
+import { ConfirmDialog } from "@/pages/settings/components/ConfirmDialog";
+import { toast } from "@/hooks/use-toast";
+import { apiErrorMessage } from "@/services/common/errors";
 
 // Canvas nav: a segmented Editor / Runs toggle pinned to the top-left of the
 // canvas. Replaces the two stacked bordered buttons that used to float mid-left.
@@ -62,6 +65,20 @@ const PlaybookPlayground: React.FC<{ playbookId: string }> = ({
   } = useContext(PlaybookOperationContext);
 
   const { triggerPlaybookHandler } = usePlaybookTrigger({ playbookId });
+
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const [deleting, setDeleting] = React.useState(false);
+  const deletePlaybook = useMutation({
+    mutationFn: () => PlaybookService.deletePlaybook(playbookId),
+    onSuccess: () => {
+      toast({ variant: "success", title: "Playbook deleted" });
+      queryClient.invalidateQueries({ queryKey: ["playbook-lists"] });
+      navigate("/playbooks");
+    },
+    onError: (error) =>
+      toast({ variant: "destructive", title: "Couldn't delete the playbook", description: apiErrorMessage(error) }),
+  });
 
   // set the connector to the node's connector
   // can improve later
@@ -175,9 +192,11 @@ const PlaybookPlayground: React.FC<{ playbookId: string }> = ({
               <Zap /> Trigger
             </Button>
           </PermissionGate>
-          <Button variant="outline" className="text-rose-text">
-            Delete
-          </Button>
+          <PermissionGate module="playbooks" action="delete">
+            <Button variant="outline" className="text-rose-text" onClick={() => setDeleting(true)}>
+              Delete
+            </Button>
+          </PermissionGate>
           <Button onClick={savePlaybookHandler}>
             <Check /> Save
           </Button>
@@ -198,6 +217,15 @@ const PlaybookPlayground: React.FC<{ playbookId: string }> = ({
           }}
         />
       </div>
+      <ConfirmDialog
+        open={deleting}
+        onOpenChange={setDeleting}
+        title={`Delete ${workflowData.name}?`}
+        description="The playbook stops and leaves the list. Its runs stay in the run history."
+        confirmLabel="Delete"
+        pending={deletePlaybook.isPending}
+        onConfirm={() => deletePlaybook.mutate()}
+      />
     </div>
   );
 };

@@ -19,4 +19,21 @@ export default class ConnectorService {
     return res.data;
   };
 
+  /**
+   * upload a connector zip. Without replace, the api returns 409 when the
+   * connector is already installed.
+   */
+  public static uploadConnector = async (
+    file: File,
+    replace = false,
+  ): Promise<ConnectorInfo> => {
+    const form = new FormData();
+    form.append("file", file);
+    const res = await apiClient.post(
+      this.BASE_URL + "/api/v1/connectors",
+      form,
+      { params: replace ? { replace: true } : undefined },
+    );
+    return res.data;
+  };
 }

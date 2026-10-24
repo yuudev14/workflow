@@ -146,4 +146,12 @@ export default class PlaybookService {
     );
     return res.data;
   };
+
+  /**
+   * soft delete a playbook. Its runs stay in the history.
+   * @param playbookId
+   */
+  public static deletePlaybook = async (playbookId: string): Promise<void> => {
+    await apiClient.delete(this.BASE_URL + "/" + playbookId);
+  };
 }
