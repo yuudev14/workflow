@@ -345,7 +345,7 @@ func (s *Service) oidcConfigFor(ctx context.Context, providerID uuid.UUID) (OIDC
 	if p.Type != domain.AuthProviderOIDC {
 		return OIDCConfig{}, ErrProviderNotFound
 	}
-	config, err := mapSecrets(p.Config, s.secrets.Open)
+	config, err := mapValues(p.Config, s.secrets.Open)
 	if err != nil {
 		return OIDCConfig{}, err
 	}
