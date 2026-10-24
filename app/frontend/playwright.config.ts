@@ -20,6 +20,7 @@ const backend = {
   ...db,
   HTTP_ADDR: ":8090",
   JWT_SECRET: "e2e-secret",
+  YTSOAR_ENCRYPTION_KEY: "ZTJlLW9ubHktZW5jcnlwdGlvbi1rZXktMzJieXRlcyE=",
   ADMIN_USERNAME: "admin",
   ADMIN_PASSWORD: "admin123!",
   CORS_ORIGINS: "http://localhost:3000",
