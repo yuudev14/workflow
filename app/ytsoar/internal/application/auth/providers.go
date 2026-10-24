@@ -109,22 +109,19 @@ func (s *Service) UpdateProvider(ctx context.Context, actorID, id uuid.UUID, inp
 	return s.adminProviderOf(p), nil
 }
 
-// preserveMaskedSecret puts the stored value back when client_secret is masked, so a round
-// trip through the masked admin view cannot wipe the real secret. On any parse problem it
-// returns the incoming config as it is, and the validation after it catches a really broken
-// config.
+// preserveMaskedSecret puts the stored value back for each masked secret, so a round trip
+// through the masked admin view cannot wipe the real secret. On any parse problem it returns
+// the incoming config as it is, and the validation after it catches a really broken config.
 func preserveMaskedSecret(existingConfig, incoming json.RawMessage) json.RawMessage {
-	var next map[string]any
+	var next, prev map[string]any
 	if err := json.Unmarshal(incoming, &next); err != nil {
 		return incoming
 	}
-	if secret, ok := next["client_secret"].(string); !ok || secret != maskedSecret {
-		return incoming
-	}
-
-	var prev map[string]any
-	if err := json.Unmarshal(existingConfig, &prev); err == nil {
-		next["client_secret"] = prev["client_secret"]
+	_ = json.Unmarshal(existingConfig, &prev)
+	for _, key := range secretKeys {
+		if secret, ok := next[key].(string); ok && secret == maskedSecret {
+			next[key] = prev[key]
+		}
 	}
 	merged, err := json.Marshal(next)
 	if err != nil {
