@@ -24,6 +24,9 @@ func main() {
 	if cfg.AppEnv == "production" && cfg.JWTSecret == config.DefaultJWTSecret {
 		log.Fatal("JWT_SECRET must be set to a private value when APP_ENV=production")
 	}
+	if cfg.AppEnv == "production" && cfg.EncryptionKey == config.DefaultEncryptionKey {
+		log.Fatal("YTSOAR_ENCRYPTION_KEY must be set to a private value when APP_ENV=production")
+	}
 
 	ctx := context.Background()
 	pool, err := db.NewPool(ctx, cfg.DBUrl)

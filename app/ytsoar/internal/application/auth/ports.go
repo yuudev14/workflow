@@ -124,6 +124,14 @@ type UpdateProviderParams struct {
 	Enabled *bool
 }
 
+//go:generate mockgen -destination=mocks/secret_box_mock.go -package=mocks . SecretBox
+
+// SecretBox encrypts provider secrets at rest. The key lives outside the database.
+type SecretBox interface {
+	Seal(plain string) (string, error)
+	Open(sealed string) (string, error)
+}
+
 //go:generate mockgen -destination=mocks/oidc_client_mock.go -package=mocks . OIDCClient
 
 // OIDCClient is a thin layer over go-oidc/oauth2, so the OIDC flow is testable without a

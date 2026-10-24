@@ -11,6 +11,8 @@ import (
 
 const maskedSecret = "********"
 
+var secretKeys = []string{"client_secret", "bind_password"}
+
 type AdminProvider struct {
 	ID      string          `json:"id"`
 	Type    string          `json:"type"`
@@ -26,7 +28,7 @@ func (s *Service) ListProvidersAdmin(ctx context.Context) ([]AdminProvider, erro
 	}
 	out := make([]AdminProvider, 0, len(rows))
 	for _, p := range rows {
-		out = append(out, adminProviderOf(p))
+		out = append(out, s.adminProviderOf(p))
 	}
 	return out, nil
 }
@@ -47,6 +49,10 @@ func (s *Service) CreateProvider(ctx context.Context, actorID uuid.UUID, input P
 			return AdminProvider{}, err
 		}
 	}
+	config, err = mapValues(config, s.secrets.Seal)
+	if err != nil {
+		return AdminProvider{}, err
+	}
 	enabled := true
 	if input.Enabled != nil {
 		enabled = *input.Enabled
@@ -62,7 +68,7 @@ func (s *Service) CreateProvider(ctx context.Context, actorID uuid.UUID, input P
 		Action:   "auth_provider_created",
 		EntityID: new(p.ID.String()),
 	})
-	return adminProviderOf(p), nil
+	return s.adminProviderOf(p), nil
 }
 
 // UpdateProvider patches name, enabled and config. A config with the masked-secret
@@ -75,12 +81,15 @@ func (s *Service) UpdateProvider(ctx context.Context, actorID, id uuid.UUID, inp
 
 	config := input.Config
 	if len(config) > 0 {
-		config = preserveMaskedSecret(existing.Config, config)
 		if existing.Type == domain.AuthProviderOIDC {
 			if _, err := decodeOIDCConfig(config); err != nil {
 				return AdminProvider{}, err
 			}
 		}
+		if config, err = mapValues(config, s.secrets.Seal); err != nil {
+			return AdminProvider{}, err
+		}
+		config = preserveMaskedSecret(existing.Config, config)
 	}
 
 	p, err := s.providers.Update(ctx, id, UpdateProviderParams{
@@ -97,7 +106,7 @@ func (s *Service) UpdateProvider(ctx context.Context, actorID, id uuid.UUID, inp
 		Action:   "auth_provider_updated",
 		EntityID: new(p.ID.String()),
 	})
-	return adminProviderOf(p), nil
+	return s.adminProviderOf(p), nil
 }
 
 // preserveMaskedSecret puts the stored value back when client_secret is masked, so a round
@@ -124,13 +133,24 @@ func preserveMaskedSecret(existingConfig, incoming json.RawMessage) json.RawMess
 	return merged
 }
 
-func adminProviderOf(p AuthProvider) AdminProvider {
+// adminProviderOf opens the config best effort, so a row that does not open still shows in
+// the list and the admin can type its values again.
+func (s *Service) adminProviderOf(p AuthProvider) AdminProvider {
+	config, err := mapValues(p.Config, func(v string) (string, error) {
+		if plain, err := s.secrets.Open(v); err == nil {
+			return plain, nil
+		}
+		return v, nil
+	})
+	if err != nil {
+		config = p.Config
+	}
 	return AdminProvider{
 		ID:      p.ID.String(),
 		Type:    string(p.Type),
 		Name:    p.Name,
 		Enabled: p.Enabled,
-		Config:  maskSecrets(p.Config),
+		Config:  maskSecrets(config),
 	}
 }
 
@@ -141,7 +161,7 @@ func maskSecrets(raw json.RawMessage) json.RawMessage {
 	if err := json.Unmarshal(raw, &m); err != nil {
 		return json.RawMessage(`{}`)
 	}
-	for _, key := range []string{"client_secret", "bind_password"} {
+	for _, key := range secretKeys {
 		if v, ok := m[key].(string); ok && v != "" {
 			m[key] = maskedSecret
 		}
@@ -151,6 +171,27 @@ func maskSecrets(raw json.RawMessage) json.RawMessage {
 		return json.RawMessage(`{}`)
 	}
 	return out
+}
+
+// mapValues runs fn (seal or open) on each top-level string value. It skips the masked
+// sentinel, so preserveMaskedSecret can put the stored value back.
+func mapValues(raw json.RawMessage, fn func(string) (string, error)) (json.RawMessage, error) {
+	var m map[string]any
+	if err := json.Unmarshal(raw, &m); err != nil {
+		return nil, apperr.New(apperr.Invalid, "provider config must be a JSON object")
+	}
+	for key, val := range m {
+		v, ok := val.(string)
+		if !ok || v == "" || v == maskedSecret {
+			continue
+		}
+		out, err := fn(v)
+		if err != nil {
+			return nil, apperr.Wrap(apperr.Invalid, "provider config cannot be decrypted, enter it again", err)
+		}
+		m[key] = out
+	}
+	return json.Marshal(m)
 }
 
 func parseProviderType(t string) (domain.AuthProvider, error) {

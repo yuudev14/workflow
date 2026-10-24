@@ -70,7 +70,10 @@ func NewAPI(ctx context.Context, cfg config.Config, appLogger logger.Logger, poo
 		}
 	}()
 	edgeService := edges.NewEdgeServiceImpl(edgeRepository)
-	authService := newAuthService(cfg, appLogger, queries, pool)
+	authService, err := newAuthService(cfg, appLogger, queries, pool)
+	if err != nil {
+		return nil, err
+	}
 
 	// without this a new database has roles but no users, and nobody can sign in.
 	// It does nothing once someone has the admin role.
@@ -146,7 +149,11 @@ func NewAPI(ctx context.Context, cfg config.Config, appLogger logger.Logger, poo
 }
 
 // newAuthService is shared: the api signs users in, and the worker runs the token cleanup.
-func newAuthService(cfg config.Config, appLogger logger.Logger, queries *db.Queries, pool *pgxpool.Pool) *auth.Service {
+func newAuthService(cfg config.Config, appLogger logger.Logger, queries *db.Queries, pool *pgxpool.Pool) (*auth.Service, error) {
+	secrets, err := security.NewSecretBox(cfg.EncryptionKey)
+	if err != nil {
+		return nil, err
+	}
 	return auth.NewService(
 		appLogger,
 		repository.NewUserRepositoryImpl(appLogger, queries, pool),
@@ -161,6 +168,7 @@ func newAuthService(cfg config.Config, appLogger logger.Logger, queries *db.Quer
 		repository.NewAuthProviderRepositoryImpl(appLogger, queries, pool),
 		security.NewArgon2Hasher(),
 		oidcclient.New(),
+		secrets,
 		repository.NewPgxTxManager(pool),
 		auth.AuthConfig{
 			JWTSecret:       cfg.JWTSecret,
@@ -172,7 +180,7 @@ func newAuthService(cfg config.Config, appLogger logger.Logger, queries *db.Quer
 			FrontendURL:     cfg.FrontendURL,
 			AuthPublicURL:   cfg.AuthPublicURL,
 		},
-	)
+	), nil
 }
 
 // NewWorker connects the parts of the worker program and returns its job queue client.
@@ -231,7 +239,11 @@ func NewWorker(cfg config.Config, appLogger logger.Logger, pool *pgxpool.Pool) (
 			repository.NewAlertRepositoryImpl(appLogger, queries, pool),
 			repository.NewIncidentRepositoryImpl(appLogger, queries, pool)),
 	)
-	cleanupWorker := jobs.NewDeleteExpiredTokensWorker(appLogger, newAuthService(cfg, appLogger, queries, pool))
+	authService, err := newAuthService(cfg, appLogger, queries, pool)
+	if err != nil {
+		return nil, err
+	}
+	cleanupWorker := jobs.NewDeleteExpiredTokensWorker(appLogger, authService)
 
 	return jobs.NewWorkerClient(
 		pool,
