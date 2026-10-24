@@ -101,7 +101,7 @@ func (s *ConnectorServiceImpl) UploadConnector(ctx context.Context, zipBytes []b
 
 	if !replace {
 		if _, err := s.store.Get(ctx, meta.id); err == nil {
-			return nil, ErrConnectorExists
+			return nil, apperr.Wrap(apperr.Conflict, fmt.Sprintf("connector %q already exists", meta.id), ErrConnectorExists)
 		} else if !errors.Is(err, ErrConnectorNotFound) {
 			return nil, err
 		}

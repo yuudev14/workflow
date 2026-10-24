@@ -73,8 +73,9 @@ func TestConnectors(t *testing.T) {
 			require.Equal(t, http.StatusCreated, code, out)
 		})
 		t.Run("returns 409 when the connector exists", func(t *testing.T) {
-			code, _ := c.upload(t, base, zipDir(t, "../../../connectors/sample_js"))
+			code, out := c.upload(t, base, zipDir(t, "../../../connectors/sample_js"))
 			assert.Equal(t, http.StatusConflict, code)
+			assert.Contains(t, toJSON(out), "sample_js")
 		})
 		t.Run("replaces the connector with replace=true", func(t *testing.T) {
 			code, out := c.upload(t, base+"?replace=true", zipDir(t, "../../../connectors/sample_js"))
