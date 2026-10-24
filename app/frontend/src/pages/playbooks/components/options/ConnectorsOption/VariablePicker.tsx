@@ -1,52 +1,33 @@
-import { useContext, useRef } from "react";
-import { Braces } from "lucide-react";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import { useContext, useRef, useState } from "react";
+import { ChevronRight, GripVertical, Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { FLOW_START_ID } from "@/settings/reactFlowIds";
 import { PlaybookOperationContext } from "../../../providers/PlaybookOperationProvider";
 
-type Variable = { label: string; ref: string; field?: boolean };
+type Node = { label: string; ref: string; type?: string; children: Node[] };
 
 // a dot on a dict key that is also a method name gives the method in jinja2
 const DICT_METHODS = new Set(["keys", "values", "items", "get", "pop", "update", "copy", "clear", "setdefault"]);
 
-// `var.steps.lookup.ip`, with JSON-quoted brackets only for keys that a dot cannot reach
-const path = (...keys: string[]) =>
-  keys.reduce(
-    (ref, key) =>
-      /^[A-Za-z_]\w*$/.test(key) && !DICT_METHODS.has(key) ? `${ref}.${key}` : `${ref}[${JSON.stringify(key)}]`,
-    "var",
-  );
+const child = (ref: string, key: string) =>
+  /^[A-Za-z_]\w*$/.test(key) && !DICT_METHODS.has(key) ? `${ref}.${key}` : `${ref}[${JSON.stringify(key)}]`;
 
-const RECORD_FIELDS = {
-  alert: ["id", "title", "severity", "status", "source_kind", "reporter", "tags", "payload", "fingerprint", "created_at"],
-  incident: ["id", "title", "severity", "status", "tags", "created_at"],
+const fields = (ref: string, list: { name: string; type?: string }[]): Node[] =>
+  list.map((f) => ({ label: f.name, ref: child(ref, f.name), type: f.type, children: [] }));
+
+const RECORD_FIELDS: Record<"alert" | "incident", [string, string][]> = {
+  alert: [
+    ["id", "string"], ["title", "string"], ["severity", "string"], ["status", "string"], ["source_kind", "string"],
+    ["reporter", "string"], ["tags", "array"], ["payload", "object"], ["fingerprint", "string"], ["created_at", "string"],
+  ],
+  incident: [["id", "string"], ["title", "string"], ["severity", "string"], ["status", "string"], ["tags", "array"], ["created_at", "string"]],
 };
 
-// What `var.input` holds: the records the run was started on and the analyst's parameters.
-const useRunInput = (): Variable[] => {
-  const { workflowData } = useContext(PlaybookOperationContext);
-  const module = (workflowData.trigger_parameters as { module?: "alert" | "incident" } | null | undefined)?.module;
-  const record = `${path("input", "records")}[0]`;
-  return [
-    { label: "parameters", ref: path("input", "parameters") },
-    { label: "module_type", ref: path("input", "module_type") },
-    { label: "records[0]", ref: record },
-    ...RECORD_FIELDS[module ?? "alert"].map((field) => ({ label: field, ref: `${record}.${field}`, field: true })),
-  ];
-};
-
-// Steps that run before the current one, nearest first, with their declared output fields.
-const useEarlierSteps = (): Variable[][] => {
-  const { currentNode, nodes, edges, connectorQuery } = useContext(PlaybookOperationContext);
-  if (!currentNode) return [];
+// Steps that run before the current one, nearest first, then the run input.
+const useVariables = (): { steps: Node[]; input: Node[] } => {
+  const { currentNode, nodes, edges, connectorQuery, workflowData } = useContext(PlaybookOperationContext);
+  if (!currentNode) return { steps: [], input: [] };
 
   const seen = new Set<string>([currentNode.id]);
   const queue = [currentNode.id];
@@ -61,63 +42,137 @@ const useEarlierSteps = (): Variable[][] => {
     }
   }
 
-  return ancestors.flatMap((id) => {
-    const data = nodes.find((node) => node.id === id)?.data;
+  const steps = ancestors.flatMap((id) => {
+    const data = nodes.find((n) => n.id === id)?.data;
     const name = data?.name;
     if (!name || name === FLOW_START_ID || !data.connector_id) return [];
     const output = connectorQuery?.data
-      ?.find((connector) => connector.id === data.connector_id)
+      ?.find((c) => c.id === data.connector_id)
       ?.operations.find((op) => op.annotation === data.operation)?.output;
-    return [[
-      { label: name, ref: path("steps", name) },
-      ...(output ?? []).map((field) => ({
-        label: field.name,
-        ref: path("steps", name, field.name),
-        field: true,
-      })),
-    ]];
+    const ref = child("var.steps", name);
+    return [{ label: name, ref, type: data.connector_name ?? undefined, children: fields(ref, output ?? []) }];
   });
+
+  const module = (workflowData.trigger_parameters as { module?: "alert" | "incident" } | null | undefined)?.module ?? "alert";
+  const record = "var.input.records[0]";
+  return {
+    steps,
+    input: [
+      { label: "parameters", ref: "var.input.parameters", type: "object", children: [] },
+      { label: "module_type", ref: "var.input.module_type", type: "string", children: [] },
+      {
+        label: "records[0]",
+        ref: record,
+        type: module,
+        children: fields(record, RECORD_FIELDS[module].map(([name, type]) => ({ name, type }))),
+      },
+    ],
+  };
 };
 
-// onPick gets the whole template, for example `{{ var.steps.lookup.ip }}`.
-export const VariablePicker: React.FC<{ onPick: (text: string) => void }> = ({ onPick }) => {
-  const steps = useEarlierSteps();
-  const input = useRunInput();
-  const item = (v: Variable) => (
-    <DropdownMenuItem
-      key={v.ref}
-      onSelect={() => onPick(`{{ ${v.ref} }}`)}
-      className={v.field ? "pl-6 font-mono text-[11.5px]" : "font-semibold"}>
-      {v.label}
-    </DropdownMenuItem>
-  );
-  const label = "text-[11px] uppercase tracking-wide text-ink-faint";
+// Keeps the nodes whose path has the query, with their parents.
+const filter = (nodes: Node[], q: string): Node[] =>
+  nodes.flatMap((n) => {
+    const children = filter(n.children, q);
+    return n.ref.toLowerCase().includes(q) || children.length ? [{ ...n, children }] : [];
+  });
+
+// The field that a click in the panel writes to: the text input or code editor that had the focus last.
+// One step form is open at a time, so one shared slot is enough.
+export const variableTarget: { current: ((text: string) => void) | null } = { current: null };
+
+const Row: React.FC<{ n: Node; depth: number; open: (ref: string) => boolean; toggle: (ref: string) => void }> = ({
+  n,
+  depth,
+  open,
+  toggle,
+}) => {
+  const text = `{{ ${n.ref} }}`;
+  const isOpen = open(n.ref);
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger
-        type="button"
-        aria-label="Insert variable"
-        className="rounded-sm p-1 text-ink-faint hover:bg-signal-soft hover:text-signal-text">
-        <Braces className="size-3.5" />
-      </DropdownMenuTrigger>
-      <DropdownMenuContent
-        align="end"
-        className="max-h-80 overflow-auto bg-popover"
-        // the caller puts the focus back in its own field
-        onCloseAutoFocus={(e) => e.preventDefault()}>
-        <DropdownMenuLabel className={label}>Earlier steps</DropdownMenuLabel>
-        {steps.length === 0 && (
-          <div className="px-2 py-1.5 text-[12px] text-ink-faint">No earlier steps</div>
-        )}
-        {steps.flat().map(item)}
-        <DropdownMenuLabel className={label}>Run input</DropdownMenuLabel>
-        {input.map(item)}
-      </DropdownMenuContent>
-    </DropdownMenu>
+    <>
+      <div
+        className="group flex items-center gap-1 rounded-sm pr-2 text-[12px] hover:bg-paper-sunken"
+        style={{ paddingLeft: depth * 12 + 4 }}>
+        <button
+          type="button"
+          aria-label={isOpen ? `Close ${n.label}` : `Open ${n.label}`}
+          className={cn("flex size-4 shrink-0 items-center justify-center text-ink-faint", !n.children.length && "invisible")}
+          onClick={() => toggle(n.ref)}>
+          <ChevronRight className={cn("size-3.5 transition-transform", isOpen && "rotate-90")} />
+        </button>
+        <button
+          type="button"
+          draggable
+          title={text}
+          aria-label={`Insert ${n.ref}`}
+          onDragStart={(e) => e.dataTransfer.setData("text/plain", text)}
+          // keep the focus and the cursor in the field
+          onMouseDown={(e) => e.preventDefault()}
+          onClick={() => variableTarget.current?.(text)}
+          className={cn("flex min-w-0 flex-1 cursor-grab items-center gap-1.5 py-1 text-left", depth ? "font-mono text-[11.5px]" : "font-semibold")}>
+          <GripVertical className="size-3 shrink-0 text-ink-faint opacity-0 group-hover:opacity-100" />
+          <span className="truncate">{n.label}</span>
+          {n.type && (
+            <span className="ml-auto shrink-0 rounded border border-line px-1 font-mono text-[10px] font-normal text-ink-faint">{n.type}</span>
+          )}
+        </button>
+      </div>
+      {isOpen && n.children.map((c) => <Row key={c.ref} n={c} depth={depth + 1} open={open} toggle={toggle} />)}
+    </>
   );
 };
 
-// A text input whose picker inserts the template at the cursor.
+// Docked beside the step form: search, click to insert at the cursor, or drag into any field.
+export const VariablesPanel: React.FC = () => {
+  const { steps, input } = useVariables();
+  const [query, setQuery] = useState("");
+  const [toggled, setToggled] = useState<Set<string>>(new Set());
+  const q = query.trim().toLowerCase();
+  const shown = { steps: filter(steps, q), input: filter(input, q) };
+  // the nearest step starts open, and a search opens every match
+  const open = (ref: string) => !!q || toggled.has(ref) !== (ref === steps[0]?.ref);
+  const toggle = (ref: string) =>
+    setToggled((refs) => {
+      const next = new Set(refs);
+      if (!next.delete(ref)) next.add(ref);
+      return next;
+    });
+
+  const label = "px-2 pb-1 pt-3 text-[11px] uppercase tracking-wide text-ink-faint";
+  const empty = "px-2 py-1 text-[12px] text-ink-faint";
+  return (
+    <aside
+      aria-label="Variables"
+      className="absolute left-full top-0 flex h-full w-[300px] flex-col border-r border-line bg-card shadow-[12px_0_30px_rgba(20,22,26,0.06)]">
+      <div className="border-b border-line p-3">
+        <div className="mb-2 text-[13px] font-semibold">Variables</div>
+        <div className="relative">
+          <Search className="absolute left-2 top-1/2 size-3.5 -translate-y-1/2 text-ink-faint" />
+          <Input
+            placeholder="Search variables"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            className="h-8 pl-7 text-[12.5px]"
+          />
+        </div>
+      </div>
+      <div className="flex-1 overflow-auto px-1 pb-3">
+        <div className={label}>Earlier steps</div>
+        {shown.steps.length === 0 && <div className={empty}>{q ? "No match" : "No earlier steps"}</div>}
+        {shown.steps.map((n) => <Row key={n.ref} n={n} depth={0} open={open} toggle={toggle} />)}
+        <div className={label}>Run input</div>
+        {shown.input.length === 0 && <div className={empty}>No match</div>}
+        {shown.input.map((n) => <Row key={n.ref} n={n} depth={1} open={open} toggle={toggle} />)}
+      </div>
+      <p className="border-t border-line bg-paper-sunken px-3 py-2 text-[11px] text-ink-faint">
+        Click a variable to insert it in the last field you used, or drag it into a field.
+      </p>
+    </aside>
+  );
+};
+
+// A text input that takes the panel's inserts at its cursor.
 export const VariableInput: React.FC<
   Omit<React.ComponentProps<"input">, "onChange" | "value"> & {
     value: string;
@@ -126,29 +181,30 @@ export const VariableInput: React.FC<
   }
 > = ({ value, onChange, className, inputClassName, ...props }) => {
   const input = useRef<HTMLInputElement>(null);
+  // an insert comes after later edits, so it must call the newest onChange
+  const latest = useRef(onChange);
+  latest.current = onChange;
 
   const insert = (text: string) => {
-    const start = input.current?.selectionStart ?? value.length;
-    const end = input.current?.selectionEnd ?? value.length;
-    onChange(value.slice(0, start) + text + value.slice(end));
+    const el = input.current;
+    if (!el) return;
+    const start = el.selectionStart ?? el.value.length;
+    const end = el.selectionEnd ?? el.value.length;
+    latest.current(el.value.slice(0, start) + text + el.value.slice(end));
     requestAnimationFrame(() => {
-      input.current?.focus();
-      input.current?.setSelectionRange(start + text.length, start + text.length);
+      el.focus();
+      el.setSelectionRange(start + text.length, start + text.length);
     });
   };
 
   return (
-    <div className={cn("relative", className)}>
-      <Input
-        ref={input}
-        className={cn(inputClassName, "pr-8")}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        {...props}
-      />
-      <div className="absolute inset-y-0 right-1 flex items-center">
-        <VariablePicker onPick={insert} />
-      </div>
-    </div>
+    <Input
+      ref={input}
+      className={cn(className, inputClassName)}
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      onFocus={() => (variableTarget.current = insert)}
+      {...props}
+    />
   );
 };
