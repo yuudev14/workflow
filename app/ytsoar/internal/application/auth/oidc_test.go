@@ -196,10 +196,14 @@ func TestStartOIDCBuildsRedirectAndStateCookie(t *testing.T) {
 	env := setupTest(t)
 	pid := uuid.New()
 
-	env.mockProviders.EXPECT().GetByID(gomock.Any(), pid).Return(oidcProviderRow(pid, true), nil)
+	env.mockProviders.EXPECT().GetByID(gomock.Any(), pid).
+		Return(oidcProviderWithConfig(pid, map[string]any{"client_secret": "sealed:s3cr3t"}), nil)
 	env.mockOIDC.EXPECT().
 		AuthCodeURL(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
-		Return("https://idp.example/authorize?state=abc", nil)
+		DoAndReturn(func(_ context.Context, cfg auth.OIDCConfig, _, _, _ string) (string, error) {
+			assert.Equal(t, "s3cr3t", cfg.ClientSecret, "the IdP gets the decrypted secret")
+			return "https://idp.example/authorize?state=abc", nil
+		})
 
 	redirect, cookie, err := env.service.StartOIDC(context.Background(), pid)
 	require.NoError(t, err)

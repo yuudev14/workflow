@@ -29,6 +29,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/stretchr/testify/require"
 	"github.com/yuudev14/ytsoar/db"
 	"github.com/yuudev14/ytsoar/internal/app"
@@ -45,6 +46,7 @@ type J = map[string]any
 var (
 	serverURL string
 	routes    gin.RoutesInfo
+	testPool  *pgxpool.Pool
 )
 
 func TestMain(m *testing.M) {
@@ -64,6 +66,7 @@ func run(m *testing.M, dbURL string) int {
 		panic(err)
 	}
 	defer pool.Close()
+	testPool = pool
 	connectorsDir, err := os.MkdirTemp("", "connectors")
 	if err != nil {
 		panic(err)

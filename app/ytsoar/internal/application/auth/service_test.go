@@ -59,6 +59,11 @@ func setupTest(t *testing.T) *testEnv {
 	mockOIDC := mock_auth.NewMockOIDCClient(ctrl)
 	mockHasher := mock_auth.NewMockPasswordHasher(ctrl)
 
+	// a readable fake cipher, so a test can see what was sealed
+	mockSecrets := mock_auth.NewMockSecretBox(ctrl)
+	mockSecrets.EXPECT().Seal(gomock.Any()).DoAndReturn(func(p string) (string, error) { return "sealed:" + p, nil }).AnyTimes()
+	mockSecrets.EXPECT().Open(gomock.Any()).DoAndReturn(func(s string) (string, error) { return strings.TrimPrefix(s, "sealed:"), nil }).AnyTimes()
+
 	// audit rows are a side effect of almost every path and never change the result, so they
 	// are allowed but not checked unless a test cares
 	mockAudit := mock_auth.NewMockAuditLogRepository(ctrl)
@@ -87,6 +92,7 @@ func setupTest(t *testing.T) *testEnv {
 		mockProviders,
 		mockHasher,
 		mockOIDC,
+		mockSecrets,
 		mockTx,
 		auth.AuthConfig{
 			JWTSecret:       testSecret,

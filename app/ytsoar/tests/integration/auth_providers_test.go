@@ -1,11 +1,13 @@
 package integration
 
 import (
+	"context"
 	"net/http"
 	"testing"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestAuthProviders(t *testing.T) {
@@ -19,6 +21,13 @@ func TestAuthProviders(t *testing.T) {
 		c.expectAll(t, []request{
 			{"returns 400 when the name is missing", http.MethodPost, base, J{"type": "oidc"}, http.StatusBadRequest},
 			{"returns 409 when the name is in use", http.MethodPost, base, J{"type": "oidc", "name": name, "config": config}, http.StatusConflict},
+		})
+		t.Run("stores the secret encrypted", func(t *testing.T) {
+			var stored string
+			require.NoError(t, testPool.QueryRow(context.Background(),
+				`SELECT config->>'client_secret' FROM auth_providers WHERE id = $1`, id).Scan(&stored))
+			assert.NotEmpty(t, stored)
+			assert.NotEqual(t, "secret", stored)
 		})
 	})
 
