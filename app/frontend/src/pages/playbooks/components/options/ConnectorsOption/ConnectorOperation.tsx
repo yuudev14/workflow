@@ -41,7 +41,7 @@ import { useTheme } from "next-themes";
 import { connectorGlyph, Glyph } from "@/components/soar";
 import { GripVertical, Plus, X } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { VariableInput, VariablePicker } from "./VariablePicker";
+import { VariableInput, VariablesPanel, variableTarget } from "./VariablePicker";
 
 const taskFormSchema = z.object({
   name: z.string().min(2, {
@@ -337,6 +337,12 @@ const ConnectorOperation: React.FC<{ connector: ConnectorInfo }> = ({
   );
   const { resolvedTheme } = useTheme();
   const codeEditor = useRef<ReactCodeMirrorRef>(null);
+  const insertInCode = (text: string) => {
+    const view = codeEditor.current?.view;
+    if (!view) return;
+    view.dispatch(view.state.replaceSelection(text));
+    view.focus();
+  };
   const glyph = connectorGlyph(connector.name);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [cachedParameter, setCachedParameter] = useState<Record<string, any>>(
@@ -432,6 +438,8 @@ const ConnectorOperation: React.FC<{ connector: ConnectorInfo }> = ({
   };
 
   return (
+    <>
+    <VariablesPanel />
     <Form {...taskForm}>
       <form
         onSubmit={taskForm.handleSubmit(onSubmit)}
@@ -655,7 +663,9 @@ const ConnectorOperation: React.FC<{ connector: ConnectorInfo }> = ({
                         />
                       )}
                       {param.type === "code" && (
-                        <div className="overflow-hidden rounded-md border border-line-strong">
+                        <div
+                          className="overflow-hidden rounded-md border border-line-strong"
+                          onFocus={() => (variableTarget.current = insertInCode)}>
                           <div className="flex items-center justify-between border-b border-line bg-paper-sunken px-2.5 py-1.5">
                             <span className="rounded-[5px] border border-line-strong bg-card px-1.5 py-0.5 font-mono text-[10.5px] font-semibold text-ink-soft">
                               {isJsCode ? "node" : "python3 -I"}
@@ -663,14 +673,6 @@ const ConnectorOperation: React.FC<{ connector: ConnectorInfo }> = ({
                             <span className="ml-auto mr-1 font-mono text-[10.5px] text-ink-faint">
                               stdout is the result
                             </span>
-                            <VariablePicker
-                              onPick={(text) => {
-                                const view = codeEditor.current?.view;
-                                if (!view) return;
-                                view.dispatch(view.state.replaceSelection(text));
-                                view.focus();
-                              }}
-                            />
                           </div>
                           <CodeMirror
                             ref={codeEditor}
@@ -706,6 +708,7 @@ const ConnectorOperation: React.FC<{ connector: ConnectorInfo }> = ({
         </footer>
       </form>
     </Form>
+    </>
   );
 };
 
