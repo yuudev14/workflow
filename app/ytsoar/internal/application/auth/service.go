@@ -41,6 +41,7 @@ type Service struct {
 	providers  AuthProviderRepository
 	hasher     PasswordHasher
 	oidcClient OIDCClient
+	secrets    SecretBox
 	txManager  contracts.TxManager
 	cfg        AuthConfig
 
@@ -60,6 +61,7 @@ func NewService(
 	providers AuthProviderRepository,
 	hasher PasswordHasher,
 	oidcClient OIDCClient,
+	secrets SecretBox,
 	txManager contracts.TxManager,
 	cfg AuthConfig,
 ) *Service {
@@ -75,6 +77,7 @@ func NewService(
 		providers:  providers,
 		hasher:     hasher,
 		oidcClient: oidcClient,
+		secrets:    secrets,
 		txManager:  txManager,
 		cfg:        cfg,
 		now:        time.Now,

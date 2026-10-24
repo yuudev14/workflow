@@ -17,13 +17,18 @@ const (
 	// DefaultJWTSecret makes local dev easy. cmd/api refuses to start with it when APP_ENV is
 	// production.
 	DefaultJWTSecret = "secret"
+
+	// DefaultEncryptionKey is for local dev only. cmd/api refuses it when APP_ENV is production.
+	DefaultEncryptionKey = "ZGV2LW9ubHktZW5jcnlwdGlvbi1rZXktMzJieXRlcyE="
 )
 
 type Config struct {
 	DBUrl      string
 	LoggerMode string
 	JWTSecret  string
-	HTTPAddr   string
+	// EncryptionKey seals the auth provider secrets (base64 of 32 bytes).
+	EncryptionKey string
+	HTTPAddr      string
 
 	// AppEnv turns on the production safety checks in cmd/api.
 	AppEnv string
@@ -90,10 +95,11 @@ func LoadFrom(dest string) Config {
 	}
 
 	return Config{
-		DBUrl:      getDbUrl(),
-		LoggerMode: getEnvOr("LOGGER_MODE", "DEBUG"),
-		JWTSecret:  getEnvOr("JWT_SECRET", DefaultJWTSecret),
-		HTTPAddr:   getEnvOr("HTTP_ADDR", ":8080"),
+		DBUrl:         getDbUrl(),
+		LoggerMode:    getEnvOr("LOGGER_MODE", "DEBUG"),
+		JWTSecret:     getEnvOr("JWT_SECRET", DefaultJWTSecret),
+		EncryptionKey: getEnvOr("YTSOAR_ENCRYPTION_KEY", DefaultEncryptionKey),
+		HTTPAddr:      getEnvOr("HTTP_ADDR", ":8080"),
 
 		AppEnv:          getEnvOr("APP_ENV", "development"),
 		AccessTokenTTL:  time.Duration(getEnvIntOr("ACCESS_TOKEN_TTL_MINUTES", 15)) * time.Minute,

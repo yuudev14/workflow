@@ -345,7 +345,11 @@ func (s *Service) oidcConfigFor(ctx context.Context, providerID uuid.UUID) (OIDC
 	if p.Type != domain.AuthProviderOIDC {
 		return OIDCConfig{}, ErrProviderNotFound
 	}
-	return decodeOIDCConfig(p.Config)
+	config, err := mapSecrets(p.Config, s.secrets.Open)
+	if err != nil {
+		return OIDCConfig{}, err
+	}
+	return decodeOIDCConfig(config)
 }
 
 func (s *Service) oidcRedirectURL(providerID uuid.UUID) string {

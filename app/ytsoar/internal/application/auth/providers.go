@@ -11,6 +11,8 @@ import (
 
 const maskedSecret = "********"
 
+var secretKeys = []string{"client_secret", "bind_password"}
+
 type AdminProvider struct {
 	ID      string          `json:"id"`
 	Type    string          `json:"type"`
@@ -47,6 +49,10 @@ func (s *Service) CreateProvider(ctx context.Context, actorID uuid.UUID, input P
 			return AdminProvider{}, err
 		}
 	}
+	config, err = mapSecrets(config, s.secrets.Seal)
+	if err != nil {
+		return AdminProvider{}, err
+	}
 	enabled := true
 	if input.Enabled != nil {
 		enabled = *input.Enabled
@@ -75,12 +81,15 @@ func (s *Service) UpdateProvider(ctx context.Context, actorID, id uuid.UUID, inp
 
 	config := input.Config
 	if len(config) > 0 {
-		config = preserveMaskedSecret(existing.Config, config)
 		if existing.Type == domain.AuthProviderOIDC {
 			if _, err := decodeOIDCConfig(config); err != nil {
 				return AdminProvider{}, err
 			}
 		}
+		if config, err = mapSecrets(config, s.secrets.Seal); err != nil {
+			return AdminProvider{}, err
+		}
+		config = preserveMaskedSecret(existing.Config, config)
 	}
 
 	p, err := s.providers.Update(ctx, id, UpdateProviderParams{
@@ -141,7 +150,7 @@ func maskSecrets(raw json.RawMessage) json.RawMessage {
 	if err := json.Unmarshal(raw, &m); err != nil {
 		return json.RawMessage(`{}`)
 	}
-	for _, key := range []string{"client_secret", "bind_password"} {
+	for _, key := range secretKeys {
 		if v, ok := m[key].(string); ok && v != "" {
 			m[key] = maskedSecret
 		}
@@ -151,6 +160,27 @@ func maskSecrets(raw json.RawMessage) json.RawMessage {
 		return json.RawMessage(`{}`)
 	}
 	return out
+}
+
+// mapSecrets runs fn (seal or open) on each secret. It skips the masked sentinel, so
+// preserveMaskedSecret can put the stored value back.
+func mapSecrets(raw json.RawMessage, fn func(string) (string, error)) (json.RawMessage, error) {
+	var m map[string]any
+	if err := json.Unmarshal(raw, &m); err != nil {
+		return nil, apperr.New(apperr.Invalid, "provider config must be a JSON object")
+	}
+	for _, key := range secretKeys {
+		v, ok := m[key].(string)
+		if !ok || v == "" || v == maskedSecret {
+			continue
+		}
+		out, err := fn(v)
+		if err != nil {
+			return nil, apperr.Wrap(apperr.Invalid, "provider secret cannot be decrypted, enter it again", err)
+		}
+		m[key] = out
+	}
+	return json.Marshal(m)
 }
 
 func parseProviderType(t string) (domain.AuthProvider, error) {
