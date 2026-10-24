@@ -321,5 +321,6 @@ func public(route string) bool {
 	return strings.HasPrefix(route, "/swagger/") ||
 		route == "/api/v1/auth/login" || route == "/api/v1/auth/refresh" || route == "/api/v1/auth/logout" ||
 		route == "/api/v1/auth/providers" || strings.HasPrefix(route, "/api/v1/auth/oidc/") ||
-		strings.HasPrefix(route, "/api/v1/auth/password/")
+		strings.HasPrefix(route, "/api/v1/auth/password/") ||
+		strings.HasPrefix(route, "/api/v1/webhooks/")
 }

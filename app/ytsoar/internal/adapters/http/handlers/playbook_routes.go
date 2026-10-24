@@ -40,3 +40,17 @@ func (h *PlaybookHandler) RegisterRoutes(
 			h.Trigger)
 	}
 }
+
+// RegisterWebhookRoutes goes on the public group: the auth type is set per playbook, so the
+// key checks run only for an api_key playbook.
+func (h *PlaybookHandler) RegisterWebhookRoutes(
+	route *gin.RouterGroup,
+	apiKeyAuth gin.HandlerFunc,
+	requirePermission middleware.PermissionMiddleware,
+) {
+	route.POST("/webhooks/:playbook_id",
+		h.ResolveWebhookAuth,
+		unlessPublicWebhook(apiKeyAuth),
+		unlessPublicWebhook(requirePermission(domain.ModulePlaybooks, domain.ActionExecute)),
+		h.RunWebhook)
+}

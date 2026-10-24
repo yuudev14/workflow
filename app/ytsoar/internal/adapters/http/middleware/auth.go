@@ -66,6 +66,28 @@ func Auth(log logger.Logger, verifier TokenVerifier) gin.HandlerFunc {
 	}
 }
 
+// APIKeyAuth accepts only an API key in the Authorization header. A route that outside
+// systems call has no use for a browser cookie, and the cookie would open it to CSRF.
+func APIKeyAuth(log logger.Logger, verifier TokenVerifier) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		raw := bearerToken(c.GetHeader("Authorization"))
+		if !strings.HasPrefix(raw, domain.APIKeyPrefix) {
+			unauthorized(c)
+			return
+		}
+
+		user, err := verifier.VerifyAPIKey(c.Request.Context(), raw)
+		if err != nil {
+			log.Debugw("rejected api key", "path", c.Request.URL.Path)
+			unauthorized(c)
+			return
+		}
+
+		SetCurrentUser(c, user)
+		c.Next()
+	}
+}
+
 // AuthFromRefreshCookie authenticates the websocket handshake. A browser cannot set
 // headers on a WebSocket, but the handshake is a normal GET, so the refresh cookie comes
 // with it. The token is read, never rotated, and checked against the database, so a logout

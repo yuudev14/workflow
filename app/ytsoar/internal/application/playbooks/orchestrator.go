@@ -22,6 +22,8 @@ type PlaybookApplicationService interface {
 	TriggerPlaybook(ctx context.Context, playbookId string) (*domain.TaskMessage, error)
 	RunPlaybook(ctx context.Context, playbookId string, moduleType string, payload RunPlaybookPayload, actorID *uuid.UUID) (*domain.TaskMessage, error)
 	RunForEvent(ctx context.Context, moduleType string, event string, recordID uuid.UUID, occurredAt time.Time) error
+	WebhookAuth(ctx context.Context, playbookId string) (domain.WebhookAuth, error)
+	RunWebhook(ctx context.Context, playbookId string, parameters map[string]any, actorID *uuid.UUID) (uuid.UUID, error)
 	PreparePlaybookMessage(tasks []domain.Tasks, edges []domain.ResponseEdges) (map[string]domain.Tasks, map[string][]string, []domain.EdgeRef)
 	UpsertTasks(ctx context.Context, playbookUUID uuid.UUID, nodes []tasks.TaskPayload) ([]domain.Tasks, error)
 	InsertEdges(ctx context.Context, playbookUUID uuid.UUID, edges map[string][]string, tasks []domain.Tasks, handles map[string]map[string]domain.EdgeHandle) error
@@ -357,6 +359,37 @@ func (w *PlaybookApplicationServiceImpl) RunPlaybook(ctx context.Context, playbo
 			Parameters: parameters,
 		},
 	}, moduleType, recordIDs)
+}
+
+// WebhookAuth implements PlaybookApplicationService. A playbook whose trigger is not
+// webhook is not found, so a caller cannot tell it from a playbook that does not exist.
+func (w *PlaybookApplicationServiceImpl) WebhookAuth(ctx context.Context, playbookId string) (domain.WebhookAuth, error) {
+	playbook, err := w.PlaybookService.GetPlaybookById(ctx, playbookId)
+	if err != nil {
+		return "", err
+	}
+	if playbook.TriggerType == nil || *playbook.TriggerType != string(domain.TriggerTypeWebhook) {
+		return "", ErrPlaybookNotFound
+	}
+	return domain.WebhookAuthOf(playbook.TriggerParameters)
+}
+
+// RunWebhook implements PlaybookApplicationService. The caller is checked by WebhookAuth
+// first. The request body is the run parameters.
+func (w *PlaybookApplicationServiceImpl) RunWebhook(ctx context.Context, playbookId string, parameters map[string]any, actorID *uuid.UUID) (uuid.UUID, error) {
+	input := domain.NewEmptyRunInput()
+	if parameters != nil {
+		input.Parameters = parameters
+	}
+	msg, err := w.runPlaybook(ctx, playbookId, RunStamp{
+		TriggerType: new(string(domain.TriggerTypeWebhook)),
+		TriggeredBy: actorID,
+		Input:       input,
+	}, "", nil)
+	if err != nil {
+		return uuid.Nil, err
+	}
+	return msg.PlaybookHistoryId, nil
 }
 
 var eventTriggers = map[string]domain.TriggerType{
