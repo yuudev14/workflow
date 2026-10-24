@@ -94,7 +94,7 @@ test.describe("playbook editor", () => {
     await expect.poll(async () => (await tasksOf(page, playbook.id)).map((t) => t.name).sort()).toEqual(["first", "start"]);
   });
 
-  test("inserts the result of an earlier step from the variable picker", async ({ page }) => {
+  test("inserts templates of earlier steps and the run input from the variable picker", async ({ page }) => {
     const playbook = await newPlaybook(page.request);
     const http = (name: string) => ({ name, operation: "get_request", connector_id: "http_request", connector_name: "HTTP Request", parameters: { url: "" } });
     await api(page.request).put(`/playbooks/tasks/${playbook.id}`, {
@@ -116,12 +116,16 @@ test.describe("playbook editor", () => {
     await node(page, "check").dispatchEvent("dblclick");
     await page.getByRole("button", { name: "Insert variable" }).click();
     await page.getByRole("menuitem", { name: "fetch" }).click();
+    await page.getByRole("button", { name: "Insert variable" }).click();
+    await page.getByRole("menuitem", { name: "title" }).click();
     await page.getByRole("button", { name: "Save step" }).click();
     await page.getByRole("button", { name: "Save", exact: true }).click();
 
-    await expect.poll(async () => (await tasksOf(page, playbook.id)).find((t) => t.name === "check")?.parameters.code).toBe('steps["fetch"]');
+    await expect
+      .poll(async () => (await tasksOf(page, playbook.id)).find((t) => t.name === "check")?.parameters.code)
+      .toBe("{{ var.steps.fetch }}{{ var.input.records[0].title }}");
     const fetch = (await tasksOf(page, playbook.id)).find((t) => t.name === "fetch")!;
-    expect(fetch.parameters.url).toBe('{{ var.steps["lookup"]["body"] }}');
+    expect(fetch.parameters.url).toBe("{{ var.steps.lookup.body }}");
   });
 });
 
