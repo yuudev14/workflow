@@ -35,7 +35,7 @@ func TestCreateProviderValidConfigIsWritten(t *testing.T) {
 	env.mockProviders.EXPECT().
 		Create(gomock.Any(), gomock.Any(), "Keycloak", gomock.Any(), true).
 		DoAndReturn(func(_ context.Context, _ any, _ string, written json.RawMessage, _ bool) (auth.AuthProvider, error) {
-			assert.JSONEq(t, `{"issuer":"https://idp","client_id":"cid","client_secret":"sealed:s"}`, string(written))
+			assert.JSONEq(t, `{"issuer":"sealed:https://idp","client_id":"sealed:cid","client_secret":"sealed:s"}`, string(written))
 			return auth.AuthProvider{ID: uuid.New(), Type: "oidc", Name: "Keycloak", Enabled: true, Config: written}, nil
 		})
 
@@ -46,15 +46,15 @@ func TestCreateProviderValidConfigIsWritten(t *testing.T) {
 	})
 	require.NoError(t, err)
 	assert.Equal(t, "Keycloak", created.Name)
-	// secret must come back masked, never the raw value.
-	assert.NotContains(t, string(created.Config), "\"s\"")
+	// the admin view opens the values and masks the secret
+	assert.JSONEq(t, `{"issuer":"https://idp","client_id":"cid","client_secret":"********"}`, string(created.Config))
 }
 
 // A masked secret keeps the stored sealed value, and a new secret is sealed.
 func TestUpdateProviderSealsSecrets(t *testing.T) {
 	env := setupTest(t)
 	id := uuid.New()
-	stored := json.RawMessage(`{"issuer":"https://idp","client_id":"cid","client_secret":"sealed:old"}`)
+	stored := json.RawMessage(`{"issuer":"sealed:https://idp","client_id":"sealed:cid","client_secret":"sealed:old"}`)
 	env.mockProviders.EXPECT().GetByID(gomock.Any(), id).
 		Return(auth.AuthProvider{ID: id, Type: "oidc", Config: stored}, nil).Times(2)
 
@@ -65,7 +65,7 @@ func TestUpdateProviderSealsSecrets(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			env.mockProviders.EXPECT().Update(gomock.Any(), id, gomock.Any()).
 				DoAndReturn(func(_ context.Context, _ uuid.UUID, p auth.UpdateProviderParams) (auth.AuthProvider, error) {
-					assert.JSONEq(t, `{"issuer":"https://idp","client_id":"cid","client_secret":"`+tc.want+`"}`, string(p.Config))
+					assert.JSONEq(t, `{"issuer":"sealed:https://idp","client_id":"sealed:cid","client_secret":"`+tc.want+`"}`, string(p.Config))
 					return auth.AuthProvider{ID: id, Type: "oidc", Config: p.Config}, nil
 				})
 			_, err := env.service.UpdateProvider(context.Background(), uuid.New(), id, auth.UpdateProviderInput{
