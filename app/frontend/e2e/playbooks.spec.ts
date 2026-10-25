@@ -40,6 +40,17 @@ test.describe("playbook list", () => {
 });
 
 test.describe("playbook editor", () => {
+  test("deletes the playbook and opens the list", async ({ page }) => {
+    const playbook = await newPlaybook(page.request);
+    await page.goto(`/playbooks/${playbook.id}`);
+    await page.getByRole("button", { name: "Delete", exact: true }).click();
+    await page.getByRole("dialog").getByRole("button", { name: "Delete" }).click();
+
+    await expect(page).toHaveURL(/\/playbooks$/);
+    await page.getByPlaceholder("Search playbooks…").fill(playbook.name);
+    await expect(page.getByRole("link", { name: new RegExp(playbook.name) })).toBeHidden();
+  });
+
   test("shows the steps", async ({ page }) => {
     const playbook = await newPlaybook(page.request);
     await page.goto(`/playbooks/${playbook.id}`);

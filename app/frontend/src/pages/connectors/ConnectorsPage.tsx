@@ -1,6 +1,7 @@
 
 import React from "react";
-import { useQuery } from "@tanstack/react-query";
+import { isAxiosError } from "axios";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Upload } from "lucide-react";
 
 import ConnectorService from "@/services/connectors/connectors";
@@ -8,6 +9,9 @@ import { ConnectorInfo } from "@/services/connectors/connectors.schema";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Glyph, connectorGlyph } from "@/components/soar";
 import { PermissionGate } from "@/components/auth/PermissionGate";
+import { ConfirmDialog } from "@/pages/settings/components/ConfirmDialog";
+import { toast } from "@/hooks/use-toast";
+import { apiErrorMessage } from "@/services/common/errors";
 import { cn } from "@/lib/utils";
 
 // info.json carries a `runtime` (and often a version); the shared type keeps
@@ -22,29 +26,8 @@ function runtimeBadge(runtime?: string) {
   return { label: "python", cls: "bg-signal-soft text-signal-text" };
 }
 
-function Toggle({ on, onToggle }: { on: boolean; onToggle: () => void }) {
-  return (
-    <button
-      type="button"
-      onClick={onToggle}
-      className={cn(
-        "relative h-5 w-[34px] shrink-0 rounded-full transition-colors",
-        on ? "bg-moss-dot" : "bg-line-strong"
-      )}
-    >
-      <span
-        className={cn(
-          "absolute top-0.5 size-4 rounded-full bg-white transition-all",
-          on ? "left-4" : "left-0.5"
-        )}
-      />
-    </button>
-  );
-}
-
+// The enable switch comes back with #58, when the worker checks the enabled state.
 function ConnectorCard({ connector }: { connector: MarketConnector }) {
-  // Local-only enable state - persistence is Phase 2/3 (endpoint not wired yet).
-  const [enabled, setEnabled] = React.useState(true);
   const g = connectorGlyph(connector.name);
   const badge = runtimeBadge(connector.runtime);
   return (
@@ -59,7 +42,6 @@ function ConnectorCard({ connector }: { connector: MarketConnector }) {
             </div>
           </div>
         </div>
-        <Toggle on={enabled} onToggle={() => setEnabled((v) => !v)} />
       </div>
       <div className="flex items-center gap-2 text-[12px] text-ink-faint">
         <span
@@ -84,6 +66,27 @@ export default function Page() {
 
   const connectors = (connectorsQuery.data ?? []) as MarketConnector[];
 
+  const queryClient = useQueryClient();
+  const fileInput = React.useRef<HTMLInputElement>(null);
+  const [conflict, setConflict] = React.useState<{ file: File; message: string } | null>(null);
+  const upload = useMutation({
+    mutationFn: ({ file, replace }: { file: File; replace: boolean }) =>
+      ConnectorService.uploadConnector(file, replace),
+    onSuccess: (info) => {
+      toast({ variant: "success", title: `Installed ${info.name}` });
+      queryClient.invalidateQueries({ queryKey: ["connectors-marketplace"] });
+      setConflict(null);
+    },
+    onError: (error, { file }) => {
+      if (isAxiosError(error) && error.response?.status === 409) {
+        setConflict({ file, message: apiErrorMessage(error) });
+        return;
+      }
+      toast({ variant: "destructive", title: "Couldn't install the connector", description: apiErrorMessage(error) });
+    },
+  });
+  const install = (file?: File) => file && upload.mutate({ file, replace: false });
+
   return (
     <div className="flex justify-center">
       <div className="flex w-full flex-col gap-6 px-6 py-8">
@@ -91,25 +94,47 @@ export default function Page() {
           <div>
             <h1>Connectors</h1>
             <p className="mt-1 text-[15px] text-ink-soft">
-              {connectors.length} installed · browse, enable, and upload connector packages.
+              {connectors.length} installed · browse and upload connector packages.
             </p>
           </div>
           <PermissionGate module="connectors" action="create">
-            <button className="inline-flex items-center gap-2 rounded-sm bg-primary px-3.5 py-2 text-[13.5px] font-semibold text-primary-foreground hover:brightness-110">
+            <button
+              onClick={() => fileInput.current?.click()}
+              disabled={upload.isPending}
+              className="inline-flex items-center gap-2 rounded-sm bg-primary px-3.5 py-2 text-[13.5px] font-semibold text-primary-foreground hover:brightness-110 disabled:opacity-60"
+            >
               <Upload className="size-4" /> Install connector
             </button>
           </PermissionGate>
         </div>
 
         <PermissionGate module="connectors" action="create">
-          <label className="cursor-pointer rounded-md border-[1.5px] border-dashed border-line-strong bg-paper-sunken px-6 py-7 text-center text-ink-faint hover:border-signal-dot">
-            <input type="file" accept=".zip" className="hidden" />
+          <label
+            onDragOver={(e) => e.preventDefault()}
+            onDrop={(e) => {
+              e.preventDefault();
+              install(e.dataTransfer.files[0]);
+            }}
+            className="cursor-pointer rounded-md border-[1.5px] border-dashed border-line-strong bg-paper-sunken px-6 py-7 text-center text-ink-faint hover:border-signal-dot"
+          >
+            <input
+              ref={fileInput}
+              type="file"
+              accept=".zip"
+              aria-label="Connector zip"
+              className="hidden"
+              onChange={(e) => {
+                install(e.target.files?.[0]);
+                // the same file can be picked again after an error
+                e.target.value = "";
+              }}
+            />
             <Upload className="mx-auto size-6" />
             <div className="mt-1.5 text-[14px] font-semibold text-ink-soft">
-              Drop a connector .zip, or browse
+              {upload.isPending ? "Installing…" : "Drop a connector .zip, or browse"}
             </div>
             <div className="mt-0.5 text-[12.5px]">
-              Must include info.json + a python/node entry file - max 25 MB
+              Must include info.json + a python/node entry file - max 50 MB
             </div>
           </label>
         </PermissionGate>
@@ -132,6 +157,16 @@ export default function Page() {
           </div>
         )}
       </div>
+
+      <ConfirmDialog
+        open={conflict !== null}
+        onOpenChange={(next) => !next && setConflict(null)}
+        title="Replace the connector?"
+        description={`${conflict?.message}. The upload replaces the installed version.`}
+        confirmLabel="Replace"
+        pending={upload.isPending}
+        onConfirm={() => conflict && upload.mutate({ file: conflict.file, replace: true })}
+      />
     </div>
   );
 }
