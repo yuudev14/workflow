@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -324,10 +323,7 @@ func (w *PlaybookHandler) Trigger(c *gin.Context) {
 	response.Response(http.StatusAccepted, data)
 }
 
-const (
-	webhookAuthKey     = "webhook_auth"
-	maxWebhookBodySize = 1 << 20
-)
+const webhookAuthKey = "webhook_auth"
 
 func (w *PlaybookHandler) ResolveWebhookAuth(c *gin.Context) {
 	response := rest.Response{C: c}
@@ -359,13 +355,8 @@ func unlessPublicWebhook(next gin.HandlerFunc) gin.HandlerFunc {
 func (w *PlaybookHandler) RunWebhook(c *gin.Context) {
 	response := rest.Response{C: c}
 
-	body, err := io.ReadAll(http.MaxBytesReader(c.Writer, c.Request.Body, maxWebhookBodySize))
+	body, err := io.ReadAll(c.Request.Body)
 	if err != nil {
-		var tooLarge *http.MaxBytesError
-		if errors.As(err, &tooLarge) {
-			response.ResponseError(http.StatusRequestEntityTooLarge, "the body must be 1 MB or less")
-			return
-		}
 		response.ResponseError(http.StatusBadRequest, "could not read the body")
 		return
 	}

@@ -125,7 +125,6 @@ func TestPlaybooks(t *testing.T) {
 		})
 
 		manual := "/api/v1/webhooks/" + newPlaybook(t, c)
-		big := `{"a":"` + strings.Repeat("x", 1<<20) + `"}`
 		for _, tc := range []struct {
 			name, path, body, contentType string
 			caller                        *client
@@ -139,7 +138,6 @@ func TestPlaybooks(t *testing.T) {
 			{"returns 400 when the id is not a uuid", "/api/v1/webhooks/not-a-uuid", "{}", "application/json", key, http.StatusBadRequest},
 			{"returns 400 when the body is not a JSON object", keyed, "[1]", "application/json", key, http.StatusBadRequest},
 			{"returns 400 when the body is not JSON", keyed, "a=1", "application/x-www-form-urlencoded", key, http.StatusBadRequest},
-			{"returns 413 when the body is over 1 MB", keyed, big, "application/json", key, http.StatusRequestEntityTooLarge},
 		} {
 			t.Run(tc.name, func(t *testing.T) {
 				assert.Equal(t, tc.want, post(t, tc.caller, tc.path, tc.body, tc.contentType))
