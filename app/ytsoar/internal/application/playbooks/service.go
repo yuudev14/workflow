@@ -150,12 +150,20 @@ func (w *PlaybookServiceImpl) GetPlaybookGraphById(ctx context.Context, id strin
 }
 
 func (w *PlaybookServiceImpl) CreatePlaybook(ctx context.Context, playbook PlaybookPayload) (*domain.Playbooks, error) {
+	if _, err := domain.WebhookAuthOf(playbook.TriggerParameters); err != nil {
+		return nil, err
+	}
 	return w.PlaybookRepository.CreatePlaybook(ctx, playbook)
 }
 
 func (w *PlaybookServiceImpl) UpdatePlaybook(ctx context.Context, id string, playbook UpdatePlaybookData) (*domain.Playbooks, error) {
 	if playbook.TriggerType.Set && playbook.TriggerType.Value != nil && !domain.IsValidTriggerType(*playbook.TriggerType.Value) {
 		return nil, fmt.Errorf("unknown trigger type: %s", *playbook.TriggerType.Value)
+	}
+	if playbook.TriggerParameters.Set && playbook.TriggerParameters.Value != nil {
+		if _, err := domain.WebhookAuthOf(*playbook.TriggerParameters.Value); err != nil {
+			return nil, err
+		}
 	}
 	updated, err := w.PlaybookRepository.UpdatePlaybook(ctx, id, playbook)
 	if err != nil {

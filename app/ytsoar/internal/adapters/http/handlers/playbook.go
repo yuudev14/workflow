@@ -1,7 +1,9 @@
 package handlers
 
 import (
+	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -12,6 +14,7 @@ import (
 	"github.com/yuudev14/ytsoar/internal/application/edges"
 	"github.com/yuudev14/ytsoar/internal/application/playbooks"
 	"github.com/yuudev14/ytsoar/internal/application/tasks"
+	"github.com/yuudev14/ytsoar/internal/domain"
 	"github.com/yuudev14/ytsoar/internal/logger"
 )
 
@@ -318,6 +321,66 @@ func (w *PlaybookHandler) Trigger(c *gin.Context) {
 	}
 
 	response.Response(http.StatusAccepted, data)
+}
+
+const webhookAuthKey = "webhook_auth"
+
+func (w *PlaybookHandler) ResolveWebhookAuth(c *gin.Context) {
+	response := rest.Response{C: c}
+	playbookId := c.Param("playbook_id")
+	if _, err := uuid.Parse(playbookId); err != nil {
+		response.ResponseError(http.StatusBadRequest, "playbook_id must be a uuid")
+		c.Abort()
+		return
+	}
+
+	auth, err := w.PlaybookApplicationService.WebhookAuth(c.Request.Context(), playbookId)
+	if err != nil {
+		response.Fail(w.logger, err)
+		c.Abort()
+		return
+	}
+	c.Set(webhookAuthKey, string(auth))
+}
+
+func unlessPublicWebhook(next gin.HandlerFunc) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		if c.GetString(webhookAuthKey) == string(domain.WebhookAuthNone) {
+			return
+		}
+		next(c)
+	}
+}
+
+func (w *PlaybookHandler) RunWebhook(c *gin.Context) {
+	response := rest.Response{C: c}
+
+	body, err := io.ReadAll(c.Request.Body)
+	if err != nil {
+		response.ResponseError(http.StatusBadRequest, "could not read the body")
+		return
+	}
+
+	var parameters map[string]any
+	if len(body) > 0 {
+		if c.ContentType() != "application/json" || json.Unmarshal(body, &parameters) != nil {
+			response.ResponseError(http.StatusBadRequest, "the body must be a JSON object")
+			return
+		}
+	}
+
+	var actorID *uuid.UUID
+	if user, ok := middleware.CurrentUser(c); ok {
+		actorID = &user.ID
+	}
+
+	runID, err := w.PlaybookApplicationService.RunWebhook(c.Request.Context(), c.Param("playbook_id"), parameters, actorID)
+	if err != nil {
+		response.Fail(w.logger, err)
+		return
+	}
+
+	response.Response(http.StatusAccepted, gin.H{"run_id": runID})
 }
 
 // "skipped" is not here on purpose: only the executor sets it, never a client.

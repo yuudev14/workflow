@@ -143,6 +143,7 @@ func NewAPI(ctx context.Context, cfg config.Config, appLogger logger.Logger, poo
 		incidentHandler,
 		hub,
 		middleware.Auth(appLogger, authService),
+		middleware.APIKeyAuth(appLogger, authService),
 		middleware.AuthFromRefreshCookie(appLogger, authService),
 		middleware.NewPermissionMiddleware(appLogger, authService),
 	), nil

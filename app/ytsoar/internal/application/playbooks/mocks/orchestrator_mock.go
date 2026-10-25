@@ -132,6 +132,21 @@ func (mr *MockPlaybookApplicationServiceMockRecorder) RunPlaybook(ctx, playbookI
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RunPlaybook", reflect.TypeOf((*MockPlaybookApplicationService)(nil).RunPlaybook), ctx, playbookId, moduleType, payload, actorID)
 }
 
+// RunWebhook mocks base method.
+func (m *MockPlaybookApplicationService) RunWebhook(ctx context.Context, playbookId string, parameters map[string]any, actorID *uuid.UUID) (uuid.UUID, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "RunWebhook", ctx, playbookId, parameters, actorID)
+	ret0, _ := ret[0].(uuid.UUID)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// RunWebhook indicates an expected call of RunWebhook.
+func (mr *MockPlaybookApplicationServiceMockRecorder) RunWebhook(ctx, playbookId, parameters, actorID any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RunWebhook", reflect.TypeOf((*MockPlaybookApplicationService)(nil).RunWebhook), ctx, playbookId, parameters, actorID)
+}
+
 // TriggerPlaybook mocks base method.
 func (m *MockPlaybookApplicationService) TriggerPlaybook(ctx context.Context, playbookId string) (*domain.TaskMessage, error) {
 	m.ctrl.T.Helper()
@@ -175,4 +190,19 @@ func (m *MockPlaybookApplicationService) UpsertTasks(ctx context.Context, playbo
 func (mr *MockPlaybookApplicationServiceMockRecorder) UpsertTasks(ctx, playbookUUID, nodes any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpsertTasks", reflect.TypeOf((*MockPlaybookApplicationService)(nil).UpsertTasks), ctx, playbookUUID, nodes)
+}
+
+// WebhookAuth mocks base method.
+func (m *MockPlaybookApplicationService) WebhookAuth(ctx context.Context, playbookId string) (domain.WebhookAuth, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "WebhookAuth", ctx, playbookId)
+	ret0, _ := ret[0].(domain.WebhookAuth)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// WebhookAuth indicates an expected call of WebhookAuth.
+func (mr *MockPlaybookApplicationServiceMockRecorder) WebhookAuth(ctx, playbookId any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "WebhookAuth", reflect.TypeOf((*MockPlaybookApplicationService)(nil).WebhookAuth), ctx, playbookId)
 }

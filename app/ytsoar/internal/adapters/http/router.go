@@ -28,6 +28,7 @@ func NewRouter(
 	incidentHandler *handlers.IncidentHandler,
 	hub *ws.Hub,
 	authMW gin.HandlerFunc,
+	apiKeyMW gin.HandlerFunc,
 	wsAuthMW gin.HandlerFunc,
 	requirePermission middleware.PermissionMiddleware,
 ) *gin.Engine {
@@ -46,6 +47,8 @@ func NewRouter(
 
 	// login, refresh and logout must work without an access token
 	authHandler.RegisterPublicRoutes(apiGroup)
+
+	playbookHandler.RegisterWebhookRoutes(apiGroup, apiKeyMW, requirePermission)
 
 	protected := apiGroup.Group("", authMW)
 

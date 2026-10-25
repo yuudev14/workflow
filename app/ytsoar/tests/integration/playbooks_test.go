@@ -1,7 +1,9 @@
 package integration
 
 import (
+	"bytes"
 	"net/http"
+	"strings"
 	"testing"
 	"time"
 
@@ -45,6 +47,9 @@ func TestPlaybooks(t *testing.T) {
 			c.expect(t, http.StatusOK, http.MethodPut, base+"/"+id, J{"description": "changed"})
 			assert.Equal(t, "changed", c.get(t, base+"/"+id).(J)["description"])
 		})
+		c.expectAll(t, []request{
+			{"returns 400 when the webhook auth type is unknown", http.MethodPut, base + "/" + id, J{"trigger_parameters": J{"auth": "basic"}}, http.StatusBadRequest},
+		})
 	})
 
 	t.Run("PUT /playbooks/tasks/:id", func(t *testing.T) {
@@ -77,6 +82,67 @@ func TestPlaybooks(t *testing.T) {
 			assert.Equal(t, []any{run["playbook_history_id"]}, ids(c.get(t, base+"/history?playbook_id="+id)))
 			assert.Len(t, items(c.get(t, base+"/history/"+run["playbook_history_id"].(string)+"/tasks")), 2)
 		})
+	})
+
+	t.Run("POST /webhooks/:playbook_id", func(t *testing.T) {
+		webhook := func(t *testing.T, auth string) string {
+			id := c.expect(t, http.StatusOK, http.MethodPost, base, J{
+				"name": unique("webhook"), "trigger_type": "webhook", "trigger_parameters": J{"auth": auth},
+			}).(J)["id"].(string)
+			c.expect(t, http.StatusOK, http.MethodPut, base+"/tasks/"+id, J{
+				"nodes": []J{{"name": "start", "operation": "start", "parameters": J{}}, {"name": "next", "operation": "transform", "parameters": J{}}},
+				"edges": J{"start": []string{"next"}},
+			})
+			return "/api/v1/webhooks/" + id
+		}
+		keyFor := func(t *testing.T, permissions J) (string, *client) {
+			roleID := c.create(t, "/api/v1/roles", J{"name": unique("role"), "permissions": permissions})["id"].(string)
+			userID, _ := newUser(t, roleID)
+			key := c.create(t, "/api/v1/api-keys", J{"user_id": userID, "name": unique("siem")})["key"].(string)
+			return userID, &client{http: http.DefaultClient, token: key}
+		}
+		post := func(t *testing.T, caller *client, path, body, contentType string) int {
+			res := caller.send(t, http.MethodPost, path, bytes.NewBufferString(body), contentType)
+			defer res.Body.Close()
+			return res.StatusCode
+		}
+
+		keyed := webhook(t, "api_key")
+		userID, key := keyFor(t, J{"playbooks": []string{"execute"}})
+		_, noGrant := keyFor(t, J{"playbooks": []string{"read"}})
+
+		t.Run("queues a webhook run with the body as parameters and the key's user", func(t *testing.T) {
+			run := key.expect(t, http.StatusAccepted, http.MethodPost, keyed, J{"host": "pc-1"}).(J)
+			history := items(c.get(t, base+"/history?playbook_id="+strings.TrimPrefix(keyed, "/api/v1/webhooks/")))[0].(J)
+			assert.Equal(t, run["run_id"], history["id"])
+			assert.Equal(t, "webhook", history["trigger_type"])
+			assert.Equal(t, userID, history["triggered_by"])
+			assert.Equal(t, J{"host": "pc-1"}, history["input"].(J)["parameters"])
+		})
+
+		t.Run("queues a run with no key when the auth type is none", func(t *testing.T) {
+			anonymous(t).expect(t, http.StatusAccepted, http.MethodPost, webhook(t, "none"), nil)
+		})
+
+		manual := "/api/v1/webhooks/" + newPlaybook(t, c)
+		for _, tc := range []struct {
+			name, path, body, contentType string
+			caller                        *client
+			want                          int
+		}{
+			{"returns 401 without a key", keyed, "{}", "application/json", anonymous(t), http.StatusUnauthorized},
+			{"returns 401 with an access token instead of a key", keyed, "{}", "application/json", c, http.StatusUnauthorized},
+			{"returns 403 when the key's user cannot execute playbooks", keyed, "{}", "application/json", noGrant, http.StatusForbidden},
+			{"returns 404 when the trigger is not webhook", manual, "{}", "application/json", key, http.StatusNotFound},
+			{"returns 404 when the playbook does not exist", "/api/v1/webhooks/" + uuid.NewString(), "{}", "application/json", key, http.StatusNotFound},
+			{"returns 400 when the id is not a uuid", "/api/v1/webhooks/not-a-uuid", "{}", "application/json", key, http.StatusBadRequest},
+			{"returns 400 when the body is not a JSON object", keyed, "[1]", "application/json", key, http.StatusBadRequest},
+			{"returns 400 when the body is not JSON", keyed, "a=1", "application/x-www-form-urlencoded", key, http.StatusBadRequest},
+		} {
+			t.Run(tc.name, func(t *testing.T) {
+				assert.Equal(t, tc.want, post(t, tc.caller, tc.path, tc.body, tc.contentType))
+			})
+		}
 	})
 
 	t.Run("DELETE /playbooks/:id", func(t *testing.T) {

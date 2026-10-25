@@ -31,6 +31,38 @@ func IsValidTriggerType(s string) bool {
 	return false
 }
 
+// WebhookAuth says how a caller of a webhook playbook proves it may run it. It lives in
+// trigger_parameters.auth.
+type WebhookAuth string
+
+const (
+	WebhookAuthAPIKey WebhookAuth = "api_key"
+	WebhookAuthNone   WebhookAuth = "none"
+)
+
+var ErrUnknownWebhookAuth = apperr.New(apperr.Invalid, "trigger_parameters.auth must be api_key or none")
+
+// WebhookAuthOf reads the auth type from trigger parameters. A missing value is api_key, so
+// a webhook playbook is never public by accident.
+func WebhookAuthOf(params json.RawMessage) (WebhookAuth, error) {
+	var p struct {
+		Auth *WebhookAuth `json:"auth"`
+	}
+	if len(params) > 0 {
+		if err := json.Unmarshal(params, &p); err != nil {
+			return "", apperr.New(apperr.Invalid, "trigger_parameters must be a JSON object")
+		}
+	}
+	if p.Auth == nil {
+		return WebhookAuthAPIKey, nil
+	}
+	switch *p.Auth {
+	case WebhookAuthAPIKey, WebhookAuthNone:
+		return *p.Auth, nil
+	}
+	return "", ErrUnknownWebhookAuth
+}
+
 // Run and task statuses. A run goes from queued to in_progress to success or failed.
 // A task goes from pending to in_progress to success or failed. A task can also go
 // from pending to skipped.
