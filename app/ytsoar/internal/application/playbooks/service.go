@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/yuudev14/ytsoar/internal/application/contracts"
 	"github.com/yuudev14/ytsoar/internal/domain"
 	"github.com/yuudev14/ytsoar/internal/domain/apperr"
 	"github.com/yuudev14/ytsoar/internal/logger"
@@ -41,10 +42,10 @@ type PlaybookService interface {
 type PlaybookServiceImpl struct {
 	logger             logger.Logger
 	PlaybookRepository PlaybookRepository
-	audit              AuditWriter
+	audit              contracts.AuditWriter
 }
 
-func NewPlaybookService(log logger.Logger, playbookRepository PlaybookRepository, audit AuditWriter) PlaybookService {
+func NewPlaybookService(log logger.Logger, playbookRepository PlaybookRepository, audit contracts.AuditWriter) PlaybookService {
 	return &PlaybookServiceImpl{
 		logger:             log,
 		PlaybookRepository: playbookRepository,

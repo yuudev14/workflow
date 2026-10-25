@@ -4,7 +4,15 @@ import (
 	"context"
 
 	"github.com/google/uuid"
+	"github.com/yuudev14/ytsoar/internal/domain"
 )
+
+//go:generate mockgen -destination=mocks/audit_writer_mock.go -package=mocks . AuditWriter
+
+// AuditWriter writes one audit log row. Each service that audits takes this one port.
+type AuditWriter interface {
+	Insert(ctx context.Context, entry domain.AuditEntry) error
+}
 
 //go:generate mockgen -destination=mocks/run_enqueuer_mock.go -package=mocks . RunEnqueuer
 

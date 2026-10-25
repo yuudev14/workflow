@@ -9,7 +9,7 @@ import (
 	"github.com/yuudev14/ytsoar/internal/types"
 )
 
-//go:generate mockgen -destination=mocks/repository_mock.go -package=mocks . PlaybookRepository,RecordResolver,AuditWriter
+//go:generate mockgen -destination=mocks/repository_mock.go -package=mocks . PlaybookRepository,RecordResolver
 
 // RecordResolver loads the module rows that a run acts on. It is declared here, in the
 // consumer package, so playbooks does not import alerts/incidents (same as IncidentLinker
@@ -19,11 +19,6 @@ import (
 // (which templates read), and a record from the client could be faked.
 type RecordResolver interface {
 	Resolve(ctx context.Context, moduleType string, ids []uuid.UUID) ([]map[string]any, error)
-}
-
-// AuditWriter is the audit log insert. The auth audit repository implements it.
-type AuditWriter interface {
-	Insert(ctx context.Context, entry domain.AuditEntry) error
 }
 
 type PlaybookRepository interface {
