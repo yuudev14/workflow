@@ -70,6 +70,7 @@ func toDomainPlaybookHistory(row db.PlaybookHistory) domain.PlaybookHistory {
 
 func (w *PlaybookRepositoryImpl) GetPlaybooks(ctx context.Context, offset int, limit int, filter playbooks.PlaybookFilter) ([]domain.Playbooks, error) {
 	stmt := sq.Select("*").From("playbooks").
+		Where("deleted_at IS NULL").
 		PlaceholderFormat(sq.Dollar).
 		OrderBy("updated_at DESC").
 		Offset(uint64(offset)).
@@ -84,6 +85,7 @@ func (w *PlaybookRepositoryImpl) GetPlaybooks(ctx context.Context, offset int, l
 
 func (w *PlaybookRepositoryImpl) GetPlaybooksCount(ctx context.Context, filter playbooks.PlaybookFilter) (int, error) {
 	stmt := sq.Select("count(*)").From("playbooks").
+		Where("deleted_at IS NULL").
 		PlaceholderFormat(sq.Dollar)
 
 	if filter.Name != nil {
@@ -107,7 +109,8 @@ func (w *PlaybookRepositoryImpl) Summary(ctx context.Context, rng types.Resolved
         SELECT
             count(*) FILTER (WHERE created_at <= $2)::int AS current,
             count(*) FILTER (WHERE created_at < $1)::int AS previous
-        FROM playbooks`
+        FROM playbooks
+        WHERE deleted_at IS NULL`
 	if err := w.pool.QueryRow(ctx, playbookCounts, rng.From, rng.To).
 		Scan(&summary.Playbooks.Current, &summary.Playbooks.Previous); err != nil {
 		return playbooks.PlaybooksSummary{}, err
@@ -225,6 +228,24 @@ func (w *PlaybookRepositoryImpl) GetPlaybookById(ctx context.Context, id string)
 	}
 
 	row, err := w.queriesFromContext(ctx).GetPlaybookById(ctx, pgID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, nil
+		}
+		return nil, err
+	}
+
+	playbook := toDomainPlaybook(row)
+	return &playbook, nil
+}
+
+func (w *PlaybookRepositoryImpl) SoftDeletePlaybook(ctx context.Context, id string) (*domain.Playbooks, error) {
+	pgID, err := toPgUUIDFromString(id)
+	if err != nil {
+		return nil, err
+	}
+
+	row, err := w.queriesFromContext(ctx).SoftDeletePlaybook(ctx, pgID)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, nil

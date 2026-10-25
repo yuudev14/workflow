@@ -209,6 +209,21 @@ func (mr *MockPlaybookRepositoryMockRecorder) ListEventPlaybookIDs(ctx, triggerT
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListEventPlaybookIDs", reflect.TypeOf((*MockPlaybookRepository)(nil).ListEventPlaybookIDs), ctx, triggerType, moduleType, recordID, occurredAt)
 }
 
+// SoftDeletePlaybook mocks base method.
+func (m *MockPlaybookRepository) SoftDeletePlaybook(ctx context.Context, id string) (*domain.Playbooks, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "SoftDeletePlaybook", ctx, id)
+	ret0, _ := ret[0].(*domain.Playbooks)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// SoftDeletePlaybook indicates an expected call of SoftDeletePlaybook.
+func (mr *MockPlaybookRepositoryMockRecorder) SoftDeletePlaybook(ctx, id any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SoftDeletePlaybook", reflect.TypeOf((*MockPlaybookRepository)(nil).SoftDeletePlaybook), ctx, id)
+}
+
 // Summary mocks base method.
 func (m *MockPlaybookRepository) Summary(ctx context.Context, rng types.ResolvedRange) (playbooks.PlaybooksSummary, error) {
 	m.ctrl.T.Helper()

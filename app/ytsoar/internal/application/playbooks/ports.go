@@ -33,6 +33,7 @@ type PlaybookRepository interface {
 	GetPlaybookGraphById(ctx context.Context, id string) (*domain.PlaybookGraph, error)
 	CreatePlaybook(ctx context.Context, playbook PlaybookPayload) (*domain.Playbooks, error)
 	UpdatePlaybook(ctx context.Context, id string, playbook UpdatePlaybookData) (*domain.Playbooks, error)
+	SoftDeletePlaybook(ctx context.Context, id string) (*domain.Playbooks, error)
 	CreatePlaybookHistory(ctx context.Context, id string, edges []domain.ResponseEdges, run RunStamp) (*domain.PlaybookHistory, error)
 	CreatePlaybookRunRecords(ctx context.Context, historyID uuid.UUID, moduleType string, recordIDs []uuid.UUID) error
 	ListEventPlaybookIDs(ctx context.Context, triggerType domain.TriggerType, moduleType string, recordID uuid.UUID, occurredAt time.Time) ([]uuid.UUID, error)

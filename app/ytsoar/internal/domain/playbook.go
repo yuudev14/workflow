@@ -78,6 +78,7 @@ type Playbooks struct {
 	TriggerParameters json.RawMessage `json:"trigger_parameters" db:"trigger_parameters"`
 	CreatedAt         time.Time       `db:"created_at" json:"created_at"`
 	UpdatedAt         time.Time       `db:"updated_at" json:"updated_at"`
+	DeletedAt         *time.Time      `db:"deleted_at" json:"-"`
 }
 
 type PlaybookHistory struct {

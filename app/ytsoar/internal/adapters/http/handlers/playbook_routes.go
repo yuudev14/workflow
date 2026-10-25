@@ -30,6 +30,10 @@ func (h *PlaybookHandler) RegisterRoutes(
 		r.PUT("/:playbook_id", updatePlaybooks, h.UpdatePlaybook)
 		r.PUT("/tasks/:playbook_id", updatePlaybooks, h.UpdatePlaybookTasks)
 
+		r.DELETE("/:playbook_id",
+			requirePermission(domain.ModulePlaybooks, domain.ActionDelete),
+			h.DeletePlaybook)
+
 		// running a playbook is its own grant: editing and executing are different privileges
 		r.POST("/trigger/:playbook_id",
 			requirePermission(domain.ModulePlaybooks, domain.ActionExecute),

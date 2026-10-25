@@ -8,6 +8,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
+	mock_contracts "github.com/yuudev14/ytsoar/internal/application/contracts/mocks"
 	"github.com/yuudev14/ytsoar/internal/application/playbooks"
 	mock_playbooks "github.com/yuudev14/ytsoar/internal/application/playbooks/mocks"
 	"github.com/yuudev14/ytsoar/internal/domain"
@@ -25,7 +26,7 @@ func setupService(t *testing.T) (playbooks.PlaybookService, *mock_playbooks.Mock
 	ctrl := gomock.NewController(t)
 
 	mockRepo := mock_playbooks.NewMockPlaybookRepository(ctrl)
-	service := playbooks.NewPlaybookService(logger.NewNop(), mockRepo)
+	service := playbooks.NewPlaybookService(logger.NewNop(), mockRepo, mock_contracts.NewMockAuditWriter(ctrl))
 
 	t.Cleanup(ctrl.Finish)
 
