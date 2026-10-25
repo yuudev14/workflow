@@ -7,6 +7,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/yuudev14/ytsoar/internal/adapters/http/common/dto"
+	"github.com/yuudev14/ytsoar/internal/adapters/http/middleware"
 	rest "github.com/yuudev14/ytsoar/internal/adapters/http/rests"
 	"github.com/yuudev14/ytsoar/internal/application/edges"
 	"github.com/yuudev14/ytsoar/internal/application/playbooks"
@@ -229,6 +230,30 @@ func (w *PlaybookHandler) UpdatePlaybook(c *gin.Context) {
 	w.logger.Debug("updated playbook")
 	response.ResponseSuccess(playbook)
 
+}
+
+// DeletePlaybook godoc
+// @Summary Soft delete a playbook. Its runs stay in the run history.
+// @Tags playbooks
+// @Router /api/v1/playbooks/{playbook_id} [delete]
+func (w *PlaybookHandler) DeletePlaybook(c *gin.Context) {
+	response := rest.Response{C: c}
+
+	actor, ok := middleware.CurrentUser(c)
+	if !ok {
+		response.ResponseError(http.StatusUnauthorized, "unauthorized")
+		return
+	}
+	playbookID, ok := pathUUID(c, "playbook_id")
+	if !ok {
+		return
+	}
+
+	if err := w.PlaybookService.DeletePlaybook(c.Request.Context(), playbookID.String(), actor.ID); err != nil {
+		response.Fail(w.logger, err)
+		return
+	}
+	c.Status(http.StatusNoContent)
 }
 
 func (w *PlaybookHandler) UpdatePlaybookTasks(c *gin.Context) {

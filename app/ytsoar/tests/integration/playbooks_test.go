@@ -3,9 +3,11 @@ package integration
 import (
 	"net/http"
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func newPlaybook(t *testing.T, c *client) string {
@@ -74,6 +76,53 @@ func TestPlaybooks(t *testing.T) {
 			run := c.expect(t, http.StatusAccepted, http.MethodPost, base+"/trigger/"+id, nil).(J)
 			assert.Equal(t, []any{run["playbook_history_id"]}, ids(c.get(t, base+"/history?playbook_id="+id)))
 			assert.Len(t, items(c.get(t, base+"/history/"+run["playbook_history_id"].(string)+"/tasks")), 2)
+		})
+	})
+
+	t.Run("DELETE /playbooks/:id", func(t *testing.T) {
+		name := c.get(t, base+"/"+id).(J)["name"].(string)
+		c.expect(t, http.StatusNoContent, http.MethodDelete, base+"/"+id, nil)
+
+		t.Run("hides the playbook from the list", func(t *testing.T) {
+			assert.Empty(t, ids(c.get(t, base+"?name="+name)))
+		})
+		t.Run("keeps the run history", func(t *testing.T) {
+			assert.Len(t, items(c.get(t, base+"/history?playbook_id="+id)), 1)
+		})
+		t.Run("writes an audit log entry", func(t *testing.T) {
+			entry := items(c.get(t, "/api/v1/audit?module=playbooks&action=playbook_deleted"))[0].(J)
+			assert.Equal(t, id, entry["entity_id"])
+		})
+		c.expectAll(t, []request{
+			{"returns 400 when the id is not a uuid", http.MethodDelete, base + "/not-a-uuid", nil, http.StatusBadRequest},
+			{"returns 404 when the playbook is already deleted", http.MethodDelete, base + "/" + id, nil, http.StatusNotFound},
+			{"returns 404 on get after the delete", http.MethodGet, base + "/" + id, nil, http.StatusNotFound},
+			{"returns 404 on update after the delete", http.MethodPut, base + "/" + id, J{"description": "x"}, http.StatusNotFound},
+			{"returns 404 on a graph save after the delete", http.MethodPut, base + "/tasks/" + id, J{
+				"nodes": []J{{"name": "start", "operation": "start", "parameters": J{}}}, "edges": J{"start": []string{}},
+			}, http.StatusNotFound},
+			{"returns 404 on trigger after the delete", http.MethodPost, base + "/trigger/" + id, nil, http.StatusNotFound},
+		})
+
+		t.Run("does not start a deleted playbook on an alert event, and still starts the others", func(t *testing.T) {
+			eventPlaybook := func() string {
+				pid := c.expect(t, http.StatusOK, http.MethodPost, base, J{
+					"name": unique("playbook"), "trigger_type": "on_create", "trigger_parameters": J{"module": "alert"},
+				}).(J)["id"].(string)
+				c.expect(t, http.StatusOK, http.MethodPut, base+"/tasks/"+pid, J{
+					"nodes": []J{{"name": "start", "operation": "start", "parameters": J{}}, {"name": "next", "operation": "transform", "parameters": J{}}},
+					"edges": J{"start": []string{"next"}},
+				})
+				return pid
+			}
+			deleted, live := eventPlaybook(), eventPlaybook()
+			t.Cleanup(func() { c.expect(t, http.StatusOK, http.MethodPut, base+"/"+live, J{"trigger_type": "manual"}) })
+			c.expect(t, http.StatusNoContent, http.MethodDelete, base+"/"+deleted, nil)
+
+			newAlert(t, c)
+			require.Eventually(t, func() bool { return len(items(c.get(t, base+"/history?playbook_id="+live))) > 0 },
+				30*time.Second, 200*time.Millisecond, "the alert did not start the live playbook")
+			assert.Empty(t, items(c.get(t, base+"/history?playbook_id="+deleted)))
 		})
 	})
 }

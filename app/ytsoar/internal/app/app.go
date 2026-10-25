@@ -60,7 +60,7 @@ func NewAPI(ctx context.Context, cfg config.Config, appLogger logger.Logger, poo
 	edgeRepository := repository.NewEdgeRepositoryImpl(appLogger, queries, pool)
 	userRepository := repository.NewUserRepositoryImpl(appLogger, queries, pool)
 
-	playbookService := playbooks.NewPlaybookService(appLogger, playbookRepository)
+	playbookService := playbooks.NewPlaybookService(appLogger, playbookRepository, repository.NewAuditLogRepositoryImpl(appLogger, queries, pool))
 	taskService := tasks.NewTaskServiceImpl(taskRepository)
 
 	statusListener := pgstatus.NewListener(appLogger, pool, playbookService, taskService, hub)
@@ -191,7 +191,7 @@ func NewWorker(cfg config.Config, appLogger logger.Logger, pool *pgxpool.Pool) (
 	playbookRepository := repository.NewPlaybookRepository(appLogger, queries, pool)
 	taskRepository := repository.NewTaskRepositoryImpl(appLogger, queries, pool)
 
-	playbookService := playbooks.NewPlaybookService(appLogger, playbookRepository)
+	playbookService := playbooks.NewPlaybookService(appLogger, playbookRepository, repository.NewAuditLogRepositoryImpl(appLogger, queries, pool))
 	taskService := tasks.NewTaskServiceImpl(taskRepository)
 
 	// the worker never runs user code. SandboxRuntime sends all other tasks (python/js/ts

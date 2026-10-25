@@ -15,7 +15,7 @@ import (
 const createPlaybook = `-- name: CreatePlaybook :one
 INSERT INTO playbooks (name, description, trigger_type, trigger_parameters)
 VALUES ($1, $2, $3, $4)
-RETURNING id, name, description, trigger_type, trigger_parameters, created_at, updated_at
+RETURNING id, name, description, trigger_type, trigger_parameters, created_at, updated_at, deleted_at
 `
 
 type CreatePlaybookParams struct {
@@ -41,6 +41,7 @@ func (q *Queries) CreatePlaybook(ctx context.Context, arg CreatePlaybookParams) 
 		&i.TriggerParameters,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.DeletedAt,
 	)
 	return i, err
 }
@@ -102,7 +103,7 @@ func (q *Queries) CreatePlaybookRunRecord(ctx context.Context, arg CreatePlayboo
 }
 
 const getPlaybookById = `-- name: GetPlaybookById :one
-SELECT id, name, description, trigger_type, trigger_parameters, created_at, updated_at FROM playbooks WHERE id = $1
+SELECT id, name, description, trigger_type, trigger_parameters, created_at, updated_at, deleted_at FROM playbooks WHERE id = $1 AND deleted_at IS NULL
 `
 
 func (q *Queries) GetPlaybookById(ctx context.Context, id pgtype.UUID) (Playbook, error) {
@@ -116,32 +117,34 @@ func (q *Queries) GetPlaybookById(ctx context.Context, id pgtype.UUID) (Playbook
 		&i.TriggerParameters,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.DeletedAt,
 	)
 	return i, err
 }
 
 const getPlaybookGraphById = `-- name: GetPlaybookGraphById :one
 SELECT
-    playbooks.id, playbooks.name, playbooks.description, playbooks.trigger_type, playbooks.trigger_parameters, playbooks.created_at, playbooks.updated_at,
+    playbooks.id, playbooks.name, playbooks.description, playbooks.trigger_type, playbooks.trigger_parameters, playbooks.created_at, playbooks.updated_at, playbooks.deleted_at,
     (SELECT JSON_AGG(tasks.*)
         FROM tasks
         WHERE tasks.playbook_id = playbooks.id) AS tasks,
     (SELECT JSON_AGG(edges.*)
         FROM edges
         WHERE edges.playbook_id = playbooks.id) AS edges
-FROM playbooks WHERE playbooks.id = $1
+FROM playbooks WHERE playbooks.id = $1 AND playbooks.deleted_at IS NULL
 `
 
 type GetPlaybookGraphByIdRow struct {
-	ID                pgtype.UUID      `json:"id"`
-	Name              pgtype.Text      `json:"name"`
-	Description       pgtype.Text      `json:"description"`
-	TriggerType       NullTriggerType  `json:"trigger_type"`
-	TriggerParameters []byte           `json:"trigger_parameters"`
-	CreatedAt         pgtype.Timestamp `json:"created_at"`
-	UpdatedAt         pgtype.Timestamp `json:"updated_at"`
-	Tasks             []byte           `json:"tasks"`
-	Edges             []byte           `json:"edges"`
+	ID                pgtype.UUID        `json:"id"`
+	Name              pgtype.Text        `json:"name"`
+	Description       pgtype.Text        `json:"description"`
+	TriggerType       NullTriggerType    `json:"trigger_type"`
+	TriggerParameters []byte             `json:"trigger_parameters"`
+	CreatedAt         pgtype.Timestamp   `json:"created_at"`
+	UpdatedAt         pgtype.Timestamp   `json:"updated_at"`
+	DeletedAt         pgtype.Timestamptz `json:"deleted_at"`
+	Tasks             []byte             `json:"tasks"`
+	Edges             []byte             `json:"edges"`
 }
 
 func (q *Queries) GetPlaybookGraphById(ctx context.Context, id pgtype.UUID) (GetPlaybookGraphByIdRow, error) {
@@ -155,6 +158,7 @@ func (q *Queries) GetPlaybookGraphById(ctx context.Context, id pgtype.UUID) (Get
 		&i.TriggerParameters,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.DeletedAt,
 		&i.Tasks,
 		&i.Edges,
 	)
@@ -205,7 +209,8 @@ func (q *Queries) GetPlaybookHistoryById(ctx context.Context, id pgtype.UUID) (G
 
 const listEventPlaybookIDs = `-- name: ListEventPlaybookIDs :many
 SELECT p.id FROM playbooks p
-WHERE p.trigger_type = $1::trigger_type
+WHERE p.deleted_at IS NULL
+  AND p.trigger_type = $1::trigger_type
   AND p.trigger_parameters ->> 'module' = $2::text
   AND NOT EXISTS (
     SELECT 1 FROM playbook_history h
@@ -252,6 +257,28 @@ func (q *Queries) ListEventPlaybookIDs(ctx context.Context, arg ListEventPlayboo
 	return items, nil
 }
 
+const softDeletePlaybook = `-- name: SoftDeletePlaybook :one
+UPDATE playbooks SET deleted_at = NOW()
+WHERE id = $1 AND deleted_at IS NULL
+RETURNING id, name, description, trigger_type, trigger_parameters, created_at, updated_at, deleted_at
+`
+
+func (q *Queries) SoftDeletePlaybook(ctx context.Context, id pgtype.UUID) (Playbook, error) {
+	row := q.db.QueryRow(ctx, softDeletePlaybook, id)
+	var i Playbook
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Description,
+		&i.TriggerType,
+		&i.TriggerParameters,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.DeletedAt,
+	)
+	return i, err
+}
+
 const updatePlaybook = `-- name: UpdatePlaybook :one
 UPDATE playbooks
 SET
@@ -272,8 +299,8 @@ SET
         ELSE trigger_parameters
     END,
     updated_at = NOW()
-WHERE id = $9
-RETURNING id, name, description, trigger_type, trigger_parameters, created_at, updated_at
+WHERE id = $9 AND deleted_at IS NULL
+RETURNING id, name, description, trigger_type, trigger_parameters, created_at, updated_at, deleted_at
 `
 
 type UpdatePlaybookParams struct {
@@ -309,6 +336,7 @@ func (q *Queries) UpdatePlaybook(ctx context.Context, arg UpdatePlaybookParams) 
 		&i.TriggerParameters,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.DeletedAt,
 	)
 	return i, err
 }

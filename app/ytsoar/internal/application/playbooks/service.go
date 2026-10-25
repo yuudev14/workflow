@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/yuudev14/ytsoar/internal/application/contracts"
 	"github.com/yuudev14/ytsoar/internal/domain"
 	"github.com/yuudev14/ytsoar/internal/domain/apperr"
 	"github.com/yuudev14/ytsoar/internal/logger"
@@ -29,6 +30,7 @@ type PlaybookService interface {
 	GetPlaybookGraphById(ctx context.Context, id string) (*domain.PlaybookGraph, error)
 	CreatePlaybook(ctx context.Context, playbook PlaybookPayload) (*domain.Playbooks, error)
 	UpdatePlaybook(ctx context.Context, id string, playbook UpdatePlaybookData) (*domain.Playbooks, error)
+	DeletePlaybook(ctx context.Context, id string, actorID uuid.UUID) error
 	CreatePlaybookHistory(ctx context.Context, id string, edges []domain.ResponseEdges, run RunStamp) (*domain.PlaybookHistory, error)
 	CreatePlaybookRunRecords(ctx context.Context, historyID uuid.UUID, moduleType string, recordIDs []uuid.UUID) error
 	ListEventPlaybookIDs(ctx context.Context, triggerType domain.TriggerType, moduleType string, recordID uuid.UUID, occurredAt time.Time) ([]uuid.UUID, error)
@@ -40,12 +42,14 @@ type PlaybookService interface {
 type PlaybookServiceImpl struct {
 	logger             logger.Logger
 	PlaybookRepository PlaybookRepository
+	audit              contracts.AuditWriter
 }
 
-func NewPlaybookService(log logger.Logger, playbookRepository PlaybookRepository) PlaybookService {
+func NewPlaybookService(log logger.Logger, playbookRepository PlaybookRepository, audit contracts.AuditWriter) PlaybookService {
 	return &PlaybookServiceImpl{
 		logger:             log,
 		PlaybookRepository: playbookRepository,
+		audit:              audit,
 	}
 }
 
@@ -153,7 +157,38 @@ func (w *PlaybookServiceImpl) UpdatePlaybook(ctx context.Context, id string, pla
 	if playbook.TriggerType.Set && playbook.TriggerType.Value != nil && !domain.IsValidTriggerType(*playbook.TriggerType.Value) {
 		return nil, fmt.Errorf("unknown trigger type: %s", *playbook.TriggerType.Value)
 	}
-	return w.PlaybookRepository.UpdatePlaybook(ctx, id, playbook)
+	updated, err := w.PlaybookRepository.UpdatePlaybook(ctx, id, playbook)
+	if err != nil {
+		return nil, err
+	}
+	if updated == nil {
+		return nil, ErrPlaybookNotFound
+	}
+	return updated, nil
+}
+
+// DeletePlaybook is a soft delete: runs keep pointing at the row, so the run history stays.
+func (w *PlaybookServiceImpl) DeletePlaybook(ctx context.Context, id string, actorID uuid.UUID) error {
+	deleted, err := w.PlaybookRepository.SoftDeletePlaybook(ctx, id)
+	if err != nil {
+		return err
+	}
+	if deleted == nil {
+		return ErrPlaybookNotFound
+	}
+
+	// a lost audit row must not undo a delete that already happened
+	entityID := deleted.ID.String()
+	if err := w.audit.Insert(ctx, domain.AuditEntry{
+		ActorID:  &actorID,
+		Module:   domain.ModulePlaybooks,
+		Action:   "playbook_deleted",
+		EntityID: &entityID,
+		Detail:   map[string]any{"name": deleted.Name},
+	}); err != nil {
+		w.logger.Errorf("could not write audit entry playbooks.playbook_deleted: %v", err)
+	}
+	return nil
 }
 
 func (w *PlaybookServiceImpl) UpdatePlaybookHistoryStatus(ctx context.Context, playbookHistoryId string, status string) (*domain.PlaybookHistory, error) {

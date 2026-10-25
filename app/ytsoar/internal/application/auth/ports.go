@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/yuudev14/ytsoar/internal/application/contracts"
 	"github.com/yuudev14/ytsoar/internal/domain"
 )
 
@@ -94,7 +95,7 @@ type APIKeyRepository interface {
 //go:generate mockgen -destination=mocks/audit_log_repository_mock.go -package=mocks . AuditLogRepository
 
 type AuditLogRepository interface {
-	Insert(ctx context.Context, entry domain.AuditEntry) error
+	contracts.AuditWriter
 	List(ctx context.Context, offset, limit int, filter AuditFilter) ([]domain.AuditLog, error)
 	Count(ctx context.Context, filter AuditFilter) (int, error)
 }

@@ -17,6 +17,9 @@ var ErrConnectorNotFound = apperr.New(apperr.NotFound, "connector not found")
 // paths, ...). Handlers return 400.
 var ErrInvalidConnector = apperr.New(apperr.Invalid, "invalid connector")
 
+// ErrConnectorExists: an upload without replace found a connector with the same id.
+var ErrConnectorExists = apperr.New(apperr.Conflict, "connector already exists")
+
 // ConnectorStore reads connector metadata from the unified connectors tree.
 type ConnectorStore interface {
 	List(ctx context.Context) ([]domain.ConnectorInfo, error)

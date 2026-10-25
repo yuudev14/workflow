@@ -2,7 +2,7 @@ Initial repo resides here: https://github.com/orgs/yuudev14-workflow/repositorie
 
 # YTSoar
 
-YTSoar is a self-hosted SOAR platform. You draw a playbook, press run and watch it work.
+YTSoar is a self-hosted SOAR platform. You create a playbook, press run and watch it work.
 
 **Contents:** [What is YTSoar?](#what-is-ytsoar) · [Quickstart](#quickstart) · [How it works](#how-it-works) · [Writing connectors](#writing-connectors) · [Branching](#branching) · [Development](#development) · [Repository layout](#repository-layout) · [Roadmap](#roadmap)
 

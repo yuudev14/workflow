@@ -269,11 +269,14 @@ func (w *PlaybookApplicationServiceImpl) UpdatePlaybookTasks(
 	}
 
 	txErr := w.Tx.WithinTransaction(ctx, func(ctx context.Context) error {
+		// tasks and edges have no deleted_at, so a deleted playbook must fail here, before they are written
 		if body.Task != nil {
 			if _, errTask := w.PlaybookService.UpdatePlaybook(ctx, playbookId, *body.Task); errTask != nil {
 				return errTask
 			}
 			w.Logger.Debug("updated playbook...")
+		} else if _, err := w.PlaybookService.GetPlaybookById(ctx, playbookId); err != nil {
+			return err
 		}
 
 		// delete the edges first

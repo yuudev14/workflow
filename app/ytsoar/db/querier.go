@@ -100,6 +100,7 @@ type Querier interface {
 	SetUserInvitationToken(ctx context.Context, arg SetUserInvitationTokenParams) (int64, error)
 	SetUserPassword(ctx context.Context, arg SetUserPasswordParams) error
 	SetUserResetPasswordToken(ctx context.Context, arg SetUserResetPasswordTokenParams) (int64, error)
+	SoftDeletePlaybook(ctx context.Context, id pgtype.UUID) (Playbook, error)
 	// the Take queries clear the token and return its old values, so a link works one time
 	TakeUserInvitationToken(ctx context.Context, invitationToken pgtype.Text) (TakeUserInvitationTokenRow, error)
 	TakeUserResetPasswordToken(ctx context.Context, resetPasswordToken pgtype.Text) (TakeUserResetPasswordTokenRow, error)

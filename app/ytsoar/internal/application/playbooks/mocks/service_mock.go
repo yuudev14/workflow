@@ -89,6 +89,20 @@ func (mr *MockPlaybookServiceMockRecorder) CreatePlaybookRunRecords(ctx, history
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreatePlaybookRunRecords", reflect.TypeOf((*MockPlaybookService)(nil).CreatePlaybookRunRecords), ctx, historyID, moduleType, recordIDs)
 }
 
+// DeletePlaybook mocks base method.
+func (m *MockPlaybookService) DeletePlaybook(ctx context.Context, id string, actorID uuid.UUID) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DeletePlaybook", ctx, id, actorID)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// DeletePlaybook indicates an expected call of DeletePlaybook.
+func (mr *MockPlaybookServiceMockRecorder) DeletePlaybook(ctx, id, actorID any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeletePlaybook", reflect.TypeOf((*MockPlaybookService)(nil).DeletePlaybook), ctx, id, actorID)
+}
+
 // GetPlaybookById mocks base method.
 func (m *MockPlaybookService) GetPlaybookById(ctx context.Context, id string) (*domain.Playbooks, error) {
 	m.ctrl.T.Helper()
