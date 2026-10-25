@@ -139,6 +139,25 @@ test.describe("playbook editor", () => {
     const fetch = (await tasksOf(page, playbook.id)).find((t) => t.name === "fetch")!;
     expect(fetch.parameters.url).toBe("{{ var.steps.lookup.body }}");
   });
+
+  test("shows the webhook URL and saves the auth type", async ({ page }) => {
+    const playbook = await newPlaybook(page.request);
+    await api(page.request).put(`/playbooks/${playbook.id}`, { trigger_type: "webhook" });
+    await page.goto(`/playbooks/${playbook.id}`);
+    await node(page, "Trigger").dispatchEvent("dblclick");
+    await expect(page.getByText(`/api/v1/webhooks/${playbook.id}`).first()).toBeVisible();
+    await expect(page.getByText("Authorization: Bearer <API key>")).toBeVisible();
+
+    await page.getByLabel("Authentication").click();
+    await page.getByRole("option", { name: "None" }).click();
+    await expect(page.getByText("Anyone with this URL can run this playbook.")).toBeVisible();
+    await page.getByRole("button", { name: "Save trigger" }).click();
+    await page.getByRole("button", { name: "Save", exact: true }).click();
+
+    await expect
+      .poll(async () => (await api(page.request).get(`/playbooks/${playbook.id}`)).trigger_parameters)
+      .toEqual({ auth: "none" });
+  });
 });
 
 test.describe("runs", () => {

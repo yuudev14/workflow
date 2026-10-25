@@ -1,6 +1,7 @@
 import React, { useContext, useState } from 'react'
+import { Link, useParams } from 'react-router'
 
-import { AlertTriangle, Bell, Check, Link2, MousePointerClick, Webhook } from 'lucide-react'
+import { AlertTriangle, Bell, Check, Copy, KeyRound, Link2, MousePointerClick } from 'lucide-react'
 import {
   Select,
   SelectContent,
@@ -9,9 +10,12 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Button } from '@/components/ui/button'
+import { toast } from '@/hooks/use-toast'
+import BASE_URL from '@/settings/urls'
 import {
   TRIGGER_ON_CREATE,
   TRIGGER_ON_DELETE,
+  TRIGGER_WEBHOOK,
   isModuleEventTrigger,
 } from '@/settings/triggers'
 import { PlaybookOperationContext } from '../../../providers/PlaybookOperationProvider'
@@ -31,16 +35,111 @@ const SIMPLE_TRIGGERS: Record<string, { title: string; icon: React.ReactNode; te
     icon: <MousePointerClick />,
     text: 'This playbook runs on demand from the Playbooks list or the API. There are no trigger parameters to configure.',
   },
-  webhook: {
-    title: 'Webhook trigger',
-    icon: <Webhook />,
-    text: "This playbook fires when an external system calls its unique webhook URL. There are no parameters to configure here.",
-  },
   referenced: {
     title: 'Referenced trigger',
     icon: <Link2 />,
     text: 'This playbook only runs when another playbook references it. There are no parameters to configure here.',
   },
+}
+
+type WebhookAuth = 'api_key' | 'none'
+
+const CopyField: React.FC<{ label: string; value: string }> = ({ label, value }) => (
+  <div className="flex flex-col gap-1.5">
+    <FieldLabel>{label}</FieldLabel>
+    <div className="flex items-start gap-2 rounded-md border border-line bg-paper-sunken px-3 py-2">
+      <code className="flex-1 whitespace-pre-wrap break-all font-mono text-[11.5px] text-ink-soft">{value}</code>
+      <button
+        type="button"
+        aria-label={`Copy ${label.toLowerCase()}`}
+        className="text-ink-soft hover:text-foreground"
+        onClick={() => navigator.clipboard.writeText(value).then(() => toast({ title: 'Copied' }))}
+      >
+        <Copy className="size-3.5" />
+      </button>
+    </div>
+  </div>
+)
+
+const WebhookTriggerParameters = () => {
+  const { setPlaybookData, closeSidebar, workflowData } = useContext(PlaybookOperationContext)
+  const { playbookId } = useParams() as { playbookId: string }
+
+  // the API treats a missing auth as api_key, so the panel does too
+  const savedAuth = (workflowData.trigger_parameters as { auth?: WebhookAuth } | null | undefined)?.auth
+  const [auth, setAuth] = useState<WebhookAuth>(savedAuth ?? 'api_key')
+
+  const url = new URL(`${BASE_URL.PLAYBOOK_SERVICE_API}/api/v1/webhooks/${playbookId}`, window.location.origin).href
+  const curl = [
+    `curl -X POST '${url}'`,
+    ...(auth === 'api_key' ? [`-H 'Authorization: Bearer <API key>'`] : []),
+    `-H 'Content-Type: application/json'`,
+    `-d '{"host": "pc-1"}'`,
+  ].join(' \\\n  ')
+
+  const save = () => {
+    setPlaybookData((data) => ({ ...data, trigger_parameters: { auth } }))
+    closeSidebar()
+  }
+
+  return (
+    <div className="flex h-full flex-col">
+      <div className="border-b border-line px-4 py-3.5">
+        <div className="text-[15px] font-semibold">Webhook trigger</div>
+        <div className="text-[12.5px] text-ink-faint">Run this playbook when an outside system calls its URL</div>
+      </div>
+
+      <div className="flex flex-1 flex-col gap-4 overflow-auto p-4">
+        <div className="flex flex-col gap-1.5">
+          <FieldLabel>Authentication</FieldLabel>
+          <Select value={auth} onValueChange={(v) => setAuth(v as WebhookAuth)}>
+            <SelectTrigger aria-label="Authentication">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent className="bg-popover">
+              <SelectItem value="api_key">API key</SelectItem>
+              <SelectItem value="none">None</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        {auth === 'api_key' ? (
+          <p className="flex items-start gap-2 rounded-md border border-line bg-card px-3 py-2.5 text-[11.5px] leading-snug text-ink-soft">
+            <KeyRound className="mt-0.5 size-3.5 shrink-0" />
+            <span>
+              Send an API key whose user can execute playbooks.{' '}
+              <Link to="/settings/api-keys" className="font-semibold underline">
+                Manage API keys
+              </Link>
+            </span>
+          </p>
+        ) : (
+          <p className="flex items-start gap-2 rounded-md border border-amber-text/30 bg-amber-soft px-3 py-2.5 text-[11.5px] leading-snug text-amber-text">
+            <AlertTriangle className="mt-0.5 size-3.5 shrink-0" />
+            Anyone with this URL can run this playbook.
+          </p>
+        )}
+
+        <CopyField label="Webhook URL" value={url} />
+        <CopyField label="Example request" value={curl} />
+
+        <p className="text-[11.5px] leading-snug text-ink-faint">
+          The JSON body is available in steps as <code className="font-mono">{'{{ var.input.parameters }}'}</code>.
+        </p>
+      </div>
+
+      <footer className="border-t border-line bg-card p-3">
+        <div className="flex justify-end gap-2">
+          <Button type="button" variant="outline" onClick={closeSidebar}>
+            Close
+          </Button>
+          <Button type="button" onClick={save}>
+            <Check /> Save trigger
+          </Button>
+        </div>
+      </footer>
+    </div>
+  )
 }
 
 const PlaybookTriggerParameters = () => {
@@ -62,6 +161,10 @@ const PlaybookTriggerParameters = () => {
       : triggerType === TRIGGER_ON_DELETE
         ? 'deleted'
         : 'updated'
+
+  if (triggerType === TRIGGER_WEBHOOK) {
+    return <WebhookTriggerParameters />
+  }
 
   if (!isModuleEvent) {
     const summary = SIMPLE_TRIGGERS[triggerType ?? ''] ?? SIMPLE_TRIGGERS.manual
