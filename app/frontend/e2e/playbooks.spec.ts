@@ -200,6 +200,19 @@ test.describe("runs", () => {
     await expect(dialog.getByText("0 runs")).toBeVisible();
   });
 
+  test("keeps the editor flow after the history window closes", async ({ page }) => {
+    const playbook = await newPlaybook(page.request);
+    await api(page.request).post(`/playbooks/trigger/${playbook.id}`);
+    await page.goto(`/playbooks/${playbook.id}`);
+    await expect(node(page, "hello")).toBeVisible();
+    await page.getByRole("button", { name: "History" }).click();
+    const dialog = page.getByRole("dialog");
+    await expect(dialog.getByRole("button", { name: /\d Success$/ })).toBeVisible({ timeout: 30_000 });
+    await page.keyboard.press("Escape");
+    await expect(dialog).toBeHidden();
+    await expect(node(page, "hello")).toBeVisible();
+  });
+
   test("lists the runs on the executions page", async ({ page }) => {
     const playbook = await newPlaybook(page.request);
     await api(page.request).post(`/playbooks/trigger/${playbook.id}`);

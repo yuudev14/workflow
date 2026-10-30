@@ -5,7 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import PlaybookService from "@/services/playbooks/playbooks";
 import { Edges, TaskHistory } from "@/services/playbooks/playbooks.schema";
 import { PlaybookTaskHistoryNode } from "@/components/react-flow/schema";
-import { Node } from "@xyflow/react";
+import { Node, ReactFlowProvider } from "@xyflow/react";
 import { FLOW_START_ID } from "@/settings/reactFlowIds";
 import { RefreshCw, X } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -145,13 +145,16 @@ const RunHistoryDetail: React.FC<{ playbookHistoryId: string }> = ({
           <span className="size-1.5 rounded-full bg-[var(--moss-dot)]" /> Live
         </span>
       )}
-      <ReactFlowPlayground
-        flowProps={{
-          nodes,
-          edges,
-          onNodeDoubleClick: (_e, node) => setCurrentNode(node.data as TaskHistory),
-        }}
-      />
+      {/* own provider: inside the editor's, this graph would overwrite the editor's nodes */}
+      <ReactFlowProvider>
+        <ReactFlowPlayground
+          flowProps={{
+            nodes,
+            edges,
+            onNodeDoubleClick: (_e, node) => setCurrentNode(node.data as TaskHistory),
+          }}
+        />
+      </ReactFlowProvider>
       {currentNode && (
         <aside className="flex h-full w-[380px] shrink-0 flex-col border-l border-line bg-card">
           {/* header: name + status/context subtitle */}
