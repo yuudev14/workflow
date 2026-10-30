@@ -5,6 +5,7 @@ export
 .PHONY: migrate-down
 .PHONY: test
 .PHONY: swag
+.PHONY: harness-deps
 
 
 -include .env
@@ -20,6 +21,11 @@ migrate-down:
 
 sqlc:
 		cd db && sqlc generate
+
+# Then: export NODE_PATH=$(CURDIR)/$(HARNESS_DIR)/node_modules
+HARNESS_DIR := internal/adapters/runtimes/localexec/harness
+harness-deps:
+		npm install --prefix $(HARNESS_DIR)
 
 UNIT_TEST_PKGS := $(shell go list ./... | grep -vE '/mocks|/grpc')
 
