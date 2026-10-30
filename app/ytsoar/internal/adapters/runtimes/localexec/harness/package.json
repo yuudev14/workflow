@@ -2,7 +2,10 @@
   "name": "ytsoar-localexec-harness",
   "private": true,
   "type": "commonjs",
-  "description": "Editor/type support only - the harnesses are embedded via go:embed and run through Node's native type stripping; nothing here is needed at runtime.",
+  "description": "The harnesses are embedded via go:embed and run through Node's native type stripping. Only dependencies are needed at runtime (put node_modules on NODE_PATH).",
+  "dependencies": {
+    "nunjucks": "^3.2.4"
+  },
   "devDependencies": {
     "@types/node": "^24.0.0",
     "typescript": "^5.8.0"
