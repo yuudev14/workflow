@@ -20,7 +20,8 @@ start-split:
 dev:
 		docker compose -f ./docker/dev.docker-compose.yml up -d --wait ytsoar_postgres ytsoar_keycloak ytsoar_mailpit && \
 		cd ./app/ytsoar && \
-		make migrate && exec air
+		make migrate harness-deps && \
+		NODE_PATH=$$PWD/internal/adapters/runtimes/localexec/harness/node_modules exec air
 
 start-dev:
 		docker compose -f ./docker/dev.docker-compose.yml up -d && \
