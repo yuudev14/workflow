@@ -1,0 +1,74 @@
+{
+  "name": "RDAP",
+  "id": "rdap",
+  "runtime": "python",
+  "configuration": {
+    "fields": [
+      {
+        "title": "Base URL",
+        "description": "The API address. Change it for a proxy or a test server.",
+        "name": "base_url",
+        "type": "text",
+        "required": false,
+        "editable": true,
+        "visible": true,
+        "tooltip": "The API address. Change it for a proxy or a test server.",
+        "value": "https://rdap.org"
+      }
+    ]
+  },
+  "operations": [
+    {
+      "operation": "domain_lookup",
+      "title": "Domain lookup",
+      "description": "Returns the registrar and the age of a domain (the modern whois).",
+      "annotation": "domain_lookup",
+      "enabled": true,
+      "parameters": [
+        {
+          "title": "Domain",
+          "name": "domain",
+          "description": "The domain name.",
+          "required": true,
+          "editable": true,
+          "visible": true,
+          "type": "text",
+          "tooltip": "The domain name.",
+          "placeholder": "example.com"
+        }
+      ],
+      "output": [
+        {
+          "name": "registrar",
+          "type": "string",
+          "description": "Registrar name"
+        },
+        {
+          "name": "created",
+          "type": "string",
+          "description": "Registration date"
+        },
+        {
+          "name": "expires",
+          "type": "string",
+          "description": "Expiry date"
+        },
+        {
+          "name": "age_days",
+          "type": "number",
+          "description": "Days since registration"
+        },
+        {
+          "name": "status",
+          "type": "array",
+          "description": "Domain status"
+        },
+        {
+          "name": "nameservers",
+          "type": "array",
+          "description": "Name servers"
+        }
+      ]
+    }
+  ]
+}

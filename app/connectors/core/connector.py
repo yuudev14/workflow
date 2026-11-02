@@ -29,6 +29,23 @@ class Connector(ABC):
             f"execute function is not implemented in {self.__class__.__name__}"
         )
 
+    @staticmethod
+    def http(method: str, url: str, missing_ok: bool = False, **kwargs):
+        """Send a request and return the JSON body (or the text). A status of 400 or more
+        raises, but a 404 returns None when missing_ok is set."""
+        import requests  # only connectors that call out need it
+
+        kwargs.setdefault("timeout", 30)
+        response = requests.request(method, url, **kwargs)
+        if missing_ok and response.status_code == 404:
+            return None
+        if response.status_code >= 400:
+            raise RuntimeError(f"{method} {url} returned {response.status_code}: {response.text[:300]}")
+        try:
+            return response.json()
+        except ValueError:
+            return response.text
+
     @classmethod
     def consolidate_results(cls, *args: tuple[dict] | dict | list[dict]) -> dict:
         """

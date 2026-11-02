@@ -1,0 +1,144 @@
+{
+  "name": "urlscan.io",
+  "id": "urlscan",
+  "runtime": "python",
+  "configuration": {
+    "fields": [
+      {
+        "title": "API key",
+        "description": "Your urlscan.io API key.",
+        "name": "api_key",
+        "type": "password",
+        "required": true,
+        "editable": true,
+        "visible": true,
+        "tooltip": "Your urlscan.io API key."
+      },
+      {
+        "title": "Base URL",
+        "description": "The API address. Change it for a proxy or a test server.",
+        "name": "base_url",
+        "type": "text",
+        "required": false,
+        "editable": true,
+        "visible": true,
+        "tooltip": "The API address. Change it for a proxy or a test server.",
+        "value": "https://urlscan.io/api/v1"
+      }
+    ]
+  },
+  "operations": [
+    {
+      "operation": "scan_url",
+      "title": "Scan URL",
+      "description": "Submits a URL, waits for the scan and returns the verdict.",
+      "annotation": "scan_url",
+      "enabled": true,
+      "parameters": [
+        {
+          "title": "URL",
+          "name": "url",
+          "description": "The URL to scan.",
+          "required": true,
+          "editable": true,
+          "visible": true,
+          "type": "text",
+          "tooltip": "The URL to scan.",
+          "placeholder": "https://example.com/login"
+        },
+        {
+          "title": "Visibility",
+          "name": "visibility",
+          "description": "public, unlisted or private. Default unlisted.",
+          "required": false,
+          "editable": true,
+          "visible": true,
+          "type": "text",
+          "tooltip": "public, unlisted or private. Default unlisted.",
+          "placeholder": "unlisted"
+        },
+        {
+          "title": "Max wait (seconds)",
+          "name": "max_wait_seconds",
+          "description": "How long to wait for the result. Default 60.",
+          "required": false,
+          "editable": true,
+          "visible": true,
+          "type": "text",
+          "tooltip": "How long to wait for the result. Default 60.",
+          "placeholder": "60"
+        }
+      ],
+      "output": [
+        {
+          "name": "uuid",
+          "type": "string",
+          "description": "Scan id"
+        },
+        {
+          "name": "result_url",
+          "type": "string",
+          "description": "Link to the scan report"
+        },
+        {
+          "name": "malicious",
+          "type": "boolean",
+          "description": "Verdict of urlscan.io"
+        },
+        {
+          "name": "score",
+          "type": "number",
+          "description": "Verdict score"
+        },
+        {
+          "name": "categories",
+          "type": "array",
+          "description": "Verdict categories"
+        }
+      ]
+    },
+    {
+      "operation": "search",
+      "title": "Search",
+      "description": "Searches old scans.",
+      "annotation": "search",
+      "enabled": true,
+      "parameters": [
+        {
+          "title": "Query",
+          "name": "query",
+          "description": "A urlscan.io search query.",
+          "required": true,
+          "editable": true,
+          "visible": true,
+          "type": "text",
+          "tooltip": "A urlscan.io search query.",
+          "placeholder": "domain:example.com"
+        },
+        {
+          "title": "Size",
+          "name": "size",
+          "description": "Number of results. Default 10.",
+          "required": false,
+          "editable": true,
+          "visible": true,
+          "type": "text",
+          "tooltip": "Number of results. Default 10.",
+          "placeholder": "10"
+        }
+      ],
+      "output": [
+        {
+          "name": "total",
+          "type": "number",
+          "description": "Number of matches"
+        },
+        {
+          "name": "results",
+          "type": "array",
+          "description": "The scans"
+        }
+      ]
+    }
+  ]
+}
