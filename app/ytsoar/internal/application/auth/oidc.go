@@ -12,6 +12,7 @@ import (
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
+	"github.com/yuudev14/ytsoar/internal/application/contracts"
 	"github.com/yuudev14/ytsoar/internal/domain"
 	"github.com/yuudev14/ytsoar/internal/token"
 	"github.com/yuudev14/ytsoar/internal/types"
@@ -345,7 +346,7 @@ func (s *Service) oidcConfigFor(ctx context.Context, providerID uuid.UUID) (OIDC
 	if p.Type != domain.AuthProviderOIDC {
 		return OIDCConfig{}, ErrProviderNotFound
 	}
-	config, err := mapValues(p.Config, s.secrets.Open)
+	config, err := contracts.OpenValues(s.secrets, p.Config)
 	if err != nil {
 		return OIDCConfig{}, err
 	}

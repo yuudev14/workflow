@@ -13,15 +13,13 @@ import (
 	"github.com/yuudev14/ytsoar/internal/logger"
 )
 
-//go:generate mockgen -destination=mocks/configs_mock.go -package=mocks . ConfigRepository,SecretBox
+//go:generate mockgen -destination=mocks/configs_mock.go -package=mocks . ConfigRepository
 
 // ErrConfigNotFound: no config with this id (or name) for the connector.
 var ErrConfigNotFound = apperr.New(apperr.NotFound, "connector config not found")
 
 // ErrConfigExists: the connector already has a config with this name.
 var ErrConfigExists = apperr.New(apperr.Conflict, "connector config name already exists")
-
-const maskedSecret = "********"
 
 // tasks.config is VARCHAR(50)
 var configNamePattern = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9 _.-]{0,49}$`)
@@ -39,12 +37,6 @@ type ConfigRepository interface {
 	ClearDefault(ctx context.Context, connectorID string) error
 	// DeleteConfig returns ErrConfigNotFound when no row matched.
 	DeleteConfig(ctx context.Context, connectorID string, id uuid.UUID) error
-}
-
-// SecretBox encrypts config values at rest. The key lives outside the database.
-type SecretBox interface {
-	Seal(plain string) (string, error)
-	Open(sealed string) (string, error)
 }
 
 // ConfigUpdate holds the sealed changes. A nil field keeps the stored value.
@@ -81,12 +73,12 @@ type ConfigServiceImpl struct {
 	logger  logger.Logger
 	store   ConnectorStore
 	repo    ConfigRepository
-	secrets SecretBox
+	secrets contracts.SecretBox
 	tx      contracts.TxManager
 	audit   contracts.AuditWriter
 }
 
-func NewConfigService(log logger.Logger, store ConnectorStore, repo ConfigRepository, secrets SecretBox,
+func NewConfigService(log logger.Logger, store ConnectorStore, repo ConfigRepository, secrets contracts.SecretBox,
 	tx contracts.TxManager, audit contracts.AuditWriter) *ConfigServiceImpl {
 	return &ConfigServiceImpl{logger: log, store: store, repo: repo, secrets: secrets, tx: tx, audit: audit}
 }
@@ -120,7 +112,7 @@ func (s *ConfigServiceImpl) CreateConfig(ctx context.Context, actorID *uuid.UUID
 	if len(config) == 0 {
 		config = json.RawMessage(`{}`)
 	}
-	if config, err = mapValues(config, s.secrets.Seal); err != nil {
+	if config, err = contracts.SealValues(s.secrets, config); err != nil {
 		return domain.ConnectorConfig{}, err
 	}
 
@@ -174,10 +166,10 @@ func (s *ConfigServiceImpl) UpdateConfig(ctx context.Context, actorID *uuid.UUID
 		}
 		config := input.Config
 		if len(config) > 0 {
-			if config, err = mapValues(config, s.secrets.Seal); err != nil {
+			if config, err = contracts.SealValues(s.secrets, config); err != nil {
 				return err
 			}
-			config = keepMasked(existing.Config, config)
+			config = contracts.KeepMasked(existing.Config, config)
 		}
 		if input.IsDefault != nil {
 			if err := s.repo.ClearDefault(ctx, connectorID); err != nil {
@@ -220,7 +212,7 @@ func (s *ConfigServiceImpl) RunConfig(ctx context.Context, connectorID string, n
 	if err != nil {
 		return nil, false, err
 	}
-	plain, err := mapValues(row.Config, s.secrets.Open)
+	plain, err := contracts.OpenValues(s.secrets, row.Config)
 	if err != nil {
 		return nil, false, err
 	}
@@ -231,29 +223,8 @@ func (s *ConfigServiceImpl) RunConfig(ctx context.Context, connectorID string, n
 	return values, true, nil
 }
 
-// masked opens the values best effort and hides the password fields, so the browser never
-// gets a live credential.
 func (s *ConfigServiceImpl) masked(row domain.ConnectorConfig, secretKeys []string) domain.ConnectorConfig {
-	var m map[string]any
-	if err := json.Unmarshal(row.Config, &m); err != nil {
-		row.Config = json.RawMessage(`{}`)
-		return row
-	}
-	for key, val := range m {
-		v, ok := val.(string)
-		if !ok || v == "" {
-			continue
-		}
-		if plain, err := s.secrets.Open(v); err == nil {
-			m[key] = plain
-		}
-	}
-	for _, key := range secretKeys {
-		if v, ok := m[key].(string); ok && v != "" {
-			m[key] = maskedSecret
-		}
-	}
-	row.Config, _ = json.Marshal(m)
+	row.Config = contracts.MaskedView(s.secrets, row.Config, secretKeys)
 	return row
 }
 
@@ -282,44 +253,4 @@ func passwordFields(info domain.ConnectorInfo) []string {
 		}
 	}
 	return keys
-}
-
-// keepMasked puts the stored value back for each value that is still the mask.
-func keepMasked(stored, incoming json.RawMessage) json.RawMessage {
-	var next, prev map[string]any
-	if err := json.Unmarshal(incoming, &next); err != nil {
-		return incoming
-	}
-	_ = json.Unmarshal(stored, &prev)
-	for key, val := range next {
-		if val == maskedSecret {
-			next[key] = prev[key]
-		}
-	}
-	merged, err := json.Marshal(next)
-	if err != nil {
-		return incoming
-	}
-	return merged
-}
-
-// mapValues runs fn (seal or open) on each top-level string value. It skips the mask, so
-// keepMasked can put the stored value back.
-func mapValues(raw json.RawMessage, fn func(string) (string, error)) (json.RawMessage, error) {
-	var m map[string]any
-	if err := json.Unmarshal(raw, &m); err != nil || m == nil {
-		return nil, apperr.New(apperr.Invalid, "connector config must be a JSON object")
-	}
-	for key, val := range m {
-		v, ok := val.(string)
-		if !ok || v == "" || v == maskedSecret {
-			continue
-		}
-		out, err := fn(v)
-		if err != nil {
-			return nil, apperr.Wrap(apperr.Invalid, "connector config cannot be decrypted, enter it again", err)
-		}
-		m[key] = out
-	}
-	return json.Marshal(m)
 }
