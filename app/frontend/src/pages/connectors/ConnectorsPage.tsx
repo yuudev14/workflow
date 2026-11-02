@@ -13,6 +13,9 @@ import { ConfirmDialog } from "@/pages/settings/components/ConfirmDialog";
 import { toast } from "@/hooks/use-toast";
 import { apiErrorMessage } from "@/services/common/errors";
 import { cn } from "@/lib/utils";
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ConnectorConfigs } from "./ConnectorConfigs";
 
 // info.json carries a `runtime` (and often a version); the shared type keeps
 // unknown fields as a passthrough map, so read them defensively here.
@@ -27,11 +30,15 @@ function runtimeBadge(runtime?: string) {
 }
 
 // The enable switch comes back with #58, when the worker checks the enabled state.
-function ConnectorCard({ connector }: { connector: MarketConnector }) {
+function ConnectorCard({ connector, onOpen }: { connector: MarketConnector; onOpen: () => void }) {
   const g = connectorGlyph(connector.name);
   const badge = runtimeBadge(connector.runtime);
   return (
-    <div className="flex flex-col gap-2.5 rounded-md border border-line bg-card p-3.5">
+    <button
+      type="button"
+      onClick={onOpen}
+      className="flex flex-col gap-2.5 rounded-md border border-line bg-card p-3.5 text-left hover:border-line-strong"
+    >
       <div className="flex items-start justify-between gap-2">
         <div className="flex gap-2.5">
           <Glyph icon={g.icon} tone={g.tone} size="lg" />
@@ -54,7 +61,43 @@ function ConnectorCard({ connector }: { connector: MarketConnector }) {
         </span>
         {connector.operations?.length ?? 0} operations
       </div>
-    </div>
+    </button>
+  );
+}
+
+function ConnectorSheet({ connector, onClose }: { connector: MarketConnector | null; onClose: () => void }) {
+  return (
+    <Sheet open={connector !== null} onOpenChange={(next) => !next && onClose()}>
+      <SheetContent className="w-full overflow-y-auto sm:max-w-xl">
+        {connector && (
+          <>
+            <SheetHeader>
+              <SheetTitle className="capitalize">{connector.name}</SheetTitle>
+              <SheetDescription className="font-mono">{connector.id}</SheetDescription>
+            </SheetHeader>
+            <Tabs defaultValue="configurations" className="mt-4">
+              <TabsList>
+                <TabsTrigger value="configurations">Configurations</TabsTrigger>
+                <TabsTrigger value="operations">Operations</TabsTrigger>
+              </TabsList>
+              <TabsContent value="configurations">
+                <ConnectorConfigs connector={connector} />
+              </TabsContent>
+              <TabsContent value="operations">
+                <ul className="flex flex-col divide-y divide-line rounded-md border border-line">
+                  {connector.operations?.map((op) => (
+                    <li key={op.operation} className="px-3 py-2.5">
+                      <div className="text-[14px] font-semibold">{op.title}</div>
+                      {op.description && <div className="text-[12.5px] text-ink-faint">{op.description}</div>}
+                    </li>
+                  ))}
+                </ul>
+              </TabsContent>
+            </Tabs>
+          </>
+        )}
+      </SheetContent>
+    </Sheet>
   );
 }
 
@@ -67,6 +110,7 @@ export default function Page() {
   const connectors = (connectorsQuery.data ?? []) as MarketConnector[];
 
   const queryClient = useQueryClient();
+  const [selected, setSelected] = React.useState<MarketConnector | null>(null);
   const fileInput = React.useRef<HTMLInputElement>(null);
   const [conflict, setConflict] = React.useState<{ file: File; message: string } | null>(null);
   const upload = useMutation({
@@ -152,11 +196,13 @@ export default function Page() {
         ) : (
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {connectors.map((c) => (
-              <ConnectorCard key={c.id} connector={c} />
+              <ConnectorCard key={c.id} connector={c} onOpen={() => setSelected(c)} />
             ))}
           </div>
         )}
       </div>
+
+      <ConnectorSheet connector={selected} onClose={() => setSelected(null)} />
 
       <ConfirmDialog
         open={conflict !== null}
