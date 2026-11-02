@@ -94,7 +94,7 @@ func (s *ConfigServiceImpl) ListConfigs(ctx context.Context, connectorID string)
 	}
 	secretKeys := passwordFields(info)
 	for i := range rows {
-		rows[i] = s.masked(rows[i], secretKeys)
+		rows[i].Config = contracts.MaskedView(s.secrets, rows[i].Config, secretKeys)
 	}
 	return rows, nil
 }
@@ -141,7 +141,8 @@ func (s *ConfigServiceImpl) CreateConfig(ctx context.Context, actorID *uuid.UUID
 		return domain.ConnectorConfig{}, err
 	}
 	s.writeAudit(ctx, actorID, "connector_config_created", created)
-	return s.masked(created, passwordFields(info)), nil
+	created.Config = contracts.MaskedView(s.secrets, created.Config, passwordFields(info))
+	return created, nil
 }
 
 // UpdateConfig keeps a stored secret when the value is the mask, because the user did not
@@ -188,7 +189,8 @@ func (s *ConfigServiceImpl) UpdateConfig(ctx context.Context, actorID *uuid.UUID
 		return domain.ConnectorConfig{}, err
 	}
 	s.writeAudit(ctx, actorID, "connector_config_updated", updated)
-	return s.masked(updated, passwordFields(info)), nil
+	updated.Config = contracts.MaskedView(s.secrets, updated.Config, passwordFields(info))
+	return updated, nil
 }
 
 func (s *ConfigServiceImpl) DeleteConfig(ctx context.Context, actorID *uuid.UUID, connectorID string, id uuid.UUID) error {
@@ -221,11 +223,6 @@ func (s *ConfigServiceImpl) RunConfig(ctx context.Context, connectorID string, n
 		return nil, false, err
 	}
 	return values, true, nil
-}
-
-func (s *ConfigServiceImpl) masked(row domain.ConnectorConfig, secretKeys []string) domain.ConnectorConfig {
-	row.Config = contracts.MaskedView(s.secrets, row.Config, secretKeys)
-	return row
 }
 
 func (s *ConfigServiceImpl) writeAudit(ctx context.Context, actorID *uuid.UUID, action string, row domain.ConnectorConfig) {
