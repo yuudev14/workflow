@@ -88,13 +88,12 @@ func (mr *MockConfigServiceMockRecorder) ListConfigs(ctx, connectorID any) *gomo
 }
 
 // RunConfig mocks base method.
-func (m *MockConfigService) RunConfig(ctx context.Context, connectorID string, name *string) (map[string]any, bool, error) {
+func (m *MockConfigService) RunConfig(ctx context.Context, connectorID string, name *string) (map[string]any, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "RunConfig", ctx, connectorID, name)
 	ret0, _ := ret[0].(map[string]any)
-	ret1, _ := ret[1].(bool)
-	ret2, _ := ret[2].(error)
-	return ret0, ret1, ret2
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
 }
 
 // RunConfig indicates an expected call of RunConfig.

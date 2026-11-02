@@ -15,7 +15,7 @@
 //
 //   module.exports = { MyConnector };
 //
-// configs arrive already parsed (the sandbox parses configs/<name>.toml);
+// configs arrive already opened (the worker reads them from the database);
 // params are rendered by evaluateParams before execute is called.
 "use strict";
 

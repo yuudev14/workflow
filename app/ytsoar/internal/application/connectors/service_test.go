@@ -286,20 +286,26 @@ func TestConfigService(t *testing.T) {
 				Config: json.RawMessage(`{"api_key":"sealed:secret","verify":false}`),
 			}, nil)
 
-			values, found, err := svc.RunConfig(context.Background(), "abuseipdb", new(""))
+			values, err := svc.RunConfig(context.Background(), "abuseipdb", new(""))
 			require.NoError(t, err)
-			assert.True(t, found)
 			assert.Equal(t, map[string]any{"api_key": "secret", "verify": false}, values)
 		})
 
-		t.Run("returns not found when the database has no config", func(t *testing.T) {
+		t.Run("gives an empty config when the connector has no default", func(t *testing.T) {
+			svc, m := newConfigService(t)
+			m.repo.EXPECT().GetConfigForRun(gomock.Any(), "abuseipdb", (*string)(nil)).Return(domain.ConnectorConfig{}, connectors.ErrConfigNotFound)
+
+			values, err := svc.RunConfig(context.Background(), "abuseipdb", nil)
+			require.NoError(t, err)
+			assert.Empty(t, values)
+		})
+
+		t.Run("fails when the named config does not exist", func(t *testing.T) {
 			svc, m := newConfigService(t)
 			m.repo.EXPECT().GetConfigForRun(gomock.Any(), "abuseipdb", gomock.Any()).Return(domain.ConnectorConfig{}, connectors.ErrConfigNotFound)
 
-			values, found, err := svc.RunConfig(context.Background(), "abuseipdb", new("lab"))
-			require.NoError(t, err)
-			assert.False(t, found)
-			assert.Nil(t, values)
+			_, err := svc.RunConfig(context.Background(), "abuseipdb", new("lab"))
+			assert.ErrorIs(t, err, connectors.ErrConfigNotFound)
 		})
 	})
 }

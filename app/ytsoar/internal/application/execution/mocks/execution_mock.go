@@ -161,13 +161,12 @@ func (m *MockConfigSource) EXPECT() *MockConfigSourceMockRecorder {
 }
 
 // RunConfig mocks base method.
-func (m *MockConfigSource) RunConfig(ctx context.Context, connectorID string, name *string) (map[string]any, bool, error) {
+func (m *MockConfigSource) RunConfig(ctx context.Context, connectorID string, name *string) (map[string]any, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "RunConfig", ctx, connectorID, name)
 	ret0, _ := ret[0].(map[string]any)
-	ret1, _ := ret[1].(bool)
-	ret2, _ := ret[2].(error)
-	return ret0, ret1, ret2
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
 }
 
 // RunConfig indicates an expected call of RunConfig.

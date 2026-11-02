@@ -21,8 +21,7 @@ type ExecutionRequest struct {
 	// Input is the trigger data of the run, available to templates as `var.input`. It is
 	// never nil, so a template that uses it does not raise on a run without trigger data.
 	Input *domain.RunInput
-	// Config is the plain connector config from the database. nil: the runtime reads the
-	// TOML file named by Task.Config.
+	// Config is the plain connector config from the database.
 	Config map[string]any
 }
 
@@ -51,8 +50,7 @@ type StatusPublisher interface {
 	Publish(ctx context.Context, event string, id uuid.UUID) error
 }
 
-// ConfigSource gives the plain values of a connector config for a run. found is false when
-// the database has no such config.
+// ConfigSource gives the plain values of a connector config for a run.
 type ConfigSource interface {
-	RunConfig(ctx context.Context, connectorID string, name *string) (values map[string]any, found bool, err error)
+	RunConfig(ctx context.Context, connectorID string, name *string) (map[string]any, error)
 }

@@ -8,11 +8,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"os"
-	"path/filepath"
 	"sort"
 
-	"github.com/pelletier/go-toml/v2"
 	"github.com/yuudev14/ytsoar/internal/application/execution"
 	"github.com/yuudev14/ytsoar/internal/logger"
 )
@@ -26,7 +23,7 @@ type TemplateEngine interface {
 }
 
 // BuiltinConnector is one built-in connector (for example http_request).
-// configs is the parsed TOML file. params are already templated.
+// configs is the opened connector config. params are already templated.
 type BuiltinConnector interface {
 	Execute(ctx context.Context, configs map[string]any, params map[string]any, operation string) (any, error)
 }
@@ -37,15 +34,13 @@ type BuiltinConnector interface {
 type BuiltinRuntime struct {
 	logger     logger.Logger
 	template   TemplateEngine
-	dir        string // connectors tree, for <id>/configs/<name>.toml; "" = no configs
 	connectors map[string]BuiltinConnector
 }
 
-func NewBuiltinRuntime(log logger.Logger, template TemplateEngine, dir string) *BuiltinRuntime {
+func NewBuiltinRuntime(log logger.Logger, template TemplateEngine) *BuiltinRuntime {
 	return &BuiltinRuntime{
 		logger:     log,
 		template:   template,
-		dir:        dir,
 		connectors: map[string]BuiltinConnector{},
 	}
 }
@@ -91,9 +86,7 @@ func (r *BuiltinRuntime) Execute(ctx context.Context, req execution.ExecutionReq
 
 	config := req.Config
 	if config == nil {
-		if config, err = r.loadConfig(*req.Task.ConnectorID, req.Task.Config); err != nil {
-			return nil, err
-		}
+		config = map[string]any{}
 	}
 
 	r.logger.Debugw("running go connector",
@@ -103,20 +96,4 @@ func (r *BuiltinRuntime) Execute(ctx context.Context, req execution.ExecutionReq
 		return nil, err
 	}
 	return json.Marshal(result)
-}
-
-func (r *BuiltinRuntime) loadConfig(connectorID string, configName *string) (map[string]any, error) {
-	config := map[string]any{}
-	if r.dir == "" || configName == nil || *configName == "" {
-		return config, nil
-	}
-	path := filepath.Join(r.dir, connectorID, "configs", *configName+".toml")
-	raw, err := os.ReadFile(path)
-	if err != nil {
-		return nil, fmt.Errorf("could not read connector config %s: %w", path, err)
-	}
-	if err := toml.Unmarshal(raw, &config); err != nil {
-		return nil, fmt.Errorf("invalid connector config %s: %w", path, err)
-	}
-	return config, nil
 }

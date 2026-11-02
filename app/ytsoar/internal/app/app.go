@@ -219,7 +219,7 @@ func NewWorker(cfg config.Config, appLogger logger.Logger, pool *pgxpool.Pool) (
 		return nil, fmt.Errorf("failed to setup sandbox runtime client: %w", err)
 	}
 
-	builtinRuntime := goconnectors.NewBuiltinRuntime(appLogger, templating.NewGonjaEngine(), cfg.ConnectorsDir)
+	builtinRuntime := goconnectors.NewBuiltinRuntime(appLogger, templating.NewGonjaEngine())
 	builtinRuntime.Register("http_request", goconnectors.NewHTTPRequestConnector())
 	byConnector := map[string]execution.TaskRuntime{}
 	for _, id := range builtinRuntime.IDs() {

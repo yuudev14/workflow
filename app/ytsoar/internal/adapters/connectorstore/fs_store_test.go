@@ -23,8 +23,6 @@ func sampleTree(t *testing.T) string {
 		require.NoError(t, os.WriteFile(path, []byte(content), 0o644))
 	}
 	write("sample/info.json", `{"id":"sample","name":"Sample","runtime":"python","operations":[]}`)
-	write("sample/configs/default.toml", `key = "value"`)
-	write("sample/configs/prod.toml", `key = "prod"`)
 	write("http_js/info.json", `{"id":"http_js","name":"HTTP JS","runtime":"node"}`)
 	write("broken/info.json", `{not json`)
 	write("core/connector.py", "# core is never listed")
@@ -46,14 +44,13 @@ func TestFSStoreList(t *testing.T) {
 	assert.True(t, byID["http_js"])
 }
 
-func TestFSStoreGetAddsConfigStems(t *testing.T) {
+func TestFSStoreGet(t *testing.T) {
 	store := connectorstore.NewFSStore(logger.NewNop(), sampleTree(t))
 
 	info, err := store.Get(context.Background(), "sample")
 
 	require.NoError(t, err)
 	assert.Equal(t, "Sample", info["name"])
-	assert.ElementsMatch(t, []string{"default", "prod"}, info["configs"])
 }
 
 func TestFSStoreGetNotFound(t *testing.T) {

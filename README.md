@@ -169,19 +169,18 @@ app/connectors/my_connector/
 │   #   async execute(configs, params, operation) { ... }
 │   # }
 │   # module.exports = { MyConnector };
-├── connector.ts       # … or typescript (Node removes the types, so no build step
+└── connector.ts       # … or typescript (Node removes the types, so no build step
 │   # is needed. Use the .ts extension in the require call)
 │   # const { Connector } = require("../core/connector.ts");
 │   # class MyConnector extends Connector {
 │   #   async execute(configs: Configs, params: Params, operation: string) { ... }
 │   # }
 │   # module.exports = { MyConnector };
-└── configs/prod.toml  # old TOML configs; named configs now live encrypted in the database
 ```
 
 Each language uses the same shape. Write a class that extends the base class in `core/`. The class has one method: `execute(configs, params, operation)`.
 
-- `configs` - The parsed TOML config.
+- `configs` - The connector config that the step picked (or the default one). Add configs on the Connectors page. They are stored encrypted in the database.
 - `params` - The parameters of the task. The system already applied the templates.
 - `operation` - The operation name from `info.json`.
 

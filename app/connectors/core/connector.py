@@ -5,7 +5,6 @@ from collections import ChainMap
 import importlib
 import inspect
 import logging
-import tomllib
 from jinja2 import Template, Environment
 
 # self-contained: the connectors tree has no dependency on any host service
@@ -77,27 +76,6 @@ class Connector(ABC):
         connector: Connector = connector_classes[0]()
         logger.debug(f"class connector is {connector}")
         return connector
-
-    @classmethod
-    def get_connector_config(cls, config_name: str | None, connector_id: str) -> dict:
-        """
-        Get the connectors config
-
-        Args:
-            config_name (str) = configuration name
-            connector_id (str) = connector id
-
-        Returns:
-            the configuration in dictionary. if config_name is None, return '{}'
-        """
-        logger.info(f"getting the config ({config_name}) for {connector_id}")
-        if config_name:
-            with open(
-                f"./connectors/{connector_id}/configs/{config_name}.toml", "rb"
-            ) as f:
-                return tomllib.load(f)
-        logger.debug("No config available. return '{}'")
-        return {}
 
     @classmethod
     def evaluate_params(cls, parameters: dict | None, variables: dict) -> dict:
