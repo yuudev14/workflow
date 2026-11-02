@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"regexp"
 
 	"github.com/google/uuid"
@@ -74,7 +75,7 @@ type ConfigService interface {
 	CreateConfig(ctx context.Context, actorID *uuid.UUID, connectorID string, input ConfigInput) (domain.ConnectorConfig, error)
 	UpdateConfig(ctx context.Context, actorID *uuid.UUID, connectorID string, id uuid.UUID, input UpdateConfigInput) (domain.ConnectorConfig, error)
 	DeleteConfig(ctx context.Context, actorID *uuid.UUID, connectorID string, id uuid.UUID) error
-	RunConfig(ctx context.Context, connectorID string, name *string) (map[string]any, bool, error)
+	RunConfig(ctx context.Context, connectorID string, name *string) (map[string]any, error)
 }
 
 type ConfigServiceImpl struct {
@@ -207,28 +208,31 @@ func (s *ConfigServiceImpl) DeleteConfig(ctx context.Context, actorID *uuid.UUID
 	return nil
 }
 
-// RunConfig gives the plain values for a run. found is false when the database has no such
-// config, so the runtime can fall back to a TOML file.
-func (s *ConfigServiceImpl) RunConfig(ctx context.Context, connectorID string, name *string) (map[string]any, bool, error) {
+// RunConfig gives the plain values for a run. A step with no config name and a connector
+// with no default config get an empty config. A named config that does not exist is an error.
+func (s *ConfigServiceImpl) RunConfig(ctx context.Context, connectorID string, name *string) (map[string]any, error) {
 	if name != nil && *name == "" {
 		name = nil
 	}
 	row, err := s.repo.GetConfigForRun(ctx, connectorID, name)
+	if errors.Is(err, ErrConfigNotFound) && name == nil {
+		return map[string]any{}, nil
+	}
 	if errors.Is(err, ErrConfigNotFound) {
-		return nil, false, nil
+		return nil, apperr.Wrap(apperr.NotFound, fmt.Sprintf("connector config %q not found for %s", *name, connectorID), err)
 	}
 	if err != nil {
-		return nil, false, err
+		return nil, err
 	}
 	plain, err := mapValues(row.Config, s.secrets.Open)
 	if err != nil {
-		return nil, false, err
+		return nil, err
 	}
 	values := map[string]any{}
 	if err := json.Unmarshal(plain, &values); err != nil {
-		return nil, false, err
+		return nil, err
 	}
-	return values, true, nil
+	return values, nil
 }
 
 // masked opens the values best effort and hides the password fields, so the browser never

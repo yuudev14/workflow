@@ -1,5 +1,5 @@
 // Package connectorstore reads connector metadata from the unified connectors tree:
-// <dir>/<id>/{info.json, configs/*.toml}.
+// <dir>/<id>/info.json.
 package connectorstore
 
 import (
@@ -75,18 +75,6 @@ func (s *FSStore) readInfo(connectorID string) (domain.ConnectorInfo, error) {
 		return nil, fmt.Errorf("invalid info.json: %w", err)
 	}
 
-	configsDir := filepath.Join(s.dir, connectorID, "configs")
-	if entries, err := os.ReadDir(configsDir); err == nil {
-		configs := []string{}
-		for _, entry := range entries {
-			if entry.IsDir() {
-				continue
-			}
-			name := entry.Name()
-			configs = append(configs, strings.TrimSuffix(name, filepath.Ext(name)))
-		}
-		info["configs"] = configs
-	}
 	return info, nil
 }
 

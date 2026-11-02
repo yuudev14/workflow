@@ -64,7 +64,7 @@ type Config struct {
 	SandboxListenAddr string
 
 	// ConnectorsDir is the unified connectors tree (a directory named "connectors" with
-	// <id>/{info.json, connector.py|connector.ts|connector.js, configs/}). The API serves the
+	// <id>/{info.json, connector.py|connector.ts|connector.js}). The API serves the
 	// metadata, and the sandbox runs from it. Empty disables connectors.
 	ConnectorsDir string
 

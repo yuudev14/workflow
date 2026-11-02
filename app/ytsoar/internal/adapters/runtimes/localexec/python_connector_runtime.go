@@ -16,7 +16,7 @@ var pythonConnectorHarness string
 
 // PythonConnectorRuntime runs a Python connector in a fresh `python3 -I` process. It runs in
 // the SANDBOX and fits execution.TaskRuntime. The harness reuses connectors/core/connector.py,
-// so importlib loading, TOML configs and jinja2 templating work as before. treeDir is the
+// so importlib loading and jinja2 templating work as before. treeDir is the
 // connectors tree. It must be a directory named "connectors", because the harness imports
 // `connectors.<id>.connector`, so the parent of the tree goes on sys.path.
 type PythonConnectorRuntime struct {
@@ -53,16 +53,15 @@ func (r *PythonConnectorRuntime) Execute(ctx context.Context, req execution.Exec
 		return nil, err
 	}
 
-	var configName *string
-	if req.Task.Config != nil && *req.Task.Config != "" {
-		configName = req.Task.Config
+	config := req.Config
+	if config == nil {
+		config = map[string]any{}
 	}
 	payload, err := json.Marshal(map[string]any{
 		"connectors_root": r.root,
 		"connector_id":    *req.Task.ConnectorID,
 		"operation":       req.Task.Operation,
-		"config_name":     configName,
-		"config":          req.Config,
+		"config":          config,
 		"params":          params,
 		"steps":           req.Steps,
 		"input":           req.Input.TemplateVars(),

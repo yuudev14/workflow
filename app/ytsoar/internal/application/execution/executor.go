@@ -51,8 +51,8 @@ func WithFinalWriteDelays(delays ...time.Duration) Option {
 	return func(e *Executor) { e.finalWriteDelays = delays }
 }
 
-// WithConfigSource loads the connector configs from the database. Without it, the
-// runtimes read the TOML files.
+// WithConfigSource loads the connector configs from the database. Without it, every step
+// gets an empty config.
 func WithConfigSource(configs ConfigSource) Option {
 	return func(e *Executor) { e.configs = configs }
 }
@@ -251,7 +251,7 @@ func (e *Executor) processNode(ctx context.Context, msg domain.TaskMessage, node
 
 	var config map[string]any
 	if e.configs != nil {
-		if config, _, err = e.configs.RunConfig(ctx, *task.ConnectorID, task.Config); err != nil {
+		if config, err = e.configs.RunConfig(ctx, *task.ConnectorID, task.Config); err != nil {
 			if statusErr := e.setTaskStatus(ctx, msg, task, StatusFailed, nil, err); statusErr != nil {
 				e.logger.Errorw("failed to persist task failure", "node", node, "error", statusErr)
 			}

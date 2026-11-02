@@ -20,14 +20,14 @@ import (
 )
 
 // fakeConnectorsTree builds a small connectors/ package whose core copies the API of the
-// real connectors/core/connector.py (importlib loading, TOML configs) without the
+// real connectors/core/connector.py (importlib loading) without the
 // jinja2/colorlog dependencies, so the harness contract is testable on any machine with
 // python3.
 func fakeConnectorsTree(t *testing.T) string {
 	t.Helper()
 	root := t.TempDir()
 
-	core := `import importlib, inspect, tomllib
+	core := `import importlib, inspect
 
 
 class Connector:
@@ -38,13 +38,6 @@ class Connector:
             if inspect.isclass(obj) and issubclass(obj, Connector) and obj is not Connector:
                 return obj()
         raise Exception(f"no connector class in {connector_id}")
-
-    @classmethod
-    def get_connector_config(cls, config_name, connector_id):
-        if config_name:
-            with open(f"./connectors/{connector_id}/configs/{config_name}.toml", "rb") as f:
-                return tomllib.load(f)
-        return {}
 
     @classmethod
     def evaluate_params(cls, parameters, variables):
@@ -64,7 +57,6 @@ class EchoConnector(Connector):
 	}
 	mustWrite("connectors/core/connector.py", core)
 	mustWrite("connectors/echo_py/connector.py", echo)
-	mustWrite("connectors/echo_py/configs/default.toml", "key = \"value\"\n")
 	return root
 }
 
@@ -76,18 +68,17 @@ func TestPythonConnectorRuntimeExecutesOperation(t *testing.T) {
 	require.NoError(t, err)
 
 	connectorID := "echo_py"
-	configName := "default"
 	raw, err := runner.Execute(context.Background(), execution.ExecutionRequest{
 		Task: domain.Tasks{
 			ID:          uuid.New(),
 			Name:        "echo_node",
 			ConnectorID: &connectorID,
-			Config:      &configName,
 			Operation:   "echo",
 			Parameters:  json.RawMessage(`{"msg":"hi"}`),
 		},
 		PlaybookHistoryID: uuid.New(),
 		Timeout:           10 * time.Second,
+		Config:            map[string]any{"key": "value"},
 	})
 
 	require.NoError(t, err)

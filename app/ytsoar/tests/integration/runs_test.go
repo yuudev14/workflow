@@ -113,6 +113,15 @@ func TestRuns(t *testing.T) {
 			assert.Equal(t, "success", run["status"], tasks["sample"]["error"])
 			assert.Contains(t, toJSON(tasks["sample"]["result"]), "https://from-db")
 		})
+
+		t.Run("fails when the named config does not exist", func(t *testing.T) {
+			run, tasks := runPlaybook(t, c, []J{{
+				"name": "sample", "operation": "operation1", "connector_id": "sample", "connector_name": "Sample",
+				"config": "missing", "parameters": J{},
+			}}, J{"start": []string{"sample"}})
+			assert.Equal(t, "failed", run["status"])
+			assert.Contains(t, tasks["sample"]["error"], "missing")
+		})
 	})
 
 	t.Run("a graph", func(t *testing.T) {

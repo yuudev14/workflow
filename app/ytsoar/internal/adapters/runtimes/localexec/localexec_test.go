@@ -233,7 +233,7 @@ func writeNodeConnector(t *testing.T, dir string) {
 	writeCore(t, dir)
 
 	connectorDir := filepath.Join(dir, "echo_js")
-	require.NoError(t, os.MkdirAll(filepath.Join(connectorDir, "configs"), 0o755))
+	require.NoError(t, os.MkdirAll(connectorDir, 0o755))
 	connectorJS := `const { Connector } = require("../core/connector");
 
 class EchoConnector extends Connector {
@@ -257,7 +257,6 @@ module.exports = { EchoConnector };`
 	require.NoError(t, os.WriteFile(filepath.Join(connectorDir, "connector.js"), []byte(connectorJS), 0o644))
 	require.NoError(t, os.WriteFile(filepath.Join(connectorDir, "info.json"),
 		[]byte(`{"id":"echo_js","name":"Echo JS","runtime":"node"}`), 0o644))
-	require.NoError(t, os.WriteFile(filepath.Join(connectorDir, "configs", "default.toml"), []byte("key = \"value\"\n"), 0o644))
 }
 
 // writeTSConnector adds a TypeScript connector (connector.ts, no .js) to the tree. Node
@@ -266,7 +265,7 @@ func writeTSConnector(t *testing.T, dir string) {
 	t.Helper()
 
 	connectorDir := filepath.Join(dir, "echo_ts")
-	require.NoError(t, os.MkdirAll(filepath.Join(connectorDir, "configs"), 0o755))
+	require.NoError(t, os.MkdirAll(connectorDir, 0o755))
 	connectorTS := `const { Connector } = require("../core/connector.ts");
 
 type Values = Record<string, unknown>;
@@ -288,7 +287,6 @@ module.exports = { EchoTS };`
 	require.NoError(t, os.WriteFile(filepath.Join(connectorDir, "connector.ts"), []byte(connectorTS), 0o644))
 	require.NoError(t, os.WriteFile(filepath.Join(connectorDir, "info.json"),
 		[]byte(`{"id":"echo_ts","name":"Echo TS","runtime":"node"}`), 0o644))
-	require.NoError(t, os.WriteFile(filepath.Join(connectorDir, "configs", "default.toml"), []byte("key = \"value\"\n"), 0o644))
 }
 
 func TestNodeJSConnectorRuntimeExecutesOperation(t *testing.T) {
@@ -300,18 +298,17 @@ func TestNodeJSConnectorRuntimeExecutesOperation(t *testing.T) {
 	require.NoError(t, err)
 
 	connectorID := "echo_js"
-	configName := "default"
 	raw, err := runner.Execute(context.Background(), execution.ExecutionRequest{
 		Task: domain.Tasks{
 			ID:          uuid.New(),
 			Name:        "echo_node",
 			ConnectorID: &connectorID,
-			Config:      &configName,
 			Operation:   "echo",
 			Parameters:  json.RawMessage(`{"msg":"hi"}`),
 		},
 		PlaybookHistoryID: uuid.New(),
 		Timeout:           10 * time.Second,
+		Config:            map[string]any{"key": "value"},
 	})
 
 	require.NoError(t, err)
@@ -332,18 +329,17 @@ func TestNodeJSConnectorRuntimeExecutesTypeScriptConnector(t *testing.T) {
 	require.NoError(t, err)
 
 	connectorID := "echo_ts"
-	configName := "default"
 	raw, err := runner.Execute(context.Background(), execution.ExecutionRequest{
 		Task: domain.Tasks{
 			ID:          uuid.New(),
 			Name:        "echo_node",
 			ConnectorID: &connectorID,
-			Config:      &configName,
 			Operation:   "echo",
 			Parameters:  json.RawMessage(`{"msg":"hi"}`),
 		},
 		PlaybookHistoryID: uuid.New(),
 		Timeout:           10 * time.Second,
+		Config:            map[string]any{"key": "value"},
 	})
 
 	require.NoError(t, err)
