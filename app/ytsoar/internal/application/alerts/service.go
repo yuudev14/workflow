@@ -66,6 +66,15 @@ func (s *Service) GetByID(ctx context.Context, id uuid.UUID) (AlertDetail, error
 	return s.repo.GetDetail(ctx, id)
 }
 
+// Delete is a soft delete: the alert leaves every list but stays in the database for the audit.
+func (s *Service) Delete(ctx context.Context, id uuid.UUID, actorID *uuid.UUID) error {
+	if err := s.repo.SoftDelete(ctx, id); err != nil {
+		return err
+	}
+	s.logger.Infow("alert deleted", "alert_id", id, "actor_id", actorID)
+	return nil
+}
+
 func (s *Service) Summary(ctx context.Context, rng types.ResolvedRange) (AlertsSummary, error) {
 	return s.repo.Summary(ctx, rng)
 }

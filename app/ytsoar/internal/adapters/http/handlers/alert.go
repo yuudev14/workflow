@@ -313,3 +313,21 @@ func (h *AlertHandler) Run(c *gin.Context) {
 	}
 	response.Response(http.StatusAccepted, message)
 }
+
+// Delete godoc
+// @Summary Soft delete an alert. It leaves every list but stays in the database.
+// @Tags alerts
+// @Router /api/v1/alerts/{alert_id} [delete]
+func (h *AlertHandler) Delete(c *gin.Context) {
+	response := rest.Response{C: c}
+
+	id, ok := pathUUID(c, "alert_id")
+	if !ok {
+		return
+	}
+	if err := h.alertService.Delete(c.Request.Context(), id, actorID(c)); err != nil {
+		response.Fail(h.logger, err)
+		return
+	}
+	c.Status(http.StatusNoContent)
+}

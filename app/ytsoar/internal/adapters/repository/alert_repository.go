@@ -103,6 +103,7 @@ func selectAlerts(columns string) sq.SelectBuilder {
 	return sq.Select(columns).
 		From("alerts a").
 		LeftJoin("users u ON u.id = a.assignee_id").
+		Where("a.deleted_at IS NULL").
 		PlaceholderFormat(sq.Dollar)
 }
 
@@ -195,7 +196,7 @@ func (r *AlertRepositoryImpl) List(ctx context.Context, filter alerts.AlertFilte
 
 func (r *AlertRepositoryImpl) Count(ctx context.Context, filter alerts.AlertFilter) (int, error) {
 	stmt, err := applyAlertFilter(
-		sq.Select("count(*)").From("alerts a").PlaceholderFormat(sq.Dollar), filter)
+		sq.Select("count(*)").From("alerts a").Where("a.deleted_at IS NULL").PlaceholderFormat(sq.Dollar), filter)
 	if err != nil {
 		return 0, err
 	}
@@ -208,6 +209,17 @@ func (r *AlertRepositoryImpl) GetByID(ctx context.Context, id uuid.UUID) (domain
 		return domain.Alert{}, mapNoRows(err, alerts.ErrAlertNotFound)
 	}
 	return toDomainAlert(row), nil
+}
+
+func (r *AlertRepositoryImpl) SoftDelete(ctx context.Context, id uuid.UUID) error {
+	rows, err := r.queriesFromContext(ctx).SoftDeleteAlert(ctx, toPgUUID(id))
+	if err != nil {
+		return err
+	}
+	if rows == 0 {
+		return alerts.ErrAlertNotFound
+	}
+	return nil
 }
 
 func (r *AlertRepositoryImpl) GetDetail(ctx context.Context, id uuid.UUID) (alerts.AlertDetail, error) {
@@ -389,7 +401,7 @@ func (r *AlertRepositoryImpl) Summary(ctx context.Context, rng types.ResolvedRan
 		Range:        rng,
 	}
 
-	openFilter := sq.Expr("a.status IN ('new', 'investigating')")
+	openFilter := sq.Expr("a.status IN ('new', 'investigating') AND a.deleted_at IS NULL")
 
 	total, err := CollectOneScalarFromSqlizer[int](ctx,
 		sq.Select("count(*)").From("alerts a").Where(openFilter).PlaceholderFormat(sq.Dollar),

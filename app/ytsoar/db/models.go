@@ -555,27 +555,28 @@ func (ns NullTriggerType) Value() (driver.Value, error) {
 }
 
 type Alert struct {
-	ID            pgtype.UUID      `json:"id"`
-	Title         string           `json:"title"`
-	Severity      AlertSeverity    `json:"severity"`
-	Status        AlertStatus      `json:"status"`
-	SourceKind    SourceKind       `json:"source_kind"`
-	Reporter      pgtype.Text      `json:"reporter"`
-	AssigneeID    pgtype.UUID      `json:"assignee_id"`
-	TeamID        pgtype.UUID      `json:"team_id"`
-	Payload       json.RawMessage  `json:"payload"`
-	Tags          []string         `json:"tags"`
-	Triage        []byte           `json:"triage"`
-	ClosureNote   pgtype.Text      `json:"closure_note"`
-	Fingerprint   string           `json:"fingerprint"`
-	DedupCount    int32            `json:"dedup_count"`
-	LastSeen      pgtype.Timestamp `json:"last_seen"`
-	TriagedAt     pgtype.Timestamp `json:"triaged_at"`
-	SlaDeadline   pgtype.Timestamp `json:"sla_deadline"`
-	SlaBreachedAt pgtype.Timestamp `json:"sla_breached_at"`
-	SlaState      SlaState         `json:"sla_state"`
-	CreatedAt     pgtype.Timestamp `json:"created_at"`
-	UpdatedAt     pgtype.Timestamp `json:"updated_at"`
+	ID            pgtype.UUID        `json:"id"`
+	Title         string             `json:"title"`
+	Severity      AlertSeverity      `json:"severity"`
+	Status        AlertStatus        `json:"status"`
+	SourceKind    SourceKind         `json:"source_kind"`
+	Reporter      pgtype.Text        `json:"reporter"`
+	AssigneeID    pgtype.UUID        `json:"assignee_id"`
+	TeamID        pgtype.UUID        `json:"team_id"`
+	Payload       json.RawMessage    `json:"payload"`
+	Tags          []string           `json:"tags"`
+	Triage        []byte             `json:"triage"`
+	ClosureNote   pgtype.Text        `json:"closure_note"`
+	Fingerprint   string             `json:"fingerprint"`
+	DedupCount    int32              `json:"dedup_count"`
+	LastSeen      pgtype.Timestamp   `json:"last_seen"`
+	TriagedAt     pgtype.Timestamp   `json:"triaged_at"`
+	SlaDeadline   pgtype.Timestamp   `json:"sla_deadline"`
+	SlaBreachedAt pgtype.Timestamp   `json:"sla_breached_at"`
+	SlaState      SlaState           `json:"sla_state"`
+	CreatedAt     pgtype.Timestamp   `json:"created_at"`
+	UpdatedAt     pgtype.Timestamp   `json:"updated_at"`
+	DeletedAt     pgtype.Timestamptz `json:"deleted_at"`
 }
 
 type AlertEvent struct {
@@ -662,19 +663,20 @@ type Edge struct {
 }
 
 type Incident struct {
-	ID            pgtype.UUID      `json:"id"`
-	Title         string           `json:"title"`
-	Severity      AlertSeverity    `json:"severity"`
-	Status        IncidentStatus   `json:"status"`
-	AssigneeID    pgtype.UUID      `json:"assignee_id"`
-	TeamID        pgtype.UUID      `json:"team_id"`
-	Tags          []string         `json:"tags"`
-	ResolvedAt    pgtype.Timestamp `json:"resolved_at"`
-	SlaDeadline   pgtype.Timestamp `json:"sla_deadline"`
-	SlaBreachedAt pgtype.Timestamp `json:"sla_breached_at"`
-	SlaState      SlaState         `json:"sla_state"`
-	CreatedAt     pgtype.Timestamp `json:"created_at"`
-	UpdatedAt     pgtype.Timestamp `json:"updated_at"`
+	ID            pgtype.UUID        `json:"id"`
+	Title         string             `json:"title"`
+	Severity      AlertSeverity      `json:"severity"`
+	Status        IncidentStatus     `json:"status"`
+	AssigneeID    pgtype.UUID        `json:"assignee_id"`
+	TeamID        pgtype.UUID        `json:"team_id"`
+	Tags          []string           `json:"tags"`
+	ResolvedAt    pgtype.Timestamp   `json:"resolved_at"`
+	SlaDeadline   pgtype.Timestamp   `json:"sla_deadline"`
+	SlaBreachedAt pgtype.Timestamp   `json:"sla_breached_at"`
+	SlaState      SlaState           `json:"sla_state"`
+	CreatedAt     pgtype.Timestamp   `json:"created_at"`
+	UpdatedAt     pgtype.Timestamp   `json:"updated_at"`
+	DeletedAt     pgtype.Timestamptz `json:"deleted_at"`
 }
 
 type IncidentAlert struct {

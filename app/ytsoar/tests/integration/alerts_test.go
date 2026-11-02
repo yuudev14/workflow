@@ -102,4 +102,20 @@ func TestAlerts(t *testing.T) {
 			assert.Contains(t, ids(linked["linked_alerts"]), id)
 		})
 	})
+
+	t.Run("DELETE /alerts/:id", func(t *testing.T) {
+		alert := J{"title": unique("deleted"), "severity": "low", "source_kind": "edr"}
+		deleted := c.create(t, base, alert)["id"].(string)
+		c.expectAll(t, []request{
+			{"deletes the alert", http.MethodDelete, base + "/" + deleted, nil, http.StatusNoContent},
+			{"hides the alert", http.MethodGet, base + "/" + deleted, nil, http.StatusNotFound},
+			{"returns 404 when the alert is already deleted", http.MethodDelete, base + "/" + deleted, nil, http.StatusNotFound},
+		})
+		t.Run("leaves the alert out of the list", func(t *testing.T) {
+			assert.Empty(t, items(c.get(t, base+"?q="+alert["title"].(string))))
+		})
+		t.Run("makes a new alert for the same fingerprint", func(t *testing.T) {
+			assert.NotEqual(t, deleted, c.create(t, base, alert)["id"])
+		})
+	})
 }

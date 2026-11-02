@@ -29,6 +29,7 @@ func (h *AlertHandler) RegisterRoutes(
 		r.POST("/run", requirePermission(domain.ModuleAlerts, domain.ActionExecute), h.Run)
 
 		r.PATCH("/:alert_id", updateAlerts, h.Update)
+		r.DELETE("/:alert_id", requirePermission(domain.ModuleAlerts, domain.ActionDelete), h.Delete)
 		r.PATCH("/:alert_id/status", updateAlerts, h.UpdateStatus)
 
 		r.POST("/:alert_id/notes", updateAlerts, h.AddNote)

@@ -22,7 +22,7 @@ VALUES (
     $5,
     COALESCE($6::text[], '{}')
 )
-RETURNING id, title, severity, status, assignee_id, team_id, tags, resolved_at, sla_deadline, sla_breached_at, sla_state, created_at, updated_at
+RETURNING id, title, severity, status, assignee_id, team_id, tags, resolved_at, sla_deadline, sla_breached_at, sla_state, created_at, updated_at, deleted_at
 `
 
 type CreateIncidentParams struct {
@@ -58,6 +58,7 @@ func (q *Queries) CreateIncident(ctx context.Context, arg CreateIncidentParams) 
 		&i.SlaState,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.DeletedAt,
 	)
 	return i, err
 }
@@ -92,7 +93,7 @@ func (q *Queries) DeleteIncidentNote(ctx context.Context, id pgtype.UUID) (int64
 }
 
 const getIncidentById = `-- name: GetIncidentById :one
-SELECT id, title, severity, status, assignee_id, team_id, tags, resolved_at, sla_deadline, sla_breached_at, sla_state, created_at, updated_at FROM incidents WHERE id = $1
+SELECT id, title, severity, status, assignee_id, team_id, tags, resolved_at, sla_deadline, sla_breached_at, sla_state, created_at, updated_at, deleted_at FROM incidents WHERE id = $1 AND deleted_at IS NULL
 `
 
 func (q *Queries) GetIncidentById(ctx context.Context, id pgtype.UUID) (Incident, error) {
@@ -112,6 +113,7 @@ func (q *Queries) GetIncidentById(ctx context.Context, id pgtype.UUID) (Incident
 		&i.SlaState,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.DeletedAt,
 	)
 	return i, err
 }
@@ -348,6 +350,18 @@ func (q *Queries) ListIncidentNotes(ctx context.Context, incidentID pgtype.UUID)
 	return items, nil
 }
 
+const softDeleteIncident = `-- name: SoftDeleteIncident :execrows
+UPDATE incidents SET deleted_at = NOW(), updated_at = NOW() WHERE id = $1 AND deleted_at IS NULL
+`
+
+func (q *Queries) SoftDeleteIncident(ctx context.Context, id pgtype.UUID) (int64, error) {
+	result, err := q.db.Exec(ctx, softDeleteIncident, id)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const updateIncident = `-- name: UpdateIncident :one
 UPDATE incidents
 SET
@@ -369,7 +383,7 @@ SET
     END,
     updated_at = NOW()
 WHERE id = $9
-RETURNING id, title, severity, status, assignee_id, team_id, tags, resolved_at, sla_deadline, sla_breached_at, sla_state, created_at, updated_at
+RETURNING id, title, severity, status, assignee_id, team_id, tags, resolved_at, sla_deadline, sla_breached_at, sla_state, created_at, updated_at, deleted_at
 `
 
 type UpdateIncidentParams struct {
@@ -411,6 +425,7 @@ func (q *Queries) UpdateIncident(ctx context.Context, arg UpdateIncidentParams) 
 		&i.SlaState,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.DeletedAt,
 	)
 	return i, err
 }
@@ -453,7 +468,7 @@ SET
     END,
     updated_at = NOW()
 WHERE id = $2
-RETURNING id, title, severity, status, assignee_id, team_id, tags, resolved_at, sla_deadline, sla_breached_at, sla_state, created_at, updated_at
+RETURNING id, title, severity, status, assignee_id, team_id, tags, resolved_at, sla_deadline, sla_breached_at, sla_state, created_at, updated_at, deleted_at
 `
 
 type UpdateIncidentStatusParams struct {
@@ -478,6 +493,7 @@ func (q *Queries) UpdateIncidentStatus(ctx context.Context, arg UpdateIncidentSt
 		&i.SlaState,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.DeletedAt,
 	)
 	return i, err
 }

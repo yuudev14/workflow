@@ -208,6 +208,20 @@ func (mr *MockIncidentRepositoryMockRecorder) ListNotes(ctx, incidentID any) *go
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListNotes", reflect.TypeOf((*MockIncidentRepository)(nil).ListNotes), ctx, incidentID)
 }
 
+// SoftDelete mocks base method.
+func (m *MockIncidentRepository) SoftDelete(ctx context.Context, id uuid.UUID) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "SoftDelete", ctx, id)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// SoftDelete indicates an expected call of SoftDelete.
+func (mr *MockIncidentRepositoryMockRecorder) SoftDelete(ctx, id any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SoftDelete", reflect.TypeOf((*MockIncidentRepository)(nil).SoftDelete), ctx, id)
+}
+
 // Summary mocks base method.
 func (m *MockIncidentRepository) Summary(ctx context.Context, rng types.ResolvedRange) (incidents.IncidentsSummary, error) {
 	m.ctrl.T.Helper()
