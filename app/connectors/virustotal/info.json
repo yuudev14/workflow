@@ -1,0 +1,220 @@
+{
+  "name": "VirusTotal",
+  "id": "virustotal",
+  "runtime": "python",
+  "configuration": {
+    "fields": [
+      {
+        "title": "API key",
+        "description": "Your VirusTotal API key (free tier works).",
+        "name": "api_key",
+        "type": "password",
+        "required": true,
+        "editable": true,
+        "visible": true,
+        "tooltip": "Your VirusTotal API key (free tier works)."
+      },
+      {
+        "title": "Base URL",
+        "description": "The API address. Change it for a proxy or a test server.",
+        "name": "base_url",
+        "type": "text",
+        "required": false,
+        "editable": true,
+        "visible": true,
+        "tooltip": "The API address. Change it for a proxy or a test server.",
+        "value": "https://www.virustotal.com/api/v3"
+      }
+    ]
+  },
+  "operations": [
+    {
+      "operation": "ip_report",
+      "title": "IP report",
+      "description": "Returns the reputation of an IP address.",
+      "annotation": "ip_report",
+      "enabled": true,
+      "parameters": [
+        {
+          "title": "IP address",
+          "name": "ip",
+          "description": "The IP address. Supports templates.",
+          "required": true,
+          "editable": true,
+          "visible": true,
+          "type": "text",
+          "tooltip": "The IP address. Supports templates.",
+          "placeholder": "{{ var.input.records[0].payload.ip }}"
+        }
+      ],
+      "output": [
+        {
+          "name": "found",
+          "type": "boolean",
+          "description": "False when VirusTotal does not know the object"
+        },
+        {
+          "name": "malicious",
+          "type": "number",
+          "description": "Engines that flag it as malicious"
+        },
+        {
+          "name": "suspicious",
+          "type": "number",
+          "description": "Engines that flag it as suspicious"
+        },
+        {
+          "name": "reputation",
+          "type": "number",
+          "description": "Community score"
+        },
+        {
+          "name": "stats",
+          "type": "object",
+          "description": "All analysis counts"
+        }
+      ]
+    },
+    {
+      "operation": "domain_report",
+      "title": "Domain report",
+      "description": "Returns the reputation of a domain.",
+      "annotation": "domain_report",
+      "enabled": true,
+      "parameters": [
+        {
+          "title": "Domain",
+          "name": "domain",
+          "description": "The domain name.",
+          "required": true,
+          "editable": true,
+          "visible": true,
+          "type": "text",
+          "tooltip": "The domain name.",
+          "placeholder": "example.com"
+        }
+      ],
+      "output": [
+        {
+          "name": "found",
+          "type": "boolean",
+          "description": "False when VirusTotal does not know the object"
+        },
+        {
+          "name": "malicious",
+          "type": "number",
+          "description": "Engines that flag it as malicious"
+        },
+        {
+          "name": "suspicious",
+          "type": "number",
+          "description": "Engines that flag it as suspicious"
+        },
+        {
+          "name": "reputation",
+          "type": "number",
+          "description": "Community score"
+        },
+        {
+          "name": "stats",
+          "type": "object",
+          "description": "All analysis counts"
+        }
+      ]
+    },
+    {
+      "operation": "url_report",
+      "title": "URL report",
+      "description": "Returns the reputation of a URL.",
+      "annotation": "url_report",
+      "enabled": true,
+      "parameters": [
+        {
+          "title": "URL",
+          "name": "url",
+          "description": "The full URL.",
+          "required": true,
+          "editable": true,
+          "visible": true,
+          "type": "text",
+          "tooltip": "The full URL.",
+          "placeholder": "https://example.com/login"
+        }
+      ],
+      "output": [
+        {
+          "name": "found",
+          "type": "boolean",
+          "description": "False when VirusTotal does not know the object"
+        },
+        {
+          "name": "malicious",
+          "type": "number",
+          "description": "Engines that flag it as malicious"
+        },
+        {
+          "name": "suspicious",
+          "type": "number",
+          "description": "Engines that flag it as suspicious"
+        },
+        {
+          "name": "reputation",
+          "type": "number",
+          "description": "Community score"
+        },
+        {
+          "name": "stats",
+          "type": "object",
+          "description": "All analysis counts"
+        }
+      ]
+    },
+    {
+      "operation": "file_report",
+      "title": "File report",
+      "description": "Returns the reputation of a file hash.",
+      "annotation": "file_report",
+      "enabled": true,
+      "parameters": [
+        {
+          "title": "File hash",
+          "name": "hash",
+          "description": "An MD5, SHA-1 or SHA-256 hash.",
+          "required": true,
+          "editable": true,
+          "visible": true,
+          "type": "text",
+          "tooltip": "An MD5, SHA-1 or SHA-256 hash.",
+          "placeholder": ""
+        }
+      ],
+      "output": [
+        {
+          "name": "found",
+          "type": "boolean",
+          "description": "False when VirusTotal does not know the object"
+        },
+        {
+          "name": "malicious",
+          "type": "number",
+          "description": "Engines that flag it as malicious"
+        },
+        {
+          "name": "suspicious",
+          "type": "number",
+          "description": "Engines that flag it as suspicious"
+        },
+        {
+          "name": "reputation",
+          "type": "number",
+          "description": "Community score"
+        },
+        {
+          "name": "stats",
+          "type": "object",
+          "description": "All analysis counts"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,74 @@
+{
+  "name": "IPinfo",
+  "id": "ipinfo",
+  "runtime": "python",
+  "configuration": {
+    "fields": [
+      {
+        "title": "Token",
+        "description": "Your IPinfo token. Without it, the free limit is low.",
+        "name": "token",
+        "type": "password",
+        "required": false,
+        "editable": true,
+        "visible": true,
+        "tooltip": "Your IPinfo token. Without it, the free limit is low."
+      },
+      {
+        "title": "Base URL",
+        "description": "The API address. Change it for a proxy or a test server.",
+        "name": "base_url",
+        "type": "text",
+        "required": false,
+        "editable": true,
+        "visible": true,
+        "tooltip": "The API address. Change it for a proxy or a test server.",
+        "value": "https://ipinfo.io"
+      }
+    ]
+  },
+  "operations": [
+    {
+      "operation": "lookup_ip",
+      "title": "Look up IP",
+      "description": "Returns the location and the network of an IP address.",
+      "annotation": "lookup_ip",
+      "enabled": true,
+      "parameters": [
+        {
+          "title": "IP address",
+          "name": "ip",
+          "description": "The IP address. Supports templates.",
+          "required": true,
+          "editable": true,
+          "visible": true,
+          "type": "text",
+          "tooltip": "The IP address. Supports templates.",
+          "placeholder": "{{ var.input.records[0].payload.ip }}"
+        }
+      ],
+      "output": [
+        {
+          "name": "country",
+          "type": "string",
+          "description": "Country code"
+        },
+        {
+          "name": "city",
+          "type": "string",
+          "description": "City"
+        },
+        {
+          "name": "org",
+          "type": "string",
+          "description": "AS number and name"
+        },
+        {
+          "name": "hostname",
+          "type": "string",
+          "description": "Reverse DNS name"
+        }
+      ]
+    }
+  ]
+}

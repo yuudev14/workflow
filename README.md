@@ -188,6 +188,10 @@ If a connector has both `connector.ts` and `connector.js`, the system uses the `
 
 **To start a new connector**, copy a template: `app/connectors/sample` (Python), `sample_js` (JavaScript) or `sample_ts` (TypeScript). You can also upload a zip file with `POST /api/v1/connectors` (multipart field `file`). The API validates the zip file, installs its dependencies and records an audit row. `DELETE /api/v1/connectors/<id>` removes the connector.
 
+Python connectors call an outside API with `self.http(method, url, ...)`. It raises on an HTTP error, and with `missing_ok=True` a 404 returns `None`. Put a `test_connector.py` (stdlib `unittest` and `unittest.mock`) in the folder. Run all of them in `app` with `python3 -m unittest connectors/*/test_connector.py`. CI runs the same command.
+
+The enrichment connectors are `abuseipdb`, `virustotal`, `urlscan`, `ipinfo` and `rdap`. Each has a `base_url` config field for a proxy or a test server.
+
 A parameter can use the output of an earlier node: `{{ var.steps["node name"] }}`.
 
 For quick logic, use the two built-in code nodes. They do not need a full connector. Use `code_snippet_py` (set `result = ...`) or `code_snippet_js` (`const result = ...`, and `await` works). These nodes need no files. The sandbox implements them directly. Snippets accept plain Python and JavaScript only. They do not accept TypeScript.
