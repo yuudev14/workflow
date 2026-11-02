@@ -14,6 +14,8 @@ type IncidentRepository interface {
 	List(ctx context.Context, filter IncidentFilter) ([]IncidentListItem, *string, error)
 	Count(ctx context.Context, filter IncidentFilter) (int, error)
 	GetByID(ctx context.Context, id uuid.UUID) (domain.Incident, error)
+	// SoftDelete hides the row from every read. It returns ErrIncidentNotFound when no row matched.
+	SoftDelete(ctx context.Context, id uuid.UUID) error
 	GetDetail(ctx context.Context, id uuid.UUID) (IncidentDetail, error)
 	Create(ctx context.Context, params CreateParams) (domain.Incident, error)
 	Update(ctx context.Context, id uuid.UUID, params UpdateParams) (domain.Incident, error)

@@ -64,6 +64,15 @@ func (s *Service) GetByID(ctx context.Context, id uuid.UUID) (IncidentDetail, er
 	return s.repo.GetDetail(ctx, id)
 }
 
+// Delete is a soft delete: the incident leaves every list but stays in the database for the audit.
+func (s *Service) Delete(ctx context.Context, id uuid.UUID, actorID *uuid.UUID) error {
+	if err := s.repo.SoftDelete(ctx, id); err != nil {
+		return err
+	}
+	s.logger.Infow("incident deleted", "incident_id", id, "actor_id", actorID)
+	return nil
+}
+
 func (s *Service) Summary(ctx context.Context, rng types.ResolvedRange) (IncidentsSummary, error) {
 	return s.repo.Summary(ctx, rng)
 }

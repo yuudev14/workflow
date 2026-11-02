@@ -25,7 +25,7 @@ func (q *Queries) DeleteAlertNote(ctx context.Context, id pgtype.UUID) (int64, e
 }
 
 const getAlertById = `-- name: GetAlertById :one
-SELECT id, title, severity, status, source_kind, reporter, assignee_id, team_id, payload, tags, triage, closure_note, fingerprint, dedup_count, last_seen, triaged_at, sla_deadline, sla_breached_at, sla_state, created_at, updated_at FROM alerts WHERE id = $1
+SELECT id, title, severity, status, source_kind, reporter, assignee_id, team_id, payload, tags, triage, closure_note, fingerprint, dedup_count, last_seen, triaged_at, sla_deadline, sla_breached_at, sla_state, created_at, updated_at, deleted_at FROM alerts WHERE id = $1 AND deleted_at IS NULL
 `
 
 func (q *Queries) GetAlertById(ctx context.Context, id pgtype.UUID) (Alert, error) {
@@ -53,6 +53,7 @@ func (q *Queries) GetAlertById(ctx context.Context, id pgtype.UUID) (Alert, erro
 		&i.SlaState,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.DeletedAt,
 	)
 	return i, err
 }
@@ -225,6 +226,18 @@ func (q *Queries) ListAlertNotes(ctx context.Context, alertID pgtype.UUID) ([]Li
 	return items, nil
 }
 
+const softDeleteAlert = `-- name: SoftDeleteAlert :execrows
+UPDATE alerts SET deleted_at = NOW(), updated_at = NOW() WHERE id = $1 AND deleted_at IS NULL
+`
+
+func (q *Queries) SoftDeleteAlert(ctx context.Context, id pgtype.UUID) (int64, error) {
+	result, err := q.db.Exec(ctx, softDeleteAlert, id)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const updateAlert = `-- name: UpdateAlert :one
 UPDATE alerts
 SET
@@ -246,7 +259,7 @@ SET
     END,
     updated_at = NOW()
 WHERE id = $9
-RETURNING id, title, severity, status, source_kind, reporter, assignee_id, team_id, payload, tags, triage, closure_note, fingerprint, dedup_count, last_seen, triaged_at, sla_deadline, sla_breached_at, sla_state, created_at, updated_at
+RETURNING id, title, severity, status, source_kind, reporter, assignee_id, team_id, payload, tags, triage, closure_note, fingerprint, dedup_count, last_seen, triaged_at, sla_deadline, sla_breached_at, sla_state, created_at, updated_at, deleted_at
 `
 
 type UpdateAlertParams struct {
@@ -296,6 +309,7 @@ func (q *Queries) UpdateAlert(ctx context.Context, arg UpdateAlertParams) (Alert
 		&i.SlaState,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.DeletedAt,
 	)
 	return i, err
 }
@@ -342,7 +356,7 @@ SET
     END,
     updated_at = NOW()
 WHERE id = $3
-RETURNING id, title, severity, status, source_kind, reporter, assignee_id, team_id, payload, tags, triage, closure_note, fingerprint, dedup_count, last_seen, triaged_at, sla_deadline, sla_breached_at, sla_state, created_at, updated_at
+RETURNING id, title, severity, status, source_kind, reporter, assignee_id, team_id, payload, tags, triage, closure_note, fingerprint, dedup_count, last_seen, triaged_at, sla_deadline, sla_breached_at, sla_state, created_at, updated_at, deleted_at
 `
 
 type UpdateAlertStatusParams struct {
@@ -376,6 +390,7 @@ func (q *Queries) UpdateAlertStatus(ctx context.Context, arg UpdateAlertStatusPa
 		&i.SlaState,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.DeletedAt,
 	)
 	return i, err
 }
@@ -397,12 +412,12 @@ INSERT INTO alerts (
     COALESCE($10::timestamp, NOW()),
     COALESCE($10::timestamp, NOW())
 )
-ON CONFLICT (fingerprint) WHERE status IN ('new', 'investigating')
+ON CONFLICT (fingerprint) WHERE status IN ('new', 'investigating') AND deleted_at IS NULL
 DO UPDATE SET
     dedup_count = alerts.dedup_count + 1,
     last_seen = NOW(),
     updated_at = NOW()
-RETURNING id, title, severity, status, source_kind, reporter, assignee_id, team_id, payload, tags, triage, closure_note, fingerprint, dedup_count, last_seen, triaged_at, sla_deadline, sla_breached_at, sla_state, created_at, updated_at, (xmax = 0) AS inserted
+RETURNING id, title, severity, status, source_kind, reporter, assignee_id, team_id, payload, tags, triage, closure_note, fingerprint, dedup_count, last_seen, triaged_at, sla_deadline, sla_breached_at, sla_state, created_at, updated_at, deleted_at, (xmax = 0) AS inserted
 `
 
 type UpsertAlertParams struct {
@@ -419,28 +434,29 @@ type UpsertAlertParams struct {
 }
 
 type UpsertAlertRow struct {
-	ID            pgtype.UUID      `json:"id"`
-	Title         string           `json:"title"`
-	Severity      AlertSeverity    `json:"severity"`
-	Status        AlertStatus      `json:"status"`
-	SourceKind    SourceKind       `json:"source_kind"`
-	Reporter      pgtype.Text      `json:"reporter"`
-	AssigneeID    pgtype.UUID      `json:"assignee_id"`
-	TeamID        pgtype.UUID      `json:"team_id"`
-	Payload       json.RawMessage  `json:"payload"`
-	Tags          []string         `json:"tags"`
-	Triage        []byte           `json:"triage"`
-	ClosureNote   pgtype.Text      `json:"closure_note"`
-	Fingerprint   string           `json:"fingerprint"`
-	DedupCount    int32            `json:"dedup_count"`
-	LastSeen      pgtype.Timestamp `json:"last_seen"`
-	TriagedAt     pgtype.Timestamp `json:"triaged_at"`
-	SlaDeadline   pgtype.Timestamp `json:"sla_deadline"`
-	SlaBreachedAt pgtype.Timestamp `json:"sla_breached_at"`
-	SlaState      SlaState         `json:"sla_state"`
-	CreatedAt     pgtype.Timestamp `json:"created_at"`
-	UpdatedAt     pgtype.Timestamp `json:"updated_at"`
-	Inserted      bool             `json:"inserted"`
+	ID            pgtype.UUID        `json:"id"`
+	Title         string             `json:"title"`
+	Severity      AlertSeverity      `json:"severity"`
+	Status        AlertStatus        `json:"status"`
+	SourceKind    SourceKind         `json:"source_kind"`
+	Reporter      pgtype.Text        `json:"reporter"`
+	AssigneeID    pgtype.UUID        `json:"assignee_id"`
+	TeamID        pgtype.UUID        `json:"team_id"`
+	Payload       json.RawMessage    `json:"payload"`
+	Tags          []string           `json:"tags"`
+	Triage        []byte             `json:"triage"`
+	ClosureNote   pgtype.Text        `json:"closure_note"`
+	Fingerprint   string             `json:"fingerprint"`
+	DedupCount    int32              `json:"dedup_count"`
+	LastSeen      pgtype.Timestamp   `json:"last_seen"`
+	TriagedAt     pgtype.Timestamp   `json:"triaged_at"`
+	SlaDeadline   pgtype.Timestamp   `json:"sla_deadline"`
+	SlaBreachedAt pgtype.Timestamp   `json:"sla_breached_at"`
+	SlaState      SlaState           `json:"sla_state"`
+	CreatedAt     pgtype.Timestamp   `json:"created_at"`
+	UpdatedAt     pgtype.Timestamp   `json:"updated_at"`
+	DeletedAt     pgtype.Timestamptz `json:"deleted_at"`
+	Inserted      bool               `json:"inserted"`
 }
 
 // Dedup lives in the unique partial index alerts_open_fingerprint_idx, so the
@@ -483,6 +499,7 @@ func (q *Queries) UpsertAlert(ctx context.Context, arg UpsertAlertParams) (Upser
 		&i.SlaState,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.DeletedAt,
 		&i.Inserted,
 	)
 	return i, err

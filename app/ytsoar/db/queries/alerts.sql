@@ -1,5 +1,8 @@
 -- name: GetAlertById :one
-SELECT * FROM alerts WHERE id = $1;
+SELECT * FROM alerts WHERE id = $1 AND deleted_at IS NULL;
+
+-- name: SoftDeleteAlert :execrows
+UPDATE alerts SET deleted_at = NOW(), updated_at = NOW() WHERE id = $1 AND deleted_at IS NULL;
 
 -- Dedup lives in the unique partial index alerts_open_fingerprint_idx, so the
 -- ON CONFLICT predicate must repeat that index's WHERE verbatim to target it.
@@ -22,7 +25,7 @@ INSERT INTO alerts (
     COALESCE(sqlc.narg('created_at')::timestamp, NOW()),
     COALESCE(sqlc.narg('created_at')::timestamp, NOW())
 )
-ON CONFLICT (fingerprint) WHERE status IN ('new', 'investigating')
+ON CONFLICT (fingerprint) WHERE status IN ('new', 'investigating') AND deleted_at IS NULL
 DO UPDATE SET
     dedup_count = alerts.dedup_count + 1,
     last_seen = NOW(),

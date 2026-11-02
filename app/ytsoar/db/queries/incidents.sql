@@ -1,5 +1,8 @@
 -- name: GetIncidentById :one
-SELECT * FROM incidents WHERE id = $1;
+SELECT * FROM incidents WHERE id = $1 AND deleted_at IS NULL;
+
+-- name: SoftDeleteIncident :execrows
+UPDATE incidents SET deleted_at = NOW(), updated_at = NOW() WHERE id = $1 AND deleted_at IS NULL;
 
 -- name: CreateIncident :one
 INSERT INTO incidents (title, severity, status, assignee_id, team_id, tags)

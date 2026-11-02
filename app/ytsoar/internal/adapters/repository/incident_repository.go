@@ -102,6 +102,7 @@ func selectIncidents(columns string) sq.SelectBuilder {
 	return sq.Select(columns).
 		From("incidents i").
 		LeftJoin("users u ON u.id = i.assignee_id").
+		Where("i.deleted_at IS NULL").
 		PlaceholderFormat(sq.Dollar)
 }
 
@@ -183,7 +184,7 @@ func (r *IncidentRepositoryImpl) List(ctx context.Context, filter incidents.Inci
 
 func (r *IncidentRepositoryImpl) Count(ctx context.Context, filter incidents.IncidentFilter) (int, error) {
 	stmt, err := applyIncidentFilter(
-		sq.Select("count(*)").From("incidents i").PlaceholderFormat(sq.Dollar), filter)
+		sq.Select("count(*)").From("incidents i").Where("i.deleted_at IS NULL").PlaceholderFormat(sq.Dollar), filter)
 	if err != nil {
 		return 0, err
 	}
@@ -196,6 +197,17 @@ func (r *IncidentRepositoryImpl) GetByID(ctx context.Context, id uuid.UUID) (dom
 		return domain.Incident{}, mapNoRows(err, incidents.ErrIncidentNotFound)
 	}
 	return toDomainIncident(row), nil
+}
+
+func (r *IncidentRepositoryImpl) SoftDelete(ctx context.Context, id uuid.UUID) error {
+	rows, err := r.queriesFromContext(ctx).SoftDeleteIncident(ctx, toPgUUID(id))
+	if err != nil {
+		return err
+	}
+	if rows == 0 {
+		return incidents.ErrIncidentNotFound
+	}
+	return nil
 }
 
 func (r *IncidentRepositoryImpl) GetDetail(ctx context.Context, id uuid.UUID) (incidents.IncidentDetail, error) {
@@ -390,7 +402,7 @@ func (r *IncidentRepositoryImpl) Summary(ctx context.Context, rng types.Resolved
 		Range:       rng,
 	}
 
-	openFilter := sq.Expr("i.status NOT IN ('resolved', 'closed')")
+	openFilter := sq.Expr("i.status NOT IN ('resolved', 'closed') AND i.deleted_at IS NULL")
 
 	openTotal, err := CollectOneScalarFromSqlizer[int](ctx,
 		sq.Select("count(*)").From("incidents i").Where(openFilter).PlaceholderFormat(sq.Dollar),

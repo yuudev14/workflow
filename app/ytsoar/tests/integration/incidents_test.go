@@ -82,4 +82,13 @@ func TestIncidents(t *testing.T) {
 			c.expect(t, http.StatusAccepted, http.MethodPost, base+"/run", J{"playbook_id": newPlaybook(t, c), "record_ids": []string{id}})
 		})
 	})
+
+	t.Run("DELETE /incidents/:id", func(t *testing.T) {
+		deleted := c.create(t, base, J{"title": unique("deleted"), "severity": "low"})["id"].(string)
+		c.expectAll(t, []request{
+			{"deletes the incident", http.MethodDelete, base + "/" + deleted, nil, http.StatusNoContent},
+			{"hides the incident", http.MethodGet, base + "/" + deleted, nil, http.StatusNotFound},
+			{"returns 404 when the incident is already deleted", http.MethodDelete, base + "/" + deleted, nil, http.StatusNotFound},
+		})
+	})
 }

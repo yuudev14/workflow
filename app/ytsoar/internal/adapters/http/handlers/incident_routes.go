@@ -29,6 +29,7 @@ func (h *IncidentHandler) RegisterRoutes(
 		r.POST("/run", requirePermission(domain.ModuleIncidents, domain.ActionExecute), h.Run)
 
 		r.PATCH("/:incident_id", updateIncidents, h.Update)
+		r.DELETE("/:incident_id", requirePermission(domain.ModuleIncidents, domain.ActionDelete), h.Delete)
 		r.PATCH("/:incident_id/status", updateIncidents, h.UpdateStatus)
 
 		r.POST("/:incident_id/notes", updateIncidents, h.AddNote)

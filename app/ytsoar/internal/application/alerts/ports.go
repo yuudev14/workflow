@@ -14,6 +14,8 @@ type AlertRepository interface {
 	List(ctx context.Context, filter AlertFilter) ([]AlertListItem, *string, error)
 	Count(ctx context.Context, filter AlertFilter) (int, error)
 	GetByID(ctx context.Context, id uuid.UUID) (domain.Alert, error)
+	// SoftDelete hides the row from every read. It returns ErrAlertNotFound when no row matched.
+	SoftDelete(ctx context.Context, id uuid.UUID) error
 	GetDetail(ctx context.Context, id uuid.UUID) (AlertDetail, error)
 	Upsert(ctx context.Context, params UpsertParams) (alert domain.Alert, inserted bool, err error)
 	Update(ctx context.Context, id uuid.UUID, params UpdateParams) (domain.Alert, error)

@@ -265,3 +265,21 @@ func (h *IncidentHandler) Run(c *gin.Context) {
 	}
 	response.Response(http.StatusAccepted, message)
 }
+
+// Delete godoc
+// @Summary Soft delete an incident. It leaves every list but stays in the database.
+// @Tags incidents
+// @Router /api/v1/incidents/{incident_id} [delete]
+func (h *IncidentHandler) Delete(c *gin.Context) {
+	response := rest.Response{C: c}
+
+	id, ok := pathUUID(c, "incident_id")
+	if !ok {
+		return
+	}
+	if err := h.incidentService.Delete(c.Request.Context(), id, actorID(c)); err != nil {
+		response.Fail(h.logger, err)
+		return
+	}
+	c.Status(http.StatusNoContent)
+}
