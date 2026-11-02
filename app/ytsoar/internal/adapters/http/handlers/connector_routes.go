@@ -26,5 +26,11 @@ func (h *ConnectorHandler) RegisterRoutes(
 		group.DELETE("/:connector_id",
 			requirePermission(domain.ModuleConnectors, domain.ActionDelete),
 			h.DeleteConnector)
+
+		updateConnectors := requirePermission(domain.ModuleConnectors, domain.ActionUpdate)
+		group.GET("/:connector_id/configs", readConnectors, h.ListConfigs)
+		group.POST("/:connector_id/configs", updateConnectors, h.CreateConfig)
+		group.PATCH("/:connector_id/configs/:config_id", updateConnectors, h.UpdateConfig)
+		group.DELETE("/:connector_id/configs/:config_id", updateConnectors, h.DeleteConfig)
 	}
 }

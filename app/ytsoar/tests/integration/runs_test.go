@@ -1,6 +1,7 @@
 package integration
 
 import (
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -117,6 +118,51 @@ func TestRuns(t *testing.T) {
 			timeline := alert["timeline"].([]any)
 			assert.Contains(t, timeline[len(timeline)-1].(J)["actor_username"], actor)
 			assert.Contains(t, alert["notes"].([]any)[0].(J)["author_username"], actor)
+		})
+	})
+
+	t.Run("a connector step", func(t *testing.T) {
+		t.Run("gets its config from the database", func(t *testing.T) {
+			code, out := c.upload(t, "/api/v1/connectors?replace=true", zipDir(t, "../../../connectors/sample"))
+			require.Equal(t, http.StatusCreated, code, out)
+			name := unique("run")
+			c.create(t, "/api/v1/connectors/sample/configs", J{"name": name, "config": J{"server_url": "https://from-db", "api_key": "k"}})
+
+			run, tasks := runPlaybook(t, c, []J{{
+				"name": "sample", "operation": "operation1", "connector_id": "sample", "connector_name": "Sample",
+				"config": name, "parameters": J{},
+			}}, J{"start": []string{"sample"}})
+			assert.Equal(t, "success", run["status"], tasks["sample"]["error"])
+			assert.Contains(t, toJSON(tasks["sample"]["result"]), "https://from-db")
+		})
+
+		t.Run("posts to the Slack webhook of the default config", func(t *testing.T) {
+			posted := make(chan string, 1)
+			hook := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				body, _ := io.ReadAll(r.Body)
+				posted <- string(body)
+				_, _ = w.Write([]byte("ok"))
+			}))
+			defer hook.Close()
+			code, out := c.upload(t, "/api/v1/connectors?replace=true", zipDir(t, "../../../connectors/slack"))
+			require.Equal(t, http.StatusCreated, code, out)
+			c.create(t, "/api/v1/connectors/slack/configs", J{"name": unique("hook"), "config": J{"webhook_url": hook.URL}})
+
+			run, tasks := runPlaybook(t, c, []J{{
+				"name": "notify", "operation": "send_message", "connector_id": "slack", "connector_name": "Slack",
+				"parameters": J{"text": "hello {{ 'soc' }}"},
+			}}, J{"start": []string{"notify"}})
+			assert.Equal(t, "success", run["status"], tasks["notify"]["error"])
+			assert.JSONEq(t, `{"text": "hello soc"}`, <-posted)
+		})
+
+		t.Run("fails when the named config does not exist", func(t *testing.T) {
+			run, tasks := runPlaybook(t, c, []J{{
+				"name": "sample", "operation": "operation1", "connector_id": "sample", "connector_name": "Sample",
+				"config": "missing", "parameters": J{},
+			}}, J{"start": []string{"sample"}})
+			assert.Equal(t, "failed", run["status"])
+			assert.Contains(t, tasks["sample"]["error"], "missing")
 		})
 	})
 

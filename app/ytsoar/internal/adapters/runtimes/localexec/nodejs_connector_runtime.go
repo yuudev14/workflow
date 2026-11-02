@@ -8,7 +8,6 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/pelletier/go-toml/v2"
 	"github.com/yuudev14/ytsoar/internal/application/execution"
 	"github.com/yuudev14/ytsoar/internal/logger"
 )
@@ -21,9 +20,8 @@ var nodeConnectorHarness string
 var nodeConnectorEntries = []string{"connector.ts", "connector.js"}
 
 // NodeJSConnectorRuntime runs a JS or TS connector from <tree>/<id>/connector.{ts,js} in a
-// new `node` process. It runs in the SANDBOX and fits execution.TaskRuntime. The TOML
-// config is parsed here in Go (same layout as the Python tree: <id>/configs/<name>.toml)
-// and passed to the harness as JSON.
+// new `node` process. It runs in the SANDBOX and fits execution.TaskRuntime. The opened
+// config goes to the harness as JSON.
 type NodeJSConnectorRuntime struct {
 	logger        logger.Logger
 	dir           string
@@ -53,9 +51,9 @@ func (r *NodeJSConnectorRuntime) Execute(ctx context.Context, req execution.Exec
 	if err != nil {
 		return nil, err
 	}
-	config, err := r.loadConfig(*req.Task.ConnectorID, req.Task.Config)
-	if err != nil {
-		return nil, err
+	config := req.Config
+	if config == nil {
+		config = map[string]any{}
 	}
 
 	payload, err := json.Marshal(map[string]any{
@@ -80,22 +78,6 @@ func (r *NodeJSConnectorRuntime) Execute(ctx context.Context, req execution.Exec
 		return nil, err
 	}
 	return json.RawMessage(out), nil
-}
-
-func (r *NodeJSConnectorRuntime) loadConfig(connectorID string, configName *string) (map[string]any, error) {
-	config := map[string]any{}
-	if configName == nil || *configName == "" {
-		return config, nil
-	}
-	path := filepath.Join(r.dir, connectorID, "configs", *configName+".toml")
-	raw, err := os.ReadFile(path)
-	if err != nil {
-		return nil, fmt.Errorf("could not read connector config %s: %w", path, err)
-	}
-	if err := toml.Unmarshal(raw, &config); err != nil {
-		return nil, fmt.Errorf("invalid connector config %s: %w", path, err)
-	}
-	return config, nil
 }
 
 // IsNodeJSConnector says if info.json has "runtime": "node" and the connector ships a

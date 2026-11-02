@@ -36,6 +36,7 @@ type Executor struct {
 	playbookService playbooks.PlaybookService
 	resolver        RuntimeResolver
 	status          StatusPublisher
+	configs         ConfigSource
 	maxParallel     int
 	nodeTimeout     time.Duration
 	// wait before each retry to save the final status
@@ -48,6 +49,12 @@ type Option func(*Executor)
 // WithFinalWriteDelays sets the waits between final status saves. Tests use short ones.
 func WithFinalWriteDelays(delays ...time.Duration) Option {
 	return func(e *Executor) { e.finalWriteDelays = delays }
+}
+
+// WithConfigSource loads the connector configs from the database. Without it, every step
+// gets an empty config.
+func WithConfigSource(configs ConfigSource) Option {
+	return func(e *Executor) { e.configs = configs }
 }
 
 // defaultFinalWriteDelays: about 30 seconds in total.
@@ -242,6 +249,16 @@ func (e *Executor) processNode(ctx context.Context, msg domain.TaskMessage, node
 		return nil, err
 	}
 
+	var config map[string]any
+	if e.configs != nil {
+		if config, err = e.configs.RunConfig(ctx, *task.ConnectorID, task.Config); err != nil {
+			if statusErr := e.setTaskStatus(ctx, msg, task, StatusFailed, nil, err); statusErr != nil {
+				e.logger.Errorw("failed to persist task failure", "node", node, "error", statusErr)
+			}
+			return nil, err
+		}
+	}
+
 	nodeCtx, cancel := context.WithTimeout(ctx, e.nodeTimeout)
 	defer cancel()
 	raw, err := runtime.Execute(nodeCtx, ExecutionRequest{
@@ -251,6 +268,7 @@ func (e *Executor) processNode(ctx context.Context, msg domain.TaskMessage, node
 		PlaybookName:      msg.PlaybookName,
 		Timeout:           e.nodeTimeout,
 		Input:             msg.Input.Resolved(),
+		Config:            config,
 	})
 	if err != nil {
 		if statusErr := e.setTaskStatus(ctx, msg, task, StatusFailed, nil, err); statusErr != nil {

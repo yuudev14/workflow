@@ -96,6 +96,10 @@ func TestConnectorRouteGrants(t *testing.T) {
 		{http.MethodGet, "/api/v1/connectors/abc", "connectors.read"},
 		{http.MethodPost, "/api/v1/connectors", "connectors.create"},
 		{http.MethodDelete, "/api/v1/connectors/abc", "connectors.delete"},
+		{http.MethodGet, "/api/v1/connectors/abc/configs", "connectors.read"},
+		{http.MethodPost, "/api/v1/connectors/abc/configs", "connectors.update"},
+		{http.MethodPatch, "/api/v1/connectors/abc/configs/def", "connectors.update"},
+		{http.MethodDelete, "/api/v1/connectors/abc/configs/def", "connectors.update"},
 	}
 
 	for _, tc := range cases {

@@ -5,11 +5,10 @@ import (
 	"encoding/json"
 
 	"github.com/google/uuid"
+	"github.com/yuudev14/ytsoar/internal/application/contracts"
 	"github.com/yuudev14/ytsoar/internal/domain"
 	"github.com/yuudev14/ytsoar/internal/domain/apperr"
 )
-
-const maskedSecret = "********"
 
 var secretKeys = []string{"client_secret", "bind_password"}
 
@@ -49,7 +48,7 @@ func (s *Service) CreateProvider(ctx context.Context, actorID uuid.UUID, input P
 			return AdminProvider{}, err
 		}
 	}
-	config, err = mapValues(config, s.secrets.Seal)
+	config, err = contracts.SealValues(s.secrets, config)
 	if err != nil {
 		return AdminProvider{}, err
 	}
@@ -86,10 +85,10 @@ func (s *Service) UpdateProvider(ctx context.Context, actorID, id uuid.UUID, inp
 				return AdminProvider{}, err
 			}
 		}
-		if config, err = mapValues(config, s.secrets.Seal); err != nil {
+		if config, err = contracts.SealValues(s.secrets, config); err != nil {
 			return AdminProvider{}, err
 		}
-		config = preserveMaskedSecret(existing.Config, config)
+		config = contracts.KeepMasked(existing.Config, config)
 	}
 
 	p, err := s.providers.Update(ctx, id, UpdateProviderParams{
@@ -109,86 +108,14 @@ func (s *Service) UpdateProvider(ctx context.Context, actorID, id uuid.UUID, inp
 	return s.adminProviderOf(p), nil
 }
 
-// preserveMaskedSecret puts the stored value back for each masked secret, so a round trip
-// through the masked admin view cannot wipe the real secret. On any parse problem it returns
-// the incoming config as it is, and the validation after it catches a really broken config.
-func preserveMaskedSecret(existingConfig, incoming json.RawMessage) json.RawMessage {
-	var next, prev map[string]any
-	if err := json.Unmarshal(incoming, &next); err != nil {
-		return incoming
-	}
-	_ = json.Unmarshal(existingConfig, &prev)
-	for _, key := range secretKeys {
-		if secret, ok := next[key].(string); ok && secret == maskedSecret {
-			next[key] = prev[key]
-		}
-	}
-	merged, err := json.Marshal(next)
-	if err != nil {
-		return incoming
-	}
-	return merged
-}
-
-// adminProviderOf opens the config best effort, so a row that does not open still shows in
-// the list and the admin can type its values again.
 func (s *Service) adminProviderOf(p AuthProvider) AdminProvider {
-	config, err := mapValues(p.Config, func(v string) (string, error) {
-		if plain, err := s.secrets.Open(v); err == nil {
-			return plain, nil
-		}
-		return v, nil
-	})
-	if err != nil {
-		config = p.Config
-	}
 	return AdminProvider{
 		ID:      p.ID.String(),
 		Type:    string(p.Type),
 		Name:    p.Name,
 		Enabled: p.Enabled,
-		Config:  maskSecrets(config),
+		Config:  contracts.MaskedView(s.secrets, p.Config, secretKeys),
 	}
-}
-
-// maskSecrets replaces client_secret and bind_password with a sentinel, so the admin view
-// never sends a live credential to the browser.
-func maskSecrets(raw json.RawMessage) json.RawMessage {
-	var m map[string]any
-	if err := json.Unmarshal(raw, &m); err != nil {
-		return json.RawMessage(`{}`)
-	}
-	for _, key := range secretKeys {
-		if v, ok := m[key].(string); ok && v != "" {
-			m[key] = maskedSecret
-		}
-	}
-	out, err := json.Marshal(m)
-	if err != nil {
-		return json.RawMessage(`{}`)
-	}
-	return out
-}
-
-// mapValues runs fn (seal or open) on each top-level string value. It skips the masked
-// sentinel, so preserveMaskedSecret can put the stored value back.
-func mapValues(raw json.RawMessage, fn func(string) (string, error)) (json.RawMessage, error) {
-	var m map[string]any
-	if err := json.Unmarshal(raw, &m); err != nil {
-		return nil, apperr.New(apperr.Invalid, "provider config must be a JSON object")
-	}
-	for key, val := range m {
-		v, ok := val.(string)
-		if !ok || v == "" || v == maskedSecret {
-			continue
-		}
-		out, err := fn(v)
-		if err != nil {
-			return nil, apperr.Wrap(apperr.Invalid, "provider config cannot be decrypted, enter it again", err)
-		}
-		m[key] = out
-	}
-	return json.Marshal(m)
 }
 
 func parseProviderType(t string) (domain.AuthProvider, error) {

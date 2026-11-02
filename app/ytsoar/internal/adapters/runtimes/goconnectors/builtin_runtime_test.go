@@ -5,8 +5,6 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
-	"os"
-	"path/filepath"
 	"testing"
 	"time"
 
@@ -56,21 +54,16 @@ func request(t *testing.T, connectorID string, operation string, params map[stri
 	}
 }
 
-func TestBuiltinRuntimeTemplatesParamsAndLoadsConfig(t *testing.T) {
-	dir := t.TempDir()
-	require.NoError(t, os.MkdirAll(filepath.Join(dir, "echo", "configs"), 0o755))
-	require.NoError(t, os.WriteFile(filepath.Join(dir, "echo", "configs", "default.toml"),
-		[]byte("key = \"value\"\n"), 0o644))
-
-	registry := goconnectors.NewBuiltinRuntime(logger.NewNop(), templating.NewGonjaEngine(), dir)
+func TestBuiltinRuntimeTemplatesParamsAndPassesConfig(t *testing.T) {
+	registry := goconnectors.NewBuiltinRuntime(logger.NewNop(), templating.NewGonjaEngine())
 	echo := &echoConnector{}
 	registry.Register("echo", echo)
 
-	configName := "default"
-	raw, err := registry.Execute(context.Background(),
-		request(t, "echo", "run",
-			map[string]any{"msg": `{{ var.steps["prev node"] }}`},
-			map[string]any{"prev node": "hi"}, &configName))
+	req := request(t, "echo", "run",
+		map[string]any{"msg": `{{ var.steps["prev node"] }}`},
+		map[string]any{"prev node": "hi"}, nil)
+	req.Config = map[string]any{"key": "value"}
+	raw, err := registry.Execute(context.Background(), req)
 
 	require.NoError(t, err)
 	var decoded map[string]any
@@ -82,7 +75,7 @@ func TestBuiltinRuntimeTemplatesParamsAndLoadsConfig(t *testing.T) {
 }
 
 func TestBuiltinRuntimeUnknownConnector(t *testing.T) {
-	registry := goconnectors.NewBuiltinRuntime(logger.NewNop(), templating.NewGonjaEngine(), "")
+	registry := goconnectors.NewBuiltinRuntime(logger.NewNop(), templating.NewGonjaEngine())
 
 	_, err := registry.Execute(context.Background(),
 		request(t, "ghost", "run", nil, nil, nil))
@@ -91,7 +84,7 @@ func TestBuiltinRuntimeUnknownConnector(t *testing.T) {
 }
 
 func TestBuiltinRuntimeIDs(t *testing.T) {
-	registry := goconnectors.NewBuiltinRuntime(logger.NewNop(), templating.NewGonjaEngine(), "")
+	registry := goconnectors.NewBuiltinRuntime(logger.NewNop(), templating.NewGonjaEngine())
 	registry.Register("http_request", goconnectors.NewHTTPRequestConnector())
 
 	assert.Equal(t, []string{"http_request"}, registry.IDs())

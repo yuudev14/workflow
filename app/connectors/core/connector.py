@@ -5,7 +5,6 @@ from collections import ChainMap
 import importlib
 import inspect
 import logging
-import tomllib
 from jinja2 import Template, Environment
 
 # self-contained: the connectors tree has no dependency on any host service
@@ -29,6 +28,23 @@ class Connector(ABC):
         raise NotImplementedError(
             f"execute function is not implemented in {self.__class__.__name__}"
         )
+
+    @staticmethod
+    def http(method: str, url: str, missing_ok: bool = False, **kwargs):
+        """Send a request and return the JSON body (or the text). A status of 400 or more
+        raises, but a 404 returns None when missing_ok is set."""
+        import requests  # only connectors that call out need it
+
+        kwargs.setdefault("timeout", 30)
+        response = requests.request(method, url, **kwargs)
+        if missing_ok and response.status_code == 404:
+            return None
+        if response.status_code >= 400:
+            raise RuntimeError(f"{method} {url} returned {response.status_code}: {response.text[:300]}")
+        try:
+            return response.json()
+        except ValueError:
+            return response.text
 
     @classmethod
     def consolidate_results(cls, *args: tuple[dict] | dict | list[dict]) -> dict:
@@ -77,27 +93,6 @@ class Connector(ABC):
         connector: Connector = connector_classes[0]()
         logger.debug(f"class connector is {connector}")
         return connector
-
-    @classmethod
-    def get_connector_config(cls, config_name: str | None, connector_id: str) -> dict:
-        """
-        Get the connectors config
-
-        Args:
-            config_name (str) = configuration name
-            connector_id (str) = connector id
-
-        Returns:
-            the configuration in dictionary. if config_name is None, return '{}'
-        """
-        logger.info(f"getting the config ({config_name}) for {connector_id}")
-        if config_name:
-            with open(
-                f"./connectors/{connector_id}/configs/{config_name}.toml", "rb"
-            ) as f:
-                return tomllib.load(f)
-        logger.debug("No config available. return '{}'")
-        return {}
 
     @classmethod
     def evaluate_params(cls, parameters: dict | None, variables: dict) -> dict:

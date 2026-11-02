@@ -269,7 +269,7 @@ For `lookup` (`http_request`), the resolver returns the **BuiltinRuntime** (`int
 
 1. Decode the parameters of the task: `{"url": "https://intel.example/ip/{{ var.input.records[0].payload.ip }}"}`.
 2. **Render the templates** with the steps and the input. The result is `{"url": "https://intel.example/ip/203.0.113.9"}`.
-3. Load the TOML config, if the task names one (`<connector>/configs/<name>.toml`).
+3. Take the connector config that the executor loaded from the database (the named config, or the default one).
 4. Call the connector: `HTTPRequestConnector.Execute(ctx, config, params, "get_request")`.
 5. Turn the result into JSON.
 

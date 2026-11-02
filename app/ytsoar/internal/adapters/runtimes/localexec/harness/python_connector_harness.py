@@ -4,9 +4,7 @@
 #
 # Parity is exact because this reuses connectors/core/connector.py verbatim:
 # payload["connectors_root"] is the directory CONTAINING the connectors/
-# package (and src/, which the core logger imports). get_connector_config
-# opens ./connectors/<id>/configs/<name>.toml relative to the cwd, hence the
-# chdir.
+# package (and src/, which the core logger imports).
 import json
 import os
 import sys
@@ -50,10 +48,7 @@ def main():
     from connectors.core.connector import Connector
 
     connector = Connector.get_class_container(payload["connector_id"])
-    config = Connector.get_connector_config(
-        config_name=payload.get("config_name"),
-        connector_id=payload["connector_id"],
-    )
+    config = payload.get("config") or {}
     params = Connector.evaluate_params(
         parameters=payload.get("params"),
         variables={

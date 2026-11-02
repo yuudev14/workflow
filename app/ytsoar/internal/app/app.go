@@ -117,7 +117,11 @@ func NewAPI(ctx context.Context, cfg config.Config, appLogger logger.Logger, poo
 	connectorInstaller := depsinstall.New(appLogger, cfg.ConnectorsDir)
 	connectorService := connectors.NewConnectorService(appLogger, connectorStore,
 		connectorWriter, connectorRepository, connectorInstaller)
-	connectorHandler := handlers.NewConnectorHandler(appLogger, connectorService)
+	configService, err := newConfigService(cfg, appLogger, queries, pool, connectorStore)
+	if err != nil {
+		return nil, err
+	}
+	connectorHandler := handlers.NewConnectorHandler(appLogger, connectorService, configService)
 	adminHandler := handlers.NewAdminHandler(appLogger, authService)
 
 	// the alert repository is also incidents.AlertTimeline, so a link writes to the alert too
@@ -147,6 +151,18 @@ func NewAPI(ctx context.Context, cfg config.Config, appLogger logger.Logger, poo
 		middleware.AuthFromRefreshCookie(appLogger, authService),
 		middleware.NewPermissionMiddleware(appLogger, authService),
 	), nil
+}
+
+// newConfigService is shared: the api edits the connector configs, and the worker opens
+// them for a run.
+func newConfigService(cfg config.Config, appLogger logger.Logger, queries *db.Queries, pool *pgxpool.Pool, store connectors.ConnectorStore) (*connectors.ConfigServiceImpl, error) {
+	secrets, err := security.NewSecretBox(cfg.EncryptionKey)
+	if err != nil {
+		return nil, err
+	}
+	return connectors.NewConfigService(appLogger, store,
+		repository.NewConnectorConfigRepository(appLogger, queries, pool), secrets,
+		repository.NewPgxTxManager(pool), repository.NewAuditLogRepositoryImpl(appLogger, queries, pool)), nil
 }
 
 // newAuthService is shared: the api signs users in, and the worker runs the token cleanup.
@@ -216,7 +232,7 @@ func NewWorker(cfg config.Config, appLogger logger.Logger, pool *pgxpool.Pool) (
 	alertService := alerts.NewService(
 		appLogger, alertRepository, incidentService, txManager, runEnqueuer, userRepository)
 
-	builtinRuntime := goconnectors.NewBuiltinRuntime(appLogger, templating.NewGonjaEngine(), cfg.ConnectorsDir)
+	builtinRuntime := goconnectors.NewBuiltinRuntime(appLogger, templating.NewGonjaEngine())
 	builtinRuntime.Register("http_request", goconnectors.NewHTTPRequestConnector())
 	builtinRuntime.Register("ytsoar", goconnectors.NewYTSoarConnector(alertService, incidentService))
 	byConnector := map[string]execution.TaskRuntime{}
@@ -225,6 +241,10 @@ func NewWorker(cfg config.Config, appLogger logger.Logger, pool *pgxpool.Pool) (
 	}
 	resolver := execution.NewStaticResolver(sandboxRuntime, byConnector)
 
+	configService, err := newConfigService(cfg, appLogger, queries, pool, connectorstore.NewFSStore(appLogger, cfg.ConnectorsDir))
+	if err != nil {
+		return nil, err
+	}
 	executor := execution.NewExecutor(
 		appLogger,
 		taskService,
@@ -233,6 +253,7 @@ func NewWorker(cfg config.Config, appLogger logger.Logger, pool *pgxpool.Pool) (
 		pgstatus.NewNotifier(pool),
 		cfg.MaxParallelNodes,
 		cfg.NodeTimeout,
+		execution.WithConfigSource(configService),
 	)
 	playbookRunLoader := playbooks.NewRunLoader(playbookService, taskService)
 	runWorker := jobs.NewRunWorker(appLogger, playbookRunLoader, executor)

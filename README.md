@@ -169,25 +169,30 @@ app/connectors/my_connector/
 │   #   async execute(configs, params, operation) { ... }
 │   # }
 │   # module.exports = { MyConnector };
-├── connector.ts       # … or typescript (Node removes the types, so no build step
+└── connector.ts       # … or typescript (Node removes the types, so no build step
 │   # is needed. Use the .ts extension in the require call)
 │   # const { Connector } = require("../core/connector.ts");
 │   # class MyConnector extends Connector {
 │   #   async execute(configs: Configs, params: Params, operation: string) { ... }
 │   # }
 │   # module.exports = { MyConnector };
-└── configs/prod.toml  # named TOML configs, one for each task
 ```
 
 Each language uses the same shape. Write a class that extends the base class in `core/`. The class has one method: `execute(configs, params, operation)`.
 
-- `configs` - The parsed TOML config.
+- `configs` - The connector config that the step picked (or the default one). Add configs on the Connectors page. They are stored encrypted in the database.
 - `params` - The parameters of the task. The system already applied the templates.
 - `operation` - The operation name from `info.json`.
 
 If a connector has both `connector.ts` and `connector.js`, the system uses the `.ts` file. TypeScript must use only erasable syntax. Do not use enums, namespaces or parameter properties. To check the syntax, run `npx tsc --noEmit` in `app/connectors`.
 
 **To start a new connector**, copy a template: `app/connectors/sample` (Python), `sample_js` (JavaScript) or `sample_ts` (TypeScript). You can also upload a zip file with `POST /api/v1/connectors` (multipart field `file`). The API validates the zip file, installs its dependencies and records an audit row. `DELETE /api/v1/connectors/<id>` removes the connector.
+
+Python connectors call an outside API with `self.http(method, url, ...)`. It raises on an HTTP error, and with `missing_ok=True` a 404 returns `None`. Put a `test_connector.py` (stdlib `unittest` and `unittest.mock`) in the folder. Run all of them in `app` with `python3 -m unittest connectors/*/test_connector.py`. CI runs the same command.
+
+The enrichment connectors are `abuseipdb`, `virustotal`, `urlscan`, `ipinfo` and `rdap`. Each has a `base_url` config field for a proxy or a test server.
+
+The notification connectors are `slack` and `teams` (a webhook URL each) and `email` (SMTP; set `security` to `none` and port `1025` for Mailpit in dev).
 
 A parameter can use the output of an earlier node: `{{ var.steps["node name"] }}`.
 

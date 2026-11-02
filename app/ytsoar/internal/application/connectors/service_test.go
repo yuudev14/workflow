@@ -4,16 +4,21 @@ import (
 	"archive/zip"
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
+	"strings"
 	"testing"
 
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 
 	"github.com/yuudev14/ytsoar/internal/application/connectors"
 	"github.com/yuudev14/ytsoar/internal/application/connectors/mocks"
+	contractmocks "github.com/yuudev14/ytsoar/internal/application/contracts/mocks"
 	"github.com/yuudev14/ytsoar/internal/domain"
+	"github.com/yuudev14/ytsoar/internal/domain/apperr"
 	"github.com/yuudev14/ytsoar/internal/logger"
 )
 
@@ -191,4 +196,116 @@ func TestDeleteConnectorNotFound(t *testing.T) {
 	err := svc.DeleteConnector(context.Background(), "ghost")
 
 	assert.ErrorIs(t, err, connectors.ErrConnectorNotFound)
+}
+
+// prefixBox is a readable SecretBox for tests.
+type prefixBox struct{}
+
+func (prefixBox) Seal(plain string) (string, error) { return "sealed:" + plain, nil }
+func (prefixBox) Open(sealed string) (string, error) {
+	if plain, ok := strings.CutPrefix(sealed, "sealed:"); ok {
+		return plain, nil
+	}
+	return "", errors.New("not sealed")
+}
+
+var configInfo = domain.ConnectorInfo{"id": "abuseipdb", "configuration": map[string]any{"fields": []any{
+	map[string]any{"name": "base_url", "type": "text"},
+	map[string]any{"name": "api_key", "type": "password"},
+}}}
+
+type configMocks struct {
+	store *mocks.MockConnectorStore
+	repo  *mocks.MockConfigRepository
+}
+
+func newConfigService(t *testing.T) (*connectors.ConfigServiceImpl, configMocks) {
+	ctrl := gomock.NewController(t)
+	m := configMocks{store: mocks.NewMockConnectorStore(ctrl), repo: mocks.NewMockConfigRepository(ctrl)}
+	tx := contractmocks.NewMockTxManager(ctrl)
+	tx.EXPECT().WithinTransaction(gomock.Any(), gomock.Any()).AnyTimes().
+		DoAndReturn(func(ctx context.Context, fn func(context.Context) error) error { return fn(ctx) })
+	audit := contractmocks.NewMockAuditWriter(ctrl)
+	audit.EXPECT().Insert(gomock.Any(), gomock.Any()).AnyTimes().Return(nil)
+	m.store.EXPECT().Get(gomock.Any(), "abuseipdb").AnyTimes().Return(configInfo, nil)
+	return connectors.NewConfigService(logger.NewNop(), m.store, m.repo, prefixBox{}, tx, audit), m
+}
+
+func TestConfigService(t *testing.T) {
+	t.Run("CreateConfig", func(t *testing.T) {
+		t.Run("seals each string value, masks the password and makes the first config the default", func(t *testing.T) {
+			svc, m := newConfigService(t)
+			m.repo.EXPECT().ListConfigs(gomock.Any(), "abuseipdb").Return(nil, nil)
+			m.repo.EXPECT().ClearDefault(gomock.Any(), "abuseipdb").Return(nil)
+			m.repo.EXPECT().CreateConfig(gomock.Any(), gomock.Any()).DoAndReturn(
+				func(_ context.Context, c domain.ConnectorConfig) (domain.ConnectorConfig, error) {
+					assert.JSONEq(t, `{"base_url":"sealed:https://x","api_key":"sealed:k","verify":true}`, string(c.Config))
+					return c, nil
+				})
+
+			got, err := svc.CreateConfig(context.Background(), nil, "abuseipdb", connectors.ConfigInput{
+				Name: "prod", Config: json.RawMessage(`{"base_url":"https://x","api_key":"k","verify":true}`),
+			})
+			require.NoError(t, err)
+			assert.True(t, got.IsDefault)
+			assert.JSONEq(t, `{"base_url":"https://x","api_key":"********","verify":true}`, string(got.Config))
+		})
+
+		t.Run("rejects a bad name", func(t *testing.T) {
+			svc, _ := newConfigService(t)
+			_, err := svc.CreateConfig(context.Background(), nil, "abuseipdb", connectors.ConfigInput{Name: "../x"})
+			kind, _ := apperr.KindOf(err)
+			assert.Equal(t, apperr.Invalid, kind)
+		})
+	})
+
+	t.Run("UpdateConfig", func(t *testing.T) {
+		t.Run("keeps the stored secret when the value is the mask", func(t *testing.T) {
+			svc, m := newConfigService(t)
+			id := uuid.New()
+			m.repo.EXPECT().GetConfig(gomock.Any(), "abuseipdb", id).Return(domain.ConnectorConfig{
+				ID: id, Config: json.RawMessage(`{"base_url":"sealed:old","api_key":"sealed:secret"}`),
+			}, nil)
+			m.repo.EXPECT().UpdateConfig(gomock.Any(), "abuseipdb", id, gomock.Any()).DoAndReturn(
+				func(_ context.Context, _ string, _ uuid.UUID, u connectors.ConfigUpdate) (domain.ConnectorConfig, error) {
+					assert.JSONEq(t, `{"base_url":"sealed:new","api_key":"sealed:secret"}`, string(u.Config))
+					return domain.ConnectorConfig{ID: id, Config: u.Config}, nil
+				})
+
+			_, err := svc.UpdateConfig(context.Background(), nil, "abuseipdb", id, connectors.UpdateConfigInput{
+				Config: json.RawMessage(`{"base_url":"new","api_key":"********"}`),
+			})
+			require.NoError(t, err)
+		})
+	})
+
+	t.Run("RunConfig", func(t *testing.T) {
+		t.Run("opens the values of the default config", func(t *testing.T) {
+			svc, m := newConfigService(t)
+			m.repo.EXPECT().GetConfigForRun(gomock.Any(), "abuseipdb", (*string)(nil)).Return(domain.ConnectorConfig{
+				Config: json.RawMessage(`{"api_key":"sealed:secret","verify":false}`),
+			}, nil)
+
+			values, err := svc.RunConfig(context.Background(), "abuseipdb", new(""))
+			require.NoError(t, err)
+			assert.Equal(t, map[string]any{"api_key": "secret", "verify": false}, values)
+		})
+
+		t.Run("gives an empty config when the connector has no default", func(t *testing.T) {
+			svc, m := newConfigService(t)
+			m.repo.EXPECT().GetConfigForRun(gomock.Any(), "abuseipdb", (*string)(nil)).Return(domain.ConnectorConfig{}, connectors.ErrConfigNotFound)
+
+			values, err := svc.RunConfig(context.Background(), "abuseipdb", nil)
+			require.NoError(t, err)
+			assert.Empty(t, values)
+		})
+
+		t.Run("fails when the named config does not exist", func(t *testing.T) {
+			svc, m := newConfigService(t)
+			m.repo.EXPECT().GetConfigForRun(gomock.Any(), "abuseipdb", gomock.Any()).Return(domain.ConnectorConfig{}, connectors.ErrConfigNotFound)
+
+			_, err := svc.RunConfig(context.Background(), "abuseipdb", new("lab"))
+			assert.ErrorIs(t, err, connectors.ErrConfigNotFound)
+		})
+	})
 }

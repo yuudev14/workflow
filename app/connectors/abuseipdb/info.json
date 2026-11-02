@@ -1,0 +1,85 @@
+{
+  "name": "AbuseIPDB",
+  "id": "abuseipdb",
+  "runtime": "python",
+  "configuration": {
+    "fields": [
+      {
+        "title": "API key",
+        "description": "Your AbuseIPDB API key (free tier works).",
+        "name": "api_key",
+        "type": "password",
+        "required": true,
+        "editable": true,
+        "visible": true,
+        "tooltip": "Your AbuseIPDB API key (free tier works)."
+      },
+      {
+        "title": "Base URL",
+        "description": "The API address. Change it for a proxy or a test server.",
+        "name": "base_url",
+        "type": "text",
+        "required": false,
+        "editable": true,
+        "visible": true,
+        "tooltip": "The API address. Change it for a proxy or a test server.",
+        "value": "https://api.abuseipdb.com/api/v2"
+      }
+    ]
+  },
+  "operations": [
+    {
+      "operation": "check_ip",
+      "title": "Check IP",
+      "description": "Returns the abuse score and reports of an IP address.",
+      "annotation": "check_ip",
+      "enabled": true,
+      "parameters": [
+        {
+          "title": "IP address",
+          "name": "ip",
+          "description": "The IP address. Supports templates.",
+          "required": true,
+          "editable": true,
+          "visible": true,
+          "type": "text",
+          "tooltip": "The IP address. Supports templates.",
+          "placeholder": "{{ var.input.records[0].payload.ip }}"
+        },
+        {
+          "title": "Max age (days)",
+          "name": "max_age_days",
+          "description": "Count reports of this many days. Default 90.",
+          "required": false,
+          "editable": true,
+          "visible": true,
+          "type": "text",
+          "tooltip": "Count reports of this many days. Default 90.",
+          "placeholder": "90"
+        }
+      ],
+      "output": [
+        {
+          "name": "abuseConfidenceScore",
+          "type": "number",
+          "description": "Abuse score from 0 to 100"
+        },
+        {
+          "name": "totalReports",
+          "type": "number",
+          "description": "Number of reports"
+        },
+        {
+          "name": "countryCode",
+          "type": "string",
+          "description": "Country code"
+        },
+        {
+          "name": "isWhitelisted",
+          "type": "boolean",
+          "description": "True when AbuseIPDB trusts the IP"
+        }
+      ]
+    }
+  ]
+}

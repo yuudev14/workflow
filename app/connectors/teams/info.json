@@ -1,0 +1,59 @@
+{
+  "name": "Microsoft Teams",
+  "id": "teams",
+  "runtime": "python",
+  "configuration": {
+    "fields": [
+      {
+        "title": "Webhook URL",
+        "description": "The Teams Workflows webhook URL.",
+        "name": "webhook_url",
+        "type": "password",
+        "required": true,
+        "editable": true,
+        "visible": true,
+        "tooltip": "The Teams Workflows webhook URL."
+      }
+    ]
+  },
+  "operations": [
+    {
+      "operation": "send_message",
+      "title": "Send message",
+      "description": "Posts a card to the channel of the webhook.",
+      "annotation": "send_message",
+      "enabled": true,
+      "parameters": [
+        {
+          "title": "Title",
+          "name": "title",
+          "description": "The card title.",
+          "required": false,
+          "editable": true,
+          "visible": true,
+          "type": "text",
+          "tooltip": "The card title.",
+          "placeholder": ""
+        },
+        {
+          "title": "Message",
+          "name": "text",
+          "description": "The message text. Supports templates.",
+          "required": true,
+          "editable": true,
+          "visible": true,
+          "type": "text",
+          "tooltip": "The message text. Supports templates.",
+          "placeholder": "New alert: {{ var.input.records[0].title }}"
+        }
+      ],
+      "output": [
+        {
+          "name": "sent",
+          "type": "boolean",
+          "description": "Always true"
+        }
+      ]
+    }
+  ]
+}

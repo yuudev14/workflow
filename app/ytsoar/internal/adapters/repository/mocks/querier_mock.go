@@ -43,6 +43,20 @@ func (m *MockQuerierTx) EXPECT() *MockQuerierTxMockRecorder {
 	return m.recorder
 }
 
+// ClearDefaultConnectorConfig mocks base method.
+func (m *MockQuerierTx) ClearDefaultConnectorConfig(ctx context.Context, connectorID string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ClearDefaultConnectorConfig", ctx, connectorID)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// ClearDefaultConnectorConfig indicates an expected call of ClearDefaultConnectorConfig.
+func (mr *MockQuerierTxMockRecorder) ClearDefaultConnectorConfig(ctx, connectorID any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ClearDefaultConnectorConfig", reflect.TypeOf((*MockQuerierTx)(nil).ClearDefaultConnectorConfig), ctx, connectorID)
+}
+
 // CountUsersWithRole mocks base method.
 func (m *MockQuerierTx) CountUsersWithRole(ctx context.Context, name string) (int64, error) {
 	m.ctrl.T.Helper()
@@ -234,6 +248,21 @@ func (m *MockQuerierTx) DeleteAllPlaybookEdges(ctx context.Context, playbookID p
 func (mr *MockQuerierTxMockRecorder) DeleteAllPlaybookEdges(ctx, playbookID any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteAllPlaybookEdges", reflect.TypeOf((*MockQuerierTx)(nil).DeleteAllPlaybookEdges), ctx, playbookID)
+}
+
+// DeleteConnectorConfig mocks base method.
+func (m *MockQuerierTx) DeleteConnectorConfig(ctx context.Context, arg db.DeleteConnectorConfigParams) (int64, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DeleteConnectorConfig", ctx, arg)
+	ret0, _ := ret[0].(int64)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// DeleteConnectorConfig indicates an expected call of DeleteConnectorConfig.
+func (mr *MockQuerierTxMockRecorder) DeleteConnectorConfig(ctx, arg any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteConnectorConfig", reflect.TypeOf((*MockQuerierTx)(nil).DeleteConnectorConfig), ctx, arg)
 }
 
 // DeleteConnectorRecord mocks base method.
@@ -482,6 +511,36 @@ func (m *MockQuerierTx) GetAuthProviderByID(ctx context.Context, id pgtype.UUID)
 func (mr *MockQuerierTxMockRecorder) GetAuthProviderByID(ctx, id any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetAuthProviderByID", reflect.TypeOf((*MockQuerierTx)(nil).GetAuthProviderByID), ctx, id)
+}
+
+// GetConnectorConfig mocks base method.
+func (m *MockQuerierTx) GetConnectorConfig(ctx context.Context, arg db.GetConnectorConfigParams) (db.ConnectorConfig, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetConnectorConfig", ctx, arg)
+	ret0, _ := ret[0].(db.ConnectorConfig)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetConnectorConfig indicates an expected call of GetConnectorConfig.
+func (mr *MockQuerierTxMockRecorder) GetConnectorConfig(ctx, arg any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetConnectorConfig", reflect.TypeOf((*MockQuerierTx)(nil).GetConnectorConfig), ctx, arg)
+}
+
+// GetConnectorConfigForRun mocks base method.
+func (m *MockQuerierTx) GetConnectorConfigForRun(ctx context.Context, arg db.GetConnectorConfigForRunParams) (db.ConnectorConfig, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetConnectorConfigForRun", ctx, arg)
+	ret0, _ := ret[0].(db.ConnectorConfig)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetConnectorConfigForRun indicates an expected call of GetConnectorConfigForRun.
+func (mr *MockQuerierTxMockRecorder) GetConnectorConfigForRun(ctx, arg any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetConnectorConfigForRun", reflect.TypeOf((*MockQuerierTx)(nil).GetConnectorConfigForRun), ctx, arg)
 }
 
 // GetConnectorRecord mocks base method.
@@ -814,6 +873,21 @@ func (mr *MockQuerierTxMockRecorder) InsertAuditLog(ctx, arg any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "InsertAuditLog", reflect.TypeOf((*MockQuerierTx)(nil).InsertAuditLog), ctx, arg)
 }
 
+// InsertConnectorConfig mocks base method.
+func (m *MockQuerierTx) InsertConnectorConfig(ctx context.Context, arg db.InsertConnectorConfigParams) (db.ConnectorConfig, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "InsertConnectorConfig", ctx, arg)
+	ret0, _ := ret[0].(db.ConnectorConfig)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// InsertConnectorConfig indicates an expected call of InsertConnectorConfig.
+func (mr *MockQuerierTxMockRecorder) InsertConnectorConfig(ctx, arg any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "InsertConnectorConfig", reflect.TypeOf((*MockQuerierTx)(nil).InsertConnectorConfig), ctx, arg)
+}
+
 // InsertIncidentAlert mocks base method.
 func (m *MockQuerierTx) InsertIncidentAlert(ctx context.Context, arg db.InsertIncidentAlertParams) (int64, error) {
 	m.ctrl.T.Helper()
@@ -988,6 +1062,21 @@ func (m *MockQuerierTx) ListAuthProviders(ctx context.Context) ([]db.AuthProvide
 func (mr *MockQuerierTxMockRecorder) ListAuthProviders(ctx any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListAuthProviders", reflect.TypeOf((*MockQuerierTx)(nil).ListAuthProviders), ctx)
+}
+
+// ListConnectorConfigs mocks base method.
+func (m *MockQuerierTx) ListConnectorConfigs(ctx context.Context, connectorID string) ([]db.ConnectorConfig, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ListConnectorConfigs", ctx, connectorID)
+	ret0, _ := ret[0].([]db.ConnectorConfig)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ListConnectorConfigs indicates an expected call of ListConnectorConfigs.
+func (mr *MockQuerierTxMockRecorder) ListConnectorConfigs(ctx, connectorID any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListConnectorConfigs", reflect.TypeOf((*MockQuerierTx)(nil).ListConnectorConfigs), ctx, connectorID)
 }
 
 // ListEnabledAuthProviders mocks base method.
@@ -1343,6 +1432,21 @@ func (m *MockQuerierTx) UpdateAuthProvider(ctx context.Context, arg db.UpdateAut
 func (mr *MockQuerierTxMockRecorder) UpdateAuthProvider(ctx, arg any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateAuthProvider", reflect.TypeOf((*MockQuerierTx)(nil).UpdateAuthProvider), ctx, arg)
+}
+
+// UpdateConnectorConfig mocks base method.
+func (m *MockQuerierTx) UpdateConnectorConfig(ctx context.Context, arg db.UpdateConnectorConfigParams) (db.ConnectorConfig, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "UpdateConnectorConfig", ctx, arg)
+	ret0, _ := ret[0].(db.ConnectorConfig)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// UpdateConnectorConfig indicates an expected call of UpdateConnectorConfig.
+func (mr *MockQuerierTxMockRecorder) UpdateConnectorConfig(ctx, arg any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateConnectorConfig", reflect.TypeOf((*MockQuerierTx)(nil).UpdateConnectorConfig), ctx, arg)
 }
 
 // UpdateIncident mocks base method.
