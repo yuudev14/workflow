@@ -9,7 +9,7 @@ import (
 	"github.com/yuudev14/ytsoar/internal/domain"
 )
 
-//go:generate mockgen -destination=mocks/execution_mock.go -package=mocks . TaskRuntime,RuntimeResolver,StatusPublisher
+//go:generate mockgen -destination=mocks/execution_mock.go -package=mocks . TaskRuntime,RuntimeResolver,StatusPublisher,ConfigSource
 
 // ExecutionRequest has everything a runtime needs to run one playbook node. Steps is a
 // snapshot of the outputs of earlier nodes by task name. The runtime does the templating.
@@ -21,6 +21,9 @@ type ExecutionRequest struct {
 	// Input is the trigger data of the run, available to templates as `var.input`. It is
 	// never nil, so a template that uses it does not raise on a run without trigger data.
 	Input *domain.RunInput
+	// Config is the plain connector config from the database. nil: the runtime reads the
+	// TOML file named by Task.Config.
+	Config map[string]any
 }
 
 // TaskRuntime runs one task (one playbook node) and returns its JSON result. Every type
@@ -46,4 +49,10 @@ type RuntimeResolver interface {
 // sends it to its WebSocket clients, so the payload stays small.
 type StatusPublisher interface {
 	Publish(ctx context.Context, event string, id uuid.UUID) error
+}
+
+// ConfigSource gives the plain values of a connector config for a run. found is false when
+// the database has no such config.
+type ConfigSource interface {
+	RunConfig(ctx context.Context, connectorID string, name *string) (values map[string]any, found bool, err error)
 }

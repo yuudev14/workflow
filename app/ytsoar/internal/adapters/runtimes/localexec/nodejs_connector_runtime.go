@@ -53,9 +53,11 @@ func (r *NodeJSConnectorRuntime) Execute(ctx context.Context, req execution.Exec
 	if err != nil {
 		return nil, err
 	}
-	config, err := r.loadConfig(*req.Task.ConnectorID, req.Task.Config)
-	if err != nil {
-		return nil, err
+	config := req.Config
+	if config == nil {
+		if config, err = r.loadConfig(*req.Task.ConnectorID, req.Task.Config); err != nil {
+			return nil, err
+		}
 	}
 
 	payload, err := json.Marshal(map[string]any{

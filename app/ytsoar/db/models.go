@@ -640,6 +640,18 @@ type Connector struct {
 	UpdatedAt  pgtype.Timestamptz `json:"updated_at"`
 }
 
+type ConnectorConfig struct {
+	ID          pgtype.UUID        `json:"id"`
+	ConnectorID string             `json:"connector_id"`
+	Name        string             `json:"name"`
+	Config      json.RawMessage    `json:"config"`
+	IsDefault   bool               `json:"is_default"`
+	CreatedBy   pgtype.UUID        `json:"created_by"`
+	UpdatedBy   pgtype.UUID        `json:"updated_by"`
+	CreatedAt   pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt   pgtype.Timestamptz `json:"updated_at"`
+}
+
 type Edge struct {
 	ID                pgtype.UUID `json:"id"`
 	DestinationID     pgtype.UUID `json:"destination_id"`

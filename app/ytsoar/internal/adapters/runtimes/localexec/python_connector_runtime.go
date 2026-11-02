@@ -62,6 +62,7 @@ func (r *PythonConnectorRuntime) Execute(ctx context.Context, req execution.Exec
 		"connector_id":    *req.Task.ConnectorID,
 		"operation":       req.Task.Operation,
 		"config_name":     configName,
+		"config":          req.Config,
 		"params":          params,
 		"steps":           req.Steps,
 		"input":           req.Input.TemplateVars(),

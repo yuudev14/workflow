@@ -11,6 +11,7 @@ import (
 )
 
 type Querier interface {
+	ClearDefaultConnectorConfig(ctx context.Context, connectorID string) error
 	CountUsersWithRole(ctx context.Context, name string) (int64, error)
 	CreateAuthProvider(ctx context.Context, arg CreateAuthProviderParams) (AuthProvider, error)
 	CreateIncident(ctx context.Context, arg CreateIncidentParams) (Incident, error)
@@ -24,6 +25,7 @@ type Querier interface {
 	DeleteAPIKey(ctx context.Context, id pgtype.UUID) (int64, error)
 	DeleteAlertNote(ctx context.Context, id pgtype.UUID) (int64, error)
 	DeleteAllPlaybookEdges(ctx context.Context, playbookID pgtype.UUID) error
+	DeleteConnectorConfig(ctx context.Context, arg DeleteConnectorConfigParams) (int64, error)
 	DeleteConnectorRecord(ctx context.Context, id string) (int64, error)
 	DeleteEdges(ctx context.Context, ids []pgtype.UUID) error
 	DeleteExpiredRefreshTokens(ctx context.Context, expiresAt pgtype.Timestamp) error
@@ -43,6 +45,9 @@ type Querier interface {
 	GetAlertById(ctx context.Context, id pgtype.UUID) (Alert, error)
 	GetAlertNoteById(ctx context.Context, id pgtype.UUID) (AlertNote, error)
 	GetAuthProviderByID(ctx context.Context, id pgtype.UUID) (AuthProvider, error)
+	GetConnectorConfig(ctx context.Context, arg GetConnectorConfigParams) (ConnectorConfig, error)
+	// a step without a config name uses the default config
+	GetConnectorConfigForRun(ctx context.Context, arg GetConnectorConfigForRunParams) (ConnectorConfig, error)
 	GetConnectorRecord(ctx context.Context, id string) (Connector, error)
 	GetEdgesByPlaybookId(ctx context.Context, playbookID pgtype.UUID) ([]GetEdgesByPlaybookIdRow, error)
 	GetIncidentById(ctx context.Context, id pgtype.UUID) (Incident, error)
@@ -65,6 +70,7 @@ type Querier interface {
 	InsertAlertEvent(ctx context.Context, arg InsertAlertEventParams) (AlertEvent, error)
 	InsertAlertNote(ctx context.Context, arg InsertAlertNoteParams) (AlertNote, error)
 	InsertAuditLog(ctx context.Context, arg InsertAuditLogParams) (AuditLog, error)
+	InsertConnectorConfig(ctx context.Context, arg InsertConnectorConfigParams) (ConnectorConfig, error)
 	InsertIncidentAlert(ctx context.Context, arg InsertIncidentAlertParams) (int64, error)
 	InsertIncidentEvent(ctx context.Context, arg InsertIncidentEventParams) (IncidentEvent, error)
 	InsertIncidentNote(ctx context.Context, arg InsertIncidentNoteParams) (IncidentNote, error)
@@ -77,6 +83,7 @@ type Querier interface {
 	ListAlertEvents(ctx context.Context, alertID pgtype.UUID) ([]ListAlertEventsRow, error)
 	ListAlertNotes(ctx context.Context, alertID pgtype.UUID) ([]ListAlertNotesRow, error)
 	ListAuthProviders(ctx context.Context) ([]AuthProvider, error)
+	ListConnectorConfigs(ctx context.Context, connectorID string) ([]ConnectorConfig, error)
 	ListEnabledAuthProviders(ctx context.Context) ([]AuthProvider, error)
 	// A playbook is skipped when its run on this record was going at the time of the event,
 	// so a run that updates its own record does not start itself again.
@@ -110,6 +117,7 @@ type Querier interface {
 	UpdateAlertNote(ctx context.Context, arg UpdateAlertNoteParams) (AlertNote, error)
 	UpdateAlertStatus(ctx context.Context, arg UpdateAlertStatusParams) (Alert, error)
 	UpdateAuthProvider(ctx context.Context, arg UpdateAuthProviderParams) (AuthProvider, error)
+	UpdateConnectorConfig(ctx context.Context, arg UpdateConnectorConfigParams) (ConnectorConfig, error)
 	UpdateIncident(ctx context.Context, arg UpdateIncidentParams) (Incident, error)
 	UpdateIncidentNote(ctx context.Context, arg UpdateIncidentNoteParams) (IncidentNote, error)
 	UpdateIncidentStatus(ctx context.Context, arg UpdateIncidentStatusParams) (Incident, error)

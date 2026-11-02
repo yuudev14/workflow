@@ -50,10 +50,13 @@ def main():
     from connectors.core.connector import Connector
 
     connector = Connector.get_class_container(payload["connector_id"])
-    config = Connector.get_connector_config(
-        config_name=payload.get("config_name"),
-        connector_id=payload["connector_id"],
-    )
+    # a config from the database wins over a TOML file
+    config = payload.get("config")
+    if config is None:
+        config = Connector.get_connector_config(
+            config_name=payload.get("config_name"),
+            connector_id=payload["connector_id"],
+        )
     params = Connector.evaluate_params(
         parameters=payload.get("params"),
         variables={

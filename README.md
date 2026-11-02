@@ -176,7 +176,7 @@ app/connectors/my_connector/
 │   #   async execute(configs: Configs, params: Params, operation: string) { ... }
 │   # }
 │   # module.exports = { MyConnector };
-└── configs/prod.toml  # named TOML configs, one for each task
+└── configs/prod.toml  # old TOML configs; named configs now live encrypted in the database
 ```
 
 Each language uses the same shape. Write a class that extends the base class in `core/`. The class has one method: `execute(configs, params, operation)`.

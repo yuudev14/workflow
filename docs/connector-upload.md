@@ -10,7 +10,7 @@ A connector is a folder. It has the editor data and the code. The folder name is
 app/connectors/my_connector/
 ├── info.json          # name, id, runtime, operations, fields for the editor
 ├── connector.py       # runtime "python"  (or connector.ts / connector.js for "node")
-├── configs/prod.toml  # named configs (optional)
+├── configs/prod.toml  # old named configs (optional); new ones are in the database, see /api/v1/connectors/:id/configs
 ├── requirements.txt   # python libraries (optional)
 └── package.json       # node libraries (optional)
 ```

@@ -35,7 +35,10 @@ type ExecuteOperationRequest struct {
 	TimeoutMs         uint32 `protobuf:"varint,8,opt,name=timeout_ms,json=timeoutMs,proto3" json:"timeout_ms,omitempty"`
 	// trigger data for the run (JSON object: module_type, records, parameters),
 	// exposed to templates as `var.input`
-	InputJson     *string `protobuf:"bytes,9,opt,name=input_json,json=inputJson,proto3,oneof" json:"input_json,omitempty"`
+	InputJson *string `protobuf:"bytes,9,opt,name=input_json,json=inputJson,proto3,oneof" json:"input_json,omitempty"`
+	// plain connector config from the database (JSON object). Unset: the runtime reads
+	// the TOML file named by config_name
+	ConfigJson    *string `protobuf:"bytes,10,opt,name=config_json,json=configJson,proto3,oneof" json:"config_json,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -129,6 +132,13 @@ func (x *ExecuteOperationRequest) GetTimeoutMs() uint32 {
 func (x *ExecuteOperationRequest) GetInputJson() string {
 	if x != nil && x.InputJson != nil {
 		return *x.InputJson
+	}
+	return ""
+}
+
+func (x *ExecuteOperationRequest) GetConfigJson() string {
+	if x != nil && x.ConfigJson != nil {
+		return *x.ConfigJson
 	}
 	return ""
 }
@@ -270,7 +280,7 @@ var File_connector_runtime_proto protoreflect.FileDescriptor
 
 const file_connector_runtime_proto_rawDesc = "" +
 	"\n" +
-	"\x17connector_runtime.proto\"\xf3\x02\n" +
+	"\x17connector_runtime.proto\"\xa9\x03\n" +
 	"\x17ExecuteOperationRequest\x12!\n" +
 	"\fconnector_id\x18\x01 \x01(\tR\vconnectorId\x12\x1c\n" +
 	"\toperation\x18\x02 \x01(\tR\toperation\x12$\n" +
@@ -284,9 +294,13 @@ const file_connector_runtime_proto_rawDesc = "" +
 	"\n" +
 	"timeout_ms\x18\b \x01(\rR\ttimeoutMs\x12\"\n" +
 	"\n" +
-	"input_json\x18\t \x01(\tH\x01R\tinputJson\x88\x01\x01B\x0e\n" +
+	"input_json\x18\t \x01(\tH\x01R\tinputJson\x88\x01\x01\x12$\n" +
+	"\vconfig_json\x18\n" +
+	" \x01(\tH\x02R\n" +
+	"configJson\x88\x01\x01B\x0e\n" +
 	"\f_config_nameB\r\n" +
-	"\v_input_json\"Q\n" +
+	"\v_input_jsonB\x0e\n" +
+	"\f_config_json\"Q\n" +
 	"\x18ExecuteOperationResponse\x12\x1f\n" +
 	"\vresult_json\x18\x01 \x01(\tR\n" +
 	"resultJson\x12\x14\n" +

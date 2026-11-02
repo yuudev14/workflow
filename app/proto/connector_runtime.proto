@@ -24,6 +24,9 @@ message ExecuteOperationRequest {
   // trigger data for the run (JSON object: module_type, records, parameters),
   // exposed to templates as `var.input`
   optional string input_json = 9;
+  // plain connector config from the database (JSON object). Unset: the runtime reads
+  // the TOML file named by config_name
+  optional string config_json = 10;
 }
 
 message ExecuteOperationResponse {
