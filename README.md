@@ -192,6 +192,8 @@ Python connectors call an outside API with `self.http(method, url, ...)`. It rai
 
 The enrichment connectors are `abuseipdb`, `virustotal`, `urlscan`, `ipinfo` and `rdap`. Each has a `base_url` config field for a proxy or a test server.
 
+The notification connectors are `slack` and `teams` (a webhook URL each) and `email` (SMTP; set `security` to `none` and port `1025` for Mailpit in dev).
+
 A parameter can use the output of an earlier node: `{{ var.steps["node name"] }}`.
 
 For quick logic, use the two built-in code nodes. They do not need a full connector. Use `code_snippet_py` (set `result = ...`) or `code_snippet_js` (`const result = ...`, and `await` works). These nodes need no files. The sandbox implements them directly. Snippets accept plain Python and JavaScript only. They do not accept TypeScript.

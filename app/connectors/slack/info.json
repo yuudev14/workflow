@@ -1,0 +1,48 @@
+{
+  "name": "Slack",
+  "id": "slack",
+  "runtime": "python",
+  "configuration": {
+    "fields": [
+      {
+        "title": "Webhook URL",
+        "description": "The Slack incoming webhook URL.",
+        "name": "webhook_url",
+        "type": "password",
+        "required": true,
+        "editable": true,
+        "visible": true,
+        "tooltip": "The Slack incoming webhook URL."
+      }
+    ]
+  },
+  "operations": [
+    {
+      "operation": "send_message",
+      "title": "Send message",
+      "description": "Posts a message to the channel of the webhook.",
+      "annotation": "send_message",
+      "enabled": true,
+      "parameters": [
+        {
+          "title": "Message",
+          "name": "text",
+          "description": "The message text. Supports templates.",
+          "required": true,
+          "editable": true,
+          "visible": true,
+          "type": "text",
+          "tooltip": "The message text. Supports templates.",
+          "placeholder": "New alert: {{ var.input.records[0].title }}"
+        }
+      ],
+      "output": [
+        {
+          "name": "sent",
+          "type": "boolean",
+          "description": "Always true"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,128 @@
+{
+  "name": "Email",
+  "id": "email",
+  "runtime": "python",
+  "configuration": {
+    "fields": [
+      {
+        "title": "SMTP host",
+        "description": "The SMTP server.",
+        "name": "host",
+        "type": "text",
+        "required": true,
+        "editable": true,
+        "visible": true,
+        "tooltip": "The SMTP server.",
+        "value": "localhost"
+      },
+      {
+        "title": "Port",
+        "description": "The SMTP port. Empty uses 587, or 465 for ssl.",
+        "name": "port",
+        "type": "text",
+        "required": false,
+        "editable": true,
+        "visible": true,
+        "tooltip": "The SMTP port. Empty uses 587, or 465 for ssl."
+      },
+      {
+        "title": "Security",
+        "description": "starttls, ssl or none. Default starttls.",
+        "name": "security",
+        "type": "text",
+        "required": false,
+        "editable": true,
+        "visible": true,
+        "tooltip": "starttls, ssl or none. Default starttls.",
+        "value": "starttls"
+      },
+      {
+        "title": "Username",
+        "description": "The SMTP user. Empty skips the login.",
+        "name": "username",
+        "type": "text",
+        "required": false,
+        "editable": true,
+        "visible": true,
+        "tooltip": "The SMTP user. Empty skips the login."
+      },
+      {
+        "title": "Password",
+        "description": "The SMTP password.",
+        "name": "password",
+        "type": "password",
+        "required": false,
+        "editable": true,
+        "visible": true,
+        "tooltip": "The SMTP password."
+      },
+      {
+        "title": "From",
+        "description": "The sender address.",
+        "name": "from",
+        "type": "text",
+        "required": true,
+        "editable": true,
+        "visible": true,
+        "tooltip": "The sender address.",
+        "value": "ytsoar@example.com"
+      }
+    ]
+  },
+  "operations": [
+    {
+      "operation": "send_email",
+      "title": "Send email",
+      "description": "Sends a plain text email.",
+      "annotation": "send_email",
+      "enabled": true,
+      "parameters": [
+        {
+          "title": "To",
+          "name": "to",
+          "description": "Addresses, separated by commas.",
+          "required": true,
+          "editable": true,
+          "visible": true,
+          "type": "text",
+          "tooltip": "Addresses, separated by commas.",
+          "placeholder": "soc@example.com"
+        },
+        {
+          "title": "Subject",
+          "name": "subject",
+          "description": "The subject.",
+          "required": true,
+          "editable": true,
+          "visible": true,
+          "type": "text",
+          "tooltip": "The subject.",
+          "placeholder": ""
+        },
+        {
+          "title": "Body",
+          "name": "body",
+          "description": "The text of the email.",
+          "required": false,
+          "editable": true,
+          "visible": true,
+          "type": "text",
+          "tooltip": "The text of the email.",
+          "placeholder": ""
+        }
+      ],
+      "output": [
+        {
+          "name": "sent",
+          "type": "boolean",
+          "description": "Always true"
+        },
+        {
+          "name": "to",
+          "type": "array",
+          "description": "The addresses"
+        }
+      ]
+    }
+  ]
+}
