@@ -27,16 +27,13 @@ func TestValidatePlaybookTaskPayload(t *testing.T) {
 		},
 
 		{
-			name:  "no start in edges",
-			edges: map[string][]string{},
-			nodes: []tasks.TaskPayload{
-				{Name: "start"},
-				{Name: "task1"},
-			},
-			withError: true,
+			name:      "start with no edge",
+			edges:     map[string][]string{},
+			nodes:     []tasks.TaskPayload{{Name: "start"}},
+			withError: false,
 		},
 		{
-			name: "no start in edges",
+			name: "no start node",
 			edges: map[string][]string{
 				"start": {"task1"},
 			},

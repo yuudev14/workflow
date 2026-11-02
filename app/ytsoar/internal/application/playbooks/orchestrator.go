@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"slices"
 	"time"
 
 	"github.com/google/uuid"
@@ -241,11 +242,6 @@ func (w *PlaybookApplicationServiceImpl) DeleteEdges(
 }
 
 func validatePlaybookTaskPayload(body UpdatePlaybookTasksPayload) error {
-	_, ok := body.Edges["start"]
-	if !ok {
-		return apperr.New(apperr.Invalid, "the start step must connect to a step")
-	}
-
 	for _, node := range body.Nodes {
 		if node.Name == "start" {
 			return nil
@@ -326,6 +322,20 @@ func (w *PlaybookApplicationServiceImpl) UpdatePlaybookTasks(
 // TriggerPlaybook implements PlaybookApplicationService. The editor trigger has no
 // records and no parameters.
 func (w *PlaybookApplicationServiceImpl) TriggerPlaybook(ctx context.Context, playbookId string) (*domain.TaskMessage, error) {
+	playbook, err := w.PlaybookService.GetPlaybookById(ctx, playbookId)
+	if err != nil {
+		return nil, err
+	}
+	taskList, err := w.TaskService.GetTasksByPlaybookId(ctx, playbookId)
+	if err != nil {
+		return nil, err
+	}
+	if !slices.ContainsFunc(taskList, func(t domain.Tasks) bool { return t.Name == "start" }) {
+		return nil, apperr.New(apperr.Invalid, "the playbook must have a start step")
+	}
+	if playbook.TriggerType == nil {
+		return nil, apperr.New(apperr.Invalid, "the playbook must have a trigger type")
+	}
 	return w.runPlaybook(ctx, playbookId, RunStamp{
 		TriggerType: new(string(domain.TriggerTypeManual)),
 		Input:       domain.NewEmptyRunInput(),

@@ -657,7 +657,7 @@ func TestTriggerPlaybook(t *testing.T) {
 				env.mockPlaybook.
 					EXPECT().
 					GetPlaybookById(gomock.Any(), playbookID).
-					Return(&domain.Playbooks{}, nil)
+					Return(&domain.Playbooks{TriggerType: new("manual")}, nil)
 
 				env.mockTask.
 					EXPECT().
@@ -673,12 +673,12 @@ func TestTriggerPlaybook(t *testing.T) {
 				env.mockPlaybook.
 					EXPECT().
 					GetPlaybookById(gomock.Any(), playbookID).
-					Return(&domain.Playbooks{}, nil)
+					Return(&domain.Playbooks{TriggerType: new("manual")}, nil).Times(2)
 
 				env.mockTask.
 					EXPECT().
 					GetTasksByPlaybookId(gomock.Any(), playbookID).
-					Return([]domain.Tasks{}, nil)
+					Return([]domain.Tasks{{ID: uuid.New(), Name: "start"}}, nil).Times(2)
 
 				env.mockEdge.
 					EXPECT().
@@ -694,12 +694,12 @@ func TestTriggerPlaybook(t *testing.T) {
 				env.mockPlaybook.
 					EXPECT().
 					GetPlaybookById(gomock.Any(), playbookID).
-					Return(&domain.Playbooks{}, nil)
+					Return(&domain.Playbooks{TriggerType: new("manual")}, nil).Times(2)
 
 				env.mockTask.
 					EXPECT().
 					GetTasksByPlaybookId(gomock.Any(), playbookID).
-					Return([]domain.Tasks{}, nil)
+					Return([]domain.Tasks{{ID: uuid.New(), Name: "start"}}, nil).Times(2)
 
 				env.mockEdge.
 					EXPECT().
@@ -721,12 +721,12 @@ func TestTriggerPlaybook(t *testing.T) {
 				env.mockPlaybook.
 					EXPECT().
 					GetPlaybookById(gomock.Any(), playbookID).
-					Return(&domain.Playbooks{}, nil)
+					Return(&domain.Playbooks{TriggerType: new("manual")}, nil).Times(2)
 
 				env.mockTask.
 					EXPECT().
 					GetTasksByPlaybookId(gomock.Any(), playbookID).
-					Return([]domain.Tasks{}, nil)
+					Return([]domain.Tasks{{ID: uuid.New(), Name: "start"}}, nil).Times(2)
 
 				env.mockEdge.
 					EXPECT().
@@ -754,14 +754,14 @@ func TestTriggerPlaybook(t *testing.T) {
 				env.mockPlaybook.
 					EXPECT().
 					GetPlaybookById(gomock.Any(), playbookID).
-					Return(&domain.Playbooks{}, nil)
+					Return(&domain.Playbooks{TriggerType: new("manual")}, nil).Times(2)
 
 				env.mockTask.
 					EXPECT().
 					GetTasksByPlaybookId(gomock.Any(), playbookID).
 					Return([]domain.Tasks{
-						{ID: uuid.New(), Name: "task1"},
-					}, nil)
+						{ID: uuid.New(), Name: "start"},
+					}, nil).Times(2)
 
 				env.mockEdge.
 					EXPECT().
@@ -787,6 +787,22 @@ func TestTriggerPlaybook(t *testing.T) {
 			},
 		},
 		{
+			name:      "no start step",
+			withError: true,
+			mockSetup: func(env *testEnv, playbookID string) {
+				env.mockPlaybook.EXPECT().GetPlaybookById(gomock.Any(), playbookID).Return(&domain.Playbooks{TriggerType: new("manual")}, nil)
+				env.mockTask.EXPECT().GetTasksByPlaybookId(gomock.Any(), playbookID).Return([]domain.Tasks{{ID: uuid.New(), Name: "task1"}}, nil)
+			},
+		},
+		{
+			name:      "no trigger type",
+			withError: true,
+			mockSetup: func(env *testEnv, playbookID string) {
+				env.mockPlaybook.EXPECT().GetPlaybookById(gomock.Any(), playbookID).Return(&domain.Playbooks{}, nil)
+				env.mockTask.EXPECT().GetTasksByPlaybookId(gomock.Any(), playbookID).Return([]domain.Tasks{{ID: uuid.New(), Name: "start"}}, nil)
+			},
+		},
+		{
 			name:      "success",
 			withError: false,
 			mockSetup: func(env *testEnv, playbookID string) {
@@ -794,14 +810,14 @@ func TestTriggerPlaybook(t *testing.T) {
 				env.mockPlaybook.
 					EXPECT().
 					GetPlaybookById(gomock.Any(), playbookID).
-					Return(&domain.Playbooks{}, nil)
+					Return(&domain.Playbooks{TriggerType: new("manual")}, nil).Times(2)
 
 				env.mockTask.
 					EXPECT().
 					GetTasksByPlaybookId(gomock.Any(), playbookID).
 					Return([]domain.Tasks{
-						{ID: uuid.New(), Name: "task1"},
-					}, nil)
+						{ID: uuid.New(), Name: "start"},
+					}, nil).Times(2)
 
 				env.mockEdge.
 					EXPECT().
@@ -861,11 +877,11 @@ func TestTriggerPlaybookBroadcastsStatusEnvelope(t *testing.T) {
 
 	env.mockPlaybook.EXPECT().
 		GetPlaybookById(gomock.Any(), playbookID).
-		Return(&domain.Playbooks{}, nil)
+		Return(&domain.Playbooks{TriggerType: new("manual")}, nil).Times(2)
 
 	env.mockTask.EXPECT().
 		GetTasksByPlaybookId(gomock.Any(), playbookID).
-		Return([]domain.Tasks{{ID: uuid.New(), Name: "task1"}}, nil)
+		Return([]domain.Tasks{{ID: uuid.New(), Name: "start"}}, nil).Times(2)
 
 	env.mockEdge.EXPECT().
 		GetEdgesByPlaybookId(gomock.Any(), playbookID).

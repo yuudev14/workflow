@@ -1,5 +1,6 @@
 import PlaybookService from "@/services/playbooks/playbooks";
 import { useMutation } from "@tanstack/react-query";
+import { apiErrorMessage } from "@/services/common/errors";
 import { toast } from "./use-toast";
 
 const usePlaybookTrigger = ({ playbookId }: { playbookId: string }) => {
@@ -17,7 +18,7 @@ const usePlaybookTrigger = ({ playbookId }: { playbookId: string }) => {
       toast({
         variant: "destructive",
         title: "Couldn't trigger the playbook",
-        description: error.message,
+        description: apiErrorMessage(error),
       });
     },
   });

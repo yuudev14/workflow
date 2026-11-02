@@ -14,7 +14,7 @@ import (
 
 func newPlaybook(t *testing.T, c *client) string {
 	t.Helper()
-	return c.expect(t, http.StatusOK, http.MethodPost, "/api/v1/playbooks", J{"name": unique("playbook")}).(J)["id"].(string)
+	return c.expect(t, http.StatusOK, http.MethodPost, "/api/v1/playbooks", J{"name": unique("playbook"), "trigger_type": "manual"}).(J)["id"].(string)
 }
 
 func TestPlaybooks(t *testing.T) {
@@ -66,7 +66,7 @@ func TestPlaybooks(t *testing.T) {
 
 		start := J{"name": "start", "operation": "start", "parameters": J{}}
 		c.expectAll(t, []request{
-			{"returns 400 when the start step has no edge", http.MethodPut, base + "/tasks/" + id, J{"nodes": []J{start}, "edges": J{}}, http.StatusBadRequest},
+			{"saves a start step with no edge", http.MethodPut, base + "/tasks/" + newPlaybook(t, c), J{"nodes": []J{start}, "edges": J{}}, http.StatusOK},
 			{"returns 400 when the start step is missing", http.MethodPut, base + "/tasks/" + id, J{"nodes": []J{}, "edges": J{"start": []string{}}}, http.StatusBadRequest},
 		})
 	})
@@ -75,6 +75,17 @@ func TestPlaybooks(t *testing.T) {
 		c.expectAll(t, []request{
 			{"returns 400 when the id is not a uuid", http.MethodPost, base + "/trigger/not-a-uuid", nil, http.StatusBadRequest},
 			{"returns 404 when the playbook does not exist", http.MethodPost, base + "/trigger/" + uuid.NewString(), nil, http.StatusNotFound},
+		})
+
+		t.Run("returns 400 when the playbook has no start step or no trigger type", func(t *testing.T) {
+			noStart := newPlaybook(t, c)
+			noTrigger := c.expect(t, http.StatusOK, http.MethodPost, base, J{"name": unique("p")}).(J)["id"].(string)
+			c.expect(t, http.StatusOK, http.MethodPut, base+"/tasks/"+noTrigger, J{
+				"nodes": []J{{"name": "start", "operation": "start", "parameters": J{}}, {"name": "next", "operation": "transform", "parameters": J{}}},
+				"edges": J{"start": []string{"next"}},
+			})
+			c.expect(t, http.StatusBadRequest, http.MethodPost, base+"/trigger/"+noStart, nil)
+			c.expect(t, http.StatusBadRequest, http.MethodPost, base+"/trigger/"+noTrigger, nil)
 		})
 
 		t.Run("queues a run with a snapshot of each task", func(t *testing.T) {
