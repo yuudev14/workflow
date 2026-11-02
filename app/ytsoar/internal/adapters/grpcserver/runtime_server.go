@@ -65,6 +65,13 @@ func (s *RuntimeServer) ExecuteOperation(ctx context.Context, req *runtimepb.Exe
 		input = input.Resolved()
 	}
 
+	var config map[string]any
+	if req.ConfigJson != nil {
+		if err := json.Unmarshal([]byte(*req.ConfigJson), &config); err != nil {
+			return &runtimepb.ExecuteOperationResponse{Error: "invalid config_json: " + err.Error()}, nil
+		}
+	}
+
 	timeout := s.defaultTimeout
 	if req.TimeoutMs > 0 {
 		timeout = time.Duration(req.TimeoutMs) * time.Millisecond
@@ -89,6 +96,7 @@ func (s *RuntimeServer) ExecuteOperation(ctx context.Context, req *runtimepb.Exe
 		PlaybookHistoryID: historyID,
 		Timeout:           timeout,
 		Input:             input,
+		Config:            config,
 	})
 	if err != nil {
 		s.logger.Errorw("sandbox execution failed",

@@ -89,9 +89,11 @@ func (r *BuiltinRuntime) Execute(ctx context.Context, req execution.ExecutionReq
 		return nil, fmt.Errorf("templated parameters for %s are not an object (got %T)", req.Task.Name, rendered)
 	}
 
-	config, err := r.loadConfig(*req.Task.ConnectorID, req.Task.Config)
-	if err != nil {
-		return nil, err
+	config := req.Config
+	if config == nil {
+		if config, err = r.loadConfig(*req.Task.ConnectorID, req.Task.Config); err != nil {
+			return nil, err
+		}
 	}
 
 	r.logger.Debugw("running go connector",

@@ -13,12 +13,14 @@ import (
 type ConnectorHandler struct {
 	logger           logger.Logger
 	ConnectorService connectors.ConnectorService
+	ConfigService    connectors.ConfigService
 }
 
-func NewConnectorHandler(log logger.Logger, connectorService connectors.ConnectorService) *ConnectorHandler {
+func NewConnectorHandler(log logger.Logger, connectorService connectors.ConnectorService, configService connectors.ConfigService) *ConnectorHandler {
 	return &ConnectorHandler{
 		logger:           log,
 		ConnectorService: connectorService,
+		ConfigService:    configService,
 	}
 }
 
@@ -94,6 +96,83 @@ func (h *ConnectorHandler) DeleteConnector(c *gin.Context) {
 
 	err := h.ConnectorService.DeleteConnector(c.Request.Context(), c.Param("connector_id"))
 	if err != nil {
+		response.Fail(h.logger, err)
+		return
+	}
+	c.Status(http.StatusNoContent)
+}
+
+// ListConfigs godoc
+// @Summary List the named configs of a connector. Password fields are masked.
+// @Tags connectors
+// @Router /api/v1/connectors/{connector_id}/configs [get]
+func (h *ConnectorHandler) ListConfigs(c *gin.Context) {
+	response := rest.Response{C: c}
+
+	configs, err := h.ConfigService.ListConfigs(c.Request.Context(), c.Param("connector_id"))
+	if err != nil {
+		response.Fail(h.logger, err)
+		return
+	}
+	response.ResponseSuccess(configs)
+}
+
+// CreateConfig godoc
+// @Summary Add a named config to a connector. Every string value is encrypted.
+// @Tags connectors
+// @Router /api/v1/connectors/{connector_id}/configs [post]
+func (h *ConnectorHandler) CreateConfig(c *gin.Context) {
+	response := rest.Response{C: c}
+
+	var body connectors.ConfigInput
+	if err := c.ShouldBindJSON(&body); err != nil {
+		response.ResponseError(http.StatusBadRequest, err.Error())
+		return
+	}
+	config, err := h.ConfigService.CreateConfig(c.Request.Context(), actorID(c), c.Param("connector_id"), body)
+	if err != nil {
+		response.Fail(h.logger, err)
+		return
+	}
+	c.JSON(http.StatusCreated, config)
+}
+
+// UpdateConfig godoc
+// @Summary Change a config. A password value of "********" keeps the stored secret.
+// @Tags connectors
+// @Router /api/v1/connectors/{connector_id}/configs/{config_id} [patch]
+func (h *ConnectorHandler) UpdateConfig(c *gin.Context) {
+	response := rest.Response{C: c}
+
+	configID, ok := pathUUID(c, "config_id")
+	if !ok {
+		return
+	}
+	var body connectors.UpdateConfigInput
+	if err := c.ShouldBindJSON(&body); err != nil {
+		response.ResponseError(http.StatusBadRequest, err.Error())
+		return
+	}
+	config, err := h.ConfigService.UpdateConfig(c.Request.Context(), actorID(c), c.Param("connector_id"), configID, body)
+	if err != nil {
+		response.Fail(h.logger, err)
+		return
+	}
+	response.ResponseSuccess(config)
+}
+
+// DeleteConfig godoc
+// @Summary Delete a config
+// @Tags connectors
+// @Router /api/v1/connectors/{connector_id}/configs/{config_id} [delete]
+func (h *ConnectorHandler) DeleteConfig(c *gin.Context) {
+	response := rest.Response{C: c}
+
+	configID, ok := pathUUID(c, "config_id")
+	if !ok {
+		return
+	}
+	if err := h.ConfigService.DeleteConfig(c.Request.Context(), actorID(c), c.Param("connector_id"), configID); err != nil {
 		response.Fail(h.logger, err)
 		return
 	}

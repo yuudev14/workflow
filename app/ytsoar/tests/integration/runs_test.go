@@ -99,6 +99,22 @@ func TestRuns(t *testing.T) {
 		})
 	})
 
+	t.Run("a connector step", func(t *testing.T) {
+		t.Run("gets its config from the database", func(t *testing.T) {
+			code, out := c.upload(t, "/api/v1/connectors?replace=true", zipDir(t, "../../../connectors/sample"))
+			require.Equal(t, http.StatusCreated, code, out)
+			name := unique("run")
+			c.create(t, "/api/v1/connectors/sample/configs", J{"name": name, "config": J{"server_url": "https://from-db", "api_key": "k"}})
+
+			run, tasks := runPlaybook(t, c, []J{{
+				"name": "sample", "operation": "operation1", "connector_id": "sample", "connector_name": "Sample",
+				"config": name, "parameters": J{},
+			}}, J{"start": []string{"sample"}})
+			assert.Equal(t, "success", run["status"], tasks["sample"]["error"])
+			assert.Contains(t, toJSON(tasks["sample"]["result"]), "https://from-db")
+		})
+	})
+
 	t.Run("a graph", func(t *testing.T) {
 		t.Run("runs the steps in order", func(t *testing.T) {
 			run, tasks := runPlaybook(t, c, []J{

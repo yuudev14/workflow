@@ -3,6 +3,7 @@ package integration
 import (
 	"archive/zip"
 	"bytes"
+	"context"
 	"encoding/json"
 	"io/fs"
 	"mime/multipart"
@@ -92,6 +93,44 @@ func TestConnectors(t *testing.T) {
 		})
 		t.Run("returns 404 when the connector does not exist", func(t *testing.T) {
 			c.expect(t, http.StatusNotFound, http.MethodGet, base+"/unknown", nil)
+		})
+	})
+
+	t.Run("/connectors/:id/configs", func(t *testing.T) {
+		code, out := c.upload(t, base+"?replace=true", zipDir(t, "../../../connectors/sample"))
+		require.Equal(t, http.StatusCreated, code, out)
+		configs := base + "/sample/configs"
+		prod := c.create(t, configs, J{"name": unique("prod"), "config": J{"server_url": "https://prod", "api_key": "secret"}})
+
+		t.Run("masks the password field and makes the first config the default", func(t *testing.T) {
+			assert.Equal(t, true, prod["is_default"])
+			assert.Equal(t, J{"server_url": "https://prod", "api_key": "********"}, prod["config"])
+		})
+		t.Run("stores every value encrypted", func(t *testing.T) {
+			var stored string
+			require.NoError(t, testPool.QueryRow(context.Background(),
+				"SELECT config::text FROM connector_configs WHERE id = $1", prod["id"]).Scan(&stored))
+			assert.NotContains(t, stored, "secret")
+			assert.NotContains(t, stored, "https://prod")
+		})
+		t.Run("moves the default to a new default config", func(t *testing.T) {
+			lab := c.create(t, configs, J{"name": unique("lab"), "is_default": true})
+			defaults := 0
+			for _, item := range items(c.get(t, configs)) {
+				if item.(J)["is_default"] == true {
+					defaults++
+					assert.Equal(t, lab["id"], item.(J)["id"])
+				}
+			}
+			assert.Equal(t, 1, defaults)
+		})
+		c.expectAll(t, []request{
+			{"returns 409 when the name exists", http.MethodPost, configs, J{"name": prod["name"]}, http.StatusConflict},
+			{"returns 400 when the config is not an object", http.MethodPost, configs, J{"name": unique("x"), "config": "text"}, http.StatusBadRequest},
+			{"returns 404 when the connector does not exist", http.MethodGet, base + "/unknown/configs", nil, http.StatusNotFound},
+			{"updates a config", http.MethodPatch, configs + "/" + prod["id"].(string), J{"config": J{"server_url": "https://new", "api_key": "********"}}, http.StatusOK},
+			{"deletes a config", http.MethodDelete, configs + "/" + prod["id"].(string), nil, http.StatusNoContent},
+			{"returns 404 when the config does not exist", http.MethodDelete, configs + "/" + prod["id"].(string), nil, http.StatusNotFound},
 		})
 	})
 

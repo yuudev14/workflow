@@ -56,6 +56,14 @@ func (c *SandboxRuntime) Execute(ctx context.Context, req execution.ExecutionReq
 		return nil, err
 	}
 	input := string(inputJSON)
+	var config *string
+	if req.Config != nil {
+		raw, err := json.Marshal(req.Config)
+		if err != nil {
+			return nil, err
+		}
+		config = new(string(raw))
+	}
 
 	resp, err := c.client.ExecuteOperation(ctx, &pb.ExecuteOperationRequest{
 		ConnectorId:       connectorID,
@@ -67,6 +75,7 @@ func (c *SandboxRuntime) Execute(ctx context.Context, req execution.ExecutionReq
 		TaskId:            req.Task.ID.String(),
 		TimeoutMs:         uint32(req.Timeout.Milliseconds()),
 		InputJson:         &input,
+		ConfigJson:        config,
 	})
 	if err != nil {
 		return nil, err
