@@ -248,6 +248,7 @@ func (e *Executor) processNode(ctx context.Context, msg domain.TaskMessage, node
 		Task:              task,
 		Steps:             store.Snapshot(),
 		PlaybookHistoryID: msg.PlaybookHistoryId,
+		PlaybookName:      msg.PlaybookName,
 		Timeout:           e.nodeTimeout,
 		Input:             msg.Input.Resolved(),
 	})

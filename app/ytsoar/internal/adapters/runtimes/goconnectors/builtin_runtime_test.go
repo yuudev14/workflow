@@ -13,9 +13,12 @@ import (
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/mock/gomock"
 
 	"github.com/yuudev14/ytsoar/internal/adapters/runtimes/goconnectors"
+	"github.com/yuudev14/ytsoar/internal/adapters/runtimes/goconnectors/mocks"
 	"github.com/yuudev14/ytsoar/internal/adapters/templating"
+	"github.com/yuudev14/ytsoar/internal/application/alerts"
 	"github.com/yuudev14/ytsoar/internal/application/execution"
 	"github.com/yuudev14/ytsoar/internal/domain"
 	"github.com/yuudev14/ytsoar/internal/logger"
@@ -25,10 +28,11 @@ type echoConnector struct {
 	gotConfigs map[string]any
 	gotParams  map[string]any
 	gotOp      string
+	gotActor   *string
 }
 
 func (e *echoConnector) Execute(ctx context.Context, configs map[string]any, params map[string]any, operation string) (any, error) {
-	e.gotConfigs, e.gotParams, e.gotOp = configs, params, operation
+	e.gotConfigs, e.gotParams, e.gotOp, e.gotActor = configs, params, operation, domain.ActorLabel(ctx)
 	return map[string]any{"echoed": params["msg"]}, nil
 }
 
@@ -37,6 +41,7 @@ func request(t *testing.T, connectorID string, operation string, params map[stri
 	raw, err := json.Marshal(params)
 	require.NoError(t, err)
 	return execution.ExecutionRequest{
+		PlaybookName: "enrich",
 		Task: domain.Tasks{
 			ID:          uuid.New(),
 			Name:        connectorID + "_node",
@@ -73,6 +78,7 @@ func TestBuiltinRuntimeTemplatesParamsAndLoadsConfig(t *testing.T) {
 	assert.Equal(t, "hi", decoded["echoed"])
 	assert.Equal(t, "value", echo.gotConfigs["key"])
 	assert.Equal(t, "run", echo.gotOp)
+	assert.Contains(t, *echo.gotActor, "playbook: enrich (run ")
 }
 
 func TestBuiltinRuntimeUnknownConnector(t *testing.T) {
@@ -116,4 +122,56 @@ func TestHTTPRequestConnectorUnknownOperation(t *testing.T) {
 	_, err := conn.Execute(context.Background(), nil, map[string]any{"url": "http://x"}, "post_request")
 
 	assert.ErrorContains(t, err, "post_request")
+}
+
+func TestYTSoarConnector(t *testing.T) {
+	alertID := uuid.New()
+	setup := func(t *testing.T) (*goconnectors.YTSoarConnector, *mocks.MockAlertService) {
+		ctrl := gomock.NewController(t)
+		service := mocks.NewMockAlertService(ctrl)
+		return goconnectors.NewYTSoarConnector(service, mocks.NewMockIncidentService(ctrl)), service
+	}
+
+	t.Run("update_alert skips the PATCH when only the status is set", func(t *testing.T) {
+		conn, service := setup(t)
+		note := "benign"
+		service.EXPECT().UpdateStatus(gomock.Any(), alertID,
+			alerts.UpdateAlertStatusPayload{Status: "resolved", ClosureNote: &note}, nil).
+			Return(domain.Alert{ID: alertID, Status: domain.AlertStatusResolved}, nil)
+
+		out, err := conn.Execute(context.Background(), nil, map[string]any{
+			"alert_id": alertID.String(), "status": "resolved", "closure_note": note, "severity": " ", "tags": "",
+		}, "update_alert")
+
+		require.NoError(t, err)
+		assert.Equal(t, domain.AlertStatusResolved, out.(domain.Alert).Status)
+	})
+	t.Run("update_alert splits the tags", func(t *testing.T) {
+		conn, service := setup(t)
+		service.EXPECT().Update(gomock.Any(), alertID, gomock.Any(), nil).
+			DoAndReturn(func(_ context.Context, _ uuid.UUID, payload alerts.UpdateAlertPayload, _ *uuid.UUID) (domain.Alert, error) {
+				assert.Equal(t, []string{"phishing", "vip"}, *payload.Tags.Value)
+				return domain.Alert{ID: alertID}, nil
+			})
+
+		_, err := conn.Execute(context.Background(), nil,
+			map[string]any{"alert_id": alertID.String(), "tags": "phishing, vip,"}, "update_alert")
+
+		require.NoError(t, err)
+	})
+	t.Run("create_alert checks the API rules", func(t *testing.T) {
+		conn, _ := setup(t)
+
+		_, err := conn.Execute(context.Background(), nil,
+			map[string]any{"title": "x", "severity": "urgent", "source_kind": "edr"}, "create_alert")
+
+		assert.ErrorContains(t, err, "Severity")
+	})
+	t.Run("returns an error for a bad id", func(t *testing.T) {
+		conn, _ := setup(t)
+
+		_, err := conn.Execute(context.Background(), nil, map[string]any{"alert_id": "nope"}, "delete_alert")
+
+		assert.ErrorContains(t, err, "alert_id must be a uuid")
+	})
 }

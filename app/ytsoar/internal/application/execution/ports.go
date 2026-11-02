@@ -17,6 +17,7 @@ type ExecutionRequest struct {
 	Task              domain.Tasks
 	Steps             map[string]any
 	PlaybookHistoryID uuid.UUID
+	PlaybookName      string
 	Timeout           time.Duration
 	// Input is the trigger data of the run, available to templates as `var.input`. It is
 	// never nil, so a template that uses it does not raise on a run without trigger data.

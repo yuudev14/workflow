@@ -10,6 +10,7 @@ type TaskMessage struct {
 	Graph             map[string][]string `json:"graph"`
 	Tasks             map[string]Tasks    `json:"tasks"`
 	PlaybookHistoryId uuid.UUID           `json:"playbook_history_id"`
+	PlaybookName      string              `json:"playbook_name,omitempty"`
 	Edges             []EdgeRef           `json:"edges,omitempty"`
 	// Input is the trigger data, available in templates as `var.input`. It is optional and
 	// additive, the only change this wire format allows. An old producer that omits it still

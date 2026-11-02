@@ -1,6 +1,7 @@
 package domain
 
 import (
+	"context"
 	"slices"
 
 	"github.com/google/uuid"
@@ -15,6 +16,21 @@ const (
 	ModuleEventCreated = "created"
 	ModuleEventUpdated = "updated"
 )
+
+type actorLabelKey struct{}
+
+// WithActorLabel names an actor that is not a user, for example a playbook run. The
+// timeline and the notes show it when the actor id is nil.
+func WithActorLabel(ctx context.Context, label string) context.Context {
+	return context.WithValue(ctx, actorLabelKey{}, label)
+}
+
+func ActorLabel(ctx context.Context) *string {
+	if label, ok := ctx.Value(actorLabelKey{}).(string); ok {
+		return &label
+	}
+	return nil
+}
 
 // FieldChange is one entry in an `updated` timeline event. Usernames are filled in for
 // id fields, so the timeline reads as a sentence and not a pair of uuids.

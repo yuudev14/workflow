@@ -97,6 +97,27 @@ func TestRuns(t *testing.T) {
 			assert.Equal(t, "success", run["status"], tasks["fetch"]["error"])
 			assert.Equal(t, "/ping", <-called)
 		})
+
+		t.Run("changes an alert with ytsoar and names the playbook as the actor", func(t *testing.T) {
+			alertID := newAlert(t, c)
+			ytsoar := func(name, operation string, params J) J {
+				return J{"name": name, "operation": operation, "connector_id": "ytsoar", "connector_name": "YTSoar", "parameters": params}
+			}
+
+			run, tasks := runPlaybook(t, c, []J{
+				ytsoar("close", "update_alert", J{"alert_id": alertID, "status": "resolved", "closure_note": "benign", "tags": "auto, closed"}),
+				ytsoar("note", "add_alert_note", J{"alert_id": alertID, "body": "closed by a playbook"}),
+			}, J{"start": []string{"close"}, "close": []string{"note"}})
+			require.Equal(t, "success", run["status"], tasks["close"]["error"], tasks["note"]["error"])
+
+			alert := c.get(t, "/api/v1/alerts/"+alertID).(J)
+			assert.Equal(t, "resolved", alert["status"])
+			assert.Equal(t, []any{"auto", "closed"}, alert["tags"])
+			actor := "playbook: "
+			timeline := alert["timeline"].([]any)
+			assert.Contains(t, timeline[len(timeline)-1].(J)["actor_username"], actor)
+			assert.Contains(t, alert["notes"].([]any)[0].(J)["author_username"], actor)
+		})
 	})
 
 	t.Run("a graph", func(t *testing.T) {

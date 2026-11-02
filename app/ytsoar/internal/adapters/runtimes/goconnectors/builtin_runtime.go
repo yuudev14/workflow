@@ -14,6 +14,7 @@ import (
 
 	"github.com/pelletier/go-toml/v2"
 	"github.com/yuudev14/ytsoar/internal/application/execution"
+	"github.com/yuudev14/ytsoar/internal/domain"
 	"github.com/yuudev14/ytsoar/internal/logger"
 )
 
@@ -94,6 +95,7 @@ func (r *BuiltinRuntime) Execute(ctx context.Context, req execution.ExecutionReq
 		return nil, err
 	}
 
+	ctx = domain.WithActorLabel(ctx, fmt.Sprintf("playbook: %s (run %s)", req.PlaybookName, req.PlaybookHistoryID))
 	r.logger.Debugw("running go connector",
 		"connector", *req.Task.ConnectorID, "operation", req.Task.Operation)
 	result, err := connector.Execute(ctx, config, renderedParams, req.Task.Operation)

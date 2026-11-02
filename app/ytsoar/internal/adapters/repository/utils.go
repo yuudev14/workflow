@@ -277,3 +277,11 @@ func applyAssigneeFilter(stmt sq.SelectBuilder, alias string, ids []string, unas
 	}
 	return stmt
 }
+
+// authorName falls back to the label of an actor that is not a user, for example a playbook.
+func authorName(username, label pgtype.Text) *string {
+	if username.Valid {
+		return &username.String
+	}
+	return fromPgText(label)
+}

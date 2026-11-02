@@ -119,7 +119,7 @@ func (q *Queries) GetIncidentById(ctx context.Context, id pgtype.UUID) (Incident
 }
 
 const getIncidentNoteById = `-- name: GetIncidentNoteById :one
-SELECT id, incident_id, author_id, body, created_at, updated_at FROM incident_notes WHERE id = $1
+SELECT id, incident_id, author_id, body, created_at, updated_at, actor_label FROM incident_notes WHERE id = $1
 `
 
 func (q *Queries) GetIncidentNoteById(ctx context.Context, id pgtype.UUID) (IncidentNote, error) {
@@ -132,6 +132,7 @@ func (q *Queries) GetIncidentNoteById(ctx context.Context, id pgtype.UUID) (Inci
 		&i.Body,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.ActorLabel,
 	)
 	return i, err
 }
@@ -157,9 +158,9 @@ func (q *Queries) InsertIncidentAlert(ctx context.Context, arg InsertIncidentAle
 }
 
 const insertIncidentEvent = `-- name: InsertIncidentEvent :one
-INSERT INTO incident_events (incident_id, type, actor_id, body)
-VALUES ($1, $2, $3, $4)
-RETURNING id, incident_id, type, actor_id, body, created_at
+INSERT INTO incident_events (incident_id, type, actor_id, body, actor_label)
+VALUES ($1, $2, $3, $4, $5)
+RETURNING id, incident_id, type, actor_id, body, created_at, actor_label
 `
 
 type InsertIncidentEventParams struct {
@@ -167,6 +168,7 @@ type InsertIncidentEventParams struct {
 	Type       EventType       `json:"type"`
 	ActorID    pgtype.UUID     `json:"actor_id"`
 	Body       json.RawMessage `json:"body"`
+	ActorLabel pgtype.Text     `json:"actor_label"`
 }
 
 func (q *Queries) InsertIncidentEvent(ctx context.Context, arg InsertIncidentEventParams) (IncidentEvent, error) {
@@ -175,6 +177,7 @@ func (q *Queries) InsertIncidentEvent(ctx context.Context, arg InsertIncidentEve
 		arg.Type,
 		arg.ActorID,
 		arg.Body,
+		arg.ActorLabel,
 	)
 	var i IncidentEvent
 	err := row.Scan(
@@ -184,24 +187,31 @@ func (q *Queries) InsertIncidentEvent(ctx context.Context, arg InsertIncidentEve
 		&i.ActorID,
 		&i.Body,
 		&i.CreatedAt,
+		&i.ActorLabel,
 	)
 	return i, err
 }
 
 const insertIncidentNote = `-- name: InsertIncidentNote :one
-INSERT INTO incident_notes (incident_id, author_id, body)
-VALUES ($1, $2, $3)
-RETURNING id, incident_id, author_id, body, created_at, updated_at
+INSERT INTO incident_notes (incident_id, author_id, body, actor_label)
+VALUES ($1, $2, $3, $4)
+RETURNING id, incident_id, author_id, body, created_at, updated_at, actor_label
 `
 
 type InsertIncidentNoteParams struct {
 	IncidentID pgtype.UUID `json:"incident_id"`
 	AuthorID   pgtype.UUID `json:"author_id"`
 	Body       string      `json:"body"`
+	ActorLabel pgtype.Text `json:"actor_label"`
 }
 
 func (q *Queries) InsertIncidentNote(ctx context.Context, arg InsertIncidentNoteParams) (IncidentNote, error) {
-	row := q.db.QueryRow(ctx, insertIncidentNote, arg.IncidentID, arg.AuthorID, arg.Body)
+	row := q.db.QueryRow(ctx, insertIncidentNote,
+		arg.IncidentID,
+		arg.AuthorID,
+		arg.Body,
+		arg.ActorLabel,
+	)
 	var i IncidentNote
 	err := row.Scan(
 		&i.ID,
@@ -210,6 +220,7 @@ func (q *Queries) InsertIncidentNote(ctx context.Context, arg InsertIncidentNote
 		&i.Body,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.ActorLabel,
 	)
 	return i, err
 }
@@ -259,7 +270,7 @@ func (q *Queries) ListIncidentAlerts(ctx context.Context, incidentID pgtype.UUID
 }
 
 const listIncidentEvents = `-- name: ListIncidentEvents :many
-SELECT e.id, e.incident_id, e.type, e.actor_id, e.body, e.created_at, u.username AS actor_username
+SELECT e.id, e.incident_id, e.type, e.actor_id, e.body, e.created_at, e.actor_label, u.username AS actor_username
 FROM incident_events e
 LEFT JOIN users u ON u.id = e.actor_id
 WHERE e.incident_id = $1
@@ -273,6 +284,7 @@ type ListIncidentEventsRow struct {
 	ActorID       pgtype.UUID      `json:"actor_id"`
 	Body          json.RawMessage  `json:"body"`
 	CreatedAt     pgtype.Timestamp `json:"created_at"`
+	ActorLabel    pgtype.Text      `json:"actor_label"`
 	ActorUsername pgtype.Text      `json:"actor_username"`
 }
 
@@ -292,6 +304,7 @@ func (q *Queries) ListIncidentEvents(ctx context.Context, incidentID pgtype.UUID
 			&i.ActorID,
 			&i.Body,
 			&i.CreatedAt,
+			&i.ActorLabel,
 			&i.ActorUsername,
 		); err != nil {
 			return nil, err
@@ -305,7 +318,7 @@ func (q *Queries) ListIncidentEvents(ctx context.Context, incidentID pgtype.UUID
 }
 
 const listIncidentNotes = `-- name: ListIncidentNotes :many
-SELECT n.id, n.incident_id, n.author_id, n.body, n.created_at, n.updated_at, u.username AS author_username
+SELECT n.id, n.incident_id, n.author_id, n.body, n.created_at, n.updated_at, n.actor_label, u.username AS author_username
 FROM incident_notes n
 LEFT JOIN users u ON u.id = n.author_id
 WHERE n.incident_id = $1
@@ -319,6 +332,7 @@ type ListIncidentNotesRow struct {
 	Body           string           `json:"body"`
 	CreatedAt      pgtype.Timestamp `json:"created_at"`
 	UpdatedAt      pgtype.Timestamp `json:"updated_at"`
+	ActorLabel     pgtype.Text      `json:"actor_label"`
 	AuthorUsername pgtype.Text      `json:"author_username"`
 }
 
@@ -338,6 +352,7 @@ func (q *Queries) ListIncidentNotes(ctx context.Context, incidentID pgtype.UUID)
 			&i.Body,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.ActorLabel,
 			&i.AuthorUsername,
 		); err != nil {
 			return nil, err
@@ -435,7 +450,7 @@ UPDATE incident_notes
 SET body = $1,
     updated_at = NOW()
 WHERE id = $2
-RETURNING id, incident_id, author_id, body, created_at, updated_at
+RETURNING id, incident_id, author_id, body, created_at, updated_at, actor_label
 `
 
 type UpdateIncidentNoteParams struct {
@@ -453,6 +468,7 @@ func (q *Queries) UpdateIncidentNote(ctx context.Context, arg UpdateIncidentNote
 		&i.Body,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.ActorLabel,
 	)
 	return i, err
 }

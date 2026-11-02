@@ -61,7 +61,7 @@ const incidentListColumns = `i.id, i.title, i.severity, i.status, i.assignee_id,
 const incidentTimelineAggregate = `COALESCE((
     SELECT jsonb_agg(jsonb_build_object(
                'id', e.id, 'incident_id', e.incident_id, 'type', e.type, 'actor_id', e.actor_id,
-               'actor_username', au.username, 'body', e.body, 'created_at', e.created_at AT TIME ZONE 'UTC')
+               'actor_username', COALESCE(au.username, e.actor_label), 'body', e.body, 'created_at', e.created_at AT TIME ZONE 'UTC')
            ORDER BY e.created_at, e.id)
     FROM incident_events e LEFT JOIN users au ON au.id = e.actor_id
     WHERE e.incident_id = i.id
@@ -70,7 +70,7 @@ const incidentTimelineAggregate = `COALESCE((
 const incidentNotesAggregate = `COALESCE((
     SELECT jsonb_agg(jsonb_build_object(
                'id', n.id, 'incident_id', n.incident_id, 'author_id', n.author_id,
-               'author_username', nu.username, 'body', n.body,
+               'author_username', COALESCE(nu.username, n.actor_label), 'body', n.body,
                'created_at', n.created_at AT TIME ZONE 'UTC',
                'updated_at', n.updated_at AT TIME ZONE 'UTC')
            ORDER BY n.created_at, n.id)
@@ -298,6 +298,7 @@ func (r *IncidentRepositoryImpl) AppendEvent(ctx context.Context, params inciden
 		Type:       db.EventType(params.Type),
 		ActorID:    toPgUUIDPtr(params.ActorID),
 		Body:       params.Body,
+		ActorLabel: toPgText(domain.ActorLabel(ctx)),
 	})
 	return err
 }
@@ -307,6 +308,7 @@ func (r *IncidentRepositoryImpl) AddNote(ctx context.Context, incidentID uuid.UU
 		IncidentID: toPgUUID(incidentID),
 		AuthorID:   toPgUUIDPtr(authorID),
 		Body:       body,
+		ActorLabel: toPgText(domain.ActorLabel(ctx)),
 	})
 	if err != nil {
 		return domain.IncidentNote{}, err
@@ -356,7 +358,7 @@ func (r *IncidentRepositoryImpl) ListNotes(ctx context.Context, incidentID uuid.
 			ID:             fromPgUUID(row.ID),
 			IncidentID:     fromPgUUID(row.IncidentID),
 			AuthorID:       fromPgUUIDPtr(row.AuthorID),
-			AuthorUsername: fromPgText(row.AuthorUsername),
+			AuthorUsername: authorName(row.AuthorUsername, row.ActorLabel),
 			Body:           row.Body,
 			CreatedAt:      row.CreatedAt.Time,
 			UpdatedAt:      row.UpdatedAt.Time,
@@ -559,11 +561,12 @@ func toDomainIncident(row db.Incident) domain.Incident {
 
 func toDomainIncidentNote(row db.IncidentNote) domain.IncidentNote {
 	return domain.IncidentNote{
-		ID:         fromPgUUID(row.ID),
-		IncidentID: fromPgUUID(row.IncidentID),
-		AuthorID:   fromPgUUIDPtr(row.AuthorID),
-		Body:       row.Body,
-		CreatedAt:  row.CreatedAt.Time,
-		UpdatedAt:  row.UpdatedAt.Time,
+		ID:             fromPgUUID(row.ID),
+		IncidentID:     fromPgUUID(row.IncidentID),
+		AuthorID:       fromPgUUIDPtr(row.AuthorID),
+		AuthorUsername: fromPgText(row.ActorLabel),
+		Body:           row.Body,
+		CreatedAt:      row.CreatedAt.Time,
+		UpdatedAt:      row.UpdatedAt.Time,
 	}
 }

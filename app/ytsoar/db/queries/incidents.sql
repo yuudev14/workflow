@@ -53,8 +53,8 @@ WHERE id = sqlc.arg('id')
 RETURNING *;
 
 -- name: InsertIncidentEvent :one
-INSERT INTO incident_events (incident_id, type, actor_id, body)
-VALUES ($1, $2, $3, $4)
+INSERT INTO incident_events (incident_id, type, actor_id, body, actor_label)
+VALUES ($1, $2, $3, $4, $5)
 RETURNING *;
 
 -- name: ListIncidentEvents :many
@@ -80,8 +80,8 @@ WHERE ia.incident_id = $1
 ORDER BY a.created_at DESC, a.id DESC;
 
 -- name: InsertIncidentNote :one
-INSERT INTO incident_notes (incident_id, author_id, body)
-VALUES ($1, $2, $3)
+INSERT INTO incident_notes (incident_id, author_id, body, actor_label)
+VALUES ($1, $2, $3, $4)
 RETURNING *;
 
 -- name: GetIncidentNoteById :one

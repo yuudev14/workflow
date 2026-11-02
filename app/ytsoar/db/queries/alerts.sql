@@ -74,8 +74,8 @@ WHERE id = sqlc.arg('id')
 RETURNING *;
 
 -- name: InsertAlertEvent :one
-INSERT INTO alert_events (alert_id, type, actor_id, body)
-VALUES ($1, $2, $3, $4)
+INSERT INTO alert_events (alert_id, type, actor_id, body, actor_label)
+VALUES ($1, $2, $3, $4, $5)
 RETURNING *;
 
 -- name: ListAlertEvents :many
@@ -86,8 +86,8 @@ WHERE e.alert_id = $1
 ORDER BY e.created_at, e.id;
 
 -- name: InsertAlertNote :one
-INSERT INTO alert_notes (alert_id, author_id, body)
-VALUES ($1, $2, $3)
+INSERT INTO alert_notes (alert_id, author_id, body, actor_label)
+VALUES ($1, $2, $3, $4)
 RETURNING *;
 
 -- name: GetAlertNoteById :one
