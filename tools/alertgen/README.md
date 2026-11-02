@@ -32,6 +32,7 @@ make seed-alerts N=200    # bulk via POST /api/v1/alerts/batch - exercises keyse
 make drip-alerts          # one alert every ~20s until Ctrl-C - watch the UI update live
 make storm-alerts         # 200 byte-identical alerts - must collapse to ONE row
 make storm-alerts N=50    # same, smaller
+make seed-playbooks       # the MVP playbooks in tools/playbooks (skips a name that exists)
 ```
 
 Or call the script directly for the flags the make targets don't expose
@@ -74,3 +75,21 @@ decoration - they are the exact paths the ATT&CK-tagging and IOC-extraction work
 will read, so seeding them now makes that testable against real data later. A
 future Elasticsearch branch reuses this file verbatim, pointed at an index
 instead of the API.
+
+### playbooks
+
+Saves each `tools/playbooks/*.json` file through the API: `POST /api/v1/playbooks`,
+then `PUT /api/v1/playbooks/tasks/:id`. A playbook whose name exists is skipped,
+so it is safe to run again.
+
+| File | Playbook | Trigger | Connectors |
+|---|---|---|---|
+| `p1_enrich_ip.json` | Enrich IP and auto-close | `on_create` alert | abuseipdb, ipinfo, ytsoar, slack |
+| `p2_phishing_triage.json` | Phishing triage | `on_create` alert | urlscan, virustotal, rdap, ytsoar, slack |
+| `p3_critical_escalate.json` | Critical auto-escalate | `on_create` alert | ytsoar, slack, email |
+| `p4_file_hash_check.json` | File hash check | `on_create` alert | virustotal, ytsoar |
+| `p5_notify.json` | Notify | `manual` (parameter `message`) | slack, email |
+
+Each `on_create` playbook starts with a condition step, so it does nothing for an
+alert without the field it needs. Add a default config for each connector on the
+Connectors page first, or the steps fail. Change `soc@example.com` in the email steps.

@@ -1,0 +1,189 @@
+{
+  "name": "Phishing triage",
+  "description": "Scans the URL of a new email alert. A bad or new domain tags the alert as phishing, escalates it and tells the SOC.",
+  "trigger_type": "on_create",
+  "trigger_parameters": {
+    "module": "alert"
+  },
+  "nodes": [
+    {
+      "name": "start",
+      "description": "",
+      "operation": "start",
+      "parameters": {},
+      "x": 0,
+      "y": 0
+    },
+    {
+      "name": "has_url",
+      "description": "Runs only for an email alert with a URL.",
+      "connector_id": "condition",
+      "connector_name": "Condition",
+      "operation": "switch_expression",
+      "parameters": {
+        "cases": [
+          {
+            "id": "yes",
+            "expression": "{{ var.input.records[0].source_kind == 'email' and var.input.records[0].payload.url is defined and var.input.records[0].payload.url.full }}"
+          }
+        ]
+      },
+      "x": 280,
+      "y": 0
+    },
+    {
+      "name": "urlscan",
+      "description": "",
+      "connector_id": "urlscan",
+      "connector_name": "urlscan.io",
+      "operation": "scan_url",
+      "parameters": {
+        "url": "{{ var.input.records[0].payload.url.full }}"
+      },
+      "x": 560,
+      "y": 0
+    },
+    {
+      "name": "virustotal",
+      "description": "",
+      "connector_id": "virustotal",
+      "connector_name": "VirusTotal",
+      "operation": "url_report",
+      "parameters": {
+        "url": "{{ var.input.records[0].payload.url.full }}"
+      },
+      "x": 560,
+      "y": 160
+    },
+    {
+      "name": "rdap",
+      "description": "",
+      "connector_id": "rdap",
+      "connector_name": "RDAP",
+      "operation": "domain_lookup",
+      "parameters": {
+        "domain": "{{ var.input.records[0].payload.url.domain }}"
+      },
+      "x": 560,
+      "y": 320
+    },
+    {
+      "name": "verdict",
+      "description": "Bad when urlscan.io or VirusTotal flags the URL, or the domain is less than 30 days old.",
+      "connector_id": "condition",
+      "connector_name": "Condition",
+      "operation": "switch_expression",
+      "parameters": {
+        "cases": [
+          {
+            "id": "bad",
+            "expression": "{{ var.steps['urlscan'].malicious or var.steps['virustotal'].malicious > 0 or (var.steps['rdap'].age_days is not none and var.steps['rdap'].age_days < 30) }}"
+          }
+        ]
+      },
+      "x": 840,
+      "y": 0
+    },
+    {
+      "name": "tag",
+      "description": "",
+      "connector_id": "ytsoar",
+      "connector_name": "YTSoar",
+      "operation": "update_alert",
+      "parameters": {
+        "alert_id": "{{ var.input.records[0].id }}",
+        "tags": "phishing"
+      },
+      "x": 1120,
+      "y": 0
+    },
+    {
+      "name": "escalate",
+      "description": "",
+      "connector_id": "ytsoar",
+      "connector_name": "YTSoar",
+      "operation": "escalate_alert",
+      "parameters": {
+        "alert_id": "{{ var.input.records[0].id }}",
+        "title": "Phishing: {{ var.input.records[0].payload.url.domain }}"
+      },
+      "x": 1400,
+      "y": 0
+    },
+    {
+      "name": "notify",
+      "description": "Posts to the SOC channel.",
+      "connector_id": "slack",
+      "connector_name": "Slack",
+      "operation": "send_message",
+      "parameters": {
+        "text": "Phishing URL {{ var.input.records[0].payload.url.full }} from {{ var.input.records[0].payload.email.from.address }}. Report: {{ var.steps['urlscan'].result_url }}"
+      },
+      "x": 1680,
+      "y": 0
+    },
+    {
+      "name": "clean_note",
+      "description": "",
+      "connector_id": "ytsoar",
+      "connector_name": "YTSoar",
+      "operation": "add_alert_note",
+      "parameters": {
+        "alert_id": "{{ var.input.records[0].id }}",
+        "body": "No phishing signs: urlscan.io score {{ var.steps['urlscan'].score }}, VirusTotal {{ var.steps['virustotal'].malicious }} engines, domain age {{ var.steps['rdap'].age_days }} days."
+      },
+      "x": 1120,
+      "y": 160
+    }
+  ],
+  "edges": {
+    "start": [
+      "has_url"
+    ],
+    "has_url": [
+      "urlscan",
+      "virustotal",
+      "rdap"
+    ],
+    "urlscan": [
+      "verdict"
+    ],
+    "virustotal": [
+      "verdict"
+    ],
+    "rdap": [
+      "verdict"
+    ],
+    "verdict": [
+      "tag",
+      "clean_note"
+    ],
+    "tag": [
+      "escalate"
+    ],
+    "escalate": [
+      "notify"
+    ]
+  },
+  "handles": {
+    "has_url": {
+      "urlscan": {
+        "source_handle": "yes"
+      },
+      "virustotal": {
+        "source_handle": "yes"
+      },
+      "rdap": {
+        "source_handle": "yes"
+      }
+    },
+    "verdict": {
+      "tag": {
+        "source_handle": "bad"
+      },
+      "clean_note": {
+        "source_handle": "else"
+      }
+    }
+  }
+}

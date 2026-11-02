@@ -2,7 +2,10 @@ package integration
 
 import (
 	"bytes"
+	"encoding/json"
 	"net/http"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -62,6 +65,20 @@ func TestPlaybooks(t *testing.T) {
 				"edges": J{"start": []string{"next"}},
 			})
 			assert.Len(t, items(c.get(t, base+"/"+id+"/tasks")), 2)
+		})
+
+		t.Run("saves each MVP playbook of tools/playbooks", func(t *testing.T) {
+			files, err := filepath.Glob("../../../../tools/playbooks/*.json")
+			require.NoError(t, err)
+			require.Len(t, files, 5)
+			for _, file := range files {
+				var pb J
+				require.NoError(t, json.Unmarshal(must(os.ReadFile(file)), &pb))
+				// manual, so the alerts of other tests do not start it
+				id := c.expect(t, http.StatusOK, http.MethodPost, base, J{"name": unique(pb["name"].(string)), "description": pb["description"]}).(J)["id"].(string)
+				c.expect(t, http.StatusOK, http.MethodPut, base+"/tasks/"+id, J{"nodes": pb["nodes"], "edges": pb["edges"], "handles": pb["handles"]})
+				assert.Len(t, items(c.get(t, base+"/"+id+"/tasks")), len(pb["nodes"].([]any)), file)
+			}
 		})
 
 		start := J{"name": "start", "operation": "start", "parameters": J{}}

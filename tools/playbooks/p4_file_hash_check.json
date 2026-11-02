@@ -1,0 +1,137 @@
+{
+  "name": "File hash check",
+  "description": "Checks the file hash of a new alert on VirusTotal. A malicious file raises the alert to critical and adds a note.",
+  "trigger_type": "on_create",
+  "trigger_parameters": {
+    "module": "alert"
+  },
+  "nodes": [
+    {
+      "name": "start",
+      "description": "",
+      "operation": "start",
+      "parameters": {},
+      "x": 0,
+      "y": 0
+    },
+    {
+      "name": "has_hash",
+      "description": "Runs only for an alert with a SHA-256 hash.",
+      "connector_id": "condition",
+      "connector_name": "Condition",
+      "operation": "switch_expression",
+      "parameters": {
+        "cases": [
+          {
+            "id": "yes",
+            "expression": "{{ var.input.records[0].payload.file is defined and var.input.records[0].payload.file.hash is defined and var.input.records[0].payload.file.hash.sha256 }}"
+          }
+        ]
+      },
+      "x": 280,
+      "y": 0
+    },
+    {
+      "name": "virustotal",
+      "description": "",
+      "connector_id": "virustotal",
+      "connector_name": "VirusTotal",
+      "operation": "file_report",
+      "parameters": {
+        "hash": "{{ var.input.records[0].payload.file.hash.sha256 }}"
+      },
+      "x": 560,
+      "y": 0
+    },
+    {
+      "name": "verdict",
+      "description": "",
+      "connector_id": "condition",
+      "connector_name": "Condition",
+      "operation": "switch_expression",
+      "parameters": {
+        "cases": [
+          {
+            "id": "malicious",
+            "expression": "{{ var.steps['virustotal'].malicious > 0 }}"
+          }
+        ]
+      },
+      "x": 840,
+      "y": 0
+    },
+    {
+      "name": "raise",
+      "description": "",
+      "connector_id": "ytsoar",
+      "connector_name": "YTSoar",
+      "operation": "update_alert",
+      "parameters": {
+        "alert_id": "{{ var.input.records[0].id }}",
+        "severity": "critical",
+        "tags": "malware"
+      },
+      "x": 1120,
+      "y": 0
+    },
+    {
+      "name": "bad_note",
+      "description": "",
+      "connector_id": "ytsoar",
+      "connector_name": "YTSoar",
+      "operation": "add_alert_note",
+      "parameters": {
+        "alert_id": "{{ var.input.records[0].id }}",
+        "body": "VirusTotal: {{ var.steps['virustotal'].malicious }} engines flag {{ var.input.records[0].payload.file.hash.sha256 }} as malicious."
+      },
+      "x": 1400,
+      "y": 0
+    },
+    {
+      "name": "clean_note",
+      "description": "",
+      "connector_id": "ytsoar",
+      "connector_name": "YTSoar",
+      "operation": "add_alert_note",
+      "parameters": {
+        "alert_id": "{{ var.input.records[0].id }}",
+        "body": "VirusTotal: no engine flags the file{% if not var.steps['virustotal'].found %} (unknown hash){% endif %}."
+      },
+      "x": 1120,
+      "y": 160
+    }
+  ],
+  "edges": {
+    "start": [
+      "has_hash"
+    ],
+    "has_hash": [
+      "virustotal"
+    ],
+    "virustotal": [
+      "verdict"
+    ],
+    "verdict": [
+      "raise",
+      "clean_note"
+    ],
+    "raise": [
+      "bad_note"
+    ]
+  },
+  "handles": {
+    "has_hash": {
+      "virustotal": {
+        "source_handle": "yes"
+      }
+    },
+    "verdict": {
+      "raise": {
+        "source_handle": "malicious"
+      },
+      "clean_note": {
+        "source_handle": "else"
+      }
+    }
+  }
+}

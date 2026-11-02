@@ -1,0 +1,92 @@
+{
+  "name": "Critical auto-escalate",
+  "description": "Escalates a new critical alert to an incident and tells the SOC by Slack and email.",
+  "trigger_type": "on_create",
+  "trigger_parameters": {
+    "module": "alert"
+  },
+  "nodes": [
+    {
+      "name": "start",
+      "description": "",
+      "operation": "start",
+      "parameters": {},
+      "x": 0,
+      "y": 0
+    },
+    {
+      "name": "is_critical",
+      "description": "Runs only for a critical alert.",
+      "connector_id": "condition",
+      "connector_name": "Condition",
+      "operation": "switch_expression",
+      "parameters": {
+        "cases": [
+          {
+            "id": "yes",
+            "expression": "{{ var.input.records[0].severity == 'critical' }}"
+          }
+        ]
+      },
+      "x": 280,
+      "y": 0
+    },
+    {
+      "name": "escalate",
+      "description": "",
+      "connector_id": "ytsoar",
+      "connector_name": "YTSoar",
+      "operation": "escalate_alert",
+      "parameters": {
+        "alert_id": "{{ var.input.records[0].id }}"
+      },
+      "x": 560,
+      "y": 0
+    },
+    {
+      "name": "slack",
+      "description": "Posts to the SOC channel.",
+      "connector_id": "slack",
+      "connector_name": "Slack",
+      "operation": "send_message",
+      "parameters": {
+        "text": "Critical alert \"{{ var.input.records[0].title }}\" is now incident {{ var.steps['escalate'].id }}."
+      },
+      "x": 840,
+      "y": 0
+    },
+    {
+      "name": "email",
+      "description": "Change the address to your SOC mailbox.",
+      "connector_id": "email",
+      "connector_name": "Email",
+      "operation": "send_email",
+      "parameters": {
+        "to": "soc@example.com",
+        "subject": "Critical alert: {{ var.input.records[0].title }}",
+        "body": "The critical alert \"{{ var.input.records[0].title }}\" ({{ var.input.records[0].source_kind }}) is now incident {{ var.steps['escalate'].id }}."
+      },
+      "x": 840,
+      "y": 160
+    }
+  ],
+  "edges": {
+    "start": [
+      "is_critical"
+    ],
+    "is_critical": [
+      "escalate"
+    ],
+    "escalate": [
+      "slack",
+      "email"
+    ]
+  },
+  "handles": {
+    "is_critical": {
+      "escalate": {
+        "source_handle": "yes"
+      }
+    }
+  }
+}
