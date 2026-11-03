@@ -213,10 +213,22 @@ func TestPlaybooks(t *testing.T) {
 			t.Cleanup(func() { c.expect(t, http.StatusOK, http.MethodPut, base+"/"+live, J{"trigger_type": "manual"}) })
 			c.expect(t, http.StatusNoContent, http.MethodDelete, base+"/"+deleted, nil)
 
-			newAlert(t, c)
-			require.Eventually(t, func() bool { return len(items(c.get(t, base+"/history?playbook_id="+live))) > 0 },
-				30*time.Second, 200*time.Millisecond, "the alert did not start the live playbook")
-			assert.Empty(t, items(c.get(t, base+"/history?playbook_id="+deleted)))
+			// Events of earlier tests' alerts can still reach a new playbook, so match runs by this alert.
+			alertID := newAlert(t, c)
+			ranFor := func(pid string) bool {
+				for _, run := range items(c.get(t, base+"/history?playbook_id="+pid)) {
+					records, _ := run.(J)["input"].(J)["records"].([]any)
+					for _, r := range records {
+						if r.(J)["id"] == alertID {
+							return true
+						}
+					}
+				}
+				return false
+			}
+			require.Eventually(t, func() bool { return ranFor(live) }, 30*time.Second, 200*time.Millisecond,
+				"the alert did not start the live playbook")
+			assert.False(t, ranFor(deleted))
 		})
 	})
 }
