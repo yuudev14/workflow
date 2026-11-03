@@ -1,0 +1,49 @@
+{
+  "name": "Notify",
+  "description": "Sends a message to Slack and email. Start it by hand with the parameter \"message\", or copy its steps into other playbooks.",
+  "trigger_type": "manual",
+  "trigger_parameters": {},
+  "nodes": [
+    {
+      "name": "start",
+      "description": "",
+      "operation": "start",
+      "parameters": {},
+      "x": 0,
+      "y": 0
+    },
+    {
+      "name": "slack",
+      "description": "Posts to the SOC channel.",
+      "connector_id": "slack",
+      "connector_name": "Slack",
+      "operation": "send_message",
+      "parameters": {
+        "text": "{{ var.input.parameters.message or 'Notification from YTSoar' }}"
+      },
+      "x": 280,
+      "y": 0
+    },
+    {
+      "name": "email",
+      "description": "Change the address to your SOC mailbox.",
+      "connector_id": "email",
+      "connector_name": "Email",
+      "operation": "send_email",
+      "parameters": {
+        "to": "soc@example.com",
+        "subject": "YTSoar notification",
+        "body": "{{ var.input.parameters.message or 'Notification from YTSoar' }}"
+      },
+      "x": 280,
+      "y": 160
+    }
+  ],
+  "edges": {
+    "start": [
+      "slack",
+      "email"
+    ]
+  },
+  "handles": {}
+}

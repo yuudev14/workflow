@@ -1,5 +1,5 @@
 .PHONY: seed-alerts drip-alerts storm-alerts proto dev start-split
-.PHONY: seed-alerts drip-alerts storm-alerts
+.PHONY: seed-alerts drip-alerts storm-alerts seed-playbooks
 
 rebuild-containers:
 		docker compose -f ./docker/dev.docker-compose.yml up --build -d
@@ -58,6 +58,10 @@ ALERTGEN := python3 ./tools/alertgen/alertgen.py
 # over 14 days so the volume chart has a shape. Also escalates 3 into incidents.
 seed-alerts:
 		$(ALERTGEN) seed --count $(or $(N),40)
+
+# The MVP playbooks in tools/playbooks. A playbook with the same name is skipped.
+seed-playbooks:
+		$(ALERTGEN) playbooks
 
 # One alert every ~20s until Ctrl-C. Leave running while clicking the UI.
 drip-alerts:

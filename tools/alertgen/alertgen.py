@@ -8,6 +8,7 @@ the dev stack; nothing in app/ytsoar imports it.
     python3 tools/alertgen/alertgen.py seed --count 200
     python3 tools/alertgen/alertgen.py drip
     python3 tools/alertgen/alertgen.py storm
+    python3 tools/alertgen/alertgen.py playbooks
 
 Ingest API-key auth does not exist yet, so this authenticates as a user: it
 logs in and lets an http.cookiejar carry the httpOnly cookies. Never read or
@@ -16,6 +17,7 @@ forward the token by hand - the cookies ride every later request on their own.
 
 import argparse
 import datetime as dt
+import glob
 import http.cookiejar
 import json
 import os
@@ -23,6 +25,7 @@ import random
 import sys
 import time
 import urllib.error
+import urllib.parse
 import urllib.request
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -187,6 +190,22 @@ def cmd_storm(client, args):
     return 0 if ok else 1
 
 
+def cmd_playbooks(client, args):
+    """Saves each tools/playbooks/*.json file. A playbook with the same name is skipped."""
+    for path in sorted(glob.glob(os.path.join(args.dir, "*.json"))):
+        with open(path) as f:
+            pb = json.load(f)
+        found = client.request("GET", "/api/v1/playbooks?" + urllib.parse.urlencode({"name": pb["name"]}))
+        if any(p["name"] == pb["name"] for p in (found or {}).get("entries") or []):
+            print(f"skip   {pb['name']} (exists)")
+            continue
+        created = client.request("POST", "/api/v1/playbooks", {
+            k: pb[k] for k in ("name", "description", "trigger_type", "trigger_parameters")})
+        client.request("PUT", f"/api/v1/playbooks/tasks/{created['id']}",
+                       {k: pb[k] for k in ("nodes", "edges", "handles")})
+        print(f"create {pb['name']}")
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__,
                                      formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -204,6 +223,9 @@ def main():
     p = sub.add_parser("storm", help="N identical alerts - proves dedup")
     p.add_argument("--count", type=int, default=200)
 
+    p = sub.add_parser("playbooks", help="save the MVP playbooks from tools/playbooks")
+    p.add_argument("--dir", default=os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "playbooks"))
+
     args = parser.parse_args()
 
     client = Client(API)
@@ -216,6 +238,8 @@ def main():
         cmd_drip(client, args)
     elif args.mode == "storm":
         return cmd_storm(client, args)
+    elif args.mode == "playbooks":
+        cmd_playbooks(client, args)
     return 0
 
 

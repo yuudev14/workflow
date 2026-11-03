@@ -1,0 +1,170 @@
+{
+  "name": "Enrich IP and auto-close",
+  "description": "Checks the source IP of a new alert. A low risk IP closes the alert. A high risk IP escalates it and tells the SOC.",
+  "trigger_type": "on_create",
+  "trigger_parameters": {
+    "module": "alert"
+  },
+  "nodes": [
+    {
+      "name": "start",
+      "description": "",
+      "operation": "start",
+      "parameters": {},
+      "x": 0,
+      "y": 0
+    },
+    {
+      "name": "has_ip",
+      "description": "Runs only for an alert with a source IP.",
+      "connector_id": "condition",
+      "connector_name": "Condition",
+      "operation": "switch_expression",
+      "parameters": {
+        "cases": [
+          {
+            "id": "yes",
+            "expression": "{{ var.input.records[0].payload.source is defined and var.input.records[0].payload.source.ip }}"
+          }
+        ]
+      },
+      "x": 280,
+      "y": 0
+    },
+    {
+      "name": "abuseipdb",
+      "description": "",
+      "connector_id": "abuseipdb",
+      "connector_name": "AbuseIPDB",
+      "operation": "check_ip",
+      "parameters": {
+        "ip": "{{ var.input.records[0].payload.source.ip }}"
+      },
+      "x": 560,
+      "y": 0
+    },
+    {
+      "name": "ipinfo",
+      "description": "",
+      "connector_id": "ipinfo",
+      "connector_name": "IPinfo",
+      "operation": "lookup_ip",
+      "parameters": {
+        "ip": "{{ var.input.records[0].payload.source.ip }}"
+      },
+      "x": 560,
+      "y": 160
+    },
+    {
+      "name": "enrich_note",
+      "description": "",
+      "connector_id": "ytsoar",
+      "connector_name": "YTSoar",
+      "operation": "add_alert_note",
+      "parameters": {
+        "alert_id": "{{ var.input.records[0].id }}",
+        "body": "IP {{ var.steps['abuseipdb'].ipAddress }}: abuse score {{ var.steps['abuseipdb'].abuseConfidenceScore }}, {{ var.steps['abuseipdb'].totalReports }} reports, {{ var.steps['ipinfo'].city }} {{ var.steps['ipinfo'].country }}, {{ var.steps['ipinfo'].org }}."
+      },
+      "x": 840,
+      "y": 0
+    },
+    {
+      "name": "risk",
+      "description": "A score of 75 or more is high risk.",
+      "connector_id": "condition",
+      "connector_name": "Condition",
+      "operation": "switch_expression",
+      "parameters": {
+        "cases": [
+          {
+            "id": "high",
+            "expression": "{{ var.steps['abuseipdb'].abuseConfidenceScore >= 75 }}"
+          }
+        ]
+      },
+      "x": 1120,
+      "y": 0
+    },
+    {
+      "name": "escalate",
+      "description": "",
+      "connector_id": "ytsoar",
+      "connector_name": "YTSoar",
+      "operation": "escalate_alert",
+      "parameters": {
+        "alert_id": "{{ var.input.records[0].id }}"
+      },
+      "x": 1400,
+      "y": 0
+    },
+    {
+      "name": "notify",
+      "description": "Posts to the SOC channel.",
+      "connector_id": "slack",
+      "connector_name": "Slack",
+      "operation": "send_message",
+      "parameters": {
+        "text": "High risk IP {{ var.input.records[0].payload.source.ip }} on alert \"{{ var.input.records[0].title }}\". Incident: {{ var.steps['escalate'].title }}"
+      },
+      "x": 1680,
+      "y": 0
+    },
+    {
+      "name": "close",
+      "description": "",
+      "connector_id": "ytsoar",
+      "connector_name": "YTSoar",
+      "operation": "update_alert",
+      "parameters": {
+        "alert_id": "{{ var.input.records[0].id }}",
+        "status": "resolved",
+        "closure_note": "Auto-closed: AbuseIPDB score {{ var.steps['abuseipdb'].abuseConfidenceScore }}."
+      },
+      "x": 1400,
+      "y": 160
+    }
+  ],
+  "edges": {
+    "start": [
+      "has_ip"
+    ],
+    "has_ip": [
+      "abuseipdb",
+      "ipinfo"
+    ],
+    "abuseipdb": [
+      "enrich_note"
+    ],
+    "ipinfo": [
+      "enrich_note"
+    ],
+    "enrich_note": [
+      "risk"
+    ],
+    "risk": [
+      "escalate",
+      "close"
+    ],
+    "escalate": [
+      "notify"
+    ]
+  },
+  "handles": {
+    "has_ip": {
+      "abuseipdb": {
+        "source_handle": "yes"
+      },
+      "ipinfo": {
+        "source_handle": "yes"
+      }
+    },
+    "risk": {
+      "escalate": {
+        "source_handle": "high"
+      },
+      "close": {
+        "source_handle": "else"
+      }
+    }
+  }
+}
