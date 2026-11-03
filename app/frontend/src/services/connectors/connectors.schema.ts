@@ -6,6 +6,23 @@ export interface ConnectorInfo {
   configs?: string[] | null;
 }
 
+// ConnectorConfig is one named config. The api masks password values as "********".
+export interface ConnectorConfig {
+  id: string;
+  connector_id: string;
+  name: string;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  config: Record<string, any>;
+  is_default: boolean;
+}
+
+export interface ConnectorConfigInput {
+  name?: string;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  config?: Record<string, any>;
+  is_default?: boolean;
+}
+
 export interface Configuration {
   fields: Field[];
 }

@@ -1,5 +1,7 @@
 import settings from "@/settings";
 import {
+  ConnectorConfig,
+  ConnectorConfigInput,
   ConnectorInfo,
 } from "./connectors.schema";
 import apiClient from "../common/client";
@@ -35,5 +37,34 @@ export default class ConnectorService {
       { params: replace ? { replace: true } : undefined },
     );
     return res.data;
+  };
+
+  public static listConfigs = async (connectorId: string): Promise<ConnectorConfig[]> => {
+    const res = await apiClient.get(`${this.BASE_URL}/api/v1/connectors/${connectorId}/configs`);
+    return res.data;
+  };
+
+  public static createConfig = async (
+    connectorId: string,
+    input: ConnectorConfigInput,
+  ): Promise<ConnectorConfig> => {
+    const res = await apiClient.post(`${this.BASE_URL}/api/v1/connectors/${connectorId}/configs`, input);
+    return res.data;
+  };
+
+  public static updateConfig = async (
+    connectorId: string,
+    configId: string,
+    input: ConnectorConfigInput,
+  ): Promise<ConnectorConfig> => {
+    const res = await apiClient.patch(
+      `${this.BASE_URL}/api/v1/connectors/${connectorId}/configs/${configId}`,
+      input,
+    );
+    return res.data;
+  };
+
+  public static deleteConfig = async (connectorId: string, configId: string): Promise<void> => {
+    await apiClient.delete(`${this.BASE_URL}/api/v1/connectors/${connectorId}/configs/${configId}`);
   };
 }

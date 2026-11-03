@@ -38,6 +38,9 @@ import CodeMirror, { ReactCodeMirrorRef } from '@uiw/react-codemirror';
 import { python } from '@codemirror/lang-python';
 import { javascript } from '@codemirror/lang-javascript';
 import { useTheme } from "next-themes";
+import { useQuery } from "@tanstack/react-query";
+import ConnectorService from "@/services/connectors/connectors";
+import { configsQueryKey } from "@/pages/connectors/ConnectorConfigs";
 import { connectorGlyph, Glyph } from "@/components/soar";
 import { GripVertical, Plus, X } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -356,6 +359,15 @@ const ConnectorOperation: React.FC<{ connector: ConnectorInfo }> = ({
   const isJsCode = connector.id === CODE_SNIPPET_JS_ID;
   const isCode = connector.id === CODE_SNIPPET_PY_ID || isJsCode;
   const isVirtual = isCondition || isCode;
+  const configsQuery = useQuery({
+    queryKey: configsQueryKey(connector.id),
+    queryFn: () => ConnectorService.listConfigs(connector.id),
+    enabled: !isVirtual,
+  });
+  // TOML configs stay in the list until #70 removes them
+  const configNames = [
+    ...new Set([...(configsQuery.data ?? []).map((c) => c.name), ...(connector.configs ?? [])]),
+  ];
 
   const taskForm = useForm<z.infer<typeof taskFormSchema>>({
     resolver: zodResolver(taskFormSchema),
@@ -504,7 +516,7 @@ const ConnectorOperation: React.FC<{ connector: ConnectorInfo }> = ({
             )}
           />
 
-          {!isVirtual && connector.configs && (
+          {!isVirtual && configNames.length > 0 && (
             <FormField
               control={taskForm.control}
               name="config"
@@ -516,11 +528,11 @@ const ConnectorOperation: React.FC<{ connector: ConnectorInfo }> = ({
                   <Select value={field.value ?? ""} onValueChange={field.onChange}>
                     <FormControl>
                       <SelectTrigger>
-                        <SelectValue placeholder="Select a saved configuration" />
+                        <SelectValue placeholder="Default configuration" />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent className="bg-popover">
-                      {connector.configs?.map((_config) => (
+                      {configNames.map((_config) => (
                         <SelectItem value={_config} key={`connector-config-${_config}`}>
                           {_config}
                         </SelectItem>
