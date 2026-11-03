@@ -32,6 +32,8 @@ export function api(request: APIRequestContext) {
 // newPlaybook makes a playbook that runs one Python step in the sandbox.
 export async function newPlaybook(request: APIRequestContext, name = unique("playbook"), code = "print('hello')") {
   const { id } = await api(request).post("/playbooks", { name });
+  // The trigger route refuses a playbook with no trigger type.
+  await api(request).put(`/playbooks/${id}`, { trigger_type: "manual" });
   await api(request).put(`/playbooks/tasks/${id}`, {
     nodes: [
       { name: "start", operation: "start", parameters: {} },
