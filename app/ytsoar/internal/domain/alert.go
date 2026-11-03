@@ -135,6 +135,7 @@ type AlertNote struct {
 	AlertID        uuid.UUID  `db:"alert_id" json:"alert_id"`
 	AuthorID       *uuid.UUID `db:"author_id" json:"author_id"`
 	AuthorUsername *string    `db:"author_username" json:"author_username"`
+	PlaybookRunID  *uuid.UUID `db:"playbook_run_id" json:"playbook_run_id"`
 	Body           string     `db:"body" json:"body"`
 	CreatedAt      time.Time  `db:"created_at" json:"created_at"`
 	UpdatedAt      time.Time  `db:"updated_at" json:"updated_at"`
@@ -147,6 +148,7 @@ type AlertEvent struct {
 	Type          EventType       `db:"type" json:"type"`
 	ActorID       *uuid.UUID      `db:"actor_id" json:"actor_id"`
 	ActorUsername *string         `db:"actor_username" json:"actor_username"`
+	PlaybookRunID *uuid.UUID      `db:"playbook_run_id" json:"playbook_run_id"`
 	Body          json.RawMessage `db:"body" json:"body"`
 	CreatedAt     time.Time       `db:"created_at" json:"created_at"`
 }

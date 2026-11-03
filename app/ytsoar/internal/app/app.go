@@ -219,8 +219,22 @@ func NewWorker(cfg config.Config, appLogger logger.Logger, pool *pgxpool.Pool) (
 		return nil, fmt.Errorf("failed to setup sandbox runtime client: %w", err)
 	}
 
+	runEnqueuer, err := jobs.NewEnqueuer(pool, repository.TxFromContext)
+	if err != nil {
+		return nil, fmt.Errorf("failed to setup job queue: %w", err)
+	}
+	alertRepository := repository.NewAlertRepositoryImpl(appLogger, queries, pool)
+	incidentRepository := repository.NewIncidentRepositoryImpl(appLogger, queries, pool)
+	txManager := repository.NewPgxTxManager(pool)
+	userRepository := repository.NewUserRepositoryImpl(appLogger, queries, pool)
+	incidentService := incidents.NewService(
+		appLogger, incidentRepository, alertRepository, txManager, runEnqueuer, userRepository)
+	alertService := alerts.NewService(
+		appLogger, alertRepository, incidentService, txManager, runEnqueuer, userRepository)
+
 	builtinRuntime := goconnectors.NewBuiltinRuntime(appLogger, templating.NewGonjaEngine())
 	builtinRuntime.Register("http_request", goconnectors.NewHTTPRequestConnector())
+	builtinRuntime.Register("ytsoar", goconnectors.NewYTSoarConnector(alertService, incidentService))
 	byConnector := map[string]execution.TaskRuntime{}
 	for _, id := range builtinRuntime.IDs() {
 		byConnector[id] = builtinRuntime
@@ -244,22 +258,16 @@ func NewWorker(cfg config.Config, appLogger logger.Logger, pool *pgxpool.Pool) (
 	playbookRunLoader := playbooks.NewRunLoader(playbookService, taskService)
 	runWorker := jobs.NewRunWorker(appLogger, playbookRunLoader, executor)
 
-	runEnqueuer, err := jobs.NewEnqueuer(pool, repository.TxFromContext)
-	if err != nil {
-		return nil, fmt.Errorf("failed to setup job queue: %w", err)
-	}
 	// no StatusBroadcaster: RunForEvent does not broadcast, the executor sends the status
 	eventRunner := playbooks.NewPlaybookApplicationService(
 		appLogger,
 		playbookService,
 		taskService,
 		edges.NewEdgeServiceImpl(repository.NewEdgeRepositoryImpl(appLogger, queries, pool)),
-		repository.NewPgxTxManager(pool),
+		txManager,
 		runEnqueuer,
 		nil,
-		repository.NewRecordResolverImpl(appLogger,
-			repository.NewAlertRepositoryImpl(appLogger, queries, pool),
-			repository.NewIncidentRepositoryImpl(appLogger, queries, pool)),
+		repository.NewRecordResolverImpl(appLogger, alertRepository, incidentRepository),
 	)
 	authService, err := newAuthService(cfg, appLogger, queries, pool)
 	if err != nil {

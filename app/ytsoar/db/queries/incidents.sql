@@ -53,14 +53,16 @@ WHERE id = sqlc.arg('id')
 RETURNING *;
 
 -- name: InsertIncidentEvent :one
-INSERT INTO incident_events (incident_id, type, actor_id, body)
-VALUES ($1, $2, $3, $4)
+INSERT INTO incident_events (incident_id, type, actor_id, body, playbook_run_id)
+VALUES ($1, $2, $3, $4, $5)
 RETURNING *;
 
 -- name: ListIncidentEvents :many
-SELECT e.*, u.username AS actor_username
+SELECT e.*, u.username AS actor_username, p.name AS playbook_name
 FROM incident_events e
 LEFT JOIN users u ON u.id = e.actor_id
+LEFT JOIN playbook_history h ON h.id = e.playbook_run_id
+LEFT JOIN playbooks p ON p.id = h.playbook_id
 WHERE e.incident_id = $1
 ORDER BY e.created_at, e.id;
 
@@ -80,8 +82,8 @@ WHERE ia.incident_id = $1
 ORDER BY a.created_at DESC, a.id DESC;
 
 -- name: InsertIncidentNote :one
-INSERT INTO incident_notes (incident_id, author_id, body)
-VALUES ($1, $2, $3)
+INSERT INTO incident_notes (incident_id, author_id, body, playbook_run_id)
+VALUES ($1, $2, $3, $4)
 RETURNING *;
 
 -- name: GetIncidentNoteById :one
@@ -98,8 +100,10 @@ RETURNING *;
 DELETE FROM incident_notes WHERE id = $1;
 
 -- name: ListIncidentNotes :many
-SELECT n.*, u.username AS author_username
+SELECT n.*, u.username AS author_username, p.name AS playbook_name
 FROM incident_notes n
 LEFT JOIN users u ON u.id = n.author_id
+LEFT JOIN playbook_history h ON h.id = n.playbook_run_id
+LEFT JOIN playbooks p ON p.id = h.playbook_id
 WHERE n.incident_id = $1
 ORDER BY n.created_at, n.id;

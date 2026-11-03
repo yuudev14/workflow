@@ -1,6 +1,7 @@
 package domain
 
 import (
+	"context"
 	"slices"
 
 	"github.com/google/uuid"
@@ -15,6 +16,23 @@ const (
 	ModuleEventCreated = "created"
 	ModuleEventUpdated = "updated"
 )
+
+type playbookRunKey struct{}
+
+// WithPlaybookRun marks the changes in ctx as made by a playbook run, not by a user.
+func WithPlaybookRun(ctx context.Context, runID uuid.UUID) context.Context {
+	return context.WithValue(ctx, playbookRunKey{}, runID)
+}
+
+func PlaybookRunID(ctx context.Context) *uuid.UUID {
+	if id, ok := ctx.Value(playbookRunKey{}).(uuid.UUID); ok {
+		return &id
+	}
+	return nil
+}
+
+// PlaybookActor is the name the timeline and the notes show for a playbook run.
+func PlaybookActor(name string) string { return "playbook: " + name }
 
 // FieldChange is one entry in an `updated` timeline event. Usernames are filled in for
 // id fields, so the timeline reads as a sentence and not a pair of uuids.

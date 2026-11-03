@@ -98,6 +98,30 @@ func TestRuns(t *testing.T) {
 			assert.Equal(t, "success", run["status"], tasks["fetch"]["error"])
 			assert.Equal(t, "/ping", <-called)
 		})
+
+		t.Run("changes an alert with ytsoar and names the playbook as the actor", func(t *testing.T) {
+			alertID := newAlert(t, c)
+			ytsoar := func(name, operation string, params J) J {
+				return J{"name": name, "operation": operation, "connector_id": "ytsoar", "connector_name": "YTSoar", "parameters": params}
+			}
+
+			run, tasks := runPlaybook(t, c, []J{
+				ytsoar("close", "update_alert", J{"alert_id": alertID, "status": "resolved", "closure_note": "benign", "tags": "auto, closed"}),
+				ytsoar("note", "add_alert_note", J{"alert_id": alertID, "body": "closed by a playbook"}),
+			}, J{"start": []string{"close"}, "close": []string{"note"}})
+			require.Equal(t, "success", run["status"], tasks["close"]["error"], tasks["note"]["error"])
+
+			alert := c.get(t, "/api/v1/alerts/"+alertID).(J)
+			assert.Equal(t, "resolved", alert["status"])
+			assert.Equal(t, []any{"auto", "closed"}, alert["tags"])
+			actor := "playbook: " + c.get(t, "/api/v1/playbooks/"+run["playbook_id"].(string)).(J)["name"].(string)
+			timeline := alert["timeline"].([]any)
+			event, note := timeline[len(timeline)-1].(J), alert["notes"].([]any)[0].(J)
+			assert.Equal(t, actor, event["actor_username"])
+			assert.Equal(t, run["id"], event["playbook_run_id"])
+			assert.Equal(t, actor, note["author_username"])
+			assert.Equal(t, run["id"], note["playbook_run_id"])
+		})
 	})
 
 	t.Run("a connector step", func(t *testing.T) {

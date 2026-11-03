@@ -59,7 +59,7 @@ func (q *Queries) GetAlertById(ctx context.Context, id pgtype.UUID) (Alert, erro
 }
 
 const getAlertNoteById = `-- name: GetAlertNoteById :one
-SELECT id, alert_id, author_id, body, created_at, updated_at FROM alert_notes WHERE id = $1
+SELECT id, alert_id, author_id, body, created_at, updated_at, playbook_run_id FROM alert_notes WHERE id = $1
 `
 
 func (q *Queries) GetAlertNoteById(ctx context.Context, id pgtype.UUID) (AlertNote, error) {
@@ -72,21 +72,23 @@ func (q *Queries) GetAlertNoteById(ctx context.Context, id pgtype.UUID) (AlertNo
 		&i.Body,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.PlaybookRunID,
 	)
 	return i, err
 }
 
 const insertAlertEvent = `-- name: InsertAlertEvent :one
-INSERT INTO alert_events (alert_id, type, actor_id, body)
-VALUES ($1, $2, $3, $4)
-RETURNING id, alert_id, type, actor_id, body, created_at
+INSERT INTO alert_events (alert_id, type, actor_id, body, playbook_run_id)
+VALUES ($1, $2, $3, $4, $5)
+RETURNING id, alert_id, type, actor_id, body, created_at, playbook_run_id
 `
 
 type InsertAlertEventParams struct {
-	AlertID pgtype.UUID     `json:"alert_id"`
-	Type    EventType       `json:"type"`
-	ActorID pgtype.UUID     `json:"actor_id"`
-	Body    json.RawMessage `json:"body"`
+	AlertID       pgtype.UUID     `json:"alert_id"`
+	Type          EventType       `json:"type"`
+	ActorID       pgtype.UUID     `json:"actor_id"`
+	Body          json.RawMessage `json:"body"`
+	PlaybookRunID pgtype.UUID     `json:"playbook_run_id"`
 }
 
 func (q *Queries) InsertAlertEvent(ctx context.Context, arg InsertAlertEventParams) (AlertEvent, error) {
@@ -95,6 +97,7 @@ func (q *Queries) InsertAlertEvent(ctx context.Context, arg InsertAlertEventPara
 		arg.Type,
 		arg.ActorID,
 		arg.Body,
+		arg.PlaybookRunID,
 	)
 	var i AlertEvent
 	err := row.Scan(
@@ -104,24 +107,31 @@ func (q *Queries) InsertAlertEvent(ctx context.Context, arg InsertAlertEventPara
 		&i.ActorID,
 		&i.Body,
 		&i.CreatedAt,
+		&i.PlaybookRunID,
 	)
 	return i, err
 }
 
 const insertAlertNote = `-- name: InsertAlertNote :one
-INSERT INTO alert_notes (alert_id, author_id, body)
-VALUES ($1, $2, $3)
-RETURNING id, alert_id, author_id, body, created_at, updated_at
+INSERT INTO alert_notes (alert_id, author_id, body, playbook_run_id)
+VALUES ($1, $2, $3, $4)
+RETURNING id, alert_id, author_id, body, created_at, updated_at, playbook_run_id
 `
 
 type InsertAlertNoteParams struct {
-	AlertID  pgtype.UUID `json:"alert_id"`
-	AuthorID pgtype.UUID `json:"author_id"`
-	Body     string      `json:"body"`
+	AlertID       pgtype.UUID `json:"alert_id"`
+	AuthorID      pgtype.UUID `json:"author_id"`
+	Body          string      `json:"body"`
+	PlaybookRunID pgtype.UUID `json:"playbook_run_id"`
 }
 
 func (q *Queries) InsertAlertNote(ctx context.Context, arg InsertAlertNoteParams) (AlertNote, error) {
-	row := q.db.QueryRow(ctx, insertAlertNote, arg.AlertID, arg.AuthorID, arg.Body)
+	row := q.db.QueryRow(ctx, insertAlertNote,
+		arg.AlertID,
+		arg.AuthorID,
+		arg.Body,
+		arg.PlaybookRunID,
+	)
 	var i AlertNote
 	err := row.Scan(
 		&i.ID,
@@ -130,14 +140,17 @@ func (q *Queries) InsertAlertNote(ctx context.Context, arg InsertAlertNoteParams
 		&i.Body,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.PlaybookRunID,
 	)
 	return i, err
 }
 
 const listAlertEvents = `-- name: ListAlertEvents :many
-SELECT e.id, e.alert_id, e.type, e.actor_id, e.body, e.created_at, u.username AS actor_username
+SELECT e.id, e.alert_id, e.type, e.actor_id, e.body, e.created_at, e.playbook_run_id, u.username AS actor_username, p.name AS playbook_name
 FROM alert_events e
 LEFT JOIN users u ON u.id = e.actor_id
+LEFT JOIN playbook_history h ON h.id = e.playbook_run_id
+LEFT JOIN playbooks p ON p.id = h.playbook_id
 WHERE e.alert_id = $1
 ORDER BY e.created_at, e.id
 `
@@ -149,7 +162,9 @@ type ListAlertEventsRow struct {
 	ActorID       pgtype.UUID      `json:"actor_id"`
 	Body          json.RawMessage  `json:"body"`
 	CreatedAt     pgtype.Timestamp `json:"created_at"`
+	PlaybookRunID pgtype.UUID      `json:"playbook_run_id"`
 	ActorUsername pgtype.Text      `json:"actor_username"`
+	PlaybookName  pgtype.Text      `json:"playbook_name"`
 }
 
 func (q *Queries) ListAlertEvents(ctx context.Context, alertID pgtype.UUID) ([]ListAlertEventsRow, error) {
@@ -168,7 +183,9 @@ func (q *Queries) ListAlertEvents(ctx context.Context, alertID pgtype.UUID) ([]L
 			&i.ActorID,
 			&i.Body,
 			&i.CreatedAt,
+			&i.PlaybookRunID,
 			&i.ActorUsername,
+			&i.PlaybookName,
 		); err != nil {
 			return nil, err
 		}
@@ -181,9 +198,11 @@ func (q *Queries) ListAlertEvents(ctx context.Context, alertID pgtype.UUID) ([]L
 }
 
 const listAlertNotes = `-- name: ListAlertNotes :many
-SELECT n.id, n.alert_id, n.author_id, n.body, n.created_at, n.updated_at, u.username AS author_username
+SELECT n.id, n.alert_id, n.author_id, n.body, n.created_at, n.updated_at, n.playbook_run_id, u.username AS author_username, p.name AS playbook_name
 FROM alert_notes n
 LEFT JOIN users u ON u.id = n.author_id
+LEFT JOIN playbook_history h ON h.id = n.playbook_run_id
+LEFT JOIN playbooks p ON p.id = h.playbook_id
 WHERE n.alert_id = $1
 ORDER BY n.created_at, n.id
 `
@@ -195,7 +214,9 @@ type ListAlertNotesRow struct {
 	Body           string           `json:"body"`
 	CreatedAt      pgtype.Timestamp `json:"created_at"`
 	UpdatedAt      pgtype.Timestamp `json:"updated_at"`
+	PlaybookRunID  pgtype.UUID      `json:"playbook_run_id"`
 	AuthorUsername pgtype.Text      `json:"author_username"`
+	PlaybookName   pgtype.Text      `json:"playbook_name"`
 }
 
 func (q *Queries) ListAlertNotes(ctx context.Context, alertID pgtype.UUID) ([]ListAlertNotesRow, error) {
@@ -214,7 +235,9 @@ func (q *Queries) ListAlertNotes(ctx context.Context, alertID pgtype.UUID) ([]Li
 			&i.Body,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.PlaybookRunID,
 			&i.AuthorUsername,
+			&i.PlaybookName,
 		); err != nil {
 			return nil, err
 		}
@@ -319,7 +342,7 @@ UPDATE alert_notes
 SET body = $1,
     updated_at = NOW()
 WHERE id = $2
-RETURNING id, alert_id, author_id, body, created_at, updated_at
+RETURNING id, alert_id, author_id, body, created_at, updated_at, playbook_run_id
 `
 
 type UpdateAlertNoteParams struct {
@@ -337,6 +360,7 @@ func (q *Queries) UpdateAlertNote(ctx context.Context, arg UpdateAlertNoteParams
 		&i.Body,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.PlaybookRunID,
 	)
 	return i, err
 }

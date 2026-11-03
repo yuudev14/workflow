@@ -115,7 +115,7 @@ The system has four parts. Three parts are Go programs. They come from one modul
 ```
 
 1. **Playbook API** (`cmd/api`) - The API gives the REST and WebSocket interfaces. It saves playbooks. When a user triggers a playbook, the API queues a run in Postgres (River). The API sends status updates to the browser.
-2. **Worker** (`cmd/worker`) - The worker takes queued runs and runs the graph node by node. It runs independent nodes at the same time. For most nodes, the worker sends the work to the sandbox over gRPC and saves the result. One first-party connector (`http_request`) is trusted. The worker runs it directly.
+2. **Worker** (`cmd/worker`) - The worker takes queued runs and runs the graph node by node. It runs independent nodes at the same time. For most nodes, the worker sends the work to the sandbox over gRPC and saves the result. Two first-party connectors (`http_request` and `ytsoar`) are trusted. The worker runs them directly. `ytsoar` creates, changes and deletes alerts and incidents from a playbook step, and the timeline names the playbook as the actor.
 3. **Sandbox** (`cmd/sandbox`) - The sandbox runs connectors and code snippets. Each run gets a new `python3` or `node` process. The process has no credentials, a clean environment and a time limit. Untrusted code cannot reach the database or the job queue.
 4. **Frontend** - The visual editor. The Vite dev server serves it behind nginx.
 

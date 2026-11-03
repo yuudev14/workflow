@@ -1,0 +1,613 @@
+{
+  "name": "YTSoar",
+  "id": "ytsoar",
+  "runtime": "go",
+  "configuration": {
+    "fields": []
+  },
+  "operations": [
+    {
+      "operation": "create_alert",
+      "title": "Create alert",
+      "description": "Creates an alert.",
+      "annotation": "create_alert",
+      "enabled": true,
+      "parameters": [
+        {
+          "title": "Title",
+          "name": "title",
+          "description": "The alert title.",
+          "required": true,
+          "editable": true,
+          "visible": true,
+          "type": "text",
+          "tooltip": "The alert title.",
+          "placeholder": ""
+        },
+        {
+          "title": "Severity",
+          "name": "severity",
+          "description": "critical, high, medium or low.",
+          "required": true,
+          "editable": true,
+          "visible": true,
+          "type": "text",
+          "tooltip": "critical, high, medium or low.",
+          "placeholder": "high"
+        },
+        {
+          "title": "Source kind",
+          "name": "source_kind",
+          "description": "edr, identity, email, firewall or dlp.",
+          "required": true,
+          "editable": true,
+          "visible": true,
+          "type": "text",
+          "tooltip": "edr, identity, email, firewall or dlp.",
+          "placeholder": "email"
+        },
+        {
+          "title": "Reporter",
+          "name": "reporter",
+          "description": "Who reported it.",
+          "required": false,
+          "editable": true,
+          "visible": true,
+          "type": "text",
+          "tooltip": "Who reported it.",
+          "placeholder": ""
+        },
+        {
+          "title": "Assignee ID",
+          "name": "assignee_id",
+          "description": "A user id.",
+          "required": false,
+          "editable": true,
+          "visible": true,
+          "type": "text",
+          "tooltip": "A user id.",
+          "placeholder": ""
+        },
+        {
+          "title": "Team ID",
+          "name": "team_id",
+          "description": "A team id.",
+          "required": false,
+          "editable": true,
+          "visible": true,
+          "type": "text",
+          "tooltip": "A team id.",
+          "placeholder": ""
+        },
+        {
+          "title": "Tags",
+          "name": "tags",
+          "description": "Tags, separated by commas. Replaces the tags.",
+          "required": false,
+          "editable": true,
+          "visible": true,
+          "type": "text",
+          "tooltip": "Tags, separated by commas. Replaces the tags.",
+          "placeholder": "phishing, vip"
+        },
+        {
+          "title": "Payload",
+          "name": "payload",
+          "description": "The raw event, as a JSON object.",
+          "required": false,
+          "editable": true,
+          "visible": true,
+          "type": "text",
+          "tooltip": "The raw event, as a JSON object.",
+          "placeholder": "{\"ip\": \"1.2.3.4\"}"
+        }
+      ],
+      "output": [
+        {
+          "name": "id",
+          "type": "string",
+          "description": "Alert id"
+        },
+        {
+          "name": "status",
+          "type": "string",
+          "description": "Alert status"
+        }
+      ]
+    },
+    {
+      "operation": "update_alert",
+      "title": "Update alert",
+      "description": "Changes the fields of an alert. An empty field stays the same.",
+      "annotation": "update_alert",
+      "enabled": true,
+      "parameters": [
+        {
+          "title": "Alert ID",
+          "name": "alert_id",
+          "description": "The alert id. Supports templates.",
+          "required": true,
+          "editable": true,
+          "visible": true,
+          "type": "text",
+          "tooltip": "The alert id. Supports templates.",
+          "placeholder": "{{ var.input.record_id }}"
+        },
+        {
+          "title": "Status",
+          "name": "status",
+          "description": "new, investigating, resolved, falsepos or closed.",
+          "required": false,
+          "editable": true,
+          "visible": true,
+          "type": "text",
+          "tooltip": "new, investigating, resolved, falsepos or closed.",
+          "placeholder": "resolved"
+        },
+        {
+          "title": "Closure note",
+          "name": "closure_note",
+          "description": "The reason for a close.",
+          "required": false,
+          "editable": true,
+          "visible": true,
+          "type": "text",
+          "tooltip": "The reason for a close.",
+          "placeholder": ""
+        },
+        {
+          "title": "Severity",
+          "name": "severity",
+          "description": "critical, high, medium or low.",
+          "required": false,
+          "editable": true,
+          "visible": true,
+          "type": "text",
+          "tooltip": "critical, high, medium or low.",
+          "placeholder": "high"
+        },
+        {
+          "title": "Assignee ID",
+          "name": "assignee_id",
+          "description": "A user id.",
+          "required": false,
+          "editable": true,
+          "visible": true,
+          "type": "text",
+          "tooltip": "A user id.",
+          "placeholder": ""
+        },
+        {
+          "title": "Team ID",
+          "name": "team_id",
+          "description": "A team id.",
+          "required": false,
+          "editable": true,
+          "visible": true,
+          "type": "text",
+          "tooltip": "A team id.",
+          "placeholder": ""
+        },
+        {
+          "title": "Tags",
+          "name": "tags",
+          "description": "Tags, separated by commas. Replaces the tags.",
+          "required": false,
+          "editable": true,
+          "visible": true,
+          "type": "text",
+          "tooltip": "Tags, separated by commas. Replaces the tags.",
+          "placeholder": "phishing, vip"
+        }
+      ],
+      "output": [
+        {
+          "name": "id",
+          "type": "string",
+          "description": "Alert id"
+        },
+        {
+          "name": "status",
+          "type": "string",
+          "description": "Alert status"
+        }
+      ]
+    },
+    {
+      "operation": "delete_alert",
+      "title": "Delete alert",
+      "description": "Deletes an alert. The row stays for the audit.",
+      "annotation": "delete_alert",
+      "enabled": true,
+      "parameters": [
+        {
+          "title": "Alert ID",
+          "name": "alert_id",
+          "description": "The alert id. Supports templates.",
+          "required": true,
+          "editable": true,
+          "visible": true,
+          "type": "text",
+          "tooltip": "The alert id. Supports templates.",
+          "placeholder": "{{ var.input.record_id }}"
+        }
+      ],
+      "output": [
+        {
+          "name": "deleted",
+          "type": "boolean",
+          "description": "Always true"
+        }
+      ]
+    },
+    {
+      "operation": "add_alert_note",
+      "title": "Add alert note",
+      "description": "Adds a note to an alert.",
+      "annotation": "add_alert_note",
+      "enabled": true,
+      "parameters": [
+        {
+          "title": "Alert ID",
+          "name": "alert_id",
+          "description": "The alert id. Supports templates.",
+          "required": true,
+          "editable": true,
+          "visible": true,
+          "type": "text",
+          "tooltip": "The alert id. Supports templates.",
+          "placeholder": "{{ var.input.record_id }}"
+        },
+        {
+          "title": "Note",
+          "name": "body",
+          "description": "The note text.",
+          "required": true,
+          "editable": true,
+          "visible": true,
+          "type": "text",
+          "tooltip": "The note text.",
+          "placeholder": ""
+        }
+      ],
+      "output": [
+        {
+          "name": "id",
+          "type": "string",
+          "description": "Note id"
+        }
+      ]
+    },
+    {
+      "operation": "escalate_alert",
+      "title": "Escalate alert",
+      "description": "Makes an incident from an alert.",
+      "annotation": "escalate_alert",
+      "enabled": true,
+      "parameters": [
+        {
+          "title": "Alert ID",
+          "name": "alert_id",
+          "description": "The alert id. Supports templates.",
+          "required": true,
+          "editable": true,
+          "visible": true,
+          "type": "text",
+          "tooltip": "The alert id. Supports templates.",
+          "placeholder": "{{ var.input.record_id }}"
+        },
+        {
+          "title": "Title",
+          "name": "title",
+          "description": "The incident title. Empty uses the alert title.",
+          "required": false,
+          "editable": true,
+          "visible": true,
+          "type": "text",
+          "tooltip": "The incident title. Empty uses the alert title.",
+          "placeholder": ""
+        }
+      ],
+      "output": [
+        {
+          "name": "id",
+          "type": "string",
+          "description": "Incident id"
+        },
+        {
+          "name": "status",
+          "type": "string",
+          "description": "Incident status"
+        }
+      ]
+    },
+    {
+      "operation": "create_incident",
+      "title": "Create incident",
+      "description": "Creates an incident. It needs no alert.",
+      "annotation": "create_incident",
+      "enabled": true,
+      "parameters": [
+        {
+          "title": "Title",
+          "name": "title",
+          "description": "The incident title.",
+          "required": true,
+          "editable": true,
+          "visible": true,
+          "type": "text",
+          "tooltip": "The incident title.",
+          "placeholder": ""
+        },
+        {
+          "title": "Severity",
+          "name": "severity",
+          "description": "critical, high, medium or low.",
+          "required": true,
+          "editable": true,
+          "visible": true,
+          "type": "text",
+          "tooltip": "critical, high, medium or low.",
+          "placeholder": "high"
+        },
+        {
+          "title": "Status",
+          "name": "status",
+          "description": "open, investigating, contained, resolved or closed.",
+          "required": false,
+          "editable": true,
+          "visible": true,
+          "type": "text",
+          "tooltip": "open, investigating, contained, resolved or closed.",
+          "placeholder": "open"
+        },
+        {
+          "title": "Assignee ID",
+          "name": "assignee_id",
+          "description": "A user id.",
+          "required": false,
+          "editable": true,
+          "visible": true,
+          "type": "text",
+          "tooltip": "A user id.",
+          "placeholder": ""
+        },
+        {
+          "title": "Team ID",
+          "name": "team_id",
+          "description": "A team id.",
+          "required": false,
+          "editable": true,
+          "visible": true,
+          "type": "text",
+          "tooltip": "A team id.",
+          "placeholder": ""
+        },
+        {
+          "title": "Tags",
+          "name": "tags",
+          "description": "Tags, separated by commas. Replaces the tags.",
+          "required": false,
+          "editable": true,
+          "visible": true,
+          "type": "text",
+          "tooltip": "Tags, separated by commas. Replaces the tags.",
+          "placeholder": "phishing, vip"
+        },
+        {
+          "title": "Alert IDs",
+          "name": "alert_ids",
+          "description": "Alerts to link, separated by commas.",
+          "required": false,
+          "editable": true,
+          "visible": true,
+          "type": "text",
+          "tooltip": "Alerts to link, separated by commas.",
+          "placeholder": ""
+        }
+      ],
+      "output": [
+        {
+          "name": "id",
+          "type": "string",
+          "description": "Incident id"
+        },
+        {
+          "name": "status",
+          "type": "string",
+          "description": "Incident status"
+        }
+      ]
+    },
+    {
+      "operation": "update_incident",
+      "title": "Update incident",
+      "description": "Changes the fields of an incident. An empty field stays the same.",
+      "annotation": "update_incident",
+      "enabled": true,
+      "parameters": [
+        {
+          "title": "Incident ID",
+          "name": "incident_id",
+          "description": "The incident id. Supports templates.",
+          "required": true,
+          "editable": true,
+          "visible": true,
+          "type": "text",
+          "tooltip": "The incident id. Supports templates.",
+          "placeholder": ""
+        },
+        {
+          "title": "Status",
+          "name": "status",
+          "description": "open, investigating, contained, resolved or closed.",
+          "required": false,
+          "editable": true,
+          "visible": true,
+          "type": "text",
+          "tooltip": "open, investigating, contained, resolved or closed.",
+          "placeholder": "contained"
+        },
+        {
+          "title": "Severity",
+          "name": "severity",
+          "description": "critical, high, medium or low.",
+          "required": false,
+          "editable": true,
+          "visible": true,
+          "type": "text",
+          "tooltip": "critical, high, medium or low.",
+          "placeholder": "high"
+        },
+        {
+          "title": "Assignee ID",
+          "name": "assignee_id",
+          "description": "A user id.",
+          "required": false,
+          "editable": true,
+          "visible": true,
+          "type": "text",
+          "tooltip": "A user id.",
+          "placeholder": ""
+        },
+        {
+          "title": "Team ID",
+          "name": "team_id",
+          "description": "A team id.",
+          "required": false,
+          "editable": true,
+          "visible": true,
+          "type": "text",
+          "tooltip": "A team id.",
+          "placeholder": ""
+        },
+        {
+          "title": "Tags",
+          "name": "tags",
+          "description": "Tags, separated by commas. Replaces the tags.",
+          "required": false,
+          "editable": true,
+          "visible": true,
+          "type": "text",
+          "tooltip": "Tags, separated by commas. Replaces the tags.",
+          "placeholder": "phishing, vip"
+        }
+      ],
+      "output": [
+        {
+          "name": "id",
+          "type": "string",
+          "description": "Incident id"
+        },
+        {
+          "name": "status",
+          "type": "string",
+          "description": "Incident status"
+        }
+      ]
+    },
+    {
+      "operation": "delete_incident",
+      "title": "Delete incident",
+      "description": "Deletes an incident. The row stays for the audit.",
+      "annotation": "delete_incident",
+      "enabled": true,
+      "parameters": [
+        {
+          "title": "Incident ID",
+          "name": "incident_id",
+          "description": "The incident id. Supports templates.",
+          "required": true,
+          "editable": true,
+          "visible": true,
+          "type": "text",
+          "tooltip": "The incident id. Supports templates.",
+          "placeholder": ""
+        }
+      ],
+      "output": [
+        {
+          "name": "deleted",
+          "type": "boolean",
+          "description": "Always true"
+        }
+      ]
+    },
+    {
+      "operation": "add_incident_note",
+      "title": "Add incident note",
+      "description": "Adds a note to an incident.",
+      "annotation": "add_incident_note",
+      "enabled": true,
+      "parameters": [
+        {
+          "title": "Incident ID",
+          "name": "incident_id",
+          "description": "The incident id. Supports templates.",
+          "required": true,
+          "editable": true,
+          "visible": true,
+          "type": "text",
+          "tooltip": "The incident id. Supports templates.",
+          "placeholder": ""
+        },
+        {
+          "title": "Note",
+          "name": "body",
+          "description": "The note text.",
+          "required": true,
+          "editable": true,
+          "visible": true,
+          "type": "text",
+          "tooltip": "The note text.",
+          "placeholder": ""
+        }
+      ],
+      "output": [
+        {
+          "name": "id",
+          "type": "string",
+          "description": "Note id"
+        }
+      ]
+    },
+    {
+      "operation": "link_alert",
+      "title": "Link alert",
+      "description": "Links an alert to an incident.",
+      "annotation": "link_alert",
+      "enabled": true,
+      "parameters": [
+        {
+          "title": "Incident ID",
+          "name": "incident_id",
+          "description": "The incident id. Supports templates.",
+          "required": true,
+          "editable": true,
+          "visible": true,
+          "type": "text",
+          "tooltip": "The incident id. Supports templates.",
+          "placeholder": ""
+        },
+        {
+          "title": "Alert ID",
+          "name": "alert_id",
+          "description": "The alert id. Supports templates.",
+          "required": true,
+          "editable": true,
+          "visible": true,
+          "type": "text",
+          "tooltip": "The alert id. Supports templates.",
+          "placeholder": ""
+        }
+      ],
+      "output": [
+        {
+          "name": "linked",
+          "type": "boolean",
+          "description": "Always true"
+        }
+      ]
+    }
+  ]
+}

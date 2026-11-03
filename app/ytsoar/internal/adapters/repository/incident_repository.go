@@ -61,20 +61,22 @@ const incidentListColumns = `i.id, i.title, i.severity, i.status, i.assignee_id,
 const incidentTimelineAggregate = `COALESCE((
     SELECT jsonb_agg(jsonb_build_object(
                'id', e.id, 'incident_id', e.incident_id, 'type', e.type, 'actor_id', e.actor_id,
-               'actor_username', au.username, 'body', e.body, 'created_at', e.created_at AT TIME ZONE 'UTC')
+               'actor_username', COALESCE(au.username, 'playbook: ' || ep.name), 'playbook_run_id', e.playbook_run_id, 'body', e.body, 'created_at', e.created_at AT TIME ZONE 'UTC')
            ORDER BY e.created_at, e.id)
     FROM incident_events e LEFT JOIN users au ON au.id = e.actor_id
+    LEFT JOIN playbook_history eh ON eh.id = e.playbook_run_id LEFT JOIN playbooks ep ON ep.id = eh.playbook_id
     WHERE e.incident_id = i.id
 ), '[]'::jsonb) AS timeline`
 
 const incidentNotesAggregate = `COALESCE((
     SELECT jsonb_agg(jsonb_build_object(
                'id', n.id, 'incident_id', n.incident_id, 'author_id', n.author_id,
-               'author_username', nu.username, 'body', n.body,
+               'author_username', COALESCE(nu.username, 'playbook: ' || np.name), 'playbook_run_id', n.playbook_run_id, 'body', n.body,
                'created_at', n.created_at AT TIME ZONE 'UTC',
                'updated_at', n.updated_at AT TIME ZONE 'UTC')
            ORDER BY n.created_at, n.id)
     FROM incident_notes n LEFT JOIN users nu ON nu.id = n.author_id
+    LEFT JOIN playbook_history nh ON nh.id = n.playbook_run_id LEFT JOIN playbooks np ON np.id = nh.playbook_id
     WHERE n.incident_id = i.id
 ), '[]'::jsonb) AS linked_notes`
 
@@ -294,19 +296,21 @@ func (r *IncidentRepositoryImpl) UpdateStatus(ctx context.Context, id uuid.UUID,
 
 func (r *IncidentRepositoryImpl) AppendEvent(ctx context.Context, params incidents.AppendEventParams) error {
 	_, err := r.queriesFromContext(ctx).InsertIncidentEvent(ctx, db.InsertIncidentEventParams{
-		IncidentID: toPgUUID(params.IncidentID),
-		Type:       db.EventType(params.Type),
-		ActorID:    toPgUUIDPtr(params.ActorID),
-		Body:       params.Body,
+		IncidentID:    toPgUUID(params.IncidentID),
+		Type:          db.EventType(params.Type),
+		ActorID:       toPgUUIDPtr(params.ActorID),
+		Body:          params.Body,
+		PlaybookRunID: toPgUUIDPtr(domain.PlaybookRunID(ctx)),
 	})
 	return err
 }
 
 func (r *IncidentRepositoryImpl) AddNote(ctx context.Context, incidentID uuid.UUID, authorID *uuid.UUID, body string) (domain.IncidentNote, error) {
 	row, err := r.queriesFromContext(ctx).InsertIncidentNote(ctx, db.InsertIncidentNoteParams{
-		IncidentID: toPgUUID(incidentID),
-		AuthorID:   toPgUUIDPtr(authorID),
-		Body:       body,
+		IncidentID:    toPgUUID(incidentID),
+		AuthorID:      toPgUUIDPtr(authorID),
+		Body:          body,
+		PlaybookRunID: toPgUUIDPtr(domain.PlaybookRunID(ctx)),
 	})
 	if err != nil {
 		return domain.IncidentNote{}, err
@@ -356,7 +360,8 @@ func (r *IncidentRepositoryImpl) ListNotes(ctx context.Context, incidentID uuid.
 			ID:             fromPgUUID(row.ID),
 			IncidentID:     fromPgUUID(row.IncidentID),
 			AuthorID:       fromPgUUIDPtr(row.AuthorID),
-			AuthorUsername: fromPgText(row.AuthorUsername),
+			AuthorUsername: authorName(row.AuthorUsername, row.PlaybookName),
+			PlaybookRunID:  fromPgUUIDPtr(row.PlaybookRunID),
 			Body:           row.Body,
 			CreatedAt:      row.CreatedAt.Time,
 			UpdatedAt:      row.UpdatedAt.Time,
@@ -559,11 +564,12 @@ func toDomainIncident(row db.Incident) domain.Incident {
 
 func toDomainIncidentNote(row db.IncidentNote) domain.IncidentNote {
 	return domain.IncidentNote{
-		ID:         fromPgUUID(row.ID),
-		IncidentID: fromPgUUID(row.IncidentID),
-		AuthorID:   fromPgUUIDPtr(row.AuthorID),
-		Body:       row.Body,
-		CreatedAt:  row.CreatedAt.Time,
-		UpdatedAt:  row.UpdatedAt.Time,
+		ID:            fromPgUUID(row.ID),
+		IncidentID:    fromPgUUID(row.IncidentID),
+		AuthorID:      fromPgUUIDPtr(row.AuthorID),
+		PlaybookRunID: fromPgUUIDPtr(row.PlaybookRunID),
+		Body:          row.Body,
+		CreatedAt:     row.CreatedAt.Time,
+		UpdatedAt:     row.UpdatedAt.Time,
 	}
 }
