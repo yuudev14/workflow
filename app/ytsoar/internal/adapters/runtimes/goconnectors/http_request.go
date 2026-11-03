@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 	"time"
 )
 
@@ -26,25 +27,47 @@ func NewHTTPRequestConnector() *HTTPRequestConnector {
 	}
 }
 
-func (c *HTTPRequestConnector) Execute(ctx context.Context, configs map[string]any, params map[string]any, operation string) (any, error) {
-	switch operation {
-	case "get_request":
-		return c.getRequest(ctx, configs, params)
-	default:
-		return nil, fmt.Errorf("operation (%s) does not exist in HTTPRequestConnector", operation)
-	}
+// methods maps each operation to its HTTP method.
+var methods = map[string]string{
+	"get_request":    http.MethodGet,
+	"post_request":   http.MethodPost,
+	"put_request":    http.MethodPut,
+	"delete_request": http.MethodDelete,
 }
 
-func (c *HTTPRequestConnector) getRequest(ctx context.Context, configs map[string]any, params map[string]any) (any, error) {
+func (c *HTTPRequestConnector) Execute(ctx context.Context, configs map[string]any, params map[string]any, operation string) (any, error) {
+	method, ok := methods[operation]
+	if !ok {
+		return nil, fmt.Errorf("operation (%s) does not exist in HTTPRequestConnector", operation)
+	}
+	return c.request(ctx, method, configs, params)
+}
+
+// request sends params["body"] as it is. params["headers"] is a JSON object (the templates
+// make it a string) and wins over the headers of the config.
+func (c *HTTPRequestConnector) request(ctx context.Context, method string, configs map[string]any, params map[string]any) (any, error) {
 	url, _ := params["url"].(string)
 	if url == "" {
 		return nil, fmt.Errorf("url parameter is required")
 	}
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	body, _ := params["body"].(string)
+	var reader io.Reader
+	if body != "" {
+		reader = strings.NewReader(body)
+	}
+	req, err := http.NewRequestWithContext(ctx, method, url, reader)
 	if err != nil {
 		return nil, err
 	}
-	if headers, ok := configs["headers"].(map[string]any); ok {
+	if body != "" && json.Valid([]byte(body)) {
+		req.Header.Set("Content-Type", "application/json")
+	}
+	paramHeaders, err := headersOf(params["headers"])
+	if err != nil {
+		return nil, err
+	}
+	configHeaders, _ := configs["headers"].(map[string]any)
+	for _, headers := range []map[string]any{configHeaders, paramHeaders} {
 		for key, value := range headers {
 			if s, ok := value.(string); ok {
 				req.Header.Set(key, s)
@@ -65,9 +88,29 @@ func (c *HTTPRequestConnector) getRequest(ctx context.Context, configs map[strin
 		return nil, fmt.Errorf("response body exceeds %d bytes", maxResponseBytes)
 	}
 
-	var body any
-	if err := json.Unmarshal(raw, &body); err != nil {
-		body = string(raw)
+	var parsed any
+	if err := json.Unmarshal(raw, &parsed); err != nil {
+		parsed = string(raw)
 	}
-	return map[string]any{"status": resp.StatusCode, "body": body}, nil
+	return map[string]any{"status": resp.StatusCode, "body": parsed}, nil
+}
+
+func headersOf(value any) (map[string]any, error) {
+	switch v := value.(type) {
+	case nil:
+		return nil, nil
+	case map[string]any:
+		return v, nil
+	case string:
+		if strings.TrimSpace(v) == "" {
+			return nil, nil
+		}
+		headers := map[string]any{}
+		if err := json.Unmarshal([]byte(v), &headers); err != nil {
+			return nil, fmt.Errorf("headers must be a JSON object: %w", err)
+		}
+		return headers, nil
+	default:
+		return nil, fmt.Errorf("headers must be a JSON object")
+	}
 }

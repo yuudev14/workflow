@@ -23,6 +23,179 @@
           "type": "text",
           "tooltip": "URL to GET",
           "placeholder": "https://api.example.com/items"
+        },
+        {
+          "title": "Headers",
+          "name": "headers",
+          "description": "Optional. A JSON object of request headers. Supports templates.",
+          "required": false,
+          "editable": true,
+          "visible": true,
+          "type": "text",
+          "tooltip": "JSON object of headers",
+          "placeholder": "{\"Authorization\": \"Bearer ...\"}"
+        }
+      ],
+      "output": [
+        {
+          "name": "status",
+          "type": "number",
+          "description": "HTTP status code"
+        },
+        {
+          "name": "body",
+          "type": "object",
+          "description": "Response body, parsed as JSON when possible"
+        }
+      ]
+    },
+    {
+      "operation": "post_request",
+      "title": "POST request",
+      "description": "Sends an HTTP POST request and returns {status, body}.",
+      "annotation": "post_request",
+      "enabled": true,
+      "parameters": [
+        {
+          "title": "URL",
+          "name": "url",
+          "description": "The URL to request. Supports templates.",
+          "required": true,
+          "editable": true,
+          "visible": true,
+          "type": "text",
+          "tooltip": "URL to POST",
+          "placeholder": "https://api.example.com/items"
+        },
+        {
+          "title": "Headers",
+          "name": "headers",
+          "description": "Optional. A JSON object of request headers. Supports templates.",
+          "required": false,
+          "editable": true,
+          "visible": true,
+          "type": "text",
+          "tooltip": "JSON object of headers",
+          "placeholder": "{\"Authorization\": \"Bearer ...\"}"
+        },
+        {
+          "title": "Body",
+          "name": "body",
+          "description": "Optional. Sent as it is. A JSON body gets Content-Type application/json. Supports templates.",
+          "required": false,
+          "editable": true,
+          "visible": true,
+          "type": "text",
+          "tooltip": "Request body",
+          "placeholder": "{\"text\": \"hello\"}"
+        }
+      ],
+      "output": [
+        {
+          "name": "status",
+          "type": "number",
+          "description": "HTTP status code"
+        },
+        {
+          "name": "body",
+          "type": "object",
+          "description": "Response body, parsed as JSON when possible"
+        }
+      ]
+    },
+    {
+      "operation": "put_request",
+      "title": "PUT request",
+      "description": "Sends an HTTP PUT request and returns {status, body}.",
+      "annotation": "put_request",
+      "enabled": true,
+      "parameters": [
+        {
+          "title": "URL",
+          "name": "url",
+          "description": "The URL to request. Supports templates.",
+          "required": true,
+          "editable": true,
+          "visible": true,
+          "type": "text",
+          "tooltip": "URL to PUT",
+          "placeholder": "https://api.example.com/items"
+        },
+        {
+          "title": "Headers",
+          "name": "headers",
+          "description": "Optional. A JSON object of request headers. Supports templates.",
+          "required": false,
+          "editable": true,
+          "visible": true,
+          "type": "text",
+          "tooltip": "JSON object of headers",
+          "placeholder": "{\"Authorization\": \"Bearer ...\"}"
+        },
+        {
+          "title": "Body",
+          "name": "body",
+          "description": "Optional. Sent as it is. A JSON body gets Content-Type application/json. Supports templates.",
+          "required": false,
+          "editable": true,
+          "visible": true,
+          "type": "text",
+          "tooltip": "Request body",
+          "placeholder": "{\"text\": \"hello\"}"
+        }
+      ],
+      "output": [
+        {
+          "name": "status",
+          "type": "number",
+          "description": "HTTP status code"
+        },
+        {
+          "name": "body",
+          "type": "object",
+          "description": "Response body, parsed as JSON when possible"
+        }
+      ]
+    },
+    {
+      "operation": "delete_request",
+      "title": "DELETE request",
+      "description": "Sends an HTTP DELETE request and returns {status, body}.",
+      "annotation": "delete_request",
+      "enabled": true,
+      "parameters": [
+        {
+          "title": "URL",
+          "name": "url",
+          "description": "The URL to request. Supports templates.",
+          "required": true,
+          "editable": true,
+          "visible": true,
+          "type": "text",
+          "tooltip": "URL to DELETE",
+          "placeholder": "https://api.example.com/items"
+        },
+        {
+          "title": "Headers",
+          "name": "headers",
+          "description": "Optional. A JSON object of request headers. Supports templates.",
+          "required": false,
+          "editable": true,
+          "visible": true,
+          "type": "text",
+          "tooltip": "JSON object of headers",
+          "placeholder": "{\"Authorization\": \"Bearer ...\"}"
+        },
+        {
+          "title": "Body",
+          "name": "body",
+          "description": "Optional. Sent as it is. A JSON body gets Content-Type application/json. Supports templates.",
+          "required": false,
+          "editable": true,
+          "visible": true,
+          "type": "text",
+          "tooltip": "Request body",
+          "placeholder": "{\"text\": \"hello\"}"
         }
       ],
       "output": [

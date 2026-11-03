@@ -3,6 +3,7 @@ package goconnectors_test
 import (
 	"context"
 	"encoding/json"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -111,9 +112,46 @@ func TestHTTPRequestConnector(t *testing.T) {
 func TestHTTPRequestConnectorUnknownOperation(t *testing.T) {
 	conn := goconnectors.NewHTTPRequestConnector()
 
-	_, err := conn.Execute(context.Background(), nil, map[string]any{"url": "http://x"}, "post_request")
+	_, err := conn.Execute(context.Background(), nil, map[string]any{"url": "http://x"}, "patch_request")
 
-	assert.ErrorContains(t, err, "post_request")
+	assert.ErrorContains(t, err, "patch_request")
+}
+
+func TestHTTPRequestConnectorMethods(t *testing.T) {
+	type seen struct{ method, body, contentType, auth string }
+	got := make(chan seen, 1)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		raw, _ := io.ReadAll(r.Body)
+		got <- seen{r.Method, string(raw), r.Header.Get("Content-Type"), r.Header.Get("Authorization")}
+		w.WriteHeader(http.StatusCreated)
+	}))
+	defer server.Close()
+	conn := goconnectors.NewHTTPRequestConnector()
+
+	cases := []struct {
+		operation string
+		params    map[string]any
+		want      seen
+	}{
+		{"post_request", map[string]any{"body": `{"text":"hi"}`, "headers": `{"Authorization":"Bearer t"}`},
+			seen{http.MethodPost, `{"text":"hi"}`, "application/json", "Bearer t"}},
+		{"put_request", map[string]any{"body": "plain"}, seen{http.MethodPut, "plain", "", ""}},
+		{"delete_request", map[string]any{}, seen{http.MethodDelete, "", "", ""}},
+	}
+	for _, tc := range cases {
+		t.Run(tc.operation, func(t *testing.T) {
+			tc.params["url"] = server.URL
+			result, err := conn.Execute(context.Background(), nil, tc.params, tc.operation)
+			require.NoError(t, err)
+			assert.Equal(t, http.StatusCreated, result.(map[string]any)["status"])
+			assert.Equal(t, tc.want, <-got)
+		})
+	}
+
+	t.Run("fails when the headers are not a JSON object", func(t *testing.T) {
+		_, err := conn.Execute(context.Background(), nil, map[string]any{"url": server.URL, "headers": "nope"}, "post_request")
+		assert.ErrorContains(t, err, "headers must be a JSON object")
+	})
 }
 
 func TestYTSoarConnector(t *testing.T) {
