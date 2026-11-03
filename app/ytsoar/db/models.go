@@ -580,23 +580,23 @@ type Alert struct {
 }
 
 type AlertEvent struct {
-	ID         pgtype.UUID      `json:"id"`
-	AlertID    pgtype.UUID      `json:"alert_id"`
-	Type       EventType        `json:"type"`
-	ActorID    pgtype.UUID      `json:"actor_id"`
-	Body       json.RawMessage  `json:"body"`
-	CreatedAt  pgtype.Timestamp `json:"created_at"`
-	ActorLabel pgtype.Text      `json:"actor_label"`
+	ID            pgtype.UUID      `json:"id"`
+	AlertID       pgtype.UUID      `json:"alert_id"`
+	Type          EventType        `json:"type"`
+	ActorID       pgtype.UUID      `json:"actor_id"`
+	Body          json.RawMessage  `json:"body"`
+	CreatedAt     pgtype.Timestamp `json:"created_at"`
+	PlaybookRunID pgtype.UUID      `json:"playbook_run_id"`
 }
 
 type AlertNote struct {
-	ID         pgtype.UUID      `json:"id"`
-	AlertID    pgtype.UUID      `json:"alert_id"`
-	AuthorID   pgtype.UUID      `json:"author_id"`
-	Body       string           `json:"body"`
-	CreatedAt  pgtype.Timestamp `json:"created_at"`
-	UpdatedAt  pgtype.Timestamp `json:"updated_at"`
-	ActorLabel pgtype.Text      `json:"actor_label"`
+	ID            pgtype.UUID      `json:"id"`
+	AlertID       pgtype.UUID      `json:"alert_id"`
+	AuthorID      pgtype.UUID      `json:"author_id"`
+	Body          string           `json:"body"`
+	CreatedAt     pgtype.Timestamp `json:"created_at"`
+	UpdatedAt     pgtype.Timestamp `json:"updated_at"`
+	PlaybookRunID pgtype.UUID      `json:"playbook_run_id"`
 }
 
 type ApiKey struct {
@@ -689,23 +689,23 @@ type IncidentAlert struct {
 }
 
 type IncidentEvent struct {
-	ID         pgtype.UUID      `json:"id"`
-	IncidentID pgtype.UUID      `json:"incident_id"`
-	Type       EventType        `json:"type"`
-	ActorID    pgtype.UUID      `json:"actor_id"`
-	Body       json.RawMessage  `json:"body"`
-	CreatedAt  pgtype.Timestamp `json:"created_at"`
-	ActorLabel pgtype.Text      `json:"actor_label"`
+	ID            pgtype.UUID      `json:"id"`
+	IncidentID    pgtype.UUID      `json:"incident_id"`
+	Type          EventType        `json:"type"`
+	ActorID       pgtype.UUID      `json:"actor_id"`
+	Body          json.RawMessage  `json:"body"`
+	CreatedAt     pgtype.Timestamp `json:"created_at"`
+	PlaybookRunID pgtype.UUID      `json:"playbook_run_id"`
 }
 
 type IncidentNote struct {
-	ID         pgtype.UUID      `json:"id"`
-	IncidentID pgtype.UUID      `json:"incident_id"`
-	AuthorID   pgtype.UUID      `json:"author_id"`
-	Body       string           `json:"body"`
-	CreatedAt  pgtype.Timestamp `json:"created_at"`
-	UpdatedAt  pgtype.Timestamp `json:"updated_at"`
-	ActorLabel pgtype.Text      `json:"actor_label"`
+	ID            pgtype.UUID      `json:"id"`
+	IncidentID    pgtype.UUID      `json:"incident_id"`
+	AuthorID      pgtype.UUID      `json:"author_id"`
+	Body          string           `json:"body"`
+	CreatedAt     pgtype.Timestamp `json:"created_at"`
+	UpdatedAt     pgtype.Timestamp `json:"updated_at"`
+	PlaybookRunID pgtype.UUID      `json:"playbook_run_id"`
 }
 
 type Playbook struct {

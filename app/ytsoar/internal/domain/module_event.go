@@ -17,20 +17,22 @@ const (
 	ModuleEventUpdated = "updated"
 )
 
-type actorLabelKey struct{}
+type playbookRunKey struct{}
 
-// WithActorLabel names an actor that is not a user, for example a playbook run. The
-// timeline and the notes show it when the actor id is nil.
-func WithActorLabel(ctx context.Context, label string) context.Context {
-	return context.WithValue(ctx, actorLabelKey{}, label)
+// WithPlaybookRun marks the changes in ctx as made by a playbook run, not by a user.
+func WithPlaybookRun(ctx context.Context, runID uuid.UUID) context.Context {
+	return context.WithValue(ctx, playbookRunKey{}, runID)
 }
 
-func ActorLabel(ctx context.Context) *string {
-	if label, ok := ctx.Value(actorLabelKey{}).(string); ok {
-		return &label
+func PlaybookRunID(ctx context.Context) *uuid.UUID {
+	if id, ok := ctx.Value(playbookRunKey{}).(uuid.UUID); ok {
+		return &id
 	}
 	return nil
 }
+
+// PlaybookActor is the name the timeline and the notes show for a playbook run.
+func PlaybookActor(name string) string { return "playbook: " + name }
 
 // FieldChange is one entry in an `updated` timeline event. Usernames are filled in for
 // id fields, so the timeline reads as a sentence and not a pair of uuids.

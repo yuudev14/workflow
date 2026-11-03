@@ -26,11 +26,11 @@ type echoConnector struct {
 	gotConfigs map[string]any
 	gotParams  map[string]any
 	gotOp      string
-	gotActor   *string
+	gotRun     *uuid.UUID
 }
 
 func (e *echoConnector) Execute(ctx context.Context, configs map[string]any, params map[string]any, operation string) (any, error) {
-	e.gotConfigs, e.gotParams, e.gotOp, e.gotActor = configs, params, operation, domain.ActorLabel(ctx)
+	e.gotConfigs, e.gotParams, e.gotOp, e.gotRun = configs, params, operation, domain.PlaybookRunID(ctx)
 	return map[string]any{"echoed": params["msg"]}, nil
 }
 
@@ -39,7 +39,6 @@ func request(t *testing.T, connectorID string, operation string, params map[stri
 	raw, err := json.Marshal(params)
 	require.NoError(t, err)
 	return execution.ExecutionRequest{
-		PlaybookName: "enrich",
 		Task: domain.Tasks{
 			ID:          uuid.New(),
 			Name:        connectorID + "_node",
@@ -71,7 +70,7 @@ func TestBuiltinRuntimeTemplatesParamsAndPassesConfig(t *testing.T) {
 	assert.Equal(t, "hi", decoded["echoed"])
 	assert.Equal(t, "value", echo.gotConfigs["key"])
 	assert.Equal(t, "run", echo.gotOp)
-	assert.Contains(t, *echo.gotActor, "playbook: enrich (run ")
+	assert.Equal(t, &req.PlaybookHistoryID, echo.gotRun)
 }
 
 func TestBuiltinRuntimeUnknownConnector(t *testing.T) {

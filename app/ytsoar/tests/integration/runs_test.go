@@ -114,10 +114,13 @@ func TestRuns(t *testing.T) {
 			alert := c.get(t, "/api/v1/alerts/"+alertID).(J)
 			assert.Equal(t, "resolved", alert["status"])
 			assert.Equal(t, []any{"auto", "closed"}, alert["tags"])
-			actor := "playbook: "
+			actor := "playbook: " + c.get(t, "/api/v1/playbooks/"+run["playbook_id"].(string)).(J)["name"].(string)
 			timeline := alert["timeline"].([]any)
-			assert.Contains(t, timeline[len(timeline)-1].(J)["actor_username"], actor)
-			assert.Contains(t, alert["notes"].([]any)[0].(J)["author_username"], actor)
+			event, note := timeline[len(timeline)-1].(J), alert["notes"].([]any)[0].(J)
+			assert.Equal(t, actor, event["actor_username"])
+			assert.Equal(t, run["id"], event["playbook_run_id"])
+			assert.Equal(t, actor, note["author_username"])
+			assert.Equal(t, run["id"], note["playbook_run_id"])
 		})
 	})
 

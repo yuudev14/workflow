@@ -63,20 +63,22 @@ const alertRunsAggregate = `COALESCE((
 const alertTimelineAggregate = `COALESCE((
     SELECT jsonb_agg(jsonb_build_object(
                'id', e.id, 'alert_id', e.alert_id, 'type', e.type, 'actor_id', e.actor_id,
-               'actor_username', COALESCE(au.username, e.actor_label), 'body', e.body, 'created_at', e.created_at AT TIME ZONE 'UTC')
+               'actor_username', COALESCE(au.username, 'playbook: ' || ep.name), 'playbook_run_id', e.playbook_run_id, 'body', e.body, 'created_at', e.created_at AT TIME ZONE 'UTC')
            ORDER BY e.created_at, e.id)
     FROM alert_events e LEFT JOIN users au ON au.id = e.actor_id
+    LEFT JOIN playbook_history eh ON eh.id = e.playbook_run_id LEFT JOIN playbooks ep ON ep.id = eh.playbook_id
     WHERE e.alert_id = a.id
 ), '[]'::jsonb) AS timeline`
 
 const alertNotesAggregate = `COALESCE((
     SELECT jsonb_agg(jsonb_build_object(
                'id', n.id, 'alert_id', n.alert_id, 'author_id', n.author_id,
-               'author_username', COALESCE(nu.username, n.actor_label), 'body', n.body,
+               'author_username', COALESCE(nu.username, 'playbook: ' || np.name), 'playbook_run_id', n.playbook_run_id, 'body', n.body,
                'created_at', n.created_at AT TIME ZONE 'UTC',
                'updated_at', n.updated_at AT TIME ZONE 'UTC')
            ORDER BY n.created_at, n.id)
     FROM alert_notes n LEFT JOIN users nu ON nu.id = n.author_id
+    LEFT JOIN playbook_history nh ON nh.id = n.playbook_run_id LEFT JOIN playbooks np ON np.id = nh.playbook_id
     WHERE n.alert_id = a.id
 ), '[]'::jsonb) AS notes`
 
@@ -309,11 +311,11 @@ func (r *AlertRepositoryImpl) UpdateStatus(ctx context.Context, id uuid.UUID, st
 
 func (r *AlertRepositoryImpl) AppendEvent(ctx context.Context, params alerts.AppendEventParams) error {
 	_, err := r.queriesFromContext(ctx).InsertAlertEvent(ctx, db.InsertAlertEventParams{
-		AlertID:    toPgUUID(params.AlertID),
-		Type:       db.EventType(params.Type),
-		ActorID:    toPgUUIDPtr(params.ActorID),
-		Body:       params.Body,
-		ActorLabel: toPgText(domain.ActorLabel(ctx)),
+		AlertID:       toPgUUID(params.AlertID),
+		Type:          db.EventType(params.Type),
+		ActorID:       toPgUUIDPtr(params.ActorID),
+		Body:          params.Body,
+		PlaybookRunID: toPgUUIDPtr(domain.PlaybookRunID(ctx)),
 	})
 	return err
 }
@@ -330,10 +332,10 @@ func (r *AlertRepositoryImpl) AppendAlertEvent(ctx context.Context, alertID uuid
 
 func (r *AlertRepositoryImpl) AddNote(ctx context.Context, alertID uuid.UUID, authorID *uuid.UUID, body string) (domain.AlertNote, error) {
 	row, err := r.queriesFromContext(ctx).InsertAlertNote(ctx, db.InsertAlertNoteParams{
-		AlertID:    toPgUUID(alertID),
-		AuthorID:   toPgUUIDPtr(authorID),
-		Body:       body,
-		ActorLabel: toPgText(domain.ActorLabel(ctx)),
+		AlertID:       toPgUUID(alertID),
+		AuthorID:      toPgUUIDPtr(authorID),
+		Body:          body,
+		PlaybookRunID: toPgUUIDPtr(domain.PlaybookRunID(ctx)),
 	})
 	if err != nil {
 		return domain.AlertNote{}, err
@@ -383,7 +385,8 @@ func (r *AlertRepositoryImpl) ListNotes(ctx context.Context, alertID uuid.UUID) 
 			ID:             fromPgUUID(row.ID),
 			AlertID:        fromPgUUID(row.AlertID),
 			AuthorID:       fromPgUUIDPtr(row.AuthorID),
-			AuthorUsername: authorName(row.AuthorUsername, row.ActorLabel),
+			AuthorUsername: authorName(row.AuthorUsername, row.PlaybookName),
+			PlaybookRunID:  fromPgUUIDPtr(row.PlaybookRunID),
 			Body:           row.Body,
 			CreatedAt:      row.CreatedAt.Time,
 			UpdatedAt:      row.UpdatedAt.Time,
@@ -613,12 +616,12 @@ func toDomainAlertUpsert(row db.UpsertAlertRow) domain.Alert {
 
 func toDomainAlertNote(row db.AlertNote) domain.AlertNote {
 	return domain.AlertNote{
-		ID:             fromPgUUID(row.ID),
-		AlertID:        fromPgUUID(row.AlertID),
-		AuthorID:       fromPgUUIDPtr(row.AuthorID),
-		AuthorUsername: fromPgText(row.ActorLabel),
-		Body:           row.Body,
-		CreatedAt:      row.CreatedAt.Time,
-		UpdatedAt:      row.UpdatedAt.Time,
+		ID:            fromPgUUID(row.ID),
+		AlertID:       fromPgUUID(row.AlertID),
+		AuthorID:      fromPgUUIDPtr(row.AuthorID),
+		PlaybookRunID: fromPgUUIDPtr(row.PlaybookRunID),
+		Body:          row.Body,
+		CreatedAt:     row.CreatedAt.Time,
+		UpdatedAt:     row.UpdatedAt.Time,
 	}
 }

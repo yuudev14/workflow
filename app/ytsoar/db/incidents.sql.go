@@ -119,7 +119,7 @@ func (q *Queries) GetIncidentById(ctx context.Context, id pgtype.UUID) (Incident
 }
 
 const getIncidentNoteById = `-- name: GetIncidentNoteById :one
-SELECT id, incident_id, author_id, body, created_at, updated_at, actor_label FROM incident_notes WHERE id = $1
+SELECT id, incident_id, author_id, body, created_at, updated_at, playbook_run_id FROM incident_notes WHERE id = $1
 `
 
 func (q *Queries) GetIncidentNoteById(ctx context.Context, id pgtype.UUID) (IncidentNote, error) {
@@ -132,7 +132,7 @@ func (q *Queries) GetIncidentNoteById(ctx context.Context, id pgtype.UUID) (Inci
 		&i.Body,
 		&i.CreatedAt,
 		&i.UpdatedAt,
-		&i.ActorLabel,
+		&i.PlaybookRunID,
 	)
 	return i, err
 }
@@ -158,17 +158,17 @@ func (q *Queries) InsertIncidentAlert(ctx context.Context, arg InsertIncidentAle
 }
 
 const insertIncidentEvent = `-- name: InsertIncidentEvent :one
-INSERT INTO incident_events (incident_id, type, actor_id, body, actor_label)
+INSERT INTO incident_events (incident_id, type, actor_id, body, playbook_run_id)
 VALUES ($1, $2, $3, $4, $5)
-RETURNING id, incident_id, type, actor_id, body, created_at, actor_label
+RETURNING id, incident_id, type, actor_id, body, created_at, playbook_run_id
 `
 
 type InsertIncidentEventParams struct {
-	IncidentID pgtype.UUID     `json:"incident_id"`
-	Type       EventType       `json:"type"`
-	ActorID    pgtype.UUID     `json:"actor_id"`
-	Body       json.RawMessage `json:"body"`
-	ActorLabel pgtype.Text     `json:"actor_label"`
+	IncidentID    pgtype.UUID     `json:"incident_id"`
+	Type          EventType       `json:"type"`
+	ActorID       pgtype.UUID     `json:"actor_id"`
+	Body          json.RawMessage `json:"body"`
+	PlaybookRunID pgtype.UUID     `json:"playbook_run_id"`
 }
 
 func (q *Queries) InsertIncidentEvent(ctx context.Context, arg InsertIncidentEventParams) (IncidentEvent, error) {
@@ -177,7 +177,7 @@ func (q *Queries) InsertIncidentEvent(ctx context.Context, arg InsertIncidentEve
 		arg.Type,
 		arg.ActorID,
 		arg.Body,
-		arg.ActorLabel,
+		arg.PlaybookRunID,
 	)
 	var i IncidentEvent
 	err := row.Scan(
@@ -187,22 +187,22 @@ func (q *Queries) InsertIncidentEvent(ctx context.Context, arg InsertIncidentEve
 		&i.ActorID,
 		&i.Body,
 		&i.CreatedAt,
-		&i.ActorLabel,
+		&i.PlaybookRunID,
 	)
 	return i, err
 }
 
 const insertIncidentNote = `-- name: InsertIncidentNote :one
-INSERT INTO incident_notes (incident_id, author_id, body, actor_label)
+INSERT INTO incident_notes (incident_id, author_id, body, playbook_run_id)
 VALUES ($1, $2, $3, $4)
-RETURNING id, incident_id, author_id, body, created_at, updated_at, actor_label
+RETURNING id, incident_id, author_id, body, created_at, updated_at, playbook_run_id
 `
 
 type InsertIncidentNoteParams struct {
-	IncidentID pgtype.UUID `json:"incident_id"`
-	AuthorID   pgtype.UUID `json:"author_id"`
-	Body       string      `json:"body"`
-	ActorLabel pgtype.Text `json:"actor_label"`
+	IncidentID    pgtype.UUID `json:"incident_id"`
+	AuthorID      pgtype.UUID `json:"author_id"`
+	Body          string      `json:"body"`
+	PlaybookRunID pgtype.UUID `json:"playbook_run_id"`
 }
 
 func (q *Queries) InsertIncidentNote(ctx context.Context, arg InsertIncidentNoteParams) (IncidentNote, error) {
@@ -210,7 +210,7 @@ func (q *Queries) InsertIncidentNote(ctx context.Context, arg InsertIncidentNote
 		arg.IncidentID,
 		arg.AuthorID,
 		arg.Body,
-		arg.ActorLabel,
+		arg.PlaybookRunID,
 	)
 	var i IncidentNote
 	err := row.Scan(
@@ -220,7 +220,7 @@ func (q *Queries) InsertIncidentNote(ctx context.Context, arg InsertIncidentNote
 		&i.Body,
 		&i.CreatedAt,
 		&i.UpdatedAt,
-		&i.ActorLabel,
+		&i.PlaybookRunID,
 	)
 	return i, err
 }
@@ -270,9 +270,11 @@ func (q *Queries) ListIncidentAlerts(ctx context.Context, incidentID pgtype.UUID
 }
 
 const listIncidentEvents = `-- name: ListIncidentEvents :many
-SELECT e.id, e.incident_id, e.type, e.actor_id, e.body, e.created_at, e.actor_label, u.username AS actor_username
+SELECT e.id, e.incident_id, e.type, e.actor_id, e.body, e.created_at, e.playbook_run_id, u.username AS actor_username, p.name AS playbook_name
 FROM incident_events e
 LEFT JOIN users u ON u.id = e.actor_id
+LEFT JOIN playbook_history h ON h.id = e.playbook_run_id
+LEFT JOIN playbooks p ON p.id = h.playbook_id
 WHERE e.incident_id = $1
 ORDER BY e.created_at, e.id
 `
@@ -284,8 +286,9 @@ type ListIncidentEventsRow struct {
 	ActorID       pgtype.UUID      `json:"actor_id"`
 	Body          json.RawMessage  `json:"body"`
 	CreatedAt     pgtype.Timestamp `json:"created_at"`
-	ActorLabel    pgtype.Text      `json:"actor_label"`
+	PlaybookRunID pgtype.UUID      `json:"playbook_run_id"`
 	ActorUsername pgtype.Text      `json:"actor_username"`
+	PlaybookName  pgtype.Text      `json:"playbook_name"`
 }
 
 func (q *Queries) ListIncidentEvents(ctx context.Context, incidentID pgtype.UUID) ([]ListIncidentEventsRow, error) {
@@ -304,8 +307,9 @@ func (q *Queries) ListIncidentEvents(ctx context.Context, incidentID pgtype.UUID
 			&i.ActorID,
 			&i.Body,
 			&i.CreatedAt,
-			&i.ActorLabel,
+			&i.PlaybookRunID,
 			&i.ActorUsername,
+			&i.PlaybookName,
 		); err != nil {
 			return nil, err
 		}
@@ -318,9 +322,11 @@ func (q *Queries) ListIncidentEvents(ctx context.Context, incidentID pgtype.UUID
 }
 
 const listIncidentNotes = `-- name: ListIncidentNotes :many
-SELECT n.id, n.incident_id, n.author_id, n.body, n.created_at, n.updated_at, n.actor_label, u.username AS author_username
+SELECT n.id, n.incident_id, n.author_id, n.body, n.created_at, n.updated_at, n.playbook_run_id, u.username AS author_username, p.name AS playbook_name
 FROM incident_notes n
 LEFT JOIN users u ON u.id = n.author_id
+LEFT JOIN playbook_history h ON h.id = n.playbook_run_id
+LEFT JOIN playbooks p ON p.id = h.playbook_id
 WHERE n.incident_id = $1
 ORDER BY n.created_at, n.id
 `
@@ -332,8 +338,9 @@ type ListIncidentNotesRow struct {
 	Body           string           `json:"body"`
 	CreatedAt      pgtype.Timestamp `json:"created_at"`
 	UpdatedAt      pgtype.Timestamp `json:"updated_at"`
-	ActorLabel     pgtype.Text      `json:"actor_label"`
+	PlaybookRunID  pgtype.UUID      `json:"playbook_run_id"`
 	AuthorUsername pgtype.Text      `json:"author_username"`
+	PlaybookName   pgtype.Text      `json:"playbook_name"`
 }
 
 func (q *Queries) ListIncidentNotes(ctx context.Context, incidentID pgtype.UUID) ([]ListIncidentNotesRow, error) {
@@ -352,8 +359,9 @@ func (q *Queries) ListIncidentNotes(ctx context.Context, incidentID pgtype.UUID)
 			&i.Body,
 			&i.CreatedAt,
 			&i.UpdatedAt,
-			&i.ActorLabel,
+			&i.PlaybookRunID,
 			&i.AuthorUsername,
+			&i.PlaybookName,
 		); err != nil {
 			return nil, err
 		}
@@ -450,7 +458,7 @@ UPDATE incident_notes
 SET body = $1,
     updated_at = NOW()
 WHERE id = $2
-RETURNING id, incident_id, author_id, body, created_at, updated_at, actor_label
+RETURNING id, incident_id, author_id, body, created_at, updated_at, playbook_run_id
 `
 
 type UpdateIncidentNoteParams struct {
@@ -468,7 +476,7 @@ func (q *Queries) UpdateIncidentNote(ctx context.Context, arg UpdateIncidentNote
 		&i.Body,
 		&i.CreatedAt,
 		&i.UpdatedAt,
-		&i.ActorLabel,
+		&i.PlaybookRunID,
 	)
 	return i, err
 }

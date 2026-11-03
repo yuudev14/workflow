@@ -278,10 +278,14 @@ func applyAssigneeFilter(stmt sq.SelectBuilder, alias string, ids []string, unas
 	return stmt
 }
 
-// authorName falls back to the label of an actor that is not a user, for example a playbook.
-func authorName(username, label pgtype.Text) *string {
+// authorName falls back to the playbook of the run when no user made the change.
+func authorName(username, playbook pgtype.Text) *string {
 	if username.Valid {
 		return &username.String
 	}
-	return fromPgText(label)
+	if !playbook.Valid {
+		return nil
+	}
+	name := domain.PlaybookActor(playbook.String)
+	return &name
 }

@@ -74,19 +74,21 @@ WHERE id = sqlc.arg('id')
 RETURNING *;
 
 -- name: InsertAlertEvent :one
-INSERT INTO alert_events (alert_id, type, actor_id, body, actor_label)
+INSERT INTO alert_events (alert_id, type, actor_id, body, playbook_run_id)
 VALUES ($1, $2, $3, $4, $5)
 RETURNING *;
 
 -- name: ListAlertEvents :many
-SELECT e.*, u.username AS actor_username
+SELECT e.*, u.username AS actor_username, p.name AS playbook_name
 FROM alert_events e
 LEFT JOIN users u ON u.id = e.actor_id
+LEFT JOIN playbook_history h ON h.id = e.playbook_run_id
+LEFT JOIN playbooks p ON p.id = h.playbook_id
 WHERE e.alert_id = $1
 ORDER BY e.created_at, e.id;
 
 -- name: InsertAlertNote :one
-INSERT INTO alert_notes (alert_id, author_id, body, actor_label)
+INSERT INTO alert_notes (alert_id, author_id, body, playbook_run_id)
 VALUES ($1, $2, $3, $4)
 RETURNING *;
 
@@ -104,8 +106,10 @@ RETURNING *;
 DELETE FROM alert_notes WHERE id = $1;
 
 -- name: ListAlertNotes :many
-SELECT n.*, u.username AS author_username
+SELECT n.*, u.username AS author_username, p.name AS playbook_name
 FROM alert_notes n
 LEFT JOIN users u ON u.id = n.author_id
+LEFT JOIN playbook_history h ON h.id = n.playbook_run_id
+LEFT JOIN playbooks p ON p.id = h.playbook_id
 WHERE n.alert_id = $1
 ORDER BY n.created_at, n.id;

@@ -577,19 +577,9 @@ func (l *RunLoader) LoadRunMessage(ctx context.Context, historyID uuid.UUID) (do
 		}
 	}
 
-	var playbook struct {
-		Name string `json:"name"`
-	}
-	if len(history.PlaybookData) > 0 {
-		if err := json.Unmarshal(history.PlaybookData, &playbook); err != nil {
-			return domain.TaskMessage{}, fmt.Errorf("could not decode the stored playbook: %w", err)
-		}
-	}
-
 	tasksMap, graph, edgeRefs := prepareMessage(taskList, responseEdges)
 	return domain.TaskMessage{
-		Graph: graph, Tasks: tasksMap, PlaybookHistoryId: historyID, PlaybookName: playbook.Name,
-		Edges: edgeRefs, Input: input.Resolved(),
+		Graph: graph, Tasks: tasksMap, PlaybookHistoryId: historyID, Edges: edgeRefs, Input: input.Resolved(),
 	}, nil
 }
 

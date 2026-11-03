@@ -90,7 +90,7 @@ func (r *BuiltinRuntime) Execute(ctx context.Context, req execution.ExecutionReq
 		config = map[string]any{}
 	}
 
-	ctx = domain.WithActorLabel(ctx, fmt.Sprintf("playbook: %s (run %s)", req.PlaybookName, req.PlaybookHistoryID))
+	ctx = domain.WithPlaybookRun(ctx, req.PlaybookHistoryID)
 	r.logger.Debugw("running go connector",
 		"connector", *req.Task.ConnectorID, "operation", req.Task.Operation)
 	result, err := connector.Execute(ctx, config, renderedParams, req.Task.Operation)
