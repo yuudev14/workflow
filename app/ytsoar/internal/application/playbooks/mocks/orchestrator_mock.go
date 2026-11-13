@@ -132,6 +132,20 @@ func (mr *MockPlaybookApplicationServiceMockRecorder) RunPlaybook(ctx, playbookI
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RunPlaybook", reflect.TypeOf((*MockPlaybookApplicationService)(nil).RunPlaybook), ctx, playbookId, moduleType, payload, actorID)
 }
 
+// RunSchedule mocks base method.
+func (m *MockPlaybookApplicationService) RunSchedule(ctx context.Context, playbookID, scheduleID uuid.UUID, parameters map[string]any) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "RunSchedule", ctx, playbookID, scheduleID, parameters)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// RunSchedule indicates an expected call of RunSchedule.
+func (mr *MockPlaybookApplicationServiceMockRecorder) RunSchedule(ctx, playbookID, scheduleID, parameters any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RunSchedule", reflect.TypeOf((*MockPlaybookApplicationService)(nil).RunSchedule), ctx, playbookID, scheduleID, parameters)
+}
+
 // RunWebhook mocks base method.
 func (m *MockPlaybookApplicationService) RunWebhook(ctx context.Context, playbookId string, parameters map[string]any, actorID *uuid.UUID) (uuid.UUID, error) {
 	m.ctrl.T.Helper()

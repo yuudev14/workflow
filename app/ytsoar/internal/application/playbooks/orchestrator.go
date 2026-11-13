@@ -23,6 +23,7 @@ type PlaybookApplicationService interface {
 	TriggerPlaybook(ctx context.Context, playbookId string) (*domain.TaskMessage, error)
 	RunPlaybook(ctx context.Context, playbookId string, moduleType string, payload RunPlaybookPayload, actorID *uuid.UUID) (*domain.TaskMessage, error)
 	RunForEvent(ctx context.Context, moduleType string, event string, recordID uuid.UUID, occurredAt time.Time) error
+	RunSchedule(ctx context.Context, playbookID uuid.UUID, scheduleID uuid.UUID, parameters map[string]any) error
 	WebhookAuth(ctx context.Context, playbookId string) (domain.WebhookAuth, error)
 	RunWebhook(ctx context.Context, playbookId string, parameters map[string]any, actorID *uuid.UUID) (uuid.UUID, error)
 	PreparePlaybookMessage(tasks []domain.Tasks, edges []domain.ResponseEdges) (map[string]domain.Tasks, map[string][]string, []domain.EdgeRef)
@@ -369,6 +370,28 @@ func (w *PlaybookApplicationServiceImpl) RunPlaybook(ctx context.Context, playbo
 			Parameters: parameters,
 		},
 	}, moduleType, recordIDs)
+}
+
+// RunSchedule implements PlaybookApplicationService. It joins the transaction in ctx, so the
+// tick moves next_run_at only when the run is queued. A broadcast is not needed: the
+// executor sends the status.
+func (w *PlaybookApplicationServiceImpl) RunSchedule(ctx context.Context, playbookID uuid.UUID, scheduleID uuid.UUID, parameters map[string]any) error {
+	id := playbookID.String()
+	taskList, err := w.TaskService.GetTasksByPlaybookId(ctx, id)
+	if err != nil {
+		return err
+	}
+	if !slices.ContainsFunc(taskList, func(t domain.Tasks) bool { return t.Name == "start" }) {
+		return apperr.New(apperr.Invalid, "the playbook must have a start step")
+	}
+	input := domain.NewEmptyRunInput()
+	input.Parameters = parameters
+	_, _, err = w.queueRun(ctx, id, RunStamp{
+		TriggerType: new(string(domain.TriggerTypeManual)),
+		ScheduleID:  &scheduleID,
+		Input:       input,
+	}, "", nil)
+	return err
 }
 
 // WebhookAuth implements PlaybookApplicationService. A playbook whose trigger is not

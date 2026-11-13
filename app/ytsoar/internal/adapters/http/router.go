@@ -26,6 +26,7 @@ func NewRouter(
 	adminHandler *handlers.AdminHandler,
 	alertHandler *handlers.AlertHandler,
 	incidentHandler *handlers.IncidentHandler,
+	scheduleHandler *handlers.ScheduleHandler,
 	hub *ws.Hub,
 	authMW gin.HandlerFunc,
 	apiKeyMW gin.HandlerFunc,
@@ -61,6 +62,7 @@ func NewRouter(
 	adminHandler.RegisterRoutes(protected, requirePermission)
 	alertHandler.RegisterRoutes(protected, requirePermission)
 	incidentHandler.RegisterRoutes(protected, requirePermission)
+	scheduleHandler.RegisterRoutes(protected, requirePermission)
 
 	app.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 

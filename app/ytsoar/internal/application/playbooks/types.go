@@ -32,6 +32,7 @@ type PlaybookHistoryFilter struct {
 type RunStamp struct {
 	TriggerType *string
 	TriggeredBy *uuid.UUID
+	ScheduleID  *uuid.UUID
 	Input       *domain.RunInput
 }
 

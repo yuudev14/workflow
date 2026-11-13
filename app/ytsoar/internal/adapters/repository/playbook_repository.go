@@ -144,9 +144,10 @@ func (w *PlaybookRepositoryImpl) Summary(ctx context.Context, rng types.Resolved
 }
 
 func (w *PlaybookRepositoryImpl) GetPlaybookHistory(ctx context.Context, offset int, limit int, filter playbooks.PlaybookHistoryFilter) ([]domain.PlaybookHistoryResponse, error) {
-	stmt := sq.Select("playbook_history.*, to_jsonb(playbooks) AS playbook_data").
+	stmt := sq.Select("playbook_history.*, to_jsonb(playbooks) AS playbook_data, schedulers.name AS schedule_name").
 		From("playbook_history").
 		Join("playbooks ON playbooks.id = playbook_history.playbook_id").
+		LeftJoin("schedulers ON schedulers.id = playbook_history.schedule_id").
 		PlaceholderFormat(sq.Dollar).
 		OrderBy("triggered_at DESC").
 		Offset(uint64(offset)).
@@ -218,6 +219,8 @@ func (w *PlaybookRepositoryImpl) GetPlaybookHistoryById(ctx context.Context, pla
 		TriggeredBy:  fromPgUUIDPtr(row.TriggeredBy),
 		Input:        row.Input,
 		FinishedAt:   fromPgTimestamptzPtr(row.FinishedAt),
+		ScheduleID:   fromPgUUIDPtr(row.ScheduleID),
+		ScheduleName: fromPgText(row.ScheduleName),
 	}, nil
 }
 
@@ -374,6 +377,7 @@ func (w *PlaybookRepositoryImpl) CreatePlaybookHistory(ctx context.Context, id s
 		TriggerType: toNullTriggerTypePtr(run.TriggerType),
 		TriggeredBy: toPgUUIDPtr(run.TriggeredBy),
 		Input:       inputJSON,
+		ScheduleID:  toPgUUIDPtr(run.ScheduleID),
 	})
 	if err != nil {
 		return nil, err
