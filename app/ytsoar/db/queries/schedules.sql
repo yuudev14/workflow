@@ -14,7 +14,11 @@ SELECT s.*, p.name AS playbook_name, COALESCE(p.trigger_type::text, '')::text AS
        (p.deleted_at IS NOT NULL)::boolean AS playbook_deleted
 FROM schedulers s JOIN playbooks p ON p.id = s.playbook_id
 WHERE sqlc.narg('playbook_id')::uuid IS NULL OR s.playbook_id = sqlc.narg('playbook_id')
-ORDER BY s.name, s.id;
+ORDER BY s.name, s.id
+LIMIT sqlc.arg('page_limit') OFFSET sqlc.arg('page_offset');
+
+-- name: CountSchedules :one
+SELECT count(*) FROM schedulers WHERE sqlc.narg('playbook_id')::uuid IS NULL OR playbook_id = sqlc.narg('playbook_id');
 
 -- name: UpdateSchedule :one
 UPDATE schedulers SET

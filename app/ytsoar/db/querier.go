@@ -12,6 +12,7 @@ import (
 
 type Querier interface {
 	ClearDefaultConnectorConfig(ctx context.Context, connectorID string) error
+	CountSchedules(ctx context.Context, playbookID pgtype.UUID) (int64, error)
 	CountUsersWithRole(ctx context.Context, name string) (int64, error)
 	CreateAuthProvider(ctx context.Context, arg CreateAuthProviderParams) (AuthProvider, error)
 	CreateIncident(ctx context.Context, arg CreateIncidentParams) (Incident, error)
@@ -106,7 +107,7 @@ type Querier interface {
 	ListRoles(ctx context.Context) ([]Role, error)
 	// Effective roles: direct assignments UNION those inherited from teams.
 	ListRolesForUser(ctx context.Context, userID pgtype.UUID) ([]Role, error)
-	ListSchedules(ctx context.Context, playbookID pgtype.UUID) ([]ListSchedulesRow, error)
+	ListSchedules(ctx context.Context, arg ListSchedulesParams) ([]ListSchedulesRow, error)
 	LockDueSchedule(ctx context.Context, arg LockDueScheduleParams) (Scheduler, error)
 	MarkUserEmailVerified(ctx context.Context, arg MarkUserEmailVerifiedParams) error
 	RevokeAllRefreshTokensForUser(ctx context.Context, userID pgtype.UUID) error

@@ -1,12 +1,13 @@
 import settings from "@/settings";
 import apiClient from "../common/client";
+import { EntryResponse } from "../common/schema";
 import { CreateSchedulePayload, Schedule, UpdateSchedulePayload } from "./schedules.schema";
 
 export default class ScheduleService {
   private static BASE_URL = settings.BASE_URL.PLAYBOOK_SERVICE_API + "/api/v1/schedules";
 
-  public static list = async (playbookId?: string): Promise<Schedule[]> => {
-    const res = await apiClient.get(this.BASE_URL, { params: { playbook_id: playbookId } });
+  public static list = async (params: { playbook_id?: string; offset?: number; limit?: number } = {}): Promise<EntryResponse<Schedule>> => {
+    const res = await apiClient.get(this.BASE_URL, { params });
     return res.data;
   };
 

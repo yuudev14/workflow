@@ -4,7 +4,6 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	"github.com/google/uuid"
 
 	rest "github.com/yuudev14/ytsoar/internal/adapters/http/rests"
 	"github.com/yuudev14/ytsoar/internal/application/schedules"
@@ -23,16 +22,12 @@ func NewScheduleHandler(log logger.Logger, service *schedules.Service) *Schedule
 func (h *ScheduleHandler) List(c *gin.Context) {
 	response := rest.Response{C: c}
 
-	var playbookID *uuid.UUID
-	if raw := c.Query("playbook_id"); raw != "" {
-		id, err := uuid.Parse(raw)
-		if err != nil {
-			response.ResponseError(http.StatusBadRequest, "playbook_id must be a uuid")
-			return
-		}
-		playbookID = &id
+	var query schedules.ListQuery
+	if ok, code, err := rest.BindQueryAndValidate(c, &query); !ok {
+		response.ResponseError(code, err)
+		return
 	}
-	list, err := h.service.List(c.Request.Context(), playbookID)
+	list, err := h.service.List(c.Request.Context(), query)
 	if err != nil {
 		response.Fail(h.logger, err)
 		return

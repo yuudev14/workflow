@@ -56,6 +56,22 @@ func TestSchedules(t *testing.T) {
 		})
 	})
 
+	t.Run("GET /schedules", func(t *testing.T) {
+		other := newPlaybook(t, c)
+		c.create(t, base, J{"name": unique("a"), "playbook_id": other, "cron": "0 3 * * *"})
+		c.create(t, base, J{"name": unique("b"), "playbook_id": other, "cron": "0 4 * * *"})
+
+		t.Run("returns a page of entries and the total", func(t *testing.T) {
+			page := c.get(t, base+"?playbook_id="+other+"&limit=1&offset=1").(J)
+			assert.Len(t, items(page), 1)
+			assert.EqualValues(t, 2, page["total"])
+		})
+		c.expectAll(t, []request{
+			{"returns 400 when the limit is above 200", http.MethodGet, base + "?limit=201", nil, http.StatusBadRequest},
+			{"returns 400 when the playbook id is not a uuid", http.MethodGet, base + "?playbook_id=x", nil, http.StatusBadRequest},
+		})
+	})
+
 	t.Run("POST /schedules/preview", func(t *testing.T) {
 		t.Run("returns the next 3 times", func(t *testing.T) {
 			got := c.expect(t, http.StatusOK, http.MethodPost, base+"/preview", J{"cron": "*/5 * * * *"}).(J)

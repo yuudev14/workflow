@@ -57,6 +57,6 @@ sequenceDiagram
 
 | Route | Grant |
 |---|---|
-| `GET /api/v1/schedules`, `GET /api/v1/schedules/:id`, `POST /api/v1/schedules/preview` | `schedules: read` |
+| `GET /api/v1/schedules` (pages with `offset` and `limit`, returns `entries` and `total`), `GET /api/v1/schedules/:id`, `POST /api/v1/schedules/preview` | `schedules: read` |
 | `POST /api/v1/schedules`, `PATCH /api/v1/schedules/:id` | `schedules: create` or `update`, and `playbooks: execute` |
 | `DELETE /api/v1/schedules/:id` | `schedules: delete` |

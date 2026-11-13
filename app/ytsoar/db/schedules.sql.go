@@ -12,6 +12,17 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const countSchedules = `-- name: CountSchedules :one
+SELECT count(*) FROM schedulers WHERE $1::uuid IS NULL OR playbook_id = $1
+`
+
+func (q *Queries) CountSchedules(ctx context.Context, playbookID pgtype.UUID) (int64, error) {
+	row := q.db.QueryRow(ctx, countSchedules, playbookID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const createSchedule = `-- name: CreateSchedule :one
 INSERT INTO schedulers (name, playbook_id, cron, timezone, enabled, parameters, next_run_at, created_by)
 VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
@@ -140,7 +151,14 @@ SELECT s.id, s.name, s.playbook_id, s.cron, s.timezone, s.enabled, s.parameters,
 FROM schedulers s JOIN playbooks p ON p.id = s.playbook_id
 WHERE $1::uuid IS NULL OR s.playbook_id = $1
 ORDER BY s.name, s.id
+LIMIT $3 OFFSET $2
 `
+
+type ListSchedulesParams struct {
+	PlaybookID pgtype.UUID `json:"playbook_id"`
+	PageOffset int32       `json:"page_offset"`
+	PageLimit  int32       `json:"page_limit"`
+}
 
 type ListSchedulesRow struct {
 	ID                  pgtype.UUID        `json:"id"`
@@ -160,8 +178,8 @@ type ListSchedulesRow struct {
 	PlaybookDeleted     bool               `json:"playbook_deleted"`
 }
 
-func (q *Queries) ListSchedules(ctx context.Context, playbookID pgtype.UUID) ([]ListSchedulesRow, error) {
-	rows, err := q.db.Query(ctx, listSchedules, playbookID)
+func (q *Queries) ListSchedules(ctx context.Context, arg ListSchedulesParams) ([]ListSchedulesRow, error) {
+	rows, err := q.db.Query(ctx, listSchedules, arg.PlaybookID, arg.PageOffset, arg.PageLimit)
 	if err != nil {
 		return nil, err
 	}

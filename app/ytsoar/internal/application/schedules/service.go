@@ -11,6 +11,7 @@ import (
 	"github.com/yuudev14/ytsoar/internal/domain"
 	"github.com/yuudev14/ytsoar/internal/domain/apperr"
 	"github.com/yuudev14/ytsoar/internal/logger"
+	"github.com/yuudev14/ytsoar/internal/types"
 )
 
 //go:generate mockgen -destination=mocks/ports_mock.go -package=mocks . ScheduleRepository,ScheduledRunner,PlaybookLookup
@@ -23,7 +24,8 @@ type ScheduleRepository interface {
 	Create(ctx context.Context, s domain.Schedule) (domain.Schedule, error)
 	// Get returns ErrScheduleNotFound when no row matches.
 	Get(ctx context.Context, id uuid.UUID) (domain.Schedule, error)
-	List(ctx context.Context, playbookID *uuid.UUID) ([]domain.Schedule, error)
+	List(ctx context.Context, playbookID *uuid.UUID, offset, limit int) ([]domain.Schedule, error)
+	Count(ctx context.Context, playbookID *uuid.UUID) (int, error)
 	// Update saves the editable fields and next_run_at. It returns ErrScheduleNotFound when no row matches.
 	Update(ctx context.Context, s domain.Schedule) (domain.Schedule, error)
 	Delete(ctx context.Context, id uuid.UUID) error
@@ -135,8 +137,31 @@ func (s *Service) Get(ctx context.Context, id uuid.UUID) (domain.Schedule, error
 	return s.repo.Get(ctx, id)
 }
 
-func (s *Service) List(ctx context.Context, playbookID *uuid.UUID) ([]domain.Schedule, error) {
-	return s.repo.List(ctx, playbookID)
+// ListQuery pages like the other offset lists: offset and limit, answered as entries and total.
+type ListQuery struct {
+	PlaybookID *string `form:"playbook_id" binding:"omitempty,uuid"`
+	Offset     int     `form:"offset,default=0" binding:"min=0"`
+	Limit      int     `form:"limit,default=50" binding:"min=1,max=200"`
+}
+
+func (s *Service) List(ctx context.Context, q ListQuery) (types.Entries[domain.Schedule], error) {
+	var playbookID *uuid.UUID
+	if q.PlaybookID != nil {
+		id, err := uuid.Parse(*q.PlaybookID)
+		if err != nil {
+			return types.Entries[domain.Schedule]{}, apperr.New(apperr.Invalid, "playbook_id must be a uuid")
+		}
+		playbookID = &id
+	}
+	list, err := s.repo.List(ctx, playbookID, q.Offset, q.Limit)
+	if err != nil {
+		return types.Entries[domain.Schedule]{}, err
+	}
+	total, err := s.repo.Count(ctx, playbookID)
+	if err != nil {
+		return types.Entries[domain.Schedule]{}, err
+	}
+	return types.Entries[domain.Schedule]{Entries: list, Total: total}, nil
 }
 
 func (s *Service) Delete(ctx context.Context, id uuid.UUID) error {

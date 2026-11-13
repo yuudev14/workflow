@@ -43,6 +43,21 @@ func (m *MockScheduleRepository) EXPECT() *MockScheduleRepositoryMockRecorder {
 	return m.recorder
 }
 
+// Count mocks base method.
+func (m *MockScheduleRepository) Count(ctx context.Context, playbookID *uuid.UUID) (int, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Count", ctx, playbookID)
+	ret0, _ := ret[0].(int)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// Count indicates an expected call of Count.
+func (mr *MockScheduleRepositoryMockRecorder) Count(ctx, playbookID any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Count", reflect.TypeOf((*MockScheduleRepository)(nil).Count), ctx, playbookID)
+}
+
 // Create mocks base method.
 func (m *MockScheduleRepository) Create(ctx context.Context, s domain.Schedule) (domain.Schedule, error) {
 	m.ctrl.T.Helper()
@@ -88,18 +103,18 @@ func (mr *MockScheduleRepositoryMockRecorder) Get(ctx, id any) *gomock.Call {
 }
 
 // List mocks base method.
-func (m *MockScheduleRepository) List(ctx context.Context, playbookID *uuid.UUID) ([]domain.Schedule, error) {
+func (m *MockScheduleRepository) List(ctx context.Context, playbookID *uuid.UUID, offset, limit int) ([]domain.Schedule, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "List", ctx, playbookID)
+	ret := m.ctrl.Call(m, "List", ctx, playbookID, offset, limit)
 	ret0, _ := ret[0].([]domain.Schedule)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // List indicates an expected call of List.
-func (mr *MockScheduleRepositoryMockRecorder) List(ctx, playbookID any) *gomock.Call {
+func (mr *MockScheduleRepositoryMockRecorder) List(ctx, playbookID, offset, limit any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "List", reflect.TypeOf((*MockScheduleRepository)(nil).List), ctx, playbookID)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "List", reflect.TypeOf((*MockScheduleRepository)(nil).List), ctx, playbookID, offset, limit)
 }
 
 // ListDueIDs mocks base method.

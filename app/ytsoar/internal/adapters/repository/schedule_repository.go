@@ -59,8 +59,15 @@ func (r *ScheduleRepositoryImpl) Get(ctx context.Context, id uuid.UUID) (domain.
 	return toDomainSchedule(row), nil
 }
 
-func (r *ScheduleRepositoryImpl) List(ctx context.Context, playbookID *uuid.UUID) ([]domain.Schedule, error) {
-	rows, err := r.queriesFromContext(ctx).ListSchedules(ctx, toPgUUIDPtr(playbookID))
+func (r *ScheduleRepositoryImpl) Count(ctx context.Context, playbookID *uuid.UUID) (int, error) {
+	n, err := r.queriesFromContext(ctx).CountSchedules(ctx, toPgUUIDPtr(playbookID))
+	return int(n), err
+}
+
+func (r *ScheduleRepositoryImpl) List(ctx context.Context, playbookID *uuid.UUID, offset, limit int) ([]domain.Schedule, error) {
+	rows, err := r.queriesFromContext(ctx).ListSchedules(ctx, db.ListSchedulesParams{
+		PlaybookID: toPgUUIDPtr(playbookID), PageOffset: int32(offset), PageLimit: int32(limit),
+	})
 	if err != nil {
 		return nil, err
 	}

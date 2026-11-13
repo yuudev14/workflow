@@ -21,7 +21,7 @@ export default function PlaybookSchedules({ playbookId }: { playbookId: string }
   const [open, setOpen] = React.useState(false);
   const query = useQuery({
     queryKey: ["schedules", { playbookId }],
-    queryFn: () => ScheduleService.list(playbookId),
+    queryFn: () => ScheduleService.list({ playbook_id: playbookId, limit: 100 }),
     enabled: canRead && open,
   });
 
@@ -38,9 +38,9 @@ export default function PlaybookSchedules({ playbookId }: { playbookId: string }
           <DialogTitle>Schedules</DialogTitle>
           <DialogDescription>The timetables that run this playbook.</DialogDescription>
         </DialogHeader>
-        {query.data?.length === 0 && <p className="text-[14px] text-ink-soft">This playbook has no schedule.</p>}
+        {query.data?.entries.length === 0 && <p className="text-[14px] text-ink-soft">This playbook has no schedule.</p>}
         <ul className="flex flex-col gap-2">
-          {query.data?.map((schedule) => (
+          {query.data?.entries.map((schedule) => (
             <li key={schedule.id} className="rounded-md border border-line px-3 py-2">
               <div className="font-semibold">{schedule.name}</div>
               <div className="text-[13px] text-ink-faint">

@@ -10,7 +10,7 @@ import PlaybookService from "@/services/playbooks/playbooks";
 import { apiErrorMessage } from "@/services/common/errors";
 import { toast } from "@/hooks/use-toast";
 import { usePermission } from "@/hooks/usePermission";
-import { DataTable, EmptyState, PageShell } from "@/components/soar";
+import { DataTable, EmptyState, PageShell, PaginationBar } from "@/components/soar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -27,6 +27,7 @@ import {
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ConfirmDialog } from "@/pages/settings/components/ConfirmDialog";
 
+const PAGE_SIZE = 10;
 const columnHelper = createColumnHelper<Schedule>();
 const date = (value: string | null) => (value ? new Date(value).toLocaleString() : "-");
 
@@ -47,8 +48,14 @@ export default function SchedulesPage() {
   const [editing, setEditing] = React.useState<Schedule | "new" | null>(null);
   const [deleting, setDeleting] = React.useState<Schedule | null>(null);
 
-  const schedulesQuery = useQuery({ queryKey: ["schedules"], queryFn: () => ScheduleService.list() });
-  const schedules = schedulesQuery.data ?? [];
+  const [page, setPage] = React.useState(0);
+  const schedulesQuery = useQuery({
+    queryKey: ["schedules", { page }],
+    queryFn: () => ScheduleService.list({ offset: page * PAGE_SIZE, limit: PAGE_SIZE }),
+  });
+  const schedules = schedulesQuery.data?.entries ?? [];
+  const total = schedulesQuery.data?.total ?? 0;
+  const lastPage = Math.max(0, Math.ceil(total / PAGE_SIZE) - 1);
   const refresh = () => queryClient.invalidateQueries({ queryKey: ["schedules"] });
 
   const toggle = useMutation({
@@ -166,8 +173,17 @@ export default function SchedulesPage() {
           description="Create a schedule to run a playbook at a fixed time."
         />
       ) : (
-        <DataTable columns={columns} data={schedules} getRowId={(schedule) => schedule.id} pageSize={10} />
+        <DataTable columns={columns} data={schedules} getRowId={(schedule) => schedule.id} />
       )}
+
+      <PaginationBar
+        page={page}
+        pageCount={lastPage + 1}
+        total={total}
+        pageSize={PAGE_SIZE}
+        onPrev={() => setPage(page - 1)}
+        onNext={() => setPage(page + 1)}
+      />
 
       <ScheduleDialog editing={editing} onClose={() => setEditing(null)} onSaved={refresh} />
       <ConfirmDialog
