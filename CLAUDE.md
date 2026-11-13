@@ -82,6 +82,7 @@ Rules:
 
 - Never edit `db/*.sql.go`. Run `make sqlc` instead.
 - `ALTER TYPE ... ADD VALUE` needs `-- +goose NO TRANSACTION` at the top of the file.
+- A repository list (a query that returns many rows, with a filter, an offset or a limit) and its count use Squirrel (`sq`), like `GetPlaybooks`. Do not write them in sqlc. Use sqlc for queries that get, change or delete one row.
 
 ## Mocks
 
