@@ -77,6 +77,9 @@ const Layout = () => {
                   <div className="truncate text-[13px] font-semibold">
                     {readableDate(history.triggered_at, "MMM D, HH:mm:ss")}
                   </div>
+                  {history.schedule_name && (
+                    <div className="truncate text-[11.5px] text-ink-faint">Schedule: {history.schedule_name}</div>
+                  )}
                 </div>
                 <StatusPill variant={STATUS_PILL[history.status] ?? "neutral"} noDot />
               </Link>
