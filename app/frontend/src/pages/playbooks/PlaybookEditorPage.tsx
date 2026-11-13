@@ -19,7 +19,6 @@ import PlaybookOperations from "./components/options/PlaybookOperations/Playbook
 import usePlaybookTrigger from "@/hooks/usePlaybookTrigger";
 import { Check, History, Workflow as PlaybookIcon, Zap } from "lucide-react";
 
-import PlaybookSchedules from "./components/PlaybookSchedules";
 import PlaybookHistoryModal from "@/components/executions/PlaybookHistoryModal";
 import { PermissionGate } from "@/components/auth/PermissionGate";
 import { ConfirmDialog } from "@/pages/settings/components/ConfirmDialog";
@@ -188,7 +187,6 @@ const PlaybookPlayground: React.FC<{ playbookId: string }> = ({
             playbookId={playbookId}
             playbookName={workflowData.name}
           />
-          <PlaybookSchedules playbookId={playbookId} />
           <PermissionGate module="playbooks" action="execute">
             <Button variant="ghost" onClick={triggerPlaybookHandler}>
               <Zap /> Trigger

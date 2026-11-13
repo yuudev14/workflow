@@ -56,7 +56,7 @@ const Page = () => {
               </div>
               <div className="mt-0.5 flex items-center gap-1.5 text-[12px] text-ink-faint">
                 <Zap className="size-3" />
-                {h.schedule_name ? `Schedule: ${h.schedule_name}` : (h.playbook_data?.trigger_type ?? "Manual")}
+                {h.playbook_data?.trigger_type ?? "Manual"}
               </div>
             </div>
             <StatusPill variant={ok ? "success" : "failed"} />

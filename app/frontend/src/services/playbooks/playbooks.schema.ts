@@ -26,8 +26,6 @@ export interface PlaybookHistory {
   edges: Edges[]
   trigger_type?: string | null;
   triggered_by?: string | null;
-  schedule_id?: string | null;
-  schedule_name?: string | null;
   /** Trigger data the run was given, reachable in templates as `var.input`. */
   input?: RunInput | null;
 }

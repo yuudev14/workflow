@@ -3,7 +3,6 @@ import * as React from "react";
 import {
   AlertTriangle,
   Bell,
-  CalendarClock,
   LayoutDashboard,
   Layers,
   LayoutGrid,
@@ -33,7 +32,6 @@ const sections: NavSection[] = [
       { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
       { title: "Playbooks", url: "/playbooks", icon: Layers },
       { title: "Connectors", url: "/connectors", icon: LayoutGrid },
-      { title: "Schedules", url: "/schedules", icon: CalendarClock, permission: { module: "schedules", action: "read" } },
     ],
   },
   {

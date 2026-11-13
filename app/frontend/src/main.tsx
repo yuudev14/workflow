@@ -13,7 +13,6 @@ const LoginPage = lazy(() => import("@/pages/login/LoginPage"));
 const ForgotPasswordPage = lazy(() => import("@/pages/login/PasswordPages").then((m) => ({ default: m.ForgotPasswordPage })));
 const SetPasswordPage = lazy(() => import("@/pages/login/PasswordPages").then((m) => ({ default: m.SetPasswordPage })));
 const DashboardPage = lazy(() => import("@/pages/dashboard/DashboardPage"));
-const SchedulesPage = lazy(() => import("@/pages/schedules/SchedulesPage"));
 const ConnectorsPage = lazy(() => import("@/pages/connectors/ConnectorsPage"));
 const AlertsPage = lazy(() => import("@/pages/alerts/AlertsPage"));
 const AlertsDashboardPage = lazy(() => import("@/pages/alerts/AlertsDashboardPage"));
@@ -54,7 +53,6 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
                 <Route path="set-password" element={<SetPasswordPage />} />
                 <Route path="dashboard" element={<DashboardPage />} />
                 <Route path="connectors" element={<ConnectorsPage />} />
-                <Route path="schedules" element={<SchedulesPage />} />
                 <Route path="alerts">
                   <Route index element={<AlertsPage />} />
                   <Route path="dashboard" element={<AlertsDashboardPage />} />
