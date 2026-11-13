@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"time"
 
+	sq "github.com/Masterminds/squirrel"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -59,21 +60,67 @@ func (r *ScheduleRepositoryImpl) Get(ctx context.Context, id uuid.UUID) (domain.
 	return toDomainSchedule(row), nil
 }
 
+func scheduleFilter(stmt sq.SelectBuilder, playbookID *uuid.UUID) sq.SelectBuilder {
+	if playbookID != nil {
+		stmt = stmt.Where(sq.Eq{"s.playbook_id": *playbookID})
+	}
+	return stmt
+}
+
 func (r *ScheduleRepositoryImpl) Count(ctx context.Context, playbookID *uuid.UUID) (int, error) {
-	n, err := r.queriesFromContext(ctx).CountSchedules(ctx, toPgUUIDPtr(playbookID))
-	return int(n), err
+	stmt := scheduleFilter(sq.Select("count(*)").From("schedulers s").PlaceholderFormat(sq.Dollar), playbookID)
+	return CollectOneScalarFromSqlizer[int](ctx, stmt, r.pool, r.logger)
+}
+
+// scheduleRow has the columns of the list query, matched by name
+type scheduleRow struct {
+	ID                  uuid.UUID       `db:"id"`
+	Name                string          `db:"name"`
+	PlaybookID          uuid.UUID       `db:"playbook_id"`
+	PlaybookName        *string         `db:"playbook_name"`
+	PlaybookTriggerType *string         `db:"playbook_trigger_type"`
+	PlaybookDeleted     bool            `db:"playbook_deleted"`
+	Cron                string          `db:"cron"`
+	Timezone            string          `db:"timezone"`
+	Enabled             bool            `db:"enabled"`
+	Parameters          json.RawMessage `db:"parameters"`
+	NextRunAt           time.Time       `db:"next_run_at"`
+	LastRunAt           *time.Time      `db:"last_run_at"`
+	CreatedBy           *uuid.UUID      `db:"created_by"`
+	CreatedAt           time.Time       `db:"created_at"`
+	UpdatedAt           time.Time       `db:"updated_at"`
 }
 
 func (r *ScheduleRepositoryImpl) List(ctx context.Context, playbookID *uuid.UUID, offset, limit int) ([]domain.Schedule, error) {
-	rows, err := r.queriesFromContext(ctx).ListSchedules(ctx, db.ListSchedulesParams{
-		PlaybookID: toPgUUIDPtr(playbookID), PageOffset: int32(offset), PageLimit: int32(limit),
-	})
+	stmt := scheduleFilter(sq.Select(
+		"s.id", "s.name", "s.playbook_id", "p.name AS playbook_name", "p.trigger_type::text AS playbook_trigger_type",
+		"(p.deleted_at IS NOT NULL) AS playbook_deleted", "s.cron", "s.timezone", "s.enabled", "s.parameters",
+		"s.next_run_at", "s.last_run_at", "s.created_by", "s.created_at", "s.updated_at").
+		From("schedulers s").
+		Join("playbooks p ON p.id = s.playbook_id").
+		PlaceholderFormat(sq.Dollar).
+		OrderBy("s.name", "s.id").
+		Offset(uint64(offset)).
+		Limit(uint64(limit)), playbookID)
+
+	rows, err := CollectRowsFromSqlizer[scheduleRow](ctx, stmt, r.pool, r.logger)
 	if err != nil {
 		return nil, err
 	}
 	list := make([]domain.Schedule, len(rows))
 	for i, row := range rows {
-		list[i] = toDomainSchedule(db.GetScheduleRow(row))
+		params := map[string]any{}
+		_ = json.Unmarshal(row.Parameters, &params)
+		name := ""
+		if row.PlaybookName != nil {
+			name = *row.PlaybookName
+		}
+		list[i] = domain.Schedule{
+			ID: row.ID, Name: row.Name, PlaybookID: row.PlaybookID, PlaybookName: name,
+			PlaybookTriggerType: row.PlaybookTriggerType, PlaybookDeleted: row.PlaybookDeleted, Cron: row.Cron,
+			Timezone: row.Timezone, Enabled: row.Enabled, Parameters: params, NextRunAt: row.NextRunAt,
+			LastRunAt: row.LastRunAt, CreatedBy: row.CreatedBy, CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt,
+		}
 	}
 	return list, nil
 }

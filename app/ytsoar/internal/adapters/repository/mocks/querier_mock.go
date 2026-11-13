@@ -1274,21 +1274,6 @@ func (mr *MockQuerierTxMockRecorder) ListRolesForUser(ctx, userID any) *gomock.C
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListRolesForUser", reflect.TypeOf((*MockQuerierTx)(nil).ListRolesForUser), ctx, userID)
 }
 
-// ListSchedules mocks base method.
-func (m *MockQuerierTx) ListSchedules(ctx context.Context, playbookID pgtype.UUID) ([]db.ListSchedulesRow, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ListSchedules", ctx, playbookID)
-	ret0, _ := ret[0].([]db.ListSchedulesRow)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// ListSchedules indicates an expected call of ListSchedules.
-func (mr *MockQuerierTxMockRecorder) ListSchedules(ctx, playbookID any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListSchedules", reflect.TypeOf((*MockQuerierTx)(nil).ListSchedules), ctx, playbookID)
-}
-
 // LockDueSchedule mocks base method.
 func (m *MockQuerierTx) LockDueSchedule(ctx context.Context, arg db.LockDueScheduleParams) (db.Scheduler, error) {
 	m.ctrl.T.Helper()

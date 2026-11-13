@@ -12,17 +12,6 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-const countSchedules = `-- name: CountSchedules :one
-SELECT count(*) FROM schedulers WHERE $1::uuid IS NULL OR playbook_id = $1
-`
-
-func (q *Queries) CountSchedules(ctx context.Context, playbookID pgtype.UUID) (int64, error) {
-	row := q.db.QueryRow(ctx, countSchedules, playbookID)
-	var count int64
-	err := row.Scan(&count)
-	return count, err
-}
-
 const createSchedule = `-- name: CreateSchedule :one
 INSERT INTO schedulers (name, playbook_id, cron, timezone, enabled, parameters, next_run_at, created_by)
 VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
@@ -138,75 +127,6 @@ func (q *Queries) ListDueScheduleIDs(ctx context.Context, nextRunAt pgtype.Times
 			return nil, err
 		}
 		items = append(items, id)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
-const listSchedules = `-- name: ListSchedules :many
-SELECT s.id, s.name, s.playbook_id, s.cron, s.timezone, s.enabled, s.parameters, s.next_run_at, s.last_run_at, s.created_by, s.created_at, s.updated_at, p.name AS playbook_name, COALESCE(p.trigger_type::text, '')::text AS playbook_trigger_type,
-       (p.deleted_at IS NOT NULL)::boolean AS playbook_deleted
-FROM schedulers s JOIN playbooks p ON p.id = s.playbook_id
-WHERE $1::uuid IS NULL OR s.playbook_id = $1
-ORDER BY s.name, s.id
-LIMIT $3 OFFSET $2
-`
-
-type ListSchedulesParams struct {
-	PlaybookID pgtype.UUID `json:"playbook_id"`
-	PageOffset int32       `json:"page_offset"`
-	PageLimit  int32       `json:"page_limit"`
-}
-
-type ListSchedulesRow struct {
-	ID                  pgtype.UUID        `json:"id"`
-	Name                string             `json:"name"`
-	PlaybookID          pgtype.UUID        `json:"playbook_id"`
-	Cron                string             `json:"cron"`
-	Timezone            string             `json:"timezone"`
-	Enabled             bool               `json:"enabled"`
-	Parameters          json.RawMessage    `json:"parameters"`
-	NextRunAt           pgtype.Timestamptz `json:"next_run_at"`
-	LastRunAt           pgtype.Timestamptz `json:"last_run_at"`
-	CreatedBy           pgtype.UUID        `json:"created_by"`
-	CreatedAt           pgtype.Timestamp   `json:"created_at"`
-	UpdatedAt           pgtype.Timestamp   `json:"updated_at"`
-	PlaybookName        pgtype.Text        `json:"playbook_name"`
-	PlaybookTriggerType string             `json:"playbook_trigger_type"`
-	PlaybookDeleted     bool               `json:"playbook_deleted"`
-}
-
-func (q *Queries) ListSchedules(ctx context.Context, arg ListSchedulesParams) ([]ListSchedulesRow, error) {
-	rows, err := q.db.Query(ctx, listSchedules, arg.PlaybookID, arg.PageOffset, arg.PageLimit)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []ListSchedulesRow
-	for rows.Next() {
-		var i ListSchedulesRow
-		if err := rows.Scan(
-			&i.ID,
-			&i.Name,
-			&i.PlaybookID,
-			&i.Cron,
-			&i.Timezone,
-			&i.Enabled,
-			&i.Parameters,
-			&i.NextRunAt,
-			&i.LastRunAt,
-			&i.CreatedBy,
-			&i.CreatedAt,
-			&i.UpdatedAt,
-			&i.PlaybookName,
-			&i.PlaybookTriggerType,
-			&i.PlaybookDeleted,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
 	}
 	if err := rows.Err(); err != nil {
 		return nil, err
