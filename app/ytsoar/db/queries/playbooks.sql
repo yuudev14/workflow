@@ -46,8 +46,8 @@ WHERE id = $1 AND deleted_at IS NULL
 RETURNING *;
 
 -- name: CreatePlaybookHistory :one
-INSERT INTO playbook_history (playbook_id, triggered_at, edges, trigger_type, triggered_by, input, status)
-VALUES ($1, NOW(), $2, sqlc.narg('trigger_type'), sqlc.narg('triggered_by'), sqlc.narg('input'), 'queued')
+INSERT INTO playbook_history (playbook_id, triggered_at, edges, trigger_type, triggered_by, input, schedule_id, status)
+VALUES ($1, NOW(), $2, sqlc.narg('trigger_type'), sqlc.narg('triggered_by'), sqlc.narg('input'), sqlc.narg('schedule_id'), 'queued')
 RETURNING *;
 
 -- name: CreatePlaybookRunRecord :exec
@@ -84,9 +84,10 @@ WHERE id = sqlc.arg('id')
 RETURNING *;
 
 -- name: GetPlaybookHistoryById :one
-SELECT playbook_history.*, to_jsonb(playbooks) AS playbook_data
+SELECT playbook_history.*, to_jsonb(playbooks) AS playbook_data, schedulers.name AS schedule_name
 FROM playbook_history
 JOIN playbooks ON playbooks.id = playbook_history.playbook_id
+LEFT JOIN schedulers ON schedulers.id = playbook_history.schedule_id
 WHERE playbook_history.id = $1;
 
 
