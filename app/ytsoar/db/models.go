@@ -731,6 +731,7 @@ type PlaybookHistory struct {
 	TriggeredBy pgtype.UUID        `json:"triggered_by"`
 	Input       []byte             `json:"input"`
 	FinishedAt  pgtype.Timestamptz `json:"finished_at"`
+	ScheduleID  pgtype.UUID        `json:"schedule_id"`
 }
 
 type PlaybookRunRecord struct {
@@ -813,11 +814,18 @@ type RolePermission struct {
 }
 
 type Scheduler struct {
-	ID         pgtype.UUID      `json:"id"`
-	PlaybookID pgtype.UUID      `json:"playbook_id"`
-	Cron       pgtype.Text      `json:"cron"`
-	CreatedAt  pgtype.Timestamp `json:"created_at"`
-	UpdatedAt  pgtype.Timestamp `json:"updated_at"`
+	ID         pgtype.UUID        `json:"id"`
+	Name       string             `json:"name"`
+	PlaybookID pgtype.UUID        `json:"playbook_id"`
+	Cron       string             `json:"cron"`
+	Timezone   string             `json:"timezone"`
+	Enabled    bool               `json:"enabled"`
+	Parameters json.RawMessage    `json:"parameters"`
+	NextRunAt  pgtype.Timestamptz `json:"next_run_at"`
+	LastRunAt  pgtype.Timestamptz `json:"last_run_at"`
+	CreatedBy  pgtype.UUID        `json:"created_by"`
+	CreatedAt  pgtype.Timestamp   `json:"created_at"`
+	UpdatedAt  pgtype.Timestamp   `json:"updated_at"`
 }
 
 type Task struct {

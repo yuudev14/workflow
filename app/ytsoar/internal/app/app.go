@@ -35,6 +35,7 @@ import (
 	"github.com/yuudev14/ytsoar/internal/application/execution"
 	"github.com/yuudev14/ytsoar/internal/application/incidents"
 	"github.com/yuudev14/ytsoar/internal/application/playbooks"
+	"github.com/yuudev14/ytsoar/internal/application/schedules"
 	"github.com/yuudev14/ytsoar/internal/application/tasks"
 	"github.com/yuudev14/ytsoar/internal/config"
 	"github.com/yuudev14/ytsoar/internal/domain"
@@ -133,6 +134,9 @@ func NewAPI(ctx context.Context, cfg config.Config, appLogger logger.Logger, poo
 	alertHandler := handlers.NewAlertHandler(appLogger, alertService, orchestrator)
 	incidentHandler := handlers.NewIncidentHandler(appLogger, incidentService, orchestrator)
 
+	scheduleHandler := handlers.NewScheduleHandler(appLogger, schedules.NewService(
+		appLogger, repository.NewScheduleRepositoryImpl(appLogger, queries, pool), orchestrator, playbookService, txManager))
+
 	routerConfig := api.RouterConfig{
 		CORSOrigins: cfg.CORSOrigins,
 	}
@@ -145,6 +149,7 @@ func NewAPI(ctx context.Context, cfg config.Config, appLogger logger.Logger, poo
 		adminHandler,
 		alertHandler,
 		incidentHandler,
+		scheduleHandler,
 		hub,
 		middleware.Auth(appLogger, authService),
 		middleware.APIKeyAuth(appLogger, authService),
@@ -274,12 +279,15 @@ func NewWorker(cfg config.Config, appLogger logger.Logger, pool *pgxpool.Pool) (
 		return nil, err
 	}
 	cleanupWorker := jobs.NewDeleteExpiredTokensWorker(appLogger, authService)
+	tickWorker := jobs.NewScheduleTickWorker(appLogger, schedules.NewService(
+		appLogger, repository.NewScheduleRepositoryImpl(appLogger, queries, pool), eventRunner, playbookService, txManager))
 
 	return jobs.NewWorkerClient(
 		pool,
 		runWorker,
 		jobs.NewRunForEventWorker(appLogger, eventRunner),
 		cleanupWorker,
+		tickWorker,
 		cfg.PlaybookConcurrency, cfg.RunTimeout, cfg.WorkerStopGrace)
 }
 

@@ -19,6 +19,7 @@ type Querier interface {
 	CreatePlaybookHistory(ctx context.Context, arg CreatePlaybookHistoryParams) (PlaybookHistory, error)
 	CreatePlaybookRunRecord(ctx context.Context, arg CreatePlaybookRunRecordParams) error
 	CreateRole(ctx context.Context, arg CreateRoleParams) (Role, error)
+	CreateSchedule(ctx context.Context, arg CreateScheduleParams) (pgtype.UUID, error)
 	CreateTaskHistory(ctx context.Context, arg CreateTaskHistoryParams) (TaskHistory, error)
 	CreateTeam(ctx context.Context, arg CreateTeamParams) (Team, error)
 	CreateUser(ctx context.Context, arg CreateUserParams) (User, error)
@@ -33,6 +34,7 @@ type Querier interface {
 	DeleteIncidentNote(ctx context.Context, id pgtype.UUID) (int64, error)
 	DeleteRole(ctx context.Context, id pgtype.UUID) (int64, error)
 	DeleteRolePermissions(ctx context.Context, roleID pgtype.UUID) error
+	DeleteSchedule(ctx context.Context, id pgtype.UUID) (int64, error)
 	DeleteTasks(ctx context.Context, ids []pgtype.UUID) error
 	DeleteTeam(ctx context.Context, id pgtype.UUID) (int64, error)
 	DeleteTeamMembers(ctx context.Context, teamID pgtype.UUID) error
@@ -58,6 +60,7 @@ type Querier interface {
 	GetRefreshTokenByHash(ctx context.Context, tokenHash string) (RefreshToken, error)
 	GetRoleById(ctx context.Context, id pgtype.UUID) (Role, error)
 	GetRoleByName(ctx context.Context, name string) (Role, error)
+	GetSchedule(ctx context.Context, id pgtype.UUID) (GetScheduleRow, error)
 	GetTaskHistoryById(ctx context.Context, id pgtype.UUID) (TaskHistory, error)
 	GetTaskHistoryByPlaybookHistoryId(ctx context.Context, playbookHistoryID pgtype.UUID) ([]TaskHistory, error)
 	GetTasksByPlaybookId(ctx context.Context, playbookID pgtype.UUID) ([]Task, error)
@@ -84,6 +87,9 @@ type Querier interface {
 	ListAlertNotes(ctx context.Context, alertID pgtype.UUID) ([]ListAlertNotesRow, error)
 	ListAuthProviders(ctx context.Context) ([]AuthProvider, error)
 	ListConnectorConfigs(ctx context.Context, connectorID string) ([]ConnectorConfig, error)
+	// skips schedules whose playbook is deleted or no longer manual; they work again when it is
+	// restored or set back to manual
+	ListDueScheduleIDs(ctx context.Context, nextRunAt pgtype.Timestamptz) ([]pgtype.UUID, error)
 	ListEnabledAuthProviders(ctx context.Context) ([]AuthProvider, error)
 	// A playbook is skipped when its run on this record was going at the time of the event,
 	// so a run that updates its own record does not start itself again.
@@ -100,9 +106,11 @@ type Querier interface {
 	ListRoles(ctx context.Context) ([]Role, error)
 	// Effective roles: direct assignments UNION those inherited from teams.
 	ListRolesForUser(ctx context.Context, userID pgtype.UUID) ([]Role, error)
+	LockDueSchedule(ctx context.Context, arg LockDueScheduleParams) (Scheduler, error)
 	MarkUserEmailVerified(ctx context.Context, arg MarkUserEmailVerifiedParams) error
 	RevokeAllRefreshTokensForUser(ctx context.Context, userID pgtype.UUID) error
 	RevokeRefreshToken(ctx context.Context, tokenHash string) (int64, error)
+	SetScheduleNextRun(ctx context.Context, arg SetScheduleNextRunParams) error
 	// a WHERE ... sent_at < resend_after skips the update when the last link is too new, so a user cannot get many emails
 	SetUserInvitationToken(ctx context.Context, arg SetUserInvitationTokenParams) (int64, error)
 	SetUserPassword(ctx context.Context, arg SetUserPasswordParams) error
@@ -127,6 +135,7 @@ type Querier interface {
 	UpdatePlaybookHistory(ctx context.Context, arg UpdatePlaybookHistoryParams) (PlaybookHistory, error)
 	UpdatePlaybookHistoryStatus(ctx context.Context, arg UpdatePlaybookHistoryStatusParams) (PlaybookHistory, error)
 	UpdateRole(ctx context.Context, arg UpdateRoleParams) (Role, error)
+	UpdateSchedule(ctx context.Context, arg UpdateScheduleParams) (pgtype.UUID, error)
 	UpdateTaskHistory(ctx context.Context, arg UpdateTaskHistoryParams) (TaskHistory, error)
 	UpdateTaskStatus(ctx context.Context, arg UpdateTaskStatusParams) (TaskHistory, error)
 	UpdateTeam(ctx context.Context, arg UpdateTeamParams) (Team, error)

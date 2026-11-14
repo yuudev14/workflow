@@ -151,4 +151,6 @@ type PlaybookHistoryResponse struct {
 	TriggeredBy  *uuid.UUID       `db:"triggered_by" json:"triggered_by"`
 	Input        json.RawMessage  `db:"input" json:"input"`
 	FinishedAt   *time.Time       `db:"finished_at" json:"finished_at"`
+	ScheduleID   *uuid.UUID       `db:"schedule_id" json:"schedule_id"`
+	ScheduleName *string          `db:"schedule_name" json:"schedule_name"`
 }

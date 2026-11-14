@@ -161,6 +161,21 @@ func (mr *MockQuerierTxMockRecorder) CreateRole(ctx, arg any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateRole", reflect.TypeOf((*MockQuerierTx)(nil).CreateRole), ctx, arg)
 }
 
+// CreateSchedule mocks base method.
+func (m *MockQuerierTx) CreateSchedule(ctx context.Context, arg db.CreateScheduleParams) (pgtype.UUID, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CreateSchedule", ctx, arg)
+	ret0, _ := ret[0].(pgtype.UUID)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// CreateSchedule indicates an expected call of CreateSchedule.
+func (mr *MockQuerierTxMockRecorder) CreateSchedule(ctx, arg any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateSchedule", reflect.TypeOf((*MockQuerierTx)(nil).CreateSchedule), ctx, arg)
+}
+
 // CreateTaskHistory mocks base method.
 func (m *MockQuerierTx) CreateTaskHistory(ctx context.Context, arg db.CreateTaskHistoryParams) (db.TaskHistory, error) {
 	m.ctrl.T.Helper()
@@ -365,6 +380,21 @@ func (m *MockQuerierTx) DeleteRolePermissions(ctx context.Context, roleID pgtype
 func (mr *MockQuerierTxMockRecorder) DeleteRolePermissions(ctx, roleID any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteRolePermissions", reflect.TypeOf((*MockQuerierTx)(nil).DeleteRolePermissions), ctx, roleID)
+}
+
+// DeleteSchedule mocks base method.
+func (m *MockQuerierTx) DeleteSchedule(ctx context.Context, id pgtype.UUID) (int64, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DeleteSchedule", ctx, id)
+	ret0, _ := ret[0].(int64)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// DeleteSchedule indicates an expected call of DeleteSchedule.
+func (mr *MockQuerierTxMockRecorder) DeleteSchedule(ctx, id any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteSchedule", reflect.TypeOf((*MockQuerierTx)(nil).DeleteSchedule), ctx, id)
 }
 
 // DeleteTasks mocks base method.
@@ -691,6 +721,21 @@ func (m *MockQuerierTx) GetRoleByName(ctx context.Context, name string) (db.Role
 func (mr *MockQuerierTxMockRecorder) GetRoleByName(ctx, name any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetRoleByName", reflect.TypeOf((*MockQuerierTx)(nil).GetRoleByName), ctx, name)
+}
+
+// GetSchedule mocks base method.
+func (m *MockQuerierTx) GetSchedule(ctx context.Context, id pgtype.UUID) (db.GetScheduleRow, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetSchedule", ctx, id)
+	ret0, _ := ret[0].(db.GetScheduleRow)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetSchedule indicates an expected call of GetSchedule.
+func (mr *MockQuerierTxMockRecorder) GetSchedule(ctx, id any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetSchedule", reflect.TypeOf((*MockQuerierTx)(nil).GetSchedule), ctx, id)
 }
 
 // GetTaskHistoryById mocks base method.
@@ -1079,6 +1124,21 @@ func (mr *MockQuerierTxMockRecorder) ListConnectorConfigs(ctx, connectorID any) 
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListConnectorConfigs", reflect.TypeOf((*MockQuerierTx)(nil).ListConnectorConfigs), ctx, connectorID)
 }
 
+// ListDueScheduleIDs mocks base method.
+func (m *MockQuerierTx) ListDueScheduleIDs(ctx context.Context, nextRunAt pgtype.Timestamptz) ([]pgtype.UUID, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ListDueScheduleIDs", ctx, nextRunAt)
+	ret0, _ := ret[0].([]pgtype.UUID)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ListDueScheduleIDs indicates an expected call of ListDueScheduleIDs.
+func (mr *MockQuerierTxMockRecorder) ListDueScheduleIDs(ctx, nextRunAt any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListDueScheduleIDs", reflect.TypeOf((*MockQuerierTx)(nil).ListDueScheduleIDs), ctx, nextRunAt)
+}
+
 // ListEnabledAuthProviders mocks base method.
 func (m *MockQuerierTx) ListEnabledAuthProviders(ctx context.Context) ([]db.AuthProvider, error) {
 	m.ctrl.T.Helper()
@@ -1214,6 +1274,21 @@ func (mr *MockQuerierTxMockRecorder) ListRolesForUser(ctx, userID any) *gomock.C
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListRolesForUser", reflect.TypeOf((*MockQuerierTx)(nil).ListRolesForUser), ctx, userID)
 }
 
+// LockDueSchedule mocks base method.
+func (m *MockQuerierTx) LockDueSchedule(ctx context.Context, arg db.LockDueScheduleParams) (db.Scheduler, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "LockDueSchedule", ctx, arg)
+	ret0, _ := ret[0].(db.Scheduler)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// LockDueSchedule indicates an expected call of LockDueSchedule.
+func (mr *MockQuerierTxMockRecorder) LockDueSchedule(ctx, arg any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "LockDueSchedule", reflect.TypeOf((*MockQuerierTx)(nil).LockDueSchedule), ctx, arg)
+}
+
 // MarkUserEmailVerified mocks base method.
 func (m *MockQuerierTx) MarkUserEmailVerified(ctx context.Context, arg db.MarkUserEmailVerifiedParams) error {
 	m.ctrl.T.Helper()
@@ -1255,6 +1330,20 @@ func (m *MockQuerierTx) RevokeRefreshToken(ctx context.Context, tokenHash string
 func (mr *MockQuerierTxMockRecorder) RevokeRefreshToken(ctx, tokenHash any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RevokeRefreshToken", reflect.TypeOf((*MockQuerierTx)(nil).RevokeRefreshToken), ctx, tokenHash)
+}
+
+// SetScheduleNextRun mocks base method.
+func (m *MockQuerierTx) SetScheduleNextRun(ctx context.Context, arg db.SetScheduleNextRunParams) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "SetScheduleNextRun", ctx, arg)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// SetScheduleNextRun indicates an expected call of SetScheduleNextRun.
+func (mr *MockQuerierTxMockRecorder) SetScheduleNextRun(ctx, arg any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetScheduleNextRun", reflect.TypeOf((*MockQuerierTx)(nil).SetScheduleNextRun), ctx, arg)
 }
 
 // SetUserInvitationToken mocks base method.
@@ -1299,6 +1388,36 @@ func (m *MockQuerierTx) SetUserResetPasswordToken(ctx context.Context, arg db.Se
 func (mr *MockQuerierTxMockRecorder) SetUserResetPasswordToken(ctx, arg any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetUserResetPasswordToken", reflect.TypeOf((*MockQuerierTx)(nil).SetUserResetPasswordToken), ctx, arg)
+}
+
+// SoftDeleteAlert mocks base method.
+func (m *MockQuerierTx) SoftDeleteAlert(ctx context.Context, id pgtype.UUID) (int64, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "SoftDeleteAlert", ctx, id)
+	ret0, _ := ret[0].(int64)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// SoftDeleteAlert indicates an expected call of SoftDeleteAlert.
+func (mr *MockQuerierTxMockRecorder) SoftDeleteAlert(ctx, id any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SoftDeleteAlert", reflect.TypeOf((*MockQuerierTx)(nil).SoftDeleteAlert), ctx, id)
+}
+
+// SoftDeleteIncident mocks base method.
+func (m *MockQuerierTx) SoftDeleteIncident(ctx context.Context, id pgtype.UUID) (int64, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "SoftDeleteIncident", ctx, id)
+	ret0, _ := ret[0].(int64)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// SoftDeleteIncident indicates an expected call of SoftDeleteIncident.
+func (mr *MockQuerierTxMockRecorder) SoftDeleteIncident(ctx, id any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SoftDeleteIncident", reflect.TypeOf((*MockQuerierTx)(nil).SoftDeleteIncident), ctx, id)
 }
 
 // SoftDeletePlaybook mocks base method.
@@ -1552,6 +1671,21 @@ func (m *MockQuerierTx) UpdateRole(ctx context.Context, arg db.UpdateRoleParams)
 func (mr *MockQuerierTxMockRecorder) UpdateRole(ctx, arg any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateRole", reflect.TypeOf((*MockQuerierTx)(nil).UpdateRole), ctx, arg)
+}
+
+// UpdateSchedule mocks base method.
+func (m *MockQuerierTx) UpdateSchedule(ctx context.Context, arg db.UpdateScheduleParams) (pgtype.UUID, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "UpdateSchedule", ctx, arg)
+	ret0, _ := ret[0].(pgtype.UUID)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// UpdateSchedule indicates an expected call of UpdateSchedule.
+func (mr *MockQuerierTxMockRecorder) UpdateSchedule(ctx, arg any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateSchedule", reflect.TypeOf((*MockQuerierTx)(nil).UpdateSchedule), ctx, arg)
 }
 
 // UpdateTaskHistory mocks base method.

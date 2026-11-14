@@ -1,4 +1,4 @@
-// Package jobs runs playbook runs and the daily token cleanup on River (a job queue in
+// Package jobs runs playbook runs, the schedule tick and the daily token cleanup on River (a job queue in
 // Postgres). The API queues a run in the same transaction as its history rows, so a run is
 // never lost and never queued without its history.
 package jobs
@@ -216,14 +216,48 @@ func (w *DeleteExpiredTokensWorker) Work(ctx context.Context, _ *river.Job[Delet
 	return nil
 }
 
+// ScheduleTickArgs has no fields: each tick looks at all schedules.
+type ScheduleTickArgs struct{}
+
+func (ScheduleTickArgs) Kind() string { return "schedule_tick" }
+
+// ByPeriod: a slow tick does not make a second tick for the same minute
+func (ScheduleTickArgs) InsertOpts() river.InsertOpts {
+	return river.InsertOpts{UniqueOpts: river.UniqueOpts{ByPeriod: time.Minute}}
+}
+
+// DueRunner queues the runs of the due schedules. schedules.Service implements it.
+type DueRunner interface {
+	RunDue(ctx context.Context) error
+}
+
+type ScheduleTickWorker struct {
+	river.WorkerDefaults[ScheduleTickArgs]
+	logger logger.Logger
+	runner DueRunner
+}
+
+func NewScheduleTickWorker(log logger.Logger, runner DueRunner) *ScheduleTickWorker {
+	return &ScheduleTickWorker{logger: log, runner: runner}
+}
+
+func (w *ScheduleTickWorker) Work(ctx context.Context, _ *river.Job[ScheduleTickArgs]) error {
+	if err := w.runner.RunDue(ctx); err != nil {
+		w.logger.Errorw("could not run the due schedules", "error", err)
+		return err
+	}
+	return nil
+}
+
 // NewWorkerClient runs `concurrency` runs at the same time. runTimeout limits one run.
 // When the worker stops, River waits stopGrace, then cancels the runs. A cancelled run is
 // saved as failed.
-func NewWorkerClient(pool *pgxpool.Pool, worker *RunWorker, eventWorker *RunForEventWorker, cleanup *DeleteExpiredTokensWorker, concurrency int, runTimeout, stopGrace time.Duration) (*river.Client[pgx.Tx], error) {
+func NewWorkerClient(pool *pgxpool.Pool, worker *RunWorker, eventWorker *RunForEventWorker, cleanup *DeleteExpiredTokensWorker, tick *ScheduleTickWorker, concurrency int, runTimeout, stopGrace time.Duration) (*river.Client[pgx.Tx], error) {
 	workers := river.NewWorkers()
 	river.AddWorker(workers, worker)
 	river.AddWorker(workers, eventWorker)
 	river.AddWorker(workers, cleanup)
+	river.AddWorker(workers, tick)
 	return river.NewClient(riverpgxv5.New(pool), &river.Config{
 		Queues: map[string]river.QueueConfig{
 			queueName:          {MaxWorkers: max(concurrency, 1)},
@@ -236,6 +270,11 @@ func NewWorkerClient(pool *pgxpool.Pool, worker *RunWorker, eventWorker *RunForE
 				river.PeriodicInterval(24*time.Hour),
 				func() (river.JobArgs, *river.InsertOpts) { return DeleteExpiredTokensArgs{}, nil },
 				&river.PeriodicJobOpts{RunOnStart: true},
+			),
+			river.NewPeriodicJob(
+				river.PeriodicInterval(time.Minute),
+				func() (river.JobArgs, *river.InsertOpts) { return ScheduleTickArgs{}, nil },
+				nil,
 			),
 		},
 		Workers:              workers,
