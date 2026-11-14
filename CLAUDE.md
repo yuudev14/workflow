@@ -84,6 +84,10 @@ Rules:
 - `ALTER TYPE ... ADD VALUE` needs `-- +goose NO TRANSACTION` at the top of the file.
 - A repository list (a query that returns many rows, with a filter, an offset or a limit) and its count use Squirrel (`sq`), like `GetPlaybooks`. Do not write them in sqlc. Use sqlc for queries that get, change or delete one row.
 
+## Readability
+
+- Do not pack code into one line or one long chain to save lines. Name each step in a variable. Write one field of a struct literal on each line when it has more than 3 fields.
+
 ## Mocks
 
 Run all commands in `app/ytsoar`.

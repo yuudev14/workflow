@@ -91,17 +91,20 @@ type scheduleRow struct {
 	UpdatedAt           time.Time       `db:"updated_at"`
 }
 
+const scheduleListColumns = `s.id, s.name, s.playbook_id, p.name AS playbook_name,
+    p.trigger_type::text AS playbook_trigger_type, (p.deleted_at IS NOT NULL) AS playbook_deleted,
+    s.cron, s.timezone, s.enabled, s.parameters, s.next_run_at, s.last_run_at, s.created_by,
+    s.created_at, s.updated_at`
+
 func (r *ScheduleRepositoryImpl) List(ctx context.Context, playbookID *uuid.UUID, offset, limit int) ([]domain.Schedule, error) {
-	stmt := scheduleFilter(sq.Select(
-		"s.id", "s.name", "s.playbook_id", "p.name AS playbook_name", "p.trigger_type::text AS playbook_trigger_type",
-		"(p.deleted_at IS NOT NULL) AS playbook_deleted", "s.cron", "s.timezone", "s.enabled", "s.parameters",
-		"s.next_run_at", "s.last_run_at", "s.created_by", "s.created_at", "s.updated_at").
+	query := sq.Select(scheduleListColumns).
 		From("schedulers s").
 		Join("playbooks p ON p.id = s.playbook_id").
-		PlaceholderFormat(sq.Dollar).
+		PlaceholderFormat(sq.Dollar)
+	stmt := scheduleFilter(query, playbookID).
 		OrderBy("s.name", "s.id").
 		Offset(uint64(offset)).
-		Limit(uint64(limit)), playbookID)
+		Limit(uint64(limit))
 
 	rows, err := CollectRowsFromSqlizer[scheduleRow](ctx, stmt, r.pool, r.logger)
 	if err != nil {
@@ -116,10 +119,21 @@ func (r *ScheduleRepositoryImpl) List(ctx context.Context, playbookID *uuid.UUID
 			name = *row.PlaybookName
 		}
 		list[i] = domain.Schedule{
-			ID: row.ID, Name: row.Name, PlaybookID: row.PlaybookID, PlaybookName: name,
-			PlaybookTriggerType: row.PlaybookTriggerType, PlaybookDeleted: row.PlaybookDeleted, Cron: row.Cron,
-			Timezone: row.Timezone, Enabled: row.Enabled, Parameters: params, NextRunAt: row.NextRunAt,
-			LastRunAt: row.LastRunAt, CreatedBy: row.CreatedBy, CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt,
+			ID:                  row.ID,
+			Name:                row.Name,
+			PlaybookID:          row.PlaybookID,
+			PlaybookName:        name,
+			PlaybookTriggerType: row.PlaybookTriggerType,
+			PlaybookDeleted:     row.PlaybookDeleted,
+			Cron:                row.Cron,
+			Timezone:            row.Timezone,
+			Enabled:             row.Enabled,
+			Parameters:          params,
+			NextRunAt:           row.NextRunAt,
+			LastRunAt:           row.LastRunAt,
+			CreatedBy:           row.CreatedBy,
+			CreatedAt:           row.CreatedAt,
+			UpdatedAt:           row.UpdatedAt,
 		}
 	}
 	return list, nil
