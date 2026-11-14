@@ -1,4 +1,4 @@
-# alertgen - dev/demo alert generator
+# seed - dev/demo alerts and playbooks
 
 Populates the alerts and incidents queues with realistic, ECS-shaped data so the
 UI and the summary dashboards have something to render. **Dev tool only** - it
@@ -39,8 +39,8 @@ Or call the script directly for the flags the make targets don't expose
 (`--days`, `--incidents`, `--interval`, `--seed`):
 
 ```bash
-python3 tools/alertgen/alertgen.py seed --count 80 --days 30 --incidents 5
-python3 tools/alertgen/alertgen.py --seed 42 seed    # reproducible data
+python3 tools/seed/seed.py seed --count 80 --days 30 --incidents 5
+python3 tools/seed/seed.py --seed 42 seed    # reproducible data
 ```
 
 ### seed

@@ -11,8 +11,8 @@
       "description": "",
       "operation": "start",
       "parameters": {},
-      "x": 0,
-      "y": 0
+      "x": 60,
+      "y": 100
     },
     {
       "name": "has_url",
@@ -28,8 +28,8 @@
           }
         ]
       },
-      "x": 280,
-      "y": 0
+      "x": 440,
+      "y": 100
     },
     {
       "name": "urlscan",
@@ -40,8 +40,8 @@
       "parameters": {
         "url": "{{ var.input.records[0].payload.url.full }}"
       },
-      "x": 560,
-      "y": 0
+      "x": 820,
+      "y": 100
     },
     {
       "name": "virustotal",
@@ -52,8 +52,8 @@
       "parameters": {
         "url": "{{ var.input.records[0].payload.url.full }}"
       },
-      "x": 560,
-      "y": 160
+      "x": 820,
+      "y": 260
     },
     {
       "name": "rdap",
@@ -64,8 +64,8 @@
       "parameters": {
         "domain": "{{ var.input.records[0].payload.url.domain }}"
       },
-      "x": 560,
-      "y": 320
+      "x": 820,
+      "y": 420
     },
     {
       "name": "verdict",
@@ -81,8 +81,8 @@
           }
         ]
       },
-      "x": 840,
-      "y": 0
+      "x": 1200,
+      "y": 100
     },
     {
       "name": "tag",
@@ -94,8 +94,8 @@
         "alert_id": "{{ var.input.records[0].id }}",
         "tags": "phishing"
       },
-      "x": 1120,
-      "y": 0
+      "x": 1580,
+      "y": 100
     },
     {
       "name": "escalate",
@@ -107,8 +107,8 @@
         "alert_id": "{{ var.input.records[0].id }}",
         "title": "Phishing: {{ var.input.records[0].payload.url.domain }}"
       },
-      "x": 1400,
-      "y": 0
+      "x": 1960,
+      "y": 100
     },
     {
       "name": "notify",
@@ -119,8 +119,8 @@
       "parameters": {
         "text": "Phishing URL {{ var.input.records[0].payload.url.full }} from {{ var.input.records[0].payload.email.from.address }}. Report: {{ var.steps['urlscan'].result_url }}"
       },
-      "x": 1680,
-      "y": 0
+      "x": 2340,
+      "y": 100
     },
     {
       "name": "clean_note",
@@ -132,8 +132,8 @@
         "alert_id": "{{ var.input.records[0].id }}",
         "body": "No phishing signs: urlscan.io score {{ var.steps['urlscan'].score }}, VirusTotal {{ var.steps['virustotal'].malicious }} engines, domain age {{ var.steps['rdap'].age_days }} days."
       },
-      "x": 1120,
-      "y": 160
+      "x": 1580,
+      "y": 260
     }
   ],
   "edges": {

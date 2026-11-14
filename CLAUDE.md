@@ -139,6 +139,7 @@ A job is a task that a worker does later. River stores the jobs in Postgres.
 ## Gotchas
 
 - `app/frontend/src/services/playbooks/playbooks.schema.ts` has CRLF line endings. Keep them when you edit the file.
+- The editor toolbar covers the top-left corner of the canvas. Never put a playbook node at `x: 0, y: 0`. In each seeded or generated playbook (`tools/playbooks/*.json`, `tools/seed`), start the first node at `x: 60, y: 100` or more. `tools/seed/seed.py playbooks` refuses a node closer to the corner. Also set the edge handles. Without them the editor draws each edge from the top of a node to the top of the next one. Pick the handles from the node positions. The edge leaves the side of the source that faces the target and enters the side of the target that faces the source: a target on the right uses `source-right` to `target-left`, and a target below uses `source-bottom` to `target-top`. A condition node has no `target-bottom` handle, and the editor drops an edge to a handle that does not exist. Keep the branch id as `source_handle` on a condition edge. The seeder does this in `pick_handles`.
 - `executor.Run` writes the whole task message to the debug log on every run. This is costly at high volume.
 
 ## Reporting
