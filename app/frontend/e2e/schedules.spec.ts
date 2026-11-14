@@ -12,6 +12,7 @@ test.describe("schedules", () => {
     await dialog.getByLabel("Playbook").click();
     await page.getByRole("option", { name: playbook.name }).click();
     await dialog.getByLabel("Cron").fill("0 2 * * *");
+    await expect(dialog.getByText("Will run at 02:00 (UTC)")).toBeVisible();
     await expect(dialog.getByText("Next runs")).toBeVisible();
     await dialog.getByRole("button", { name: "Create" }).click();
     await expect(dialog).toBeHidden();

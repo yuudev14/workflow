@@ -2,6 +2,7 @@ import * as React from "react";
 import { Link } from "react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createColumnHelper } from "@tanstack/react-table";
+import cronstrue from "cronstrue";
 import { CalendarClock, Pencil, Plus, Trash2 } from "lucide-react";
 
 import ScheduleService from "@/services/schedules/schedules";
@@ -231,13 +232,22 @@ function ScheduleDialog({
     enabled: open,
   });
 
-  // the api computes the times, so the UI needs no cron library
+  // the api computes and checks the times, cronstrue only writes the sentence
   const previewQuery = useQuery({
     queryKey: ["schedule-preview", cron, timezone],
     queryFn: () => ScheduleService.preview(cron.trim(), timezone),
     enabled: open && cron.trim() !== "",
     retry: false,
   });
+
+  const cronSentence = React.useMemo(() => {
+    try {
+      const text = cronstrue.toString(cron.trim(), { use24HourTimeFormat: true });
+      return text.charAt(0).toLowerCase() + text.slice(1);
+    } catch {
+      return "";
+    }
+  }, [cron]);
 
   const parsedParameters = React.useMemo((): Record<string, unknown> | null => {
     try {
@@ -313,6 +323,11 @@ function ScheduleDialog({
                 value={cron}
                 onChange={(e) => setCron(e.target.value)}
               />
+              {cronSentence && !previewQuery.isError && (
+                <span className="text-[12.5px] text-ink-faint">
+                  Will run {cronSentence} ({timezone})
+                </span>
+              )}
             </div>
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="schedule_timezone">Time zone</Label>
