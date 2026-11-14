@@ -51,6 +51,44 @@ test.describe("playbook editor", () => {
     await expect(page.getByRole("link", { name: new RegExp(playbook.name) })).toBeHidden();
   });
 
+  test("draws the branch label outside the condition node when the target is on its right", async ({ page }) => {
+    const playbook = await newPlaybook(page.request);
+    const expression = "{{ var.input.records[0].severity == 'critical' }}";
+    await api(page.request).put(`/playbooks/tasks/${playbook.id}`, {
+      nodes: [
+        { name: "start", operation: "start", parameters: {}, x: 60, y: 100 },
+        {
+          name: "gate",
+          operation: "switch_expression",
+          connector_id: "condition",
+          connector_name: "Condition",
+          parameters: { cases: [{ id: "yes", expression }] },
+          x: 440,
+          y: 100,
+        },
+        {
+          name: "hello",
+          operation: "python_code",
+          connector_id: "code_snippet_py",
+          connector_name: "Code Snippet",
+          parameters: { code: "print('hello')" },
+          x: 820,
+          y: 100,
+        },
+      ],
+      edges: { start: ["gate"], gate: ["hello"] },
+      handles: {
+        start: { gate: { source_handle: "source-right", destination_handle: "target-left" } },
+        gate: { hello: { source_handle: "yes", destination_handle: "target-left" } },
+      },
+    });
+    await page.goto(`/playbooks/${playbook.id}`);
+
+    const label = await page.getByTitle(expression).boundingBox();
+    const gate = await node(page, "gate").boundingBox();
+    expect(label!.x).toBeGreaterThanOrEqual(gate!.x + gate!.width);
+  });
+
   test("shows the steps", async ({ page }) => {
     const playbook = await newPlaybook(page.request);
     await page.goto(`/playbooks/${playbook.id}`);
