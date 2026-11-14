@@ -4,6 +4,7 @@ import {
   Node,
   NodeProps,
   Position,
+  XYPosition,
   useStore,
   useUpdateNodeInternals,
 } from "@xyflow/react";
@@ -17,24 +18,37 @@ import { Glyph } from "@/components/soar";
 import { cn } from "@/lib/utils";
 import DeleteNodeButton from "./DeleteNodeButton";
 
+// The side of the node that faces the target, so a branch edge does not loop under the node.
+const sideFacing = (from?: XYPosition, to?: XYPosition): Position => {
+  if (!from || !to) return Position.Bottom;
+  const dx = to.x - from.x;
+  const dy = to.y - from.y;
+  if (dy > Math.abs(dx)) return Position.Bottom;
+  return dx >= 0 ? Position.Right : Position.Left;
+};
+
 // Routing is chosen in the node's form, which sets each outgoing edge's
 // source_handle to a branch (a switch case id or "else"). React Flow only renders
 // an edge if its source_handle matches a real handle, so we render a hidden handle
 // for every branch the edges reference - otherwise an assigned edge detaches.
 const ConditionNode: React.FC<NodeProps<Node<Tasks>>> = (props) => {
   const branchKey = useStore((s) => {
-    const ids: string[] = [];
+    const self = s.nodeLookup.get(props.id)?.internals.positionAbsolute;
+    const sides = new Map<string, Position>();
     s.edges.forEach((edge) => {
       if (
         edge.source === props.id &&
         edge.sourceHandle &&
-        edge.sourceHandle !== CONDITION_OUTPUT_HANDLE
-      )
-        ids.push(edge.sourceHandle);
+        edge.sourceHandle !== CONDITION_OUTPUT_HANDLE &&
+        !sides.has(edge.sourceHandle)
+      ) {
+        const target = s.nodeLookup.get(edge.target)?.internals.positionAbsolute;
+        sides.set(edge.sourceHandle, sideFacing(self, target));
+      }
     });
-    return ids.sort().join("|");
+    return JSON.stringify([...sides].sort());
   });
-  const branchHandles = branchKey ? branchKey.split("|") : [];
+  const branchHandles: [string, Position][] = JSON.parse(branchKey);
 
   // React Flow won't notice handles we add/remove on the fly, so re-measure
   // whenever the branch set changes - without this a newly routed edge can't
@@ -74,11 +88,11 @@ const ConditionNode: React.FC<NodeProps<Node<Tasks>>> = (props) => {
           />
 
           {/* co-located hidden anchors so routed edges stay attached */}
-          {branchHandles.map((id) => (
+          {branchHandles.map(([id, side]) => (
             <Handle
               key={id}
               type="source"
-              position={Position.Bottom}
+              position={side}
               id={id}
               isConnectable={false}
               style={{ opacity: 0 }}
