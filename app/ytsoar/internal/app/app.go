@@ -183,7 +183,11 @@ func newAuthService(cfg config.Config, appLogger logger.Logger, queries *db.Quer
 		repository.NewRefreshTokenRepositoryImpl(appLogger, queries, pool),
 		repository.NewAPIKeyRepositoryImpl(appLogger, queries, pool),
 		mail.New(appLogger, mail.Config{
-			Host: cfg.SMTPHost, Port: cfg.SMTPPort, Username: cfg.SMTPUsername, Password: cfg.SMTPPassword, From: cfg.SMTPFrom,
+			Host:     cfg.SMTPHost,
+			Port:     cfg.SMTPPort,
+			Username: cfg.SMTPUsername,
+			Password: cfg.SMTPPassword,
+			From:     cfg.SMTPFrom,
 		}),
 		repository.NewTeamRepositoryImpl(appLogger, queries, pool),
 		repository.NewAuditLogRepositoryImpl(appLogger, queries, pool),

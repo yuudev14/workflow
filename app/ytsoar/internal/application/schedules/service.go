@@ -94,8 +94,13 @@ func (s *Service) Create(ctx context.Context, p CreatePayload, actorID *uuid.UUI
 		return domain.Schedule{}, apperr.New(apperr.Invalid, "a schedule can run only a playbook with a manual trigger")
 	}
 	sched := domain.Schedule{
-		Name: p.Name, PlaybookID: playbookID, Cron: p.Cron, Timezone: orUTC(p.Timezone),
-		Enabled: p.Enabled == nil || *p.Enabled, Parameters: orEmpty(p.Parameters), CreatedBy: actorID,
+		Name:       p.Name,
+		PlaybookID: playbookID,
+		Cron:       p.Cron,
+		Timezone:   orUTC(p.Timezone),
+		Enabled:    p.Enabled == nil || *p.Enabled,
+		Parameters: orEmpty(p.Parameters),
+		CreatedBy:  actorID,
 	}
 	if sched.NextRunAt, err = s.nextRun(sched.Cron, sched.Timezone); err != nil {
 		return domain.Schedule{}, err

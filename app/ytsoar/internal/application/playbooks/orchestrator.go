@@ -579,10 +579,17 @@ func (l *RunLoader) LoadRunMessage(ctx context.Context, historyID uuid.UUID) (do
 	taskList := make([]domain.Tasks, len(taskRows))
 	for i, row := range taskRows {
 		taskList[i] = domain.Tasks{
-			ID: row.TaskID, PlaybookID: history.PlaybookID.String(), Name: row.Name,
-			Config: row.Config, ConnectorName: row.ConnectorName, ConnectorID: row.ConnectorID,
-			Operation: row.Operation, Description: row.Description, Parameters: row.Parameters,
-			X: row.X, Y: row.Y,
+			ID:            row.TaskID,
+			PlaybookID:    history.PlaybookID.String(),
+			Name:          row.Name,
+			Config:        row.Config,
+			ConnectorName: row.ConnectorName,
+			ConnectorID:   row.ConnectorID,
+			Operation:     row.Operation,
+			Description:   row.Description,
+			Parameters:    row.Parameters,
+			X:             row.X,
+			Y:             row.Y,
 		}
 	}
 
@@ -612,7 +619,11 @@ func (l *RunLoader) LoadRunMessage(ctx context.Context, historyID uuid.UUID) (do
 
 	tasksMap, graph, edgeRefs := prepareMessage(taskList, responseEdges)
 	return domain.TaskMessage{
-		Graph: graph, Tasks: tasksMap, PlaybookHistoryId: historyID, Edges: edgeRefs, Input: input.Resolved(),
+		Graph:             graph,
+		Tasks:             tasksMap,
+		PlaybookHistoryId: historyID,
+		Edges:             edgeRefs,
+		Input:             input.Resolved(),
 	}, nil
 }
 

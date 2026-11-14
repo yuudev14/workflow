@@ -42,9 +42,14 @@ func (r *ScheduleRepositoryImpl) Create(ctx context.Context, s domain.Schedule) 
 		return domain.Schedule{}, err
 	}
 	id, err := r.queriesFromContext(ctx).CreateSchedule(ctx, db.CreateScheduleParams{
-		Name: s.Name, PlaybookID: toPgUUID(s.PlaybookID), Cron: s.Cron, Timezone: s.Timezone,
-		Enabled: s.Enabled, Parameters: params, NextRunAt: toPgTimestamptz(s.NextRunAt),
-		CreatedBy: toPgUUIDPtr(s.CreatedBy),
+		Name:       s.Name,
+		PlaybookID: toPgUUID(s.PlaybookID),
+		Cron:       s.Cron,
+		Timezone:   s.Timezone,
+		Enabled:    s.Enabled,
+		Parameters: params,
+		NextRunAt:  toPgTimestamptz(s.NextRunAt),
+		CreatedBy:  toPgUUIDPtr(s.CreatedBy),
 	})
 	if err != nil {
 		return domain.Schedule{}, err
@@ -145,8 +150,13 @@ func (r *ScheduleRepositoryImpl) Update(ctx context.Context, s domain.Schedule) 
 		return domain.Schedule{}, err
 	}
 	id, err := r.queriesFromContext(ctx).UpdateSchedule(ctx, db.UpdateScheduleParams{
-		ID: toPgUUID(s.ID), Name: s.Name, Cron: s.Cron, Timezone: s.Timezone, Enabled: s.Enabled,
-		Parameters: params, NextRunAt: toPgTimestamptz(s.NextRunAt),
+		ID:         toPgUUID(s.ID),
+		Name:       s.Name,
+		Cron:       s.Cron,
+		Timezone:   s.Timezone,
+		Enabled:    s.Enabled,
+		Parameters: params,
+		NextRunAt:  toPgTimestamptz(s.NextRunAt),
 	})
 	if err != nil {
 		return domain.Schedule{}, mapNoRows(err, schedules.ErrScheduleNotFound)
@@ -188,9 +198,18 @@ func (r *ScheduleRepositoryImpl) LockDue(ctx context.Context, id uuid.UUID, now 
 		return domain.Schedule{}, false, err
 	}
 	return toDomainSchedule(db.GetScheduleRow{
-		ID: row.ID, Name: row.Name, PlaybookID: row.PlaybookID, Cron: row.Cron, Timezone: row.Timezone,
-		Enabled: row.Enabled, Parameters: row.Parameters, NextRunAt: row.NextRunAt, LastRunAt: row.LastRunAt,
-		CreatedBy: row.CreatedBy, CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt,
+		ID:         row.ID,
+		Name:       row.Name,
+		PlaybookID: row.PlaybookID,
+		Cron:       row.Cron,
+		Timezone:   row.Timezone,
+		Enabled:    row.Enabled,
+		Parameters: row.Parameters,
+		NextRunAt:  row.NextRunAt,
+		LastRunAt:  row.LastRunAt,
+		CreatedBy:  row.CreatedBy,
+		CreatedAt:  row.CreatedAt,
+		UpdatedAt:  row.UpdatedAt,
 	}), true, nil
 }
 
@@ -214,10 +233,20 @@ func toDomainSchedule(row db.GetScheduleRow) domain.Schedule {
 		name = *n
 	}
 	return domain.Schedule{
-		ID: fromPgUUID(row.ID), Name: row.Name, PlaybookID: fromPgUUID(row.PlaybookID),
-		PlaybookName: name, PlaybookTriggerType: trigger, PlaybookDeleted: row.PlaybookDeleted,
-		Cron: row.Cron, Timezone: row.Timezone, Enabled: row.Enabled, Parameters: params,
-		NextRunAt: row.NextRunAt.Time, LastRunAt: fromPgTimestamptzPtr(row.LastRunAt),
-		CreatedBy: fromPgUUIDPtr(row.CreatedBy), CreatedAt: row.CreatedAt.Time, UpdatedAt: row.UpdatedAt.Time,
+		ID:                  fromPgUUID(row.ID),
+		Name:                row.Name,
+		PlaybookID:          fromPgUUID(row.PlaybookID),
+		PlaybookName:        name,
+		PlaybookTriggerType: trigger,
+		PlaybookDeleted:     row.PlaybookDeleted,
+		Cron:                row.Cron,
+		Timezone:            row.Timezone,
+		Enabled:             row.Enabled,
+		Parameters:          params,
+		NextRunAt:           row.NextRunAt.Time,
+		LastRunAt:           fromPgTimestamptzPtr(row.LastRunAt),
+		CreatedBy:           fromPgUUIDPtr(row.CreatedBy),
+		CreatedAt:           row.CreatedAt.Time,
+		UpdatedAt:           row.UpdatedAt.Time,
 	}
 }
