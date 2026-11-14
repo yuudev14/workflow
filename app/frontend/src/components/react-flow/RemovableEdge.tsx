@@ -99,7 +99,7 @@ export default function RemovableEdge({
         />
         {branch && label && (
           <div
-            className="nodrag nopan group absolute z-10 -translate-x-1/2 -translate-y-1/2 whitespace-nowrap rounded-full border border-signal-dot bg-card px-2 py-0.5 font-mono text-[11px] font-semibold text-signal-text shadow-sm hover:z-20"
+            className="nodrag nopan group absolute z-10 whitespace-nowrap rounded-full border border-signal-dot bg-card px-2 py-0.5 font-mono text-[11px] font-semibold text-signal-text shadow-sm hover:z-20"
             style={{
               transform: `translate(-50%, -50%) translate(${labelX}px,${labelY - 18}px)`,
             }}
