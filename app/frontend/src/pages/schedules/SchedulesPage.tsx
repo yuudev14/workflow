@@ -1,6 +1,6 @@
 import * as React from "react";
 import { Link } from "react-router";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createColumnHelper } from "@tanstack/react-table";
 import cronstrue from "cronstrue";
 import { CalendarClock, Pencil, Plus, Trash2 } from "lucide-react";
@@ -16,6 +16,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
+import { cn } from "@/lib/utils";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Dialog,
@@ -232,22 +233,35 @@ function ScheduleDialog({
     enabled: open,
   });
 
+  // a half-typed cron is invalid, so wait until the typing stops before the request and the sentence
+  const [settledCron, setSettledCron] = React.useState("");
+  React.useEffect(() => {
+    const timer = setTimeout(() => setSettledCron(cron.trim()), 300);
+    return () => clearTimeout(timer);
+  }, [cron]);
+
   // the api computes and checks the times, cronstrue only writes the sentence
   const previewQuery = useQuery({
-    queryKey: ["schedule-preview", cron, timezone],
-    queryFn: () => ScheduleService.preview(cron.trim(), timezone),
-    enabled: open && cron.trim() !== "",
+    queryKey: ["schedule-preview", settledCron, timezone],
+    queryFn: () => ScheduleService.preview(settledCron, timezone),
+    enabled: open && settledCron !== "",
+    placeholderData: keepPreviousData,
     retry: false,
   });
 
   const cronSentence = React.useMemo(() => {
     try {
-      const text = cronstrue.toString(cron.trim(), { use24HourTimeFormat: true });
+      const text = cronstrue.toString(settledCron, { use24HourTimeFormat: true });
       return text.charAt(0).toLowerCase() + text.slice(1);
     } catch {
       return "";
     }
-  }, [cron]);
+  }, [settledCron]);
+  const showPreview = cron.trim() !== "";
+  const loading = showPreview && (previewQuery.isFetching || cron.trim() !== settledCron);
+  const sentence = showPreview && cronSentence && !previewQuery.isError ? `Will run ${cronSentence} (${timezone})` : "";
+  // grey bars keep the room of the text that is not there yet, and pulse only while it loads
+  const bar = (className: string) => <Skeleton className={cn(className, !loading && "animate-none")} />;
 
   const parsedParameters = React.useMemo((): Record<string, unknown> | null => {
     try {
@@ -323,11 +337,6 @@ function ScheduleDialog({
                 value={cron}
                 onChange={(e) => setCron(e.target.value)}
               />
-              {cronSentence && !previewQuery.isError && (
-                <span className="text-[12.5px] text-ink-faint">
-                  Will run {cronSentence} ({timezone})
-                </span>
-              )}
             </div>
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="schedule_timezone">Time zone</Label>
@@ -345,18 +354,25 @@ function ScheduleDialog({
               </Select>
             </div>
           </div>
-          {cron.trim() !== "" && (
-            <div className="text-[13px]" aria-live="polite">
-              {previewQuery.isError ? (
-                <span className="text-rose-text">{apiErrorMessage(previewQuery.error)}</span>
-              ) : (
-                <>
+          {/* the height is fixed (sentence, title and 3 times), so the dialog does not jump while the user types */}
+          <div
+            className="flex min-h-[132px] flex-col gap-2 rounded-md border border-line bg-paper-sunken px-3.5 py-3 text-[13px]"
+            aria-live="polite"
+          >
+            {showPreview && previewQuery.isError ? (
+              <span className="text-rose-text">{apiErrorMessage(previewQuery.error)}</span>
+            ) : (
+              <>
+                <div className="flex h-5 items-center font-semibold">{sentence || bar("h-3.5 w-56")}</div>
+                <div>
                   <div className="text-ink-faint">Next runs</div>
-                  {previewQuery.data?.map((time) => <div key={time}>{new Date(time).toLocaleString()}</div>)}
-                </>
-              )}
-            </div>
-          )}
+                  {showPreview && previewQuery.data
+                    ? previewQuery.data.map((time) => <div key={time}>{new Date(time).toLocaleString()}</div>)
+                    : [0, 1, 2].map((i) => <div key={i} className="py-[3px]">{bar("h-3.5 w-44")}</div>)}
+                </div>
+              </>
+            )}
+          </div>
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="schedule_parameters">Parameters (JSON)</Label>
             <Textarea
