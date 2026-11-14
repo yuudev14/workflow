@@ -74,7 +74,8 @@ const PlaybookPlayground: React.FC<{ playbookId: string }> = ({
     mutationFn: () => PlaybookService.deletePlaybook(playbookId),
     onSuccess: () => {
       toast({ variant: "success", title: "Playbook deleted" });
-      queryClient.invalidateQueries({ queryKey: ["playbook-lists"] });
+      // the list is not on screen, and refetchOnMount is off, so refetch it now
+      queryClient.invalidateQueries({ queryKey: ["playbook-lists"], refetchType: "all" });
       navigate("/playbooks");
     },
     onError: (error) =>

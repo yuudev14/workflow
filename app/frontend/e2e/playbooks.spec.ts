@@ -52,12 +52,13 @@ test.describe("playbook list", () => {
 test.describe("playbook editor", () => {
   test("deletes the playbook and opens the list", async ({ page }) => {
     const playbook = await newPlaybook(page.request);
-    await page.goto(`/playbooks/${playbook.id}`);
+    // The list loads first, so the delete must refresh a list that is cached and not on screen.
+    await page.goto("/playbooks");
+    await page.getByRole("link", { name: new RegExp(playbook.name) }).click();
     await page.getByRole("button", { name: "Delete", exact: true }).click();
     await page.getByRole("dialog").getByRole("button", { name: "Delete" }).click();
 
     await expect(page).toHaveURL(/\/playbooks$/);
-    await page.getByPlaceholder("Search playbooks…").fill(playbook.name);
     await expect(page.getByRole("link", { name: new RegExp(playbook.name) })).toBeHidden();
   });
 
