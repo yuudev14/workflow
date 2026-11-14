@@ -34,6 +34,7 @@ import scenarios  # noqa: E402
 API = os.environ.get("YTSOAR_API", "http://localhost:8080").rstrip("/")
 USERNAME = os.environ.get("ADMIN_USERNAME", "admin")
 PASSWORD = os.environ.get("ADMIN_PASSWORD", "admin123!")
+MIN_X, MIN_Y = 60, 100
 
 
 class Client:
@@ -190,11 +191,31 @@ def cmd_storm(client, args):
     return 0 if ok else 1
 
 
+def pick_handles(source, target):
+    """The handle pair that faces the target: the edge leaves the side of the source that points to it."""
+    dx, dy = target["x"] - source["x"], target["y"] - source["y"]
+    # a condition node has no target-bottom handle, so an edge never comes in from below
+    if dy > abs(dx):
+        return "source-bottom", "target-top"
+    return ("source-right", "target-left") if dx >= 0 else ("source-left", "target-right")
+
+
 def cmd_playbooks(client, args):
     """Saves each tools/playbooks/*.json file. A playbook with the same name is skipped."""
     for path in sorted(glob.glob(os.path.join(args.dir, "*.json"))):
         with open(path) as f:
             pb = json.load(f)
+        # the editor toolbar covers the top-left corner of the canvas
+        if any(n["x"] < MIN_X or n["y"] < MIN_Y for n in pb["nodes"]):
+            sys.exit(f"{path}: put every node at x >= {MIN_X} and y >= {MIN_Y}")
+        # without handles the editor draws each edge from the top of a node to the top of the next one
+        nodes = {n["name"]: n for n in pb["nodes"]}
+        for source, targets in pb["edges"].items():
+            for target in targets:
+                out, into = pick_handles(nodes[source], nodes[target])
+                handle = pb["handles"].setdefault(source, {}).setdefault(target, {})
+                handle.setdefault("source_handle", out)  # a condition branch keeps its own id
+                handle["destination_handle"] = into
         found = client.request("GET", "/api/v1/playbooks?" + urllib.parse.urlencode({"name": pb["name"]}))
         if any(p["name"] == pb["name"] for p in (found or {}).get("entries") or []):
             print(f"skip   {pb['name']} (exists)")

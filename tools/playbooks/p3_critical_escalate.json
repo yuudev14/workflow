@@ -11,8 +11,8 @@
       "description": "",
       "operation": "start",
       "parameters": {},
-      "x": 0,
-      "y": 0
+      "x": 60,
+      "y": 100
     },
     {
       "name": "is_critical",
@@ -28,8 +28,8 @@
           }
         ]
       },
-      "x": 280,
-      "y": 0
+      "x": 440,
+      "y": 100
     },
     {
       "name": "escalate",
@@ -40,8 +40,8 @@
       "parameters": {
         "alert_id": "{{ var.input.records[0].id }}"
       },
-      "x": 560,
-      "y": 0
+      "x": 820,
+      "y": 100
     },
     {
       "name": "slack",
@@ -52,8 +52,8 @@
       "parameters": {
         "text": "Critical alert \"{{ var.input.records[0].title }}\" is now incident {{ var.steps['escalate'].id }}."
       },
-      "x": 840,
-      "y": 0
+      "x": 1200,
+      "y": 100
     },
     {
       "name": "email",
@@ -66,8 +66,8 @@
         "subject": "Critical alert: {{ var.input.records[0].title }}",
         "body": "The critical alert \"{{ var.input.records[0].title }}\" ({{ var.input.records[0].source_kind }}) is now incident {{ var.steps['escalate'].id }}."
       },
-      "x": 840,
-      "y": 160
+      "x": 1200,
+      "y": 260
     }
   ],
   "edges": {

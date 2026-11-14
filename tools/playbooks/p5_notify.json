@@ -9,8 +9,8 @@
       "description": "",
       "operation": "start",
       "parameters": {},
-      "x": 0,
-      "y": 0
+      "x": 60,
+      "y": 100
     },
     {
       "name": "slack",
@@ -21,8 +21,8 @@
       "parameters": {
         "text": "{{ var.input.parameters.message or 'Notification from YTSoar' }}"
       },
-      "x": 280,
-      "y": 0
+      "x": 440,
+      "y": 100
     },
     {
       "name": "email",
@@ -35,8 +35,8 @@
         "subject": "YTSoar notification",
         "body": "{{ var.input.parameters.message or 'Notification from YTSoar' }}"
       },
-      "x": 280,
-      "y": 160
+      "x": 440,
+      "y": 260
     }
   ],
   "edges": {

@@ -11,8 +11,8 @@
       "description": "",
       "operation": "start",
       "parameters": {},
-      "x": 0,
-      "y": 0
+      "x": 60,
+      "y": 100
     },
     {
       "name": "has_ip",
@@ -28,8 +28,8 @@
           }
         ]
       },
-      "x": 280,
-      "y": 0
+      "x": 440,
+      "y": 100
     },
     {
       "name": "abuseipdb",
@@ -40,8 +40,8 @@
       "parameters": {
         "ip": "{{ var.input.records[0].payload.source.ip }}"
       },
-      "x": 560,
-      "y": 0
+      "x": 820,
+      "y": 100
     },
     {
       "name": "ipinfo",
@@ -52,8 +52,8 @@
       "parameters": {
         "ip": "{{ var.input.records[0].payload.source.ip }}"
       },
-      "x": 560,
-      "y": 160
+      "x": 820,
+      "y": 260
     },
     {
       "name": "enrich_note",
@@ -65,8 +65,8 @@
         "alert_id": "{{ var.input.records[0].id }}",
         "body": "IP {{ var.steps['abuseipdb'].ipAddress }}: abuse score {{ var.steps['abuseipdb'].abuseConfidenceScore }}, {{ var.steps['abuseipdb'].totalReports }} reports, {{ var.steps['ipinfo'].city }} {{ var.steps['ipinfo'].country }}, {{ var.steps['ipinfo'].org }}."
       },
-      "x": 840,
-      "y": 0
+      "x": 1200,
+      "y": 100
     },
     {
       "name": "risk",
@@ -82,8 +82,8 @@
           }
         ]
       },
-      "x": 1120,
-      "y": 0
+      "x": 1580,
+      "y": 100
     },
     {
       "name": "escalate",
@@ -94,8 +94,8 @@
       "parameters": {
         "alert_id": "{{ var.input.records[0].id }}"
       },
-      "x": 1400,
-      "y": 0
+      "x": 1960,
+      "y": 100
     },
     {
       "name": "notify",
@@ -106,8 +106,8 @@
       "parameters": {
         "text": "High risk IP {{ var.input.records[0].payload.source.ip }} on alert \"{{ var.input.records[0].title }}\". Incident: {{ var.steps['escalate'].title }}"
       },
-      "x": 1680,
-      "y": 0
+      "x": 2340,
+      "y": 100
     },
     {
       "name": "close",
@@ -120,8 +120,8 @@
         "status": "resolved",
         "closure_note": "Auto-closed: AbuseIPDB score {{ var.steps['abuseipdb'].abuseConfidenceScore }}."
       },
-      "x": 1400,
-      "y": 160
+      "x": 1960,
+      "y": 260
     }
   ],
   "edges": {
