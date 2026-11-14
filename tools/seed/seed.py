@@ -33,7 +33,7 @@ import scenarios  # noqa: E402
 
 API = os.environ.get("YTSOAR_API", "http://localhost:8080").rstrip("/")
 USERNAME = os.environ.get("ADMIN_USERNAME", "admin")
-PASSWORD = os.environ.get("ADMIN_PASSWORD", "admin123!")
+PASSWORD = os.environ.get("ADMIN_PASSWORD", "password")
 MIN_X, MIN_Y = 60, 100
 
 
