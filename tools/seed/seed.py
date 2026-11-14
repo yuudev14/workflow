@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
-"""Dev/demo alert generator for YTSoar.
+"""Dev/demo alerts and playbooks for YTSoar.
 
 Python stdlib only - no venv, no requirements.txt. Run it on the host against
 the dev stack; nothing in app/ytsoar imports it.
 
-    python3 tools/alertgen/alertgen.py seed
-    python3 tools/alertgen/alertgen.py seed --count 200
-    python3 tools/alertgen/alertgen.py drip
-    python3 tools/alertgen/alertgen.py storm
-    python3 tools/alertgen/alertgen.py playbooks
+    python3 tools/seed/seed.py seed
+    python3 tools/seed/seed.py seed --count 200
+    python3 tools/seed/seed.py drip
+    python3 tools/seed/seed.py storm
+    python3 tools/seed/seed.py playbooks
 
 Ingest API-key auth does not exist yet, so this authenticates as a user: it
 logs in and lets an http.cookiejar carry the httpOnly cookies. Never read or
