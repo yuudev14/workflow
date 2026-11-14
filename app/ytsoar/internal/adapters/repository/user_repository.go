@@ -134,11 +134,17 @@ func (r *UserRepositoryImpl) SetLink(ctx context.Context, params auth.SetLinkPar
 	var err error
 	if params.Purpose == auth.TokenInvite {
 		rows, err = q.SetUserInvitationToken(ctx, db.SetUserInvitationTokenParams{
-			ID: id, InvitationToken: token, InvitationSentAt: sentAt, ResendAfter: resendAfter,
+			ID:               id,
+			InvitationToken:  token,
+			InvitationSentAt: sentAt,
+			ResendAfter:      resendAfter,
 		})
 	} else {
 		rows, err = q.SetUserResetPasswordToken(ctx, db.SetUserResetPasswordTokenParams{
-			ID: id, ResetPasswordToken: token, ResetPasswordSentAt: sentAt, ResendAfter: resendAfter,
+			ID:                  id,
+			ResetPasswordToken:  token,
+			ResetPasswordSentAt: sentAt,
+			ResendAfter:         resendAfter,
 		})
 	}
 	return rows > 0, err
