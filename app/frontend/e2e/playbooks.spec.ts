@@ -37,6 +37,16 @@ test.describe("playbook list", () => {
     await expect(page.getByRole("link", { name: new RegExp(playbook.name) })).toBeVisible();
     await expect(page.getByRole("link", { name: new RegExp(other.name) })).toBeHidden();
   });
+
+  test("keeps the columns aligned when descriptions differ in length", async ({ page }) => {
+    const short = await newPlaybook(page.request);
+    const long = await newPlaybook(page.request);
+    await api(page.request).put(`/playbooks/${long.id}`, { description: "long description ".repeat(30) });
+    await page.goto("/playbooks");
+    const badgeX = async (name: string) =>
+      (await page.getByRole("link", { name: new RegExp(name) }).getByText("Manual").boundingBox())?.x;
+    expect(await badgeX(short.name)).toBe(await badgeX(long.name));
+  });
 });
 
 test.describe("playbook editor", () => {

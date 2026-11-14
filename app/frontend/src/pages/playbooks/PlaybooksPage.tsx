@@ -102,7 +102,7 @@ export default function Page() {
         />
       ) : (
         <div className="overflow-hidden rounded-md border border-line">
-          <div className="grid grid-cols-[1.6fr_0.9fr_0.9fr_0.9fr_auto] gap-3 bg-paper-sunken px-3.5 py-2.5 text-[12px] font-semibold uppercase tracking-wide text-ink-faint">
+          <div className="grid grid-cols-[minmax(0,1.6fr)_minmax(0,0.9fr)_minmax(0,0.9fr)_minmax(0,0.9fr)_16px] gap-3 bg-paper-sunken px-3.5 py-2.5 text-[12px] font-semibold uppercase tracking-wide text-ink-faint">
             <div>Name</div>
             <div>Trigger</div>
             <div>Last run</div>
@@ -116,9 +116,9 @@ export default function Page() {
               <Link
                 key={p.id}
                 to={`/playbooks/${p.id}`}
-                className="grid grid-cols-[1.6fr_0.9fr_0.9fr_0.9fr_auto] items-center gap-3 border-t border-line bg-card px-3.5 py-3 hover:bg-paper-sunken"
+                className="grid grid-cols-[minmax(0,1.6fr)_minmax(0,0.9fr)_minmax(0,0.9fr)_minmax(0,0.9fr)_16px] items-center gap-3 border-t border-line bg-card px-3.5 py-3 hover:bg-paper-sunken"
               >
-                <div className="flex items-center gap-2.5">
+                <div className="flex min-w-0 items-center gap-2.5">
                   <Glyph icon={g.icon} tone={g.tone} />
                   <div className="min-w-0">
                     <div className="truncate text-[14px] font-semibold">{p.name}</div>
