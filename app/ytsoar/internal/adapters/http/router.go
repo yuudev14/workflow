@@ -1,6 +1,8 @@
 package api
 
 import (
+	"net/http"
+
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	swaggerFiles "github.com/swaggo/files"
@@ -28,6 +30,7 @@ func NewRouter(
 	incidentHandler *handlers.IncidentHandler,
 	scheduleHandler *handlers.ScheduleHandler,
 	hub *ws.Hub,
+	mcpHandler http.Handler,
 	authMW gin.HandlerFunc,
 	apiKeyMW gin.HandlerFunc,
 	wsAuthMW gin.HandlerFunc,
@@ -50,6 +53,12 @@ func NewRouter(
 	authHandler.RegisterPublicRoutes(apiGroup)
 
 	playbookHandler.RegisterWebhookRoutes(apiGroup, apiKeyMW, requirePermission)
+
+	// the MCP handler signs the caller in and each tool checks its own grant, so it sits
+	// outside the cookie-based group. GET and DELETE go to it too: the SDK answers 405.
+	for _, method := range []string{http.MethodPost, http.MethodGet, http.MethodDelete} {
+		apiGroup.Handle(method, "/mcp", gin.WrapH(mcpHandler))
+	}
 
 	protected := apiGroup.Group("", authMW)
 
