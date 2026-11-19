@@ -23,8 +23,9 @@ func TestRoutes(t *testing.T) {
 	t.Run("returns 403 on every route with a grant for a user with no role", func(t *testing.T) {
 		_, user := newUser(t)
 		// Every user can read their own profile and the list of assignable users.
-		// The WebSocket uses the refresh cookie, not the token, so this test skips it.
-		open := map[string]bool{"/api/v1/auth/me": true, "/api/v1/users/assignable": true, "/ws/playbook": true}
+		// The WebSocket uses the refresh cookie, not the token, so this test skips it. MCP checks
+		// the grant in each tool, not on the route.
+		open := map[string]bool{"/api/v1/auth/me": true, "/api/v1/users/assignable": true, "/ws/playbook": true, "/api/v1/mcp": true}
 		for _, r := range routes {
 			if public(r.Path) || open[r.Path] {
 				continue

@@ -19,6 +19,7 @@ import (
 	"github.com/yuudev14/ytsoar/internal/adapters/http/middleware"
 	"github.com/yuudev14/ytsoar/internal/adapters/jobs"
 	"github.com/yuudev14/ytsoar/internal/adapters/mail"
+	"github.com/yuudev14/ytsoar/internal/adapters/mcp"
 	"github.com/yuudev14/ytsoar/internal/adapters/oidcclient"
 	"github.com/yuudev14/ytsoar/internal/adapters/pgstatus"
 	"github.com/yuudev14/ytsoar/internal/adapters/repository"
@@ -136,7 +137,13 @@ func NewAPI(ctx context.Context, cfg config.Config, appLogger logger.Logger, poo
 
 	scheduleHandler := handlers.NewScheduleHandler(appLogger, schedules.NewService(
 		appLogger, repository.NewScheduleRepositoryImpl(appLogger, queries, pool), orchestrator, playbookService, txManager))
-
+	mcpHandler := mcp.NewHandler(appLogger, mcp.Services{
+		Auth:      authService,
+		Alerts:    alertService,
+		Incidents: incidentService,
+		Playbooks: playbookService,
+		Tasks:     taskService,
+	})
 	routerConfig := api.RouterConfig{
 		CORSOrigins: cfg.CORSOrigins,
 	}
@@ -151,6 +158,7 @@ func NewAPI(ctx context.Context, cfg config.Config, appLogger logger.Logger, poo
 		incidentHandler,
 		scheduleHandler,
 		hub,
+		mcpHandler,
 		middleware.Auth(appLogger, authService),
 		middleware.APIKeyAuth(appLogger, authService),
 		middleware.AuthFromRefreshCookie(appLogger, authService),
